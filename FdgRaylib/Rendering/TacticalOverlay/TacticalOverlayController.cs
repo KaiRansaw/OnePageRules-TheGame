@@ -11,6 +11,7 @@ using FdgRaylib.Rendering.Resolvers;
 using ImGuiNET;
 using Raylib_cs;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.TacticalOverlay;
 
 /// <summary>
@@ -250,9 +251,39 @@ public class TacticalOverlayController
     /// Draws the cached opportunity-field texture, rebuilding it first if a trigger fired. Slots
     /// between the etched grid and terrain so the field reads under terrain (spec section 5 order).
     /// </summary>
+    // 3D: the field's GPU rebuild renders into its own textures, which ends whatever texture the caller was
+    // drawing into. The 3D table paints the tools into a texture, so it runs the rebuild first
+    // (PrepareField, outside that texture) and then only DRAWS the result inside it (DrawField). Before
+    // this split, a ranged unit's move or placement rebuilt the field mid-capture, and everything drawn
+    // after it - the unit's ghost, range rings, sight wedges - landed flat on the screen at the wrong spot.
+    private bool _prepared;
+    private bool _preparedDrew;
+
+    /// <summary>Runs the field's rebuild (no drawing). Call outside any texture mode; the next
+    /// <see cref="DrawField"/> this frame then just draws.</summary>
+    public void PrepareField()
+    {
+        _preparedDrew = BuildField();
+        _prepared = true;
+    }
+
     public void DrawField()
     {
-        if (_tableState == null || _field == null || _bandMask == null || _probe == null) return;
+        bool drew = _prepared ? _preparedDrew : BuildField();
+        _prepared = false;
+        if (!drew || _field == null) return;
+        if (_gpuField != null && TacticalOverlayConfig.UseGpuField)
+            _gpuField.DrawComposite(_originX, _originY,
+                GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES, _scale);
+        else
+            _field.Draw(_originX, _originY,
+                GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES, _scale);
+    }
+
+    /// <summary>Decides the field's anchor and rebuilds it if needed. True when there is a field to draw.</summary>
+    private bool BuildField()
+    {
+        if (_tableState == null || _field == null || _bandMask == null || _probe == null) return false;
 
         // #247: one contest decides the anchor, so exactly one field can be on screen. Everything the
         // decision needs is gathered here; FieldAnchorPlan owns the priority order.
@@ -303,17 +334,12 @@ public class TacticalOverlayController
 
             default:
                 ClearFieldPictures();
-                return;
+                return false;
         }
 
-        if (!drew) { ClearFieldPictures(); return; }
+        if (!drew) { ClearFieldPictures(); return false; }
         _fieldActive = true;
-        if (_gpuField != null && TacticalOverlayConfig.UseGpuField)
-            _gpuField.DrawComposite(_originX, _originY,
-                GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES, _scale);
-        else
-            _field.Draw(_originX, _originY,
-                GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES, _scale);
+        return true;
     }
 
     // ---- Ghost-anchored field (H4): "what can I hit from here", per frame --------------------------
@@ -1609,7 +1635,7 @@ public class TacticalOverlayController
         IUnit? focus = ActiveTargetUnit();
         if (focus == null) return;
         IReadOnlyDictionary<IModel, Position> ghosts = _moveResolver.GhostPositions;
-        Vector2 mouse = ImGui.GetIO().MousePos;
+        Vector2 mouse = TableInput.MousePos;
 
         IModel? ghostModel = null;
         Position ghostPos = default;

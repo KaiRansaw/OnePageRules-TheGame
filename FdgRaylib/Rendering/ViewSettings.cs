@@ -46,6 +46,19 @@ public static class ViewSettings
     /// </summary>
     public static float DiceLingerScale = 1f;
 
+    /// <summary>Dice tray: land the dice straight away instead of rumbling first.</summary>
+    public static bool SkipDiceAnimation = false;
+
+    /// <summary>How fast the game plays out (moves, shots, dice) - turn it down to follow the bot's turns.
+    /// 1 = normal, 0.5 = half speed, 2 = double.</summary>
+    public static float GameSpeed = 1f;
+
+    /// <summary>Keyboard camera speed multiplier (WASD / Q-E / Shift+W-S / Shift+Q-E), set in Options.</summary>
+    public static float CameraSpeed = 1f;
+
+    /// <summary>Flips Shift+Q / Shift+E tilt.</summary>
+    public static bool InvertTilt = false;
+
     /// <summary>Shortest the dice panels may linger: a third of the default (#344).</summary>
     public const float DiceLingerMin = 1f / 3f;
 

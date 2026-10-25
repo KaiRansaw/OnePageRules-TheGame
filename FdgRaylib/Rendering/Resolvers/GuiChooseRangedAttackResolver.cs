@@ -1,6 +1,7 @@
 using System.Numerics;
 using FDG;
 using FDG.Data;
+using FDG.Rules.Dispatch;
 using FDG.StageResolution;
 using FDG.StageResolution.Requests;
 using FDG.Stages;
@@ -83,11 +84,20 @@ public class GuiChooseRangedAttackResolver
         if (tIdx < 0) { _canvasHoveredOption = (-1, -1); return null; }
 
         _canvasHoveredOption = (_selectedWeaponIdx, tIdx);
-        var ts = request.WeaponOptions[_selectedWeaponIdx].WeaponTargetStats[tIdx];
+        var wo = request.WeaponOptions[_selectedWeaponIdx];
+        var ts = wo.WeaponTargetStats[tIdx];
         if (ts.UnselectableReason != null) return ts.UnselectableReason;
         int canShoot = ts.modelsThatCanShoot.Count;
-        if (canShoot == 0) return "Out of range";
-        return $"Click to select  ({canShoot} model{(canShoot != 1 ? "s" : "")} in range)";
+        if (canShoot == 0) return "No line of sight or out of range";
+        string line = $"Click to shoot {wo.Weapon.Name}  ({canShoot} model{(canShoot != 1 ? "s" : "")} can fire)";
+        if (ts.Forecast is AttackForecast f)
+        {
+            line += $"\nHits on {f.HitRollNeeded}+, they save on {f.SaveRollNeeded}+";
+            float expected = ExpectedWounds(f);
+            if (expected >= 0f) line += $"\nAbout {expected:0.#} wounds expected";
+        }
+        if (ts.HasCover) line += "\nTarget is in cover";
+        return line;
     }
 
     public void HandleClick(IUnit unit, IModel model)
@@ -102,7 +112,13 @@ public class GuiChooseRangedAttackResolver
         if (ts.UnselectableReason != null) return;
         if (ts.modelsThatCanShoot.Count == 0) return;
 
-        _selectedTargetTIdx = tIdx;
+        // Clicking a valid target fires the selected weapon at it straight away.
+        TaskCompletionSource<CancellableResult<RangedAttackChoice>>? tcs;
+        lock (_lock) { tcs = _tcs; }
+        if (tcs == null) return;
+        var wo = request.WeaponOptions[_selectedWeaponIdx];
+        ShotChosen?.Invoke(request.AttackingUnit.GetValue(), wo.Weapon.Name, ts.TargetUnit.GetValue());
+        Complete(tcs, new Selected<RangedAttackChoice>(new RangedAttackChoice(wo.Weapon, ts.TargetUnit)));
     }
 
     // ── Draw ──────────────────────────────────────────────────────────────────
@@ -131,9 +147,15 @@ public class GuiChooseRangedAttackResolver
         // #248 keyboard: Left/Right cycle the weapon (among fireable ones), Up/Down + number keys pick
         // the target (among fireable ones, display order). Enter fires via the footer's existing binding.
         // #319: the Done confirmation owns the keyboard while it is up.
-        if (!_donePopupOpen) HandleKeyboard(request);
-
+        // No keyboard shortcuts for picking weapons / targets any more (mouse only).
         DrawHoverLines(request);
+
+        // The compact pop-up beside the shooter: pick a weapon, then click a highlighted enemy to fire.
+        // (The old side panel below is no longer drawn.)
+        DrawTargetMarks(request);
+        DrawShootPopup(request, tcs);
+        _canvasHoveredOption = (-1, -1);
+        return;
 
         // Invisible non-interactive backdrop to anchor z-order
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
@@ -1065,8 +1087,146 @@ public class GuiChooseRangedAttackResolver
         return ruleReason!;
     }
 
+    /// <summary>Raised when the player fires a weapon at a target (shooter, weapon name, target), so the
+    /// game log can say which weapon was fired.</summary>
+    public static Action<IUnit, string, IUnit>? ShotChosen;
+
+    // ── The shooting pop-up ────────────────────────────────────────────────────────────────────────────
+    private Vector2 _shootPopupSize = new(260f, 200f);
+
+    /// <summary>Average wounds from this volley: attacks x chance to hit x chance the save fails. A guide
+    /// only - special rules that add hits or wounds (Blast, Deadly...) aren't counted. -1 when unknown.</summary>
+    internal static float ExpectedWounds(AttackForecast f)
+    {
+        int attacks = f.AttacksFiring > 0 ? f.AttacksFiring : f.AttacksPotential;
+        if (attacks <= 0) return -1f;
+        float hit = Math.Clamp(7 - f.HitRollNeeded, 0, 6) / 6f;
+        float failSave = Math.Clamp(f.SaveRollNeeded - 1, 0, 6) / 6f;
+        return attacks * hit * failSave;
+    }
+
+    private static bool HasFireableTarget(WeaponOption wo) =>
+        wo.WeaponTargetStats.Any(ts => ts.UnselectableReason == null && ts.modelsThatCanShoot.Count > 0);
+
+    /// <summary>
+    /// Outlines every enemy the selected weapon can be aimed at: bright green when it can be shot (click it),
+    /// faint grey when it is in the list but blocked (no line of sight, out of range, or a rule says no).
+    /// </summary>
+    private void DrawTargetMarks(ChooseRangedAttackRequest request)
+    {
+        if (_selectedWeaponIdx < 0 || _selectedWeaponIdx >= request.WeaponOptions.Count) return;
+        var dl = ImGui.GetBackgroundDrawList();
+        uint ok = ImGui.ColorConvertFloat4ToU32(new Vector4(0.25f, 1.00f, 0.35f, 0.95f));
+        uint no = ImGui.ColorConvertFloat4ToU32(new Vector4(0.70f, 0.70f, 0.70f, 0.45f));
+        foreach (var ts in request.WeaponOptions[_selectedWeaponIdx].WeaponTargetStats)
+        {
+            bool valid = ts.UnselectableReason == null && ts.modelsThatCanShoot.Count > 0;
+            foreach (var mb in ts.TargetUnit.GetValue().ModelBindings)
+            {
+                var m = mb.GetValue();
+                if (!m.GetIsAlive() || (m.Position.x == 0f && m.Position.z == 0f)) continue;
+                var (tx, ty) = InchesToPixel(m.Position.x, m.Position.z);
+                ModelBaseRenderer.DrawOutlineImGui(dl, m.BaseShape, new Vector2(tx, ty), _scale, valid ? ok : no,
+                    thickness: valid ? 3f : 1.5f, inflateInches: 1.5f / _scale, facing: m.Facing);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Small window beside the shooter: the weapons (pick one), a hint to click a highlighted enemy, and the
+    /// exits - Hold fire (skip this weapon), Back (nothing fired yet) or Done shooting (asks first).
+    /// Right-click on empty table also backs out while nothing has fired.
+    /// </summary>
+    private void DrawShootPopup(ChooseRangedAttackRequest request,
+        TaskCompletionSource<CancellableResult<RangedAttackChoice>> tcs)
+    {
+        // Keep a sensible weapon selected (the first one that can fire).
+        if (_selectedWeaponIdx < 0 || _selectedWeaponIdx >= request.WeaponOptions.Count
+            || !HasFireableTarget(request.WeaponOptions[_selectedWeaponIdx]))
+        {
+            int first = request.WeaponOptions.FindIndex(HasFireableTarget);
+            if (first >= 0) _selectedWeaponIdx = first;
+        }
+
+        ImGui.SetNextWindowPos(PopupAnchor.Place(_shootPopupSize), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        ImGui.Begin("##shootpopup", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        ImGui.TextUnformatted($"Shoot: {request.AttackingUnit.GetValue().Name}");
+        foreach (var d in request.Declarations)
+            ImGui.TextDisabled($"Aimed: {d.Copies}x {d.Weapon.Name} -> {d.TargetUnit.GetValue().Name}");
+        // One weapon at a time, picked automatically (the first that can fire); each comes up in turn.
+        // Click a green-outlined enemy to fire it, or Hold fire to skip it.
+        ImGui.Separator();
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
+        bool anyFireable = request.WeaponOptions.Any(HasFireableTarget);
+        int remaining = request.WeaponOptions.Count(HasFireableTarget);
+        if (anyFireable && _selectedWeaponIdx >= 0 && _selectedWeaponIdx < request.WeaponOptions.Count)
+        {
+            var cur = request.WeaponOptions[_selectedWeaponIdx];
+            ImGui.TextUnformatted($"Firing: {cur.Weapon.GetWeaponNameAndStats(Math.Max(1, cur.CopiesRemaining))}");
+            if (remaining > 1) ImGui.TextDisabled($"{remaining - 1} more weapon{(remaining - 1 == 1 ? "" : "s")} after this one.");
+            ImGui.TextDisabled("Click a green-outlined enemy to shoot it.");
+        }
+        else
+        {
+            ImGui.TextColored(new Vector4(1f, 0.75f, 0.35f, 1f), "No Targets");
+        }
+        ImGui.PopTextWrapPos();
+
+        Vector2 btn = new(155f, 0f);
+        bool done = false;
+        if (_selectedWeaponIdx >= 0 && _selectedWeaponIdx < request.WeaponOptions.Count)
+        {
+            var wo = request.WeaponOptions[_selectedWeaponIdx];
+            if (UiButton.Navigate("Hold fire", btn))
+            {
+                Complete(tcs, new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(wo.Weapon)));
+                done = true;
+            }
+            if (!done && ImGui.IsItemHovered())
+                ImGui.SetTooltip(wo.LimitedRule != null
+                    ? $"Don't fire {wo.Weapon.Name} - it keeps its {wo.LimitedRule} shot."
+                    : $"Don't fire {wo.Weapon.Name} this activation.");
+            ImGui.SameLine();
+        }
+        if (!done && request.AllowCancel)
+        {
+            if (UiButton.Back("Back", btn) || PopupAnchor.RightClickOnEmptyTable())
+            {
+                Complete(tcs, new Cancelled<RangedAttackChoice>());
+                done = true;
+            }
+        }
+        else if (!done && request.AllowStopShooting)
+        {
+            if (UiButton.Back(DeclaredShotText.StopLabel(request.DeclareFirst), btn))
+            {
+                _donePopupOpen = true;
+                ImGui.OpenPopup(DeclaredShotText.StopTitle(request.DeclareFirst));
+            }
+        }
+
+        if (!done) DrawDoneConfirmation(request, tcs);
+
+        _shootPopupSize = ImGui.GetWindowSize();
+        ImGui.End();
+    }
+
+    /// <summary>
+    /// True once the player has backed out of shooting this activation (Hold fire on a weapon, or Stop
+    /// shooting). The action pop-up reads it so it does not drop the unit straight back into the weapon
+    /// picker: without it, Hold -> Hold fire bounced between the two screens forever and the unit could
+    /// never simply stand still. Cleared when a fresh activation opens its action menu.
+    /// </summary>
+    public static bool HeldFireThisActivation;
+
     private void Complete(TaskCompletionSource<CancellableResult<RangedAttackChoice>> tcs, CancellableResult<RangedAttackChoice> choice)
     {
+        if (choice is Selected<RangedAttackChoice> { Value.IsHoldFire: true } || choice is Cancelled<RangedAttackChoice>)
+            HeldFireThisActivation = true;
         lock (_lock) { _request = null; _tcs = null; }
         _lastRequest        = null;
         _selectedWeaponIdx  = -1;

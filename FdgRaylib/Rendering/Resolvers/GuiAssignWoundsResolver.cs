@@ -4,6 +4,7 @@ using FDG;
 using FDG.StageResolution;
 using FDG.StageResolution.Requests;
 using ImGuiNET;
+using Raylib_cs;
 
 namespace FdgRaylib.Rendering.Resolvers;
 
@@ -69,8 +70,22 @@ public class GuiAssignWoundsResolver
         var tcs     = new TaskCompletionSource<AssignWoundsResults>();
         var results = new AssignWoundsResults(request.UnitReceivingWounds, request.Packets);
         lock (_lock) { _tcs = tcs; _request = request; _results = results; }
+        _active = this;
         return tcs.Task;
     }
+
+    /// <summary>Where the wound window sits: the bottom of the right column (set by the renderer every frame).</summary>
+    public static Vector4 Dock = new(0f, 0f, 380f, 300f);
+
+    private static GuiAssignWoundsResolver? _active;
+
+    /// <summary>True while a unit on this computer has wounds waiting to be placed (the renderer makes room).</summary>
+    public static bool AnyPending => _active?.HasPendingRequest == true;
+
+    /// <summary>Forget a request left over from a previous game.</summary>
+    public static void ClearActive() => _active = null;
+
+    private static uint C(float r, float g, float b, float a = 1f) => ImGui.ColorConvertFloat4ToU32(new Vector4(r, g, b, a));
 
     public void Draw(int screenW, int screenH)
     {
@@ -80,181 +95,177 @@ public class GuiAssignWoundsResolver
         lock (_lock) { request = _request; results = _results; tcs = _tcs; }
         if (request == null || results == null || tcs == null) return;
 
-        // #286: the canvas hover is the frame's starting emphasis; a hovered dialog row overrides it below.
-        // Either way exactly one model is emphasised, on the table AND in the list.
+        // #286: the canvas hover is the frame's starting emphasis; a hovered tile overrides it below.
         _hoveredModel = _canvasHoveredModel;
 
-        ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
-        ImGui.Begin("##WoundsBackdrop",
-            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs |
-            ImGuiWindowFlags.NoBackground);
-
-        var models  = results.PendingWounds;
-        float pad   = 16f;
-        float footH = 44f;
-
-        // Per-model button heights: one main line (model + wounds) plus a small line per weapon group.
-        float mainSize   = ImGui.GetFontSize();
-        float smallSize  = MathF.Round(mainSize * 0.72f);
-        float mainLineH  = ImGui.GetTextLineHeight();
-        float smallLineH = smallSize + 2f;
-        const float btnPadY  = 6f;
-        float spacingY   = ImGui.GetStyle().ItemSpacing.Y;
-
-        var weaponLines = new List<string>[models.Count];
-        var btnHeights  = new float[models.Count];
-        float listContentH = 0f;
-        for (int i = 0; i < models.Count; i++)
-        {
-            weaponLines[i] = WeaponLines(models[i].Model.GetValue());
-            btnHeights[i]  = btnPadY * 2 + mainLineH + weaponLines[i].Count * smallLineH;
-            listContentH  += btnHeights[i] + spacingY;
-        }
-
-        float dw = ResolverPanelLayout.W;   // dock into the right-column resolver panel
-        float dh = ResolverPanelLayout.H;   // header top, scrollable model list middle, footer bottom
-        float dx = ResolverPanelLayout.X;
-        float dy = ResolverPanelLayout.Y;
-
-        ImGui.SetCursorPos(new Vector2(dx, dy));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.15f, 0.15f, 0.20f, 0.97f));
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f);
-        ImGui.BeginChild("##WoundsDialog", new Vector2(dw, dh), ImGuiChildFlags.Borders,
-            ImGuiWindowFlags.NoScrollbar);
-        ImGui.PopStyleColor();
+        float dx = Dock.X, dy = Dock.Y, dw = Dock.Z, dh = Dock.W;
+        ImGui.SetNextWindowPos(new Vector2(dx, dy), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(dw, dh), ImGuiCond.Always);
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.07f, 0.07f, 0.08f, 0.98f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.85f, 0.30f, 0.25f, 0.9f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 2f);
+        ImGui.Begin("##WoundsDialog", ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoSavedSettings);
         ImGui.PopStyleVar();
+        ImGui.PopStyleColor(2);
 
-        // Header
-        string unitName = request.UnitReceivingWounds.GetValue().Name;
-        ImGui.SetCursorPos(new Vector2(pad, pad));
-        ImGui.PushTextWrapPos(dw - pad);
-        ImGui.TextUnformatted($"Assign Wounds: {unitName}");
-        ImGui.Spacing();
-        // #401: a Deadly queue explains why it is in clump mode, lays every clump out as a chip, and
-        // only then gives the running tally. A plain volley shows none of that.
+        var dl = ImGui.GetWindowDrawList();
+        IUnit unit = request.UnitReceivingWounds.GetValue();
+
+        // ── Header: picture, "Assign wounds", the unit, how many are left ──
+        const float thumb = 46f;
+        Vector2 h0 = ImGui.GetCursorScreenPos();
+        Texture2D? tex = PopupAnchor.CardImageFor?.Invoke(unit);
+        if (tex is Texture2D t && t.Width > 0 && t.Height > 0)
+        {
+            float aspect = t.Width / (float)t.Height;
+            Vector2 uv0 = Vector2.Zero, uv1 = Vector2.One;
+            if (aspect > 1f) { float w = 1f / aspect; uv0.X = (1f - w) / 2f; uv1.X = uv0.X + w; }
+            else { float hh = aspect; uv0.Y = (1f - hh) / 2f; uv1.Y = uv0.Y + hh; }
+            dl.AddImageRounded((IntPtr)t.Id, h0, h0 + new Vector2(thumb, thumb), uv0, uv1, C(1f, 1f, 1f), 4f);
+        }
+        else
+        {
+            dl.AddRectFilledMultiColor(h0, h0 + new Vector2(thumb, thumb), C(0.40f, 0.12f, 0.10f), C(0.40f, 0.12f, 0.10f),
+                C(0.15f, 0.05f, 0.05f), C(0.15f, 0.05f, 0.05f));
+        }
+        ImGui.SetCursorScreenPos(h0 + new Vector2(thumb + 8f, 0f));
+        ImGui.BeginGroup();
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + dw - thumb - 30f);
+        ImGui.TextColored(new Vector4(1f, 0.55f, 0.45f, 1f), "ASSIGN WOUNDS");
+        ImGui.TextUnformatted(unit.Name);
+        ImGui.TextDisabled(WoundAssignmentText.Progress(results));
+        ImGui.PopTextWrapPos();
+        ImGui.EndGroup();
+        float headBottom = MathF.Max(h0.Y + thumb, ImGui.GetItemRectMax().Y);
+        ImGui.SetCursorScreenPos(new Vector2(h0.X, headBottom + 4f));
+
+        // #401: a Deadly queue explains why it is in clump mode and shows every clump as a chip.
         string explanation = WoundAssignmentText.Explanation(results);
         if (explanation.Length > 0)
         {
+            ImGui.PushTextWrapPos(0f);
             ImGui.PushStyleColor(ImGuiCol.Text, ExplanationCol);
             ImGui.TextUnformatted(explanation);
             ImGui.PopStyleColor();
-            ImGui.Spacing();
-            DrawClumpStrip(results, pad, dw - pad * 2, mainLineH);
-            ImGui.Spacing();
+            ImGui.PopTextWrapPos();
+            DrawClumpStrip(results, ImGui.GetCursorPosX(), ImGui.GetContentRegionAvail().X, ImGui.GetTextLineHeight());
         }
-        // #287: F0 used to TRUNCATE - a 3.4-wound pool read "3 / 3 wounds assigned", which is not the
-        // number the engine is assigning. #401: a Deadly queue says what the next click places instead.
-        ImGui.TextUnformatted(WoundAssignmentText.Progress(results));
-        ImGui.PopTextWrapPos();
 
-        // Model buttons (scrollable if many models). The list starts wherever the header text ended -
-        // it used to start at a fixed 72px, which fit exactly one progress line, so #401's second line
-        // (and a long unit name wrapping) was drawn underneath the first button and clipped.
-        float listY = ImGui.GetCursorPosY() + spacingY;
-        float listH = dh - listY - pad - footH - pad;
-        float btnW  = dw - pad * 2;
-        ImGui.SetCursorPos(new Vector2(pad, listY));
-        ImGui.BeginChild("##WoundsList", new Vector2(btnW, listH), ImGuiChildFlags.None);
-
-        var dl   = ImGui.GetWindowDrawList();
+        // ── Model tiles: click one to give it the next wound ──
+        const float footH = 34f;
+        float listH = MathF.Max(60f, ImGui.GetContentRegionAvail().Y - footH - 6f);
+        ImGui.BeginChild("##WoundsList", new Vector2(0f, listH), ImGuiChildFlags.None);
+        var tdl = ImGui.GetWindowDrawList();
+        var models = results.PendingWounds;
+        float availW = ImGui.GetContentRegionAvail().X;
+        const float tileW = 104f, gap = 6f;
+        int perRow = Math.Max(1, (int)((availW + gap) / (tileW + gap)));
+        float lineH = ImGui.GetTextLineHeight();
+        float small = MathF.Round(ImGui.GetFontSize() * 0.78f);
         var font = ImGui.GetFont();
+        bool clump = WoundAssignmentText.ClumpModeMatters(results);
+        uint white = C(0.95f, 0.95f, 0.93f), dimText = C(0.55f, 0.55f, 0.58f);
+
         for (int i = 0; i < models.Count; i++)
         {
-            var pw         = models[i];
-            var modelData  = pw.Model.GetValue();
-            float total    = modelData.TotalWounds;
-            float dealt    = modelData.WoundsDealt;
-            float remaining = total - dealt - pw.Wounds;
-            // #006: assignability is capacity AND ordering — a joined hero is grayed until the rest of the
-            // unit is dead. Same predicate the engine's TryAddWounds uses, so the button never lies.
-            bool canTake   = results.CanAssignWoundTo(pw);
+            var pw = models[i];
+            var md = pw.Model.GetValue();
+            float total = md.TotalWounds, dealt = md.WoundsDealt;
+            bool canTake = results.CanAssignWoundTo(pw);
+            List<string> weapons = WeaponLines(md);
+            int wLines = Math.Min(3, weapons.Count);
+            float tileH = 18f + 12f + 6f + wLines * (small + 1f) + (clump ? lineH : 0f) + 8f;
 
-            float avail = ImGui.GetContentRegionAvail().X;
-            float rowY  = ImGui.GetCursorPosY();   // content coords, matching GetScrollY's space
-            Vector2 origin = ImGui.GetCursorScreenPos();
-
-            // #286: a highlight the player can't see is no connection at all, so a canvas-hovered row that
-            // has scrolled out of the list is scrolled back into view (a big Tough unit overflows easily).
-            // Only when it is actually off-view, so it never fights a deliberate scroll.
-            if (ReferenceEquals(_canvasHoveredModel, modelData))
-                ScrollRowIntoView(rowY, btnHeights[i]);
+            if (i % perRow != 0) ImGui.SameLine(0f, gap);
+            Vector2 p0 = ImGui.GetCursorScreenPos();
+            float rowY = ImGui.GetCursorPosY();
+            if (ReferenceEquals(_canvasHoveredModel, md)) ScrollRowIntoView(rowY, tileH);
 
             ImGui.BeginDisabled(!canTake);
-            bool clicked = ImGui.Button($"##model{i}", new Vector2(avail, btnHeights[i]));
-            // AllowWhenDisabled so dead/full models still highlight on the map for orientation.
-            bool hovered = ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled);
+            bool clicked = ImGui.InvisibleButton($"##model{i}", new Vector2(tileW, tileH));
             ImGui.EndDisabled();
+            bool hovered = ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled);
+            if (hovered) _hoveredModel = md;
+            bool lit = hovered || ReferenceEquals(_canvasHoveredModel, md);
+            Vector2 p1 = p0 + new Vector2(tileW, tileH);
 
-            // #286: the table -> list direction. The button's own hover styling only fires for the mouse
-            // being over IT, so a model hovered on the canvas gets its row painted here instead: a tinted
-            // fill plus a bright border, drawn before the text so it reads as the row's background.
-            if (ReferenceEquals(_canvasHoveredModel, modelData))
+            // Body, then the top tab with the model's number.
+            tdl.AddRectFilled(p0, p1, canTake ? C(0.11f, 0.10f, 0.09f) : C(0.08f, 0.08f, 0.08f), 4f);
+            Vector2 t0 = p0 + new Vector2(8f, 0f), t1 = new(p1.X - 8f, p0.Y + 18f);
+            tdl.AddRectFilled(t0, t1, canTake ? C(0.42f, 0.12f, 0.10f) : C(0.22f, 0.22f, 0.24f), 6f, ImDrawFlags.RoundCornersTop);
+            string label = $"Model {i + 1}";
+            Vector2 ls = ImGui.CalcTextSize(label);
+            tdl.AddText(new Vector2(p0.X + (tileW - ls.X) / 2f, p0.Y + (18f - ls.Y) / 2f), canTake ? white : dimText, label);
+
+            // Wound pips: lost (dark), about to be taken (orange), still healthy (green).
+            int pips = Math.Max(1, (int)MathF.Ceiling(total));
+            float pipW = MathF.Min(12f, (tileW - 12f - (pips - 1) * 2f) / pips);
+            float px = p0.X + (tileW - (pips * pipW + (pips - 1) * 2f)) / 2f, py = p0.Y + 22f;
+            for (int k = 0; k < pips; k++)
             {
-                Vector2 rowMax = origin + new Vector2(avail, btnHeights[i]);
-                dl.AddRectFilled(origin, rowMax, RowHighlightBgCol, 4f);
-                dl.AddRect(origin, rowMax, RowHighlightCol, 4f, ImDrawFlags.None, 2f);
+                uint pc = k < dealt ? C(0.25f, 0.08f, 0.08f)
+                    : k < dealt + pw.Wounds ? C(1f, 0.55f, 0.15f)
+                    : C(0.35f, 0.80f, 0.30f);
+                tdl.AddRectFilled(new Vector2(px, py), new Vector2(px + pipW, py + 10f), pc, 2f);
+                px += pipW + 2f;
             }
 
-            // Overlay text: model + wounds on the main line, weapons in smaller text beneath.
-            // Pre-assigned wounds (Tough ordering, locked) are surfaced with an "(N assigned)" note.
-            uint mainCol = ImGui.GetColorU32(canTake ? ImGuiCol.Text : ImGuiCol.TextDisabled);
-            uint wCol    = canTake ? WeaponTextCol : ImGui.GetColorU32(ImGuiCol.TextDisabled);
-            string assignedNote = pw.Wounds > 0f ? $"   ({WoundFormat.Format(pw.Wounds)} assigned)" : "";
-            // Show remaining/total only for multi-wound models; single-wound models need no counter.
-            string woundText = total > 1f ? $"   -   ({WoundFormat.Fraction(remaining, total)})" : "";
-            float tx = origin.X + 8f;
-            float ty = origin.Y + btnPadY;
-            dl.AddText(new Vector2(tx, ty), mainCol, $"Model {i + 1}{woundText}{assignedNote}");
-            // #401: what the next clump would do to this model, right-aligned on the main line - the
-            // preview that makes the pick easy. Clump queues only; the plain dialog is unchanged.
-            if (WoundAssignmentText.ClumpModeMatters(results))
+            // Weapons, small.
+            float wy = py + 16f;
+            for (int k = 0; k < wLines; k++)
+            {
+                string line = weapons[k];
+                float shrink = small / ImGui.GetFontSize();
+                while (line.Length > 4 && ImGui.CalcTextSize(line).X * shrink > tileW - 10f)
+                    line = line[..^3] + "..";
+                tdl.AddText(font, small, new Vector2(p0.X + 5f, wy), canTake ? WeaponTextCol : dimText, line);
+                wy += small + 1f;
+            }
+            if (weapons.Count > wLines)
+                tdl.AddText(font, small, new Vector2(p1.X - 16f, wy - small - 1f), dimText, "+");
+
+            // #401: what the next clump would do to this model.
+            if (clump)
             {
                 string effect = WoundAssignmentText.ModelEffect(results, pw);
-                if (effect.Length > 0)
-                {
-                    float effectW = ImGui.CalcTextSize(effect).X;
-                    dl.AddText(new Vector2(origin.X + avail - effectW - 8f, ty), EffectCol, effect);
-                }
-            }
-            float wy = ty + mainLineH;
-            foreach (string line in weaponLines[i])
-            {
-                dl.AddText(font, smallSize, new Vector2(tx + 12f, wy), wCol, line);
-                wy += smallLineH;
+                if (effect.Length > 0) tdl.AddText(font, small, new Vector2(p0.X + 5f, p1.Y - small - 5f), EffectCol, effect);
             }
 
-            if (hovered) _hoveredModel = modelData;
+            // Frame: yellow under the cursor, green when it can take the wound, grey when it can't.
+            if (lit) tdl.AddRect(p0, p1, HighlightCol, 4f, ImDrawFlags.None, 2.5f);
+            else if (canTake) tdl.AddRect(p0, p1, C(0.30f, 0.85f, 0.35f, 0.85f), 4f, ImDrawFlags.None, 1.5f);
+            else tdl.AddRect(p0, p1, C(0.30f, 0.30f, 0.33f), 4f, ImDrawFlags.None, 1f);
+
+            if (hovered)
+            {
+                ImGui.BeginTooltip();
+                foreach (string line in weapons) ImGui.TextUnformatted(line);
+                if (total > 1f) ImGui.TextDisabled($"Wounds left: {WoundFormat.Fraction(total - dealt - pw.Wounds, total)}");
+                if (!canTake) ImGui.TextDisabled("Can't take this wound yet.");
+                ImGui.EndTooltip();
+            }
 
             if (clicked)
             {
                 results.TryAddWounds(pw.Model);
-                if (results.IsFinishedAssigning)
-                    Complete(tcs, results);
+                if (results.IsFinishedAssigning) Complete(tcs, results);
             }
         }
-
         ImGui.EndChild();
 
-        // Auto-assign button. #237: Primary style binds Enter, so the common "just spread them" case
-        // is a single keypress.
-        float btnY = dh - pad - footH;
-        ImGui.SetCursorPos(new Vector2(pad, btnY));
-        if (ResolverButtons.Primary("Auto-assign All", new Vector2(btnW, footH - 4f)))
+        // ── Footer ──
+        if (ResolverButtons.Primary("Auto-assign the rest", new Vector2(ImGui.GetContentRegionAvail().X, footH - 4f)))
         {
             results.AutoFill();
             Complete(tcs, results);
         }
-
-        ImGui.EndChild();
         ImGui.End();
 
         DrawInvalidTargets(results);
         DrawMapHighlight();
 
-        // Single-frame handshake: GetHoverLabel sets this before the next Draw if the mouse is still over
-        // a model, so clearing here means "no canvas hover" the instant the cursor leaves the table.
+        // Single-frame handshake: GetHoverLabel sets this before the next Draw if the mouse is still over a model.
         _canvasHoveredModel = null;
     }
 

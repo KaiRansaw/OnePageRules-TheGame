@@ -14,8 +14,8 @@ namespace FdgRaylib.Tests;
 [TestFixture]
 public class TableClipTests
 {
-    private const float TableW = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES;
-    private const float TableH = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
+    private const float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
+    private const float TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
 
     [Test]
     public void RectMatchesTheFeltTheRendererPaints()

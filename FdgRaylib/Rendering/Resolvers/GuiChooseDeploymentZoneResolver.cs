@@ -5,6 +5,7 @@ using FDG.StageResolution;
 using FDG.StageResolution.Requests;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 public class GuiChooseDeploymentZoneResolver
@@ -55,8 +56,8 @@ public class GuiChooseDeploymentZoneResolver
         int canvasHover = -1;
         if (!io.WantCaptureMouse)
         {
-            float mx = (io.MousePos.X - _originX) / _scale;
-            float mz = _tableH - (io.MousePos.Y - _originY) / _scale;
+            float mx = (TableInput.MousePos.X - _originX) / _scale;
+            float mz = _tableH - (TableInput.MousePos.Y - _originY) / _scale;
             for (int i = 0; i < availableOrdered.Count; i++)
             {
                 var z = availableOrdered[i].GetValue();

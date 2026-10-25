@@ -189,6 +189,8 @@ public class UserConfigTests
         var saved = new HostGameSettings
         {
             ArmyPoints = 1750,
+            GameMode = EGameMode.Horde,
+            PlayStyle = EPlayStyle.GameMaster,
             TurnStyle = ETurnStyle.BoltAction,
             ShootingMode = EShootingMode.DeclareFirst,
             RandomnessType = ERandomnessType.Probabilistic,
@@ -208,6 +210,8 @@ public class UserConfigTests
         Assert.Multiple(() =>
         {
             Assert.That(lobby.ArmyPoints, Is.EqualTo(1750));
+            Assert.That(lobby.GameMode, Is.EqualTo(EGameMode.Horde));
+            Assert.That(lobby.PlayStyle, Is.EqualTo(EPlayStyle.GameMaster));
             Assert.That(lobby.TurnStyle, Is.EqualTo(ETurnStyle.BoltAction));
             Assert.That(lobby.ShootingMode, Is.EqualTo(EShootingMode.DeclareFirst));
             Assert.That(lobby.RandomnessType, Is.EqualTo(ERandomnessType.Probabilistic));
@@ -255,6 +259,8 @@ public class UserConfigTests
         {
             HasHostPrivileges = true,
             ArmyPoints = 3000,
+            // The army source follows the Game Type now (no lobby choice): an Age of Fantasy game uses AoF armies.
+            GameSystem = EGameSystem.AgeOfFantasy,
             AllowedGameSystems = EAllowedGameSystems.AgeOfFantasy,
             TurnStyle = ETurnStyle.BoltAction,
             ShootingMode = EShootingMode.DeclareFirst,
@@ -278,6 +284,7 @@ public class UserConfigTests
         Assert.Multiple(() =>
         {
             Assert.That(nextLobby.ArmyPoints, Is.EqualTo(3000));
+            Assert.That(nextLobby.GameSystem, Is.EqualTo(EGameSystem.AgeOfFantasy));
             Assert.That(nextLobby.AllowedGameSystems, Is.EqualTo(EAllowedGameSystems.AgeOfFantasy));
             Assert.That(nextLobby.TurnStyle, Is.EqualTo(ETurnStyle.BoltAction));
             Assert.That(nextLobby.ShootingMode, Is.EqualTo(EShootingMode.DeclareFirst));
@@ -314,6 +321,9 @@ public class UserConfigTests
         public ERandomnessType RandomnessType { get; set; }
         public ETurnStyle TurnStyle { get; set; }
         public EShootingMode ShootingMode { get; set; }
+        public EGameMode GameMode { get; set; }
+        public EGameSystem GameSystem { get; set; }
+        public EPlayStyle PlayStyle { get; set; }
         public bool CoverProximityExceptions { get; set; } = true;
         public bool SeeThroughFriendlyUnits { get; set; }
         public bool UnlimitedSplitFire { get; set; }
@@ -330,6 +340,9 @@ public class UserConfigTests
         public void SetRandomnessType(ERandomnessType randomnessType) => RandomnessType = randomnessType;
         public void SetTurnStyle(ETurnStyle turnStyle) => TurnStyle = turnStyle;
         public void SetShootingMode(EShootingMode shootingMode) => ShootingMode = shootingMode;
+        public void SetGameMode(EGameMode gameMode) => GameMode = gameMode;
+        public void SetGameSystem(EGameSystem gameSystem) => GameSystem = gameSystem;
+        public void SetPlayStyle(EPlayStyle playStyle) => PlayStyle = playStyle;
         public void SetCoverProximityExceptions(bool enabled) => CoverProximityExceptions = enabled;
         public void SetSeeThroughFriendlyUnits(bool enabled) => SeeThroughFriendlyUnits = enabled;
         public void SetUnlimitedSplitFire(bool enabled) => UnlimitedSplitFire = enabled;
@@ -357,6 +370,9 @@ public class UserConfigTests
         public IObservable<ERandomnessType> RandomnessTypeObservable => throw new NotSupportedException();
         public IObservable<ETurnStyle> TurnStyleObservable => throw new NotSupportedException();
         public IObservable<EShootingMode> ShootingModeObservable => throw new NotSupportedException();
+        public IObservable<EGameMode> GameModeObservable => throw new NotSupportedException();
+        public IObservable<EGameSystem> GameSystemObservable => throw new NotSupportedException();
+        public IObservable<EPlayStyle> PlayStyleObservable => throw new NotSupportedException();
         public IObservable<bool> CoverProximityExceptionsObservable => throw new NotSupportedException();
         public IObservable<bool> SeeThroughFriendlyUnitsObservable => throw new NotSupportedException();
         public IObservable<bool> UnlimitedSplitFireObservable => throw new NotSupportedException();

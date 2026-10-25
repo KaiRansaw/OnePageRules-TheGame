@@ -91,7 +91,7 @@ internal static class TacticalOverlayConfig
     // #247: master reach toggle (the opportunity field, whatever it is anchored on). V was free across the
     // whole in-game key census (A/F/G/L/R/T, arrows, Enter, Backspace, Escape, Space, digits, F10).
     // F is free again since the threat-frontier toggle was removed.
-    public const ImGuiKey ReachToggleKey      = ImGuiKey.V;
+    public const ImGuiKey ReachToggleKey      = ImGuiKey.B;   // was V; V now switches 2D / 3D
     public const ImGuiKey ClearPinsKey        = ImGuiKey.Escape;
     public const ImGuiKey FidelitySamplerKey  = ImGuiKey.F10; // debug (spec section 6)
 }

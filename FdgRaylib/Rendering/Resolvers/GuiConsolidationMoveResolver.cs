@@ -8,11 +8,12 @@ using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 using FdgRaylib.Placement;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 public class GuiConsolidationMoveResolver
     : IStageResolver<ConsolidationMoveRequest, List<ModelMoveEntry>>, IGuiResolver, IGuiCanvasOverlay,
-      IPreviewSource
+      IPreviewSource, IRightClickConsumer
 {
     private readonly ITableState _tableState;
     // #215: shared Group/Single toggle (same instance the movement + deployment resolvers use).
@@ -190,7 +191,7 @@ public class GuiConsolidationMoveResolver
 
         float maxDist = request.MaxDistanceInches;
 
-        bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
+        bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
         bool wantInput = !io.WantCaptureMouse && !io.WantCaptureKeyboard;
 
         // #295: single mode switches models by clicking the model you want (Space used to cycle; Space now
@@ -201,7 +202,7 @@ public class GuiConsolidationMoveResolver
         IModel? hoveredModel = null;
         if (!_formationMode.IsGroup && overTable && !io.WantCaptureMouse)
         {
-            var (hx, hz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (hx, hz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             hoveredModel = ModelPicker.HitTest(paths.Select(kvp => PlannedPose(pt, kvp.Key, kvp.Value)), hx, hz);
         }
 
@@ -279,7 +280,7 @@ public class GuiConsolidationMoveResolver
             var anchor = pt.GetModelLastPathPosition(_selectedModel);
             float totalSoFar = pt.GetTotalDistanceMoved(_selectedModel);
             float remaining  = maxDist - totalSoFar;
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             float dx = mx - anchor.x;
             float dz = mz - anchor.z;
             float dist = MathF.Sqrt(dx * dx + dz * dz);
@@ -339,7 +340,7 @@ public class GuiConsolidationMoveResolver
             // Right-click clears the selected model's last waypoint, if any (right-click clears the
             // last path point in ALL modes — the app-wide undo gesture; Backspace stopped undoing
             // in #343: it is the back-out key, and consolidation has no back-destination).
-            if (ImGui.IsMouseClicked(ImGuiMouseButton.Right) && _selectedModel != null
+            if (!ImGui.GetIO().WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Right) && _selectedModel != null
                 && paths.TryGetValue(_selectedModel, out var selList) && selList.Count > 0)
             {
                 pt.RemoveLastStep(_selectedModel);
@@ -427,7 +428,7 @@ public class GuiConsolidationMoveResolver
         float desiredTx = 0f, desiredTz = 0f;
         if (overTable && !io.WantCaptureMouse)
         {
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             desiredTx = mx - pivot.x;
             desiredTz = mz - pivot.z;
         }

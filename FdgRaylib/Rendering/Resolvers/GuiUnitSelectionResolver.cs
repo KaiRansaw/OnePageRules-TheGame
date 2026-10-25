@@ -4,6 +4,7 @@ using FDG.Data;
 using FDG.Rules.Dispatch;
 using FDG.StageResolution.Requests;
 using ImGuiNET;
+using Raylib_cs;
 
 namespace FdgRaylib.Rendering.Resolvers;
 
@@ -143,8 +144,43 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
     protected override bool IsRowEmphasized(DataBinding<UnitData> option) =>
         _cargoRowRefs.Contains(option.Reference);
 
+    /// <summary>A unit clicked while the action pop-up was open: the pop-up backs out of the current
+    /// activation and this unit is picked as soon as the "choose a unit" request comes back.</summary>
+    public static volatile IUnit? PendingActivationPick;
+
     public override void Draw(int screenW, int screenH)
     {
+        SelectionRequest<UnitData>? pending;
+        TaskCompletionSource<DataBinding<UnitData>>? pendingTcs;
+        lock (_lock) { pending = _request; pendingTcs = _tcs; }
+        if (pending is ChooseUnitToActivateRequest activation && pendingTcs != null)
+        {
+            // Switching units from the action pop-up: pick the clicked unit straight away.
+            if (PendingActivationPick is IUnit want)
+            {
+                PendingActivationPick = null;
+                foreach (var opt in activation.ValidOptions)
+                    if (opt.Option.GetValue().ID.Equals(want.ID)) { Complete(pendingTcs, opt.Option); return; }
+            }
+            // Activation is picked by clicking the unit on the table: no side list, just a short hint (plus
+            // buttons for units that can't be clicked because they ride inside a transport).
+            DrawActivationHint(activation, pendingTcs);
+            DrawHoverHighlight();
+            _hoveredValidRef = null;
+            _cargoRowRefs.Clear();
+            return;
+        }
+        if (pending != null && pendingTcs != null)
+        {
+            // Any other "pick a unit" (which unit to deploy next, ...) is a row of unit cards along the
+            // bottom of the board instead of the side list.
+            DrawUnitCards(pending, pendingTcs);
+            DrawHoverHighlight();
+            _hoveredValidRef = null;
+            _cargoRowRefs.Clear();
+            return;
+        }
+
         // Only the hovered unit is ringed -- no persistent ring on every valid unit (that was visual noise
         // during activation, where every one of the player's units is a valid pick). The dialog draws first;
         // DrawHoverHighlight runs after so a hovered dialog button lands the highlight the same frame.
@@ -152,6 +188,195 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         DrawHoverHighlight();
         _hoveredValidRef = null;
         _cargoRowRefs.Clear();
+    }
+
+    private void DrawUnitCards(SelectionRequest<UnitData> request, TaskCompletionSource<DataBinding<UnitData>> tcs)
+    {
+        // Tall unit cards in a row, like a strategy game's army bar: points tab, models-left bar, the unit's
+        // picture, its name, and a shoot / melee icon. Hover for the full card; click to pick.
+        const float cardW = 118f, gap = 6f;
+        float lineH = ImGui.GetTextLineHeight();
+        const float tabH = 22f, barH = 16f, imgH = 112f, iconH = 26f;
+        float nameH = lineH * 3f + 4f;   // two lines of name + the Q / D line
+        float cardH = tabH + barH + imgH + nameH + iconH + 6f;
+        int count = request.ValidOptions.Count + request.InvalidOptions.Count;
+        float rowW = MathF.Max(1, count) * (cardW + gap);
+        float winW = MathF.Min(rowW + ImGui.GetStyle().WindowPadding.X * 2f, MathF.Max(260f, PopupAnchor.AreaW - 16f));
+        float winH = cardH + lineH * 2f + ImGui.GetStyle().ScrollbarSize + 26f;
+
+        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(new Vector2(winW, winH)), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(winW, winH), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.90f);
+        ImGui.Begin("##unitcards", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        string title = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : request.Instructions;
+        ImGui.TextUnformatted(title);
+        if (request.AllowCancel)
+        {
+            ImGui.SameLine();
+            if (UiButton.Back(string.IsNullOrEmpty(request.CancelLabel) ? "Back" : request.CancelLabel)
+                || PopupAnchor.RightClickOnEmptyTable())
+            {
+                ImGui.End();
+                Complete(tcs, null!);
+                return;
+            }
+        }
+
+        DataBinding<UnitData>? picked = null;
+        var dl = ImGui.GetWindowDrawList();
+        uint U(float r, float g, float b, float a = 1f) => ImGui.ColorConvertFloat4ToU32(new Vector4(r, g, b, a));
+        uint white = U(1f, 1f, 1f), dim = U(0.75f, 0.78f, 0.82f), frame = U(0.42f, 0.30f, 0.16f);
+        int idx = 0;
+
+        void Card(DataBinding<UnitData> option, string name, bool valid, string? reason,
+            SelectionRequest<UnitData>.ValidOption? validOpt)
+        {
+            if (idx > 0) ImGui.SameLine(0f, gap);
+            idx++;
+            Vector2 p0 = ImGui.GetCursorScreenPos();
+            ImGui.BeginDisabled(!valid);
+            bool clicked = ImGui.InvisibleButton($"##card{idx}", new Vector2(cardW, cardH));
+            ImGui.EndDisabled();
+            bool hovered = ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled);
+            UnitData u = option.GetValue();
+            Vector2 p1 = p0 + new Vector2(cardW, cardH);
+
+            // Body and frame.
+            dl.AddRectFilled(p0, p1, U(0.10f, 0.09f, 0.08f), 4f);
+
+            // Top tab: the unit's points.
+            Vector2 t0 = p0 + new Vector2(10f, 0f), t1 = p0 + new Vector2(cardW - 10f, tabH);
+            dl.AddRectFilled(t0, t1, U(0.10f, 0.22f, 0.42f), 6f, ImDrawFlags.RoundCornersTop);
+            string pts = $"{u.PointCost} pts";
+            Vector2 ps = ImGui.CalcTextSize(pts);
+            dl.AddText(new Vector2(p0.X + (cardW - ps.X) / 2f, p0.Y + (tabH - ps.Y) / 2f), white, pts);
+
+            // Models-left bar: green, turning red below half.
+            int live = u.Models.Count(m => m.GetIsAlive());
+            int all = Math.Max(1, u.Models.Count);
+            float frac = Math.Clamp(live / (float)all, 0f, 1f);
+            Vector2 b0 = p0 + new Vector2(4f, tabH + 2f), b1 = new(p1.X - 4f, b0.Y + barH);
+            dl.AddRectFilled(b0, b1, U(0.15f, 0.05f, 0.05f), 2f);
+            dl.AddRectFilled(b0, new Vector2(b0.X + (b1.X - b0.X) * frac, b1.Y),
+                frac > 0.5f ? U(0.45f, 0.80f, 0.20f) : U(0.80f, 0.15f, 0.15f), 2f);
+            string liveText = live.ToString();
+            Vector2 ls = ImGui.CalcTextSize(liveText);
+            dl.AddText(new Vector2(b0.X + (b1.X - b0.X - ls.X) / 2f, b0.Y + (barH - ls.Y) / 2f), white, liveText);
+
+            // Picture (cropped to fill), or the unit's initials when there is none.
+            Vector2 i0 = new(p0.X + 4f, b1.Y + 3f), i1 = new(p1.X - 4f, i0.Y + imgH);
+            Texture2D? tex = PopupAnchor.CardImageFor?.Invoke(u);
+            if (tex is Texture2D t && t.Width > 0 && t.Height > 0)
+            {
+                float boxAspect = (i1.X - i0.X) / (i1.Y - i0.Y);
+                float texAspect = t.Width / (float)t.Height;
+                Vector2 uv0 = Vector2.Zero, uv1 = Vector2.One;
+                if (texAspect > boxAspect) { float w = boxAspect / texAspect; uv0.X = (1f - w) / 2f; uv1.X = uv0.X + w; }
+                else { float h = texAspect / boxAspect; uv0.Y = (1f - h) / 2f; uv1.Y = uv0.Y + h; }
+                dl.AddImage((IntPtr)t.Id, i0, i1, uv0, uv1);
+            }
+            else
+            {
+                dl.AddRectFilledMultiColor(i0, i1, U(0.12f, 0.30f, 0.38f), U(0.12f, 0.30f, 0.38f),
+                    U(0.05f, 0.12f, 0.18f), U(0.05f, 0.12f, 0.18f));
+                string initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Take(3).Select(w => char.ToUpperInvariant(w[0])));
+                ImGui.SetWindowFontScale(2f);
+                Vector2 isz = ImGui.CalcTextSize(initials);
+                ImGui.SetWindowFontScale(1f);
+                dl.AddText(ImGui.GetFont(), ImGui.GetFontSize() * 2f,
+                    new Vector2((i0.X + i1.X - isz.X) / 2f, (i0.Y + i1.Y - isz.Y) / 2f), U(0.75f, 0.90f, 1f, 0.85f), initials);
+            }
+
+            // Name, up to two lines, centred.
+            float ny = i1.Y + 3f;
+            foreach (string line in WrapCardText(name, cardW - 10f, 2))
+            {
+                Vector2 nsz = ImGui.CalcTextSize(line);
+                dl.AddText(new Vector2(p0.X + (cardW - nsz.X) / 2f, ny), valid ? white : dim, line);
+                ny += lineH;
+            }
+
+            // Quality / Defense.
+            string qd = $"Q {u.Quality}+ / D {u.Defense}+";
+            Vector2 qsz = ImGui.CalcTextSize(qd);
+            dl.AddText(new Vector2(p0.X + (cardW - qsz.X) / 2f, i1.Y + 3f + lineH * 2f), U(1f, 0.85f, 0.45f), qd);
+
+            // Bottom icon: crosshair for a shooting unit, crossed blades for a melee one.
+            bool ranged = u.AllWeapons().Any(w => w.RangeInches > 0);
+            Vector2 c = new((p0.X + p1.X) / 2f, p1.Y - iconH / 2f - 3f);
+            float r = iconH / 2f - 2f;
+            dl.AddCircleFilled(c, r + 2f, U(0.30f, 0.20f, 0.10f));
+            dl.AddCircle(c, r + 2f, U(0.75f, 0.55f, 0.25f), 0, 1.5f);
+            uint ic = U(0.95f, 0.80f, 0.45f);
+            if (ranged)
+            {
+                dl.AddCircle(c, r * 0.6f, ic, 0, 1.5f);
+                dl.AddLine(c - new Vector2(r * 0.9f, 0), c + new Vector2(r * 0.9f, 0), ic, 1.5f);
+                dl.AddLine(c - new Vector2(0, r * 0.9f), c + new Vector2(0, r * 0.9f), ic, 1.5f);
+            }
+            else
+            {
+                dl.AddLine(c + new Vector2(-r * 0.7f, -r * 0.7f), c + new Vector2(r * 0.7f, r * 0.7f), ic, 2f);
+                dl.AddLine(c + new Vector2(r * 0.7f, -r * 0.7f), c + new Vector2(-r * 0.7f, r * 0.7f), ic, 2f);
+            }
+
+            // Frame: gold when hovered; greyed and labelled when it can't be picked.
+            dl.AddRect(p0, p1, hovered && valid ? U(1f, 0.85f, 0.25f) : frame, 4f, ImDrawFlags.None, hovered && valid ? 3f : 2f);
+            if (!valid) dl.AddRectFilled(p0, p1, U(0f, 0f, 0f, 0.55f), 4f);
+
+            if (hovered && validOpt != null) OnValidOptionHovered(validOpt);
+            else if (hovered && reason != null) ImGui.SetTooltip(reason);
+            if (clicked && valid) picked = option;
+        }
+
+        foreach (var opt in request.ValidOptions) Card(opt.Option, opt.Name, true, null, opt);
+        foreach (var opt in request.InvalidOptions) Card(opt.Option, opt.Name, false, opt.Reason, null);
+
+        ImGui.End();
+        if (picked != null) Complete(tcs, picked);
+    }
+
+    private static List<string> WrapCardText(string text, float maxW, int maxLines)
+    {
+        var lines = new List<string>();
+        string current = "";
+        foreach (string word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string attempt = current.Length == 0 ? word : current + " " + word;
+            if (current.Length > 0 && ImGui.CalcTextSize(attempt).X > maxW) { lines.Add(current); current = word; }
+            else current = attempt;
+        }
+        if (current.Length > 0) lines.Add(current);
+        if (lines.Count > maxLines) { lines = lines.Take(maxLines).ToList(); lines[^1] += "..."; }
+        return lines;
+    }
+
+    private void DrawActivationHint(ChooseUnitToActivateRequest request, TaskCompletionSource<DataBinding<UnitData>> tcs)
+    {
+        ImGui.SetNextWindowPos(new Vector2(PopupAnchor.AreaW * 0.5f, 70f), ImGuiCond.Always, new Vector2(0.5f, 0f));
+        ImGui.SetNextWindowBgAlpha(0.85f);
+        ImGui.Begin("##activatehint", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing);
+        ImGui.TextUnformatted("Your turn: click a unit to activate it.");
+
+        // Units with no models on the table (inside a transport) can't be clicked - offer them as buttons.
+        foreach (var opt in request.ValidOptions)
+        {
+            UnitData u = opt.Option.GetValue();
+            bool onTable = u.Models.Any(m => m.GetIsAlive() && (m.Position.x != 0f || m.Position.z != 0f));
+            if (onTable) continue;
+            if (UiButton.Navigate($"{opt.Name}##act{opt.Option.Reference}", new Vector2(260f, 0f)))
+            {
+                ImGui.End();
+                Complete(tcs, opt.Option);
+                return;
+            }
+        }
+        ImGui.End();
     }
 
     // The hovered unit (dialog button or canvas) rings with a halo, connecting the list entry to the figures

@@ -173,6 +173,11 @@ public sealed class UserConfig
 public sealed class HostGameSettings
 {
     public int ArmyPoints { get; set; }
+    // Absent from configs written before Horde Mode, which read back as Standard (enum 0).
+    public EGameMode GameMode { get; set; }
+    // Absent from configs written before game types, which read back as Grimdark Future (enum 0).
+    public EGameSystem GameSystem { get; set; }
+    public EPlayStyle PlayStyle { get; set; }
     public EAllowedGameSystems AllowedGameSystems { get; set; }
     public ETerrainPlacementMode TerrainPlacementMode { get; set; }
     public int TerrainPieceCount { get; set; }
@@ -193,6 +198,9 @@ public sealed class HostGameSettings
     public static HostGameSettings From(GameSettings settings) => new()
     {
         ArmyPoints             = settings.ArmyPoints,
+        GameMode               = settings.GameMode,
+        GameSystem             = settings.GameSystem,
+        PlayStyle              = settings.PlayStyle,
         AllowedGameSystems     = settings.AllowedGameSystems,
         TerrainPlacementMode   = settings.TerrainPlacementMode,
         TerrainPieceCount      = settings.TerrainPieceCount,
@@ -212,6 +220,9 @@ public sealed class HostGameSettings
     public static HostGameSettings CaptureFrom(ILobbyViewModel viewModel) => new()
     {
         ArmyPoints             = viewModel.ArmyPoints,
+        GameMode               = viewModel.GameMode,
+        GameSystem             = viewModel.GameSystem,
+        PlayStyle              = viewModel.PlayStyle,
         AllowedGameSystems     = viewModel.AllowedGameSystems,
         TerrainPlacementMode   = viewModel.TerrainPlacementMode,
         TerrainPieceCount      = viewModel.TerrainCount,
@@ -235,8 +246,12 @@ public sealed class HostGameSettings
     {
         if (!viewModel.HasHostPrivileges || viewModel.IsResumeMode) return;
 
+        viewModel.SetGameSystem(GameSystemInfo.IsAvailable(GameSystem) ? GameSystem : EGameSystem.GrimdarkFuture);
+        viewModel.SetGameMode(GameMode);
+        viewModel.SetPlayStyle(PlayStyle);
         viewModel.SetArmyPoints(ArmyPoints);
-        viewModel.SetAllowedGameSystems(AllowedGameSystems);
+        // The army source follows the Game Type (no longer a lobby choice).
+        viewModel.SetAllowedGameSystems(GameSystemInfo.ArmySource(viewModel.GameSystem));
         viewModel.SetTerrainPlacementMode(TerrainPlacementMode);
         viewModel.SetTerrainCount(TerrainPieceCount);
         viewModel.SetTerrainPointsTotal(TerrainPointsTotal);
@@ -245,7 +260,8 @@ public sealed class HostGameSettings
         viewModel.SetObjectivePlacementMode(ObjectivePlacementMode);
         viewModel.SetRandomnessType(RandomnessType);
         viewModel.SetTurnStyle(TurnStyle);
-        viewModel.SetShootingMode(ShootingMode);
+        // Declare First is the official rule (targets declared before rolling); no longer a lobby choice.
+        viewModel.SetShootingMode(EShootingMode.DeclareFirst);
         viewModel.SetCoverProximityExceptions(CoverProximityExceptions);
         viewModel.SetSeeThroughFriendlyUnits(SeeThroughFriendlyUnits);
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);

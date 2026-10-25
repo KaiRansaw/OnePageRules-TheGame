@@ -6,6 +6,7 @@ using FDG.Stages;
 using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 /// <summary>
@@ -127,10 +128,10 @@ public class GuiAircraftAdvanceResolver
         float cz = living.Average(m => m.Position.z);
 
         // Mouse → distance along the heading (projected onto the line through the centroid, clamped to the band).
-        bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
+        bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
         if (!_confirmOpen && overTable && !io.WantCaptureMouse)
         {
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             float t = (mx - cx) * h.X + (mz - cz) * h.Y;
             _currentDistance = Math.Clamp(t, request.MinDistanceInches, request.MaxDistanceInches);
         }

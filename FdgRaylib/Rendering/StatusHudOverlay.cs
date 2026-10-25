@@ -40,16 +40,34 @@ public static class StatusHudOverlay
     /// <paramref name="scores"/> is one entry per player, in a stable order.
     /// <paramref name="waiting"/> is one entry per outstanding non-local task, oldest first (may be
     /// empty; during deployment it is often the only thing on screen).
+    /// Returns the strip's left edge in pixels (where the round / score text starts), or null when no
+    /// round or score is shown - the measuring-tool button docks against it.
     /// </summary>
-    public static void Draw(int areaWidth, int? round, int totalRounds,
+    /// <param name="segments">Extra text items drawn after the round, each behind a separator, IN PLACE of
+    /// the objective pips (Horde Mode: "WAVE 2 / 4", "120 PTS"). Null for the standard strip.</param>
+    public static int? Draw(int areaWidth, int? round, int totalRounds,
         IReadOnlyList<(Color color, int count)> scores,
-        IReadOnlyList<(Color color, string playerName, string taskName)> waiting)
+        IReadOnlyList<(Color color, string playerName, string taskName)> waiting,
+        IReadOnlyList<(string text, Color color)>? segments = null,
+        IReadOnlyList<(string text, Color color)>? subline = null)
     {
+        // Second line under the strip: whose turn it is and units left to activate per player.
+        int sublineH = 0;
+        if (subline != null && subline.Count > 0)
+        {
+            DrawSubline(areaWidth, subline, TopMargin + FontSize + 8);
+            sublineH = WaitFontSize + WaitLineGap;
+        }
+        _waitOffset = sublineH;
+
+        if (segments != null && segments.Count > 0)
+            return DrawSegments(areaWidth, round, totalRounds, segments, waiting);
+
         bool hasRound  = round.HasValue;
         bool hasScores = scores.Count > 0;
-        if (!hasRound && !hasScores && waiting.Count == 0) return;
+        if (!hasRound && !hasScores && waiting.Count == 0) return null;
 
-        string roundText = hasRound ? $"ROUND {round} / {totalRounds}" : "";
+        string roundText = !hasRound ? "" : totalRounds >= 999 ? $"ROUND {round}" : $"ROUND {round} / {totalRounds}";
 
         int roundW  = hasRound ? Raylib.MeasureText(roundText, FontSize) : 0;
         int sepW    = (hasRound && hasScores) ? Gap * 2 + 1 : 0;
@@ -61,13 +79,16 @@ public static class StatusHudOverlay
             if (i < scores.Count - 1) scoresW += Gap;
         }
 
-        // No background panel -- it would block the table behind it. Everything is drawn straight onto the
-        // board with drop shadows for legibility. (This overlay is Raylib-drawn, not an ImGui window, so it
-        // has never captured the mouse -- clicks always pass through to the table underneath.)
+        // A drop shadow alone was not enough: over pale terrain or a light unit the strip washed out, and
+        // this is the one line that has to be readable at a glance. A translucent plate behind it fixes
+        // that without hiding the board - it is only as wide as the text. (This overlay is Raylib-drawn,
+        // not an ImGui window, so it still never captures the mouse.)
         int innerW  = roundW + sepW + scoresW;
         int x       = (areaWidth - innerW) / 2;
+        int stripLeft = x;
         int textY   = TopMargin;
         int centerY = TopMargin + FontSize / 2;
+        DrawPlate(x, textY, innerW);
 
         if (hasRound)
         {
@@ -96,10 +117,71 @@ public static class StatusHudOverlay
             x += Raylib.MeasureText(cnt, FontSize) + Gap;
         }
 
-        DrawWaitingLines(areaWidth, waiting, startY: (hasRound || hasScores)
+        DrawWaitingLines(areaWidth, waiting, startY: ((hasRound || hasScores)
             ? TopMargin + FontSize + 8
-            : TopMargin);
+            : TopMargin) + _waitOffset);
+
+        return (hasRound || hasScores) ? stripLeft : null;
     }
+
+    // Round, then each text segment, all separated by the same thin divider as the standard strip.
+    private static int? DrawSegments(int areaWidth, int? round, int totalRounds,
+        IReadOnlyList<(string text, Color color)> segments,
+        IReadOnlyList<(Color color, string playerName, string taskName)> waiting)
+    {
+        var items = new List<(string text, Color color)>();
+        if (round.HasValue) items.Add((totalRounds >= 999 ? $"ROUND {round}" : $"ROUND {round} / {totalRounds}", RoundClr));
+        items.AddRange(segments);
+
+        int sepW = Gap * 2 + 1;
+        int innerW = 0;
+        for (int i = 0; i < items.Count; i++)
+        {
+            innerW += Raylib.MeasureText(items[i].text, FontSize);
+            if (i < items.Count - 1) innerW += sepW;
+        }
+
+        int x = (areaWidth - innerW) / 2;
+        int stripLeft = x;
+        int textY = TopMargin;
+        DrawPlate(x, textY, innerW);
+        for (int i = 0; i < items.Count; i++)
+        {
+            DrawTextShadow(items[i].text, x, textY, items[i].color);
+            x += Raylib.MeasureText(items[i].text, FontSize);
+            if (i < items.Count - 1)
+            {
+                x += Gap;
+                Raylib.DrawLine(x, textY + 3, x, textY + FontSize - 3, SepClr);
+                x += Gap + 1;
+            }
+        }
+
+        DrawWaitingLines(areaWidth, waiting, startY: TopMargin + FontSize + 8 + _waitOffset);
+        return stripLeft;
+    }
+
+    /// <summary>Top of the status strip's text line, for widgets docked beside it.</summary>
+    private static int _waitOffset;
+
+    /// <summary>One centered line of coloured text parts at <paramref name="y"/>, in the smaller font.</summary>
+    private static void DrawSubline(int areaWidth, IReadOnlyList<(string text, Color color)> parts, int y)
+    {
+        int total = 0;
+        foreach (var (text, _) in parts) total += Raylib.MeasureText(text, WaitFontSize);
+        int x = (areaWidth - total) / 2;
+        foreach (var (text, color) in parts)
+        {
+            Raylib.DrawText(text, x + 1, y + 1, WaitFontSize, Shadow);
+            Raylib.DrawText(text, x, y, WaitFontSize, color);
+            x += Raylib.MeasureText(text, WaitFontSize);
+        }
+    }
+
+    public const int StripTop = TopMargin;
+
+    /// <summary>Height of the status strip's text line.</summary>
+    public const int StripHeight = FontSize;
 
     // One centered line per non-local outstanding task: dim "Waiting on ", the player's name in their
     // table color, dim ": <task>". Lines past the cap collapse into "+N more".
@@ -169,6 +251,18 @@ public static class StatusHudOverlay
     internal static int GlyphSpacing(int fontSize) => Math.Max(10, fontSize) / 10;
 
     private static readonly Color Shadow = new(0, 0, 0, 190);
+    private static readonly Color PlateFill = new(12, 13, 16, 190);
+    private static readonly Color PlateEdge = new(90, 96, 106, 140);
+
+    /// <summary>The translucent plate the strip sits on, so its text reads over any terrain.</summary>
+    private static void DrawPlate(int x, int y, int innerW)
+    {
+        if (innerW <= 0) return;
+        const int padX = 14, padY = 6;
+        var rect = new Rectangle(x - padX, y - padY, innerW + padX * 2, FontSize + padY * 2);
+        Raylib.DrawRectangleRounded(rect, 0.35f, 8, PlateFill);
+        Raylib.DrawRectangleRoundedLinesEx(rect, 0.35f, 8, 1.5f, PlateEdge);
+    }
 
     private static void DrawTextShadow(string text, int x, int y, Color color, int size = FontSize)
     {

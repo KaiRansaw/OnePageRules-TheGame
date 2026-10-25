@@ -663,8 +663,22 @@ else
     var renderer = new RaylibRenderer();
 
     // ── Main Menu ──────────────────────────────────────────────────────────────
-    renderer.MainMenu.OnHostClicked = () =>
+    // The Game Type the player picked on the menu's tiles, applied to the lobby once the host dialog
+    // has made one. Null means "whatever the lobby defaults to": the campaign screens reach the host
+    // dialog on their own terms and must not inherit a tile clicked earlier in the session.
+    EGameSystem? pendingGameSystem = null;
+
+    renderer.MainMenu.OnGameTypeClicked = system =>
+    {
+        pendingGameSystem = system;
         renderer.NavigateTo(renderer.HostModal);
+    };
+
+    renderer.MainMenu.OnHostClicked = () =>
+    {
+        pendingGameSystem = null;
+        renderer.NavigateTo(renderer.HostModal);
+    };
 
     renderer.MainMenu.OnArmyBuilderClicked = () =>
         renderer.NavigateTo(renderer.ArmyBuilder);
@@ -674,6 +688,26 @@ else
 
     renderer.MainMenu.OnCombatCalculatorClicked = () =>
         renderer.NavigateTo(renderer.CombatCalculator);
+
+    renderer.MainMenu.OnHeroesClicked = () =>
+        renderer.NavigateTo(renderer.HeroBuilder);
+    renderer.HeroBuilder.OnBack = () =>
+        renderer.NavigateTo(renderer.MainMenu);
+
+    renderer.MainMenu.OnCampaignsClicked = () =>
+        renderer.NavigateTo(renderer.Campaigns);
+    renderer.Campaigns.OnBack = () =>
+        renderer.NavigateTo(renderer.MainMenu);
+    renderer.Campaigns.OnPlay = () =>
+    {
+        pendingGameSystem = null;
+        renderer.NavigateTo(renderer.HostModal);
+    };
+
+    renderer.MainMenu.OnStrikeTeamsClicked = () =>
+        renderer.NavigateTo(renderer.StrikeTeams);
+    renderer.StrikeTeams.OnBack = () =>
+        renderer.NavigateTo(renderer.MainMenu);
 
     renderer.MainMenu.OnClientClicked = () =>
         renderer.NavigateTo(renderer.ClientModal);
@@ -709,19 +743,17 @@ else
         activeMapper = null;
     }
 
-    // ── Load Game (work item #052): open a .fdgsave, resume it as host ───────────
+    // ── Load Game (work item #052): pick a .fdgsave, resume it as host ───────────
     // Shared by the main menu's Load Game and the in-game menu's Load (#246); the latter tears the
-    // current game down and returns to the menu before calling this.
-    void LoadGameFlow()
+    // current game down and returns to the menu before calling this. Opens the in-game Load Game
+    // screen (tiles with a board preview) instead of a file dialog; picking a tile calls LoadSavedGame.
+    void LoadGameFlow() => renderer.NavigateTo(renderer.LoadGame);
+
+    renderer.LoadGame.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.LoadGame.OnLoad = path => LoadSavedGame(path);
+
+    void LoadSavedGame(string path)
     {
-        var saveFilter = new FileFilter(
-            $"Saved Game (*{GameSaveFile.EXTENSION_WITH_PERIOD})",
-            new[] { $"*{GameSaveFile.EXTENSION_WITH_PERIOD}" });
-
-        var (canceled, paths) = TinyDialogs.OpenFileDialog("Load Game", "", false, saveFilter);
-        if (canceled) return;
-
-        string path = paths?.FirstOrDefault() ?? "";
         if (!File.Exists(path)) return;
 
         GameDataStore loadedStore;
@@ -732,6 +764,15 @@ else
         catch (Exception ex)
         {
             WriteCrash("Load game failed", ex);
+            renderer.LoadGame.ShowError("That save couldn't be read.");
+            return;
+        }
+
+        // The game can only resume from round 1 onward: a save made during setup / deployment has no
+        // round-tracking record yet, and resuming it used to fail silently on "Resume Game".
+        if (GameProgressUtilities.TryGetProgress(loadedStore) == null)
+        {
+            renderer.LoadGame.ShowError("That game was saved before round 1 started, so it can't be resumed.");
             return;
         }
 
@@ -759,6 +800,84 @@ else
     renderer.MainMenu.OnLoadGameClicked = LoadGameFlow;
     renderer.OnLoadGameRequested        = LoadGameFlow;
 
+    // ── Take Back (local games against bots) ─────────────────────────────────────
+    // The engine records a save point at the start of every activation. Take Back relaunches the game
+    // from the start of your most recent activation through the same resume path Load Game uses, with
+    // every seat kept as it was; Redo goes back to where you were before the last Take Back (until you
+    // play on). Offered only when every seat is on this computer.
+    IReadOnlyList<PlayerID> LocalSeats(LobbyViewModel_Host lobby) => lobby.GetCrew()
+        .Where(seat => seat.PlayerType == FDG.Players.EPlayerType.Local).Select(seat => seat.PlayerID).ToList();
+
+    renderer.TakeBackStatusProvider = () =>
+    {
+        if (activeLobby is not LobbyViewModel_Host lobby || !lobby.AllSeatsLocal) return null;
+        var history = FDG.TakeBackTools.TakeBackHistory.Shared;
+        var target = history.PeekTakeBack(LocalSeats(lobby));
+        var redoTarget = history.PeekRedo();
+        return new RaylibRenderer.TakeBackStatus(
+            target != null,
+            target != null
+                ? $"Take Back (Ctrl+Z): rewind to the start of your activation in round {target.Round}.\nEverything after that is undone, bot turns included. Dice will be rolled again."
+                : "Take Back (Ctrl+Z): nothing to take back yet - it works from your first activation after deployment.",
+            redoTarget != null,
+            redoTarget != null
+                ? $"Redo (Ctrl+X): return to where you were before Take Back\n(the start of the activation in round {redoTarget.Round}). Gone once you play on."
+                : "Redo (Ctrl+X): nothing to redo.");
+    };
+
+    renderer.OnTakeBackRequested = redo =>
+    {
+        if (activeLobby is not LobbyViewModel_Host oldLobby || !oldLobby.AllSeatsLocal) return;
+        var history = FDG.TakeBackTools.TakeBackHistory.Shared;
+        var crew = oldLobby.GetCrew();
+        var local = LocalSeats(oldLobby);
+        if (redo ? history.PeekRedo() == null : history.PeekTakeBack(local) == null) return;
+
+        // Stop the running game first, so nothing it does from here can land in the history.
+        oldLobby.StopGame();
+        string? json = redo ? history.Redo() : history.TakeBack(local);
+        if (json == null) return;
+
+        GameDataStore store;
+        try
+        {
+            store = GameSaveSerializer.Load(json);
+        }
+        catch (Exception ex)
+        {
+            WriteCrash("Take Back failed to load its save point", ex);
+            renderer.AbortTakeBack();
+            return;
+        }
+
+        // The board stays on screen (dimmed) while the relaunch comes up; the new game swaps itself in.
+        renderer.BeginTakeBack();
+
+        // Release the old lobby's networking (and port) before the new one binds.
+        TeardownLobby();
+
+        FDGHost host = new FDGHost();
+        Task hostTask = host.StartAsync();
+        if (hostTask.IsFaulted)
+        {
+            Console.WriteLine($"Take Back: host failed to start: {hostTask.Exception?.GetBaseException().Message}");
+            renderer.AbortTakeBack();
+            return;
+        }
+
+        var lobby = new LobbyViewModel_Host(UserConfig.Current.PlayerName, "Loaded Game", "", host, store);
+        lobby.ApplyCrew(crew);
+        activeLobby = lobby;
+        // The lobby screen is only the hand-off point here; it is never navigated to.
+        renderer.LobbyScreen.SetViewModel(lobby);
+        history.MarkRewindLaunch();
+        if (!lobby.TryResumeGame(out string? failReason))
+        {
+            Console.WriteLine($"Take Back: could not relaunch: {failReason}");
+            renderer.AbortTakeBack();
+        }
+    };
+
     renderer.MainMenu.OnQuitClicked = renderer.RequestClose;
 
     // ── Army Builder ───────────────────────────────────────────────────────────
@@ -784,6 +903,12 @@ else
         activeListing = listing;
         activeMapper = mapper;
         renderer.LobbyScreen.SetViewModel(lobby);
+        // The menu's tile, if that is how we got here: the lobby opens already pointed at that game's
+        // armies, points and modes rather than at the Grimdark Future default. Cleared either way, so a
+        // later lobby reached another way keeps its own default.
+        if (pendingGameSystem is { } picked)
+            LobbyScreen.ApplyGameSystem(lobby, picked);
+        pendingGameSystem = null;
         renderer.NavigateTo(renderer.LobbyScreen);
     };
 
@@ -798,6 +923,30 @@ else
         renderer.LobbyScreen.SetViewModel(lobby);
         renderer.NavigateTo(renderer.LobbyScreen);
     };
+
+    // ── Choose Army ────────────────────────────────────────────────────────────
+    // The lobby's Army cell is a button now, not a dropdown: it hands the choice to a screen of its
+    // own, which has room to search dozens of lists and to show the one you are about to take. The
+    // lobby keeps the state - which slot asked, and the loading - so this wiring is only the trip
+    // there and back.
+    renderer.LobbyScreen.OnChooseArmyRequested = () =>
+    {
+        renderer.ArmyPicker.Open(
+            renderer.LobbyScreen.PickPlayerName,
+            renderer.LobbyScreen.PickArmies,
+            renderer.LobbyScreen.PickPointsLimit,
+            renderer.LobbyScreen.PickCurrentKey);
+        renderer.NavigateTo(renderer.ArmyPicker);
+    };
+
+    renderer.ArmyPicker.OnPicked = entry =>
+    {
+        renderer.LobbyScreen.ApplyPickedArmy(entry);
+        renderer.NavigateTo(renderer.LobbyScreen);
+    };
+
+    renderer.ArmyPicker.OnCancel = () =>
+        renderer.NavigateTo(renderer.LobbyScreen);
 
     // ── Lobby ──────────────────────────────────────────────────────────────────
     renderer.LobbyScreen.OnBack = () =>
@@ -823,6 +972,8 @@ else
     // cleanest snapshot of the game there is. Host only - a client's SaveGameToJson returns null (#054).
     renderer.LobbyScreen.OnGameCompleted = result =>
     {
+        // GF: Firefight Campaign: strike teams get their result (casualties, XP, level ups) written back.
+        if (renderer.RecordStrikeTeams(result) is { } strikeNote) renderer.SetGameOverNote(strikeNote);
         if (result.Outcome != EGameOutcome.Disconnect) return;
 
         string? path = RecoverySave.TryWrite(activeLobby?.SaveGameToJson(), DateTime.UtcNow);

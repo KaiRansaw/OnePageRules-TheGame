@@ -64,7 +64,8 @@ public class AmbushConstraintShippedDataTests
             arriver, harness.TableState, harness.Evaluator);
 
         Assert.That(discs, Has.Count.EqualTo(2), "one disc per living model of the repelling unit");
-        Assert.That(discs.All(d => Math.Abs(d.RadiusInches - 12f) < 0.001f), Is.True);
+        // 12" edge to edge: widened by the repeller's and the arriver's 0.5" base radii (centre-to-centre test).
+        Assert.That(discs.All(d => Math.Abs(d.RadiusInches - 13f) < 0.001f), Is.True);
     }
 
     [Test]
@@ -79,7 +80,8 @@ public class AmbushConstraintShippedDataTests
             arriver, harness.TableState, harness.Evaluator);
 
         Assert.That(waivers, Has.Count.EqualTo(2), "one disc per living model of the beacon unit");
-        Assert.That(waivers.All(d => Math.Abs(d.RadiusInches - 6f) < 0.001f), Is.True);
+        // 6" edge to edge: widened by both 0.5" base radii.
+        Assert.That(waivers.All(d => Math.Abs(d.RadiusInches - 7f) < 0.001f), Is.True);
 
         Assert.That(AmbushArrivalRules.KeepOutDiscs(arriver, harness.TableState, harness.Evaluator),
             Is.Empty, "a friendly beacon is not a keep-out source");

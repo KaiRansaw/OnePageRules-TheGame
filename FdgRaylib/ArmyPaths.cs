@@ -28,7 +28,21 @@ public static class ArmyPaths
         FolderPath is { } dir ? dir + Path.DirectorySeparatorChar : "";
 
     /// <summary>The armies folder, or null if neither candidate location exists.</summary>
-    public static string? FolderPath => FindIn(AppContext.BaseDirectory, Directory.GetCurrentDirectory());
+    public static string? FolderPath =>
+        FindIn(AppContext.BaseDirectory, Directory.GetCurrentDirectory()) ?? FindAbove(AppContext.BaseDirectory);
+
+    /// <summary>Walks up from <paramref name="start"/> looking for an armies folder. Covers running from
+    /// Visual Studio (F5), where the exe and working directory are bin/Debug/net8.0, several levels below
+    /// the repo's armies/ folder.</summary>
+    internal static string? FindAbove(string start)
+    {
+        for (DirectoryInfo? dir = new DirectoryInfo(start); dir != null; dir = dir.Parent)
+        {
+            string candidate = Path.Combine(dir.FullName, DirectoryName);
+            if (Directory.Exists(candidate)) return candidate;
+        }
+        return null;
+    }
 
     /// <summary>First <paramref name="roots"/> entry with an armies subfolder, or null. Takes the roots as
     /// an argument so the search order is testable without moving the process working directory.</summary>
@@ -40,5 +54,37 @@ public static class ArmyPaths
             if (Directory.Exists(candidate)) return candidate;
         }
         return null;
+    }
+
+    /// <summary>The armies sub-folder for a Game Type. Grimdark Future and Age of Fantasy keep the shipped
+    /// GDF/ and AoF/ folders; the skirmish and quest games get their own.</summary>
+    public static string FolderNameFor(FDG.EGameSystem system) => system switch
+    {
+        FDG.EGameSystem.AgeOfFantasy => "AoF",
+        FDG.EGameSystem.GFFirefight => "GF Firefight",
+        FDG.EGameSystem.AoFSkirmish => "AoF Skirmish",
+        FDG.EGameSystem.GFStarQuest => "GF Star Quest",
+        FDG.EGameSystem.AoFQuest => "AoF Quest",
+        _ => "GDF",
+    };
+
+    /// <summary>Makes any missing Game Type folder under armies/, so there's an obvious place to put
+    /// each game's lists. Silently does nothing when there is no armies folder or it can't be written.</summary>
+    public static void EnsureGameTypeFolders()
+    {
+        if (FolderPath is not { } root) return;
+        foreach (FDG.EGameSystem system in Enum.GetValues<FDG.EGameSystem>())
+        {
+            try { Directory.CreateDirectory(Path.Combine(root, FolderNameFor(system))); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>The catalog entries that live in (or under) a Game Type's folder.</summary>
+    public static IEnumerable<ArmyCatalogEntry> EntriesFor(FDG.EGameSystem system, IEnumerable<ArmyCatalogEntry> all)
+    {
+        if (FolderPath is not { } root) return Enumerable.Empty<ArmyCatalogEntry>();
+        string folder = Path.GetFullPath(Path.Combine(root, FolderNameFor(system))) + Path.DirectorySeparatorChar;
+        return all.Where(e => Path.GetFullPath(e.Path).StartsWith(folder, StringComparison.OrdinalIgnoreCase));
     }
 }

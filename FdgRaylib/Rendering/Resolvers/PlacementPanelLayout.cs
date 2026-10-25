@@ -28,6 +28,7 @@ public static class PlacementPanelLayout
     public static float BackButtonHeight(float lineHeight)    => ResolverPanelLayout.ActionRowHeight(lineHeight);
     public static float SecondaryRowHeight(float lineHeight)  => ResolverPanelLayout.ActionRowHeight(lineHeight);   // Undo (#343: Auto-place removed)
     public static float RestartButtonHeight(float lineHeight) => ResolverPanelLayout.ActionRowHeight(lineHeight);
+    public static float UnitHistoryRowHeight(float lineHeight) => ResolverPanelLayout.ActionRowHeight(lineHeight);
 
     /// <summary>
     /// Height of everything drawn BELOW the stat box: the status line, the optional cohesion and
@@ -39,8 +40,9 @@ public static class PlacementPanelLayout
     /// <param name="cohesionTextHeight">Wrapped height of the #269 cohesion warning, or null when absent.</param>
     /// <param name="edgeTextHeight">Wrapped height of the #029 table-edge line, or null when absent.</param>
     /// <param name="allowCancel">Whether the Back button is offered (cancellable placements only).</param>
+    /// <param name="unitHistoryRow">Whether the "Undo Last Unit / Redo Unit" row is shown (Horde deployment).</param>
     public static float FooterHeight(float itemSpacingY, float lineHeight, float statusTextHeight,
-        float? cohesionTextHeight, float? edgeTextHeight, bool allowCancel)
+        float? cohesionTextHeight, float? edgeTextHeight, bool allowCancel, bool unitHistoryRow = false)
     {
         // Two Spacing() calls bracket the text block: one above it, one below.
         float height = itemSpacingY * 2f;
@@ -51,6 +53,7 @@ public static class PlacementPanelLayout
 
         height += DoneButtonHeight(lineHeight) + itemSpacingY;
         if (allowCancel) height += BackButtonHeight(lineHeight) + itemSpacingY;
+        if (unitHistoryRow) height += UnitHistoryRowHeight(lineHeight) + itemSpacingY;
         height += SecondaryRowHeight(lineHeight) + itemSpacingY;
         height += itemSpacingY * 2f + 1f;                 // the Separator above Restart
         height += RestartButtonHeight(lineHeight) + itemSpacingY;

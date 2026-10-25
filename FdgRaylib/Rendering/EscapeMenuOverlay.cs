@@ -131,7 +131,11 @@ public sealed class EscapeMenuOverlay
         // save is #054); the host resumes/saves the whole game.
         if (IsHost)
         {
+            bool canSave = CanSaveNow?.Invoke() ?? true;
+            ImGui.BeginDisabled(!canSave);
             if (FullWidthButton("Save Game")) HandleSaveGame();
+            ImGui.EndDisabled();
+            if (!canSave) ImGui.TextDisabled("Saving opens once round 1 starts.");
             if (FullWidthButton("Load Game")) _confirm = Confirm.LoadGame;
         }
         else
@@ -171,11 +175,13 @@ public sealed class EscapeMenuOverlay
         ImGui.SliderFloat("Dice popup time", ref ViewSettings.DiceLingerScale,
             ViewSettings.DiceLingerMin, ViewSettings.DiceLingerMax, "%.2fx");
         ImGui.TextDisabled("1.00x is the default. Hovering the dice always freezes them.");
+        ImGui.SliderFloat("Game speed", ref ViewSettings.GameSpeed, 0.25f, 2f, "%.2fx");
+        ImGui.TextDisabled("Lower it to follow the bot's turns more easily.");
 
         if (_tactical != null)
         {
             SectionHeader("Tactical overlay");
-            ImGui.Checkbox("Weapon reach (V)", ref ViewSettings.ShowReachOverlay);
+            ImGui.Checkbox("Weapon reach (B)", ref ViewSettings.ShowReachOverlay);
             ImGui.TextDisabled("Ghosts while moving/placing; any unit you hover.");
 
             // #247: "Threat frontiers (F)" and "Anchor field on my position" are both gone. The red
@@ -183,6 +189,10 @@ public sealed class EscapeMenuOverlay
             // vocabulary, and pinning an enemy is now the gesture that asks for the target-anchored
             // picture -- so there is no second layer to toggle and no mode left to set.
         }
+
+        SectionHeader("Camera");
+        ImGui.SliderFloat("Camera key speed", ref ViewSettings.CameraSpeed, 0.25f, 3f, "%.2fx");
+        ImGui.Checkbox("Invert tilt (Shift+Q / Shift+E)", ref ViewSettings.InvertTilt);
 
         SectionHeader("Audio");
         if (_audio != null && _audio.Enabled)
@@ -197,11 +207,15 @@ public sealed class EscapeMenuOverlay
         }
 
         SectionHeader("Controls");
+        ImGui.TextDisabled("F1: list of all controls");
+        ImGui.TextDisabled("WASD: move camera   Q/E: turn (3D)");
+        ImGui.TextDisabled("Shift+W/S: zoom   Shift+Q/E: tilt (3D)");
+        ImGui.TextDisabled("V or F3: switch 2D / 3D   Ctrl+S: quick save");
         ImGui.TextDisabled("Alt+drag: measure");
         ImGui.TextDisabled("Alt+wheel: zoom");
         ImGui.TextDisabled("Middle-drag: pan");
         ImGui.TextDisabled("L: army lists (all players)");
-        ImGui.TextDisabled("N labels   T tokens   F threat");
+        ImGui.TextDisabled("N labels   T tokens   B weapon reach   M measure");
         // #326: G toggles Group/Single -- it is Ctrl+wheel that cycles the formation (#277). The old line
         // said "G: cycle formation", which named the wrong key for the wrong action.
         ImGui.TextDisabled("G: group / single mode (during moves)");
@@ -352,6 +366,30 @@ public sealed class EscapeMenuOverlay
         if (FullWidthButton("Back")) _confirm = Confirm.None;
     }
 
+    /// <summary>Ctrl+S: saves straight into the Saved Games folder with a timestamped name, no dialog.
+    /// Returns the path written, or null when there is nothing to save (a client) or the write failed.</summary>
+    /// <summary>False while saving isn't possible yet (before round 1: such a save can't be resumed).</summary>
+    public Func<bool>? CanSaveNow;
+
+    public string? QuickSave()
+    {
+        if (!(CanSaveNow?.Invoke() ?? true)) return null;
+        string? json = _saveGameToJson?.Invoke();
+        if (json == null) return null;
+        try
+        {
+            string path = Path.Combine(FdgRaylib.SaveLoad.SavePaths.FolderPath,
+                $"Quick Save {DateTime.Now:yyyy-MM-dd HH-mm-ss}{GameSaveFile.EXTENSION_WITH_PERIOD}");
+            File.WriteAllText(path, json);
+            return path;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Quick save failed: {ex.Message}");
+            return null;
+        }
+    }
+
     // Serialize the game and write it to a player-chosen .fdgsave (native save dialog). No-op if the
     // game can't be serialized or the dialog is canceled. Moved here from the retired table toolbar.
     private void HandleSaveGame()
@@ -359,7 +397,7 @@ public sealed class EscapeMenuOverlay
         string? json = _saveGameToJson?.Invoke();
         if (json == null) return;
 
-        var (canceled, path) = TinyDialogs.SaveFileDialog("Save Game", "", SaveFilter);
+        var (canceled, path) = TinyDialogs.SaveFileDialog("Save Game", FdgRaylib.SaveLoad.SavePaths.DefaultDialogPath, SaveFilter);
         if (canceled || string.IsNullOrWhiteSpace(path)) return;
 
         if (!path.EndsWith(GameSaveFile.EXTENSION_WITH_PERIOD, StringComparison.OrdinalIgnoreCase))

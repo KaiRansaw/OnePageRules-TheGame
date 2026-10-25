@@ -35,6 +35,7 @@ internal static class ResolverHotkeys
     /// </summary>
     public static char?[] AssignLetters(IReadOnlyList<string> options)
     {
+        if (LettersDisabled) return new char?[options.Count];   // no letter hints while letters are off
         var letters = new char?[options.Count];
         int poolNext = 0;
         for (int i = 0; i < options.Count; i++)
@@ -53,6 +54,9 @@ internal static class ResolverHotkeys
     /// in-game menu is open.</summary>
     public static bool IsLetterPressed(char letter) => IsLetterPressed(letter, shift: false);
 
+    /// <summary>True while letter shortcuts are off (they are: the camera uses the letters).</summary>
+    public static bool LettersDisabled = true;
+
     /// <summary>
     /// #321: the same check, with Shift as part of the binding rather than ignored. A row and its
     /// companion action share one letter - E attacks with the weapon, Shift+E holds it back - so the
@@ -61,6 +65,9 @@ internal static class ResolverHotkeys
     /// </summary>
     public static bool IsLetterPressed(char letter, bool shift)
     {
+        // Letter shortcuts on decision panels are switched off: the letters drive the camera now
+        // (WASD / Q-E). Options are picked by clicking.
+        if (LettersDisabled) return false;
         if (KeysMuted) return false;
         if (ImGui.GetIO().KeyShift != shift) return false;
         return ImGui.IsKeyPressed(ImGuiKey.A + (letter - 'A'), repeat: false);

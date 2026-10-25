@@ -54,5 +54,26 @@ internal static class MeasurementGeometry
     public static float SnapDistanceInches(IBaseShape shape, Position center, Float2 facing, Position cursor) =>
         BaseShapeGeometry.SurfaceDistanceToPoint2D(shape, center, facing, cursor);
 
+    /// <summary>
+    /// The point on the base's surface nearest <paramref name="point"/> - where a ruler measuring "from the
+    /// base" starts. Returns <paramref name="point"/> itself when it is on or inside the base. Shape-agnostic:
+    /// steps back along the surface-distance field's gradient by that distance, which is exact for the
+    /// rounded convex shapes bases are (circles and rectangles).
+    /// </summary>
+    public static Position ClosestPointOnBase(IBaseShape shape, Position center, Float2 facing, Position point)
+    {
+        float d = BaseShapeGeometry.SurfaceDistanceToPoint2D(shape, center, facing, point);
+        if (d <= 0f) return point;
+
+        const float h = 0.01f;
+        float D(float x, float z) => BaseShapeGeometry.SurfaceDistanceToPoint2D(shape, center, facing, new Position(x, 0f, z));
+        float gx = (D(point.x + h, point.z) - D(point.x - h, point.z)) / (2f * h);
+        float gz = (D(point.x, point.z + h) - D(point.x, point.z - h)) / (2f * h);
+        float len = MathF.Sqrt(gx * gx + gz * gz);
+        if (len < 1e-4f) return point;
+
+        return new Position(point.x - gx / len * d, 0f, point.z - gz / len * d);
+    }
+
     private static float Clamp0(float v) => v < 0f ? 0f : v;
 }

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using FDG;
 using FDG.Data;
 using FDG.StageResolution;
@@ -9,11 +9,12 @@ using FdgRaylib.Placement;
 using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 public class GuiDefineMovementResolver
     : IStageResolver<DefineMovementPathRequest, CancellableResult<List<ModelMoveEntry>>>, IGuiResolver, IGuiCanvasOverlay,
-      IPreviewSource
+      IPreviewSource, IRightClickConsumer, IUndoKeyConsumer
 {
     private readonly ITableState _tableState;
     private readonly FormationModeState _formationMode;
@@ -86,6 +87,63 @@ public class GuiDefineMovementResolver
     private DefineMovementPathRequest? _request;
     private TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>>? _tcs;
 
+    /// <inheritdoc />
+    public bool UsesUndoKeys => true;
+
+    // Planning undo/redo (Ctrl+Z / Ctrl+X): whole-plan snapshots taken before every change to the
+    // waypoints (place, right-click remove, Clear), so any of them can be stepped back and forth.
+    // Reset each Resolve - history never crosses from one unit's move into another's.
+    private sealed record PlanSnapshot(Dictionary<IModel, (List<Position> Steps, List<float> Offsets)> Paths);
+    private readonly List<PlanSnapshot> _undoPlans = new();
+    private readonly List<PlanSnapshot> _redoPlans = new();
+    private const int MaxPlanHistory = 200;
+
+    private static PlanSnapshot SnapshotPlan(PathTemplate pt)
+    {
+        var paths = new Dictionary<IModel, (List<Position>, List<float>)>();
+        foreach (var kvp in pt.CurrentPaths)
+            paths[kvp.Key] = (kvp.Value.ToList(), pt.GetModelFacingOffsets(kvp.Key).ToList());
+        return new PlanSnapshot(paths);
+    }
+
+    private static void RestorePlan(PathTemplate pt, PlanSnapshot snapshot)
+    {
+        pt.ClearAllSteps();
+        foreach (var kvp in snapshot.Paths)
+            for (int i = 0; i < kvp.Value.Steps.Count; i++)
+                pt.AddStep(kvp.Key, kvp.Value.Steps[i], kvp.Value.Offsets[i]);
+    }
+
+    /// <summary>Call just BEFORE changing the plan: remembers the current plan for Ctrl+Z and drops redo.</summary>
+    private void RecordPlanChange(PathTemplate pt)
+    {
+        _undoPlans.Add(SnapshotPlan(pt));
+        if (_undoPlans.Count > MaxPlanHistory) _undoPlans.RemoveAt(0);
+        _redoPlans.Clear();
+    }
+
+    private void UndoPlan(PathTemplate pt)
+    {
+        if (_undoPlans.Count == 0) return;
+        _redoPlans.Add(SnapshotPlan(pt));
+        PlanSnapshot previous = _undoPlans[^1];
+        _undoPlans.RemoveAt(_undoPlans.Count - 1);
+        RestorePlan(pt, previous);
+        _groupRotation = 0f;
+        _formationCycle?.Reset();
+    }
+
+    private void RedoPlan(PathTemplate pt)
+    {
+        if (_redoPlans.Count == 0) return;
+        _undoPlans.Add(SnapshotPlan(pt));
+        PlanSnapshot next = _redoPlans[^1];
+        _redoPlans.RemoveAt(_redoPlans.Count - 1);
+        RestorePlan(pt, next);
+        _groupRotation = 0f;
+        _formationCycle?.Reset();
+    }
+
     // Pathing state — main-thread only after Resolve assigns it
     private PathTemplate? _pathTemplate;
     private IModel? _selectedModel;
@@ -98,6 +156,19 @@ public class GuiDefineMovementResolver
     // source only, and a frame-old value must never decide which model a click on the table selects.
     private IModel? _panelHoveredModel;
     private bool _stayInAdvance; // toggle — off by default, reset each Resolve
+
+    // The compact movement panel: its last size (to place it) and whether the extra tools are unfolded.
+    private Vector2 _movePanelSize = new(380f, 160f);
+    private bool _moreOptions;
+
+    /// <summary>Set by the action pop-up just before it picks the move: true for Advance (stay within the
+    /// advance distance), false for Rush. Read and cleared when the move request arrives.</summary>
+    public static volatile object? NextMoveAdvanceOnlyBox;
+    public static bool? NextMoveAdvanceOnly
+    {
+        get => NextMoveAdvanceOnlyBox as bool?;
+        set => NextMoveAdvanceOnlyBox = value;
+    }
     /// <summary>#333: the "models still on the start line" confirmation is up. While it is, it owns the
     /// keyboard and the table — otherwise the same Enter press would answer the popup and re-press Done
     /// behind it, and a stray click would drop a waypoint the player never saw them place.</summary>
@@ -367,7 +438,10 @@ public class GuiDefineMovementResolver
             _request       = request;
             _pathTemplate  = template;
             _selectedModel = first;
-            _stayInAdvance = false;
+            // The action pop-up's Advance / Rush choice decides this up front (Advance = keep within the
+            // advance distance); otherwise it starts off, as before.
+            _stayInAdvance = NextMoveAdvanceOnly ?? false;
+            NextMoveAdvanceOnly = null;
             _groupRotation = 0f;
             _groupFacingAngle = 0f;
             _groupGhostPositions = null;
@@ -375,6 +449,8 @@ public class GuiDefineMovementResolver
             _formationCycle = null;
             _panelHoveredModel = null;
             _donePopupOpen = false;
+            _undoPlans.Clear();
+            _redoPlans.Clear();
         }
         return tcs.Task;
     }
@@ -394,7 +470,7 @@ public class GuiDefineMovementResolver
 
         // Shared pointer/keyboard state and the current placement mode. Resolved before anything is
         // drawn so the hover highlight below and the click handler at the end of Draw agree.
-        bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
+        bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
         // #333: the Done confirmation owns both input channels while it is up. Folded into wantInput here
         // rather than checked at each key, so Backspace/R/Tab/G are muted by construction; the modal's own
         // WantCaptureMouse would cover the clicks, but the table gate below says so explicitly too.
@@ -411,7 +487,7 @@ public class GuiDefineMovementResolver
         IModel? hoveredModel = null;
         if (!group && overTable && !io.WantCaptureMouse)
         {
-            var (hx, hz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (hx, hz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             hoveredModel = ModelPicker.HitTest(paths.Select(kvp => PlannedPose(pt, kvp.Key, kvp.Value)), hx, hz);
         }
 
@@ -551,7 +627,7 @@ public class GuiDefineMovementResolver
             float totalSoFar = pt.GetTotalDistanceMoved(_selectedModel);
             float cap        = advanceOnly ? maxAdvance : maxCharge;
             float remaining  = cap - totalSoFar;
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             // #162: magnetic snap to a focused-pin band boundary / threat frontier (Alt disables). Snapping
             // the input point here routes the result through the difficult/enemy/budget/overlap clamps below,
             // so it can never propose an illegal move.
@@ -815,15 +891,19 @@ public class GuiDefineMovementResolver
                     float totalSoFar = pt.GetTotalDistanceMoved(_selectedModel);
                     float cap = advanceOnly ? maxAdvance : maxCharge;
                     if (cap - totalSoFar > 0.001f)
+                    {
+                        RecordPlanChange(pt);
                         pt.AddStep(_selectedModel, ghostPos.Value, _manualOffsets.GetValueOrDefault(_selectedModel));
+                    }
                 }
             }
 
             // Right-click clears the selected model's last waypoint, if any (right-click clears the
             // last path point in ALL modes — the app-wide undo gesture, #343).
-            if (ImGui.IsMouseClicked(ImGuiMouseButton.Right) && _selectedModel != null
+            if (!ImGui.GetIO().WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Right) && _selectedModel != null
                 && paths.TryGetValue(_selectedModel, out var selList) && selList.Count > 0)
             {
+                RecordPlanChange(pt);
                 pt.RemoveLastStep(_selectedModel);
             }
         }
@@ -834,6 +914,14 @@ public class GuiDefineMovementResolver
         // only where AllowCancel (player-chosen moves; mandatory moves have no back-destination).
         // Esc never cancels here: it opens the in-game menu, so you can reach Options mid-plan
         // without losing the path.
+        // Ctrl+Z / Ctrl+X step the plan back and forward (same keys as deployment's unit undo/redo).
+        // Only while planning - once Done is pressed the move is the game's, not the plan's.
+        if (!io.WantCaptureKeyboard && !_donePopupOpen && io.KeyCtrl)
+        {
+            if (ImGui.IsKeyPressed(ImGuiKey.Z, false)) UndoPlan(pt);
+            else if (ImGui.IsKeyPressed(ImGuiKey.X, false)) RedoPlan(pt);
+        }
+
         if (wantInput && request.AllowCancel && ResolverHotkeys.IsBackPressed())
         {
             CompleteCancelled(tcs);
@@ -988,7 +1076,7 @@ public class GuiDefineMovementResolver
         float desiredTx = 0f, desiredTz = 0f;
         if (overTable && !io.WantCaptureMouse)
         {
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             desiredTx = mx - pivot.x;
             desiredTz = mz - pivot.z;
         }
@@ -1253,6 +1341,7 @@ public class GuiDefineMovementResolver
         if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Left)
             && allValid && anyMovement)
         {
+            RecordPlanChange(pt);
             for (int i = 0; i < models.Count; i++)
                 pt.AddStep(models[i], newPositions[i], stepOffsets[i]); // #282: this step keeps this attitude
             _groupRotation = 0f;
@@ -1263,8 +1352,10 @@ public class GuiDefineMovementResolver
 
         // Right-click clears the last group waypoint (one per model), if any — mirrors single mode,
         // so right-click clears the last path point in ALL modes (the app-wide undo gesture, #343).
-        if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+        if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Right)
+            && models.Any(m => paths.TryGetValue(m, out var l) && l.Count > 0))
         {
+            RecordPlanChange(pt);
             foreach (var m in models)
                 if (paths.TryGetValue(m, out var list) && list.Count > 0)
                     pt.RemoveLastStep(m);
@@ -1329,23 +1420,25 @@ public class GuiDefineMovementResolver
         IReadOnlySet<IModel> cappedByDifficult, IModel? canvasHoveredModel)
     {
         bool selectedCapped = _selectedModel != null && cappedByDifficult.Contains(_selectedModel);
-        float panelW = ResolverPanelLayout.W;   // dock into the right-column resolver panel
-        ImGui.SetNextWindowPos(new Vector2(ResolverPanelLayout.X, ResolverPanelLayout.Y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(ResolverPanelLayout.W, ResolverPanelLayout.H), ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.10f, 0.15f, 0.92f));
+        // A compact panel along the bottom of the board (out of the way of where the unit is going), with
+        // "Confirm move" up front and the rarely-needed tools folded under "More options".
+        float panelW = 430f;
+        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(_movePanelSize), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(panelW, 0f), ImGuiCond.Always);   // height fits the content
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.10f, 0.15f, 0.94f));
         ImGui.Begin("##MovementPanel",
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus);
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar);
         ImGui.PopStyleColor();
+        _movePanelSize = ImGui.GetWindowSize();
 
         string unitName = request.UnitDataBinding.GetValue().Name;
         ImGui.TextUnformatted($"Move: {unitName}");
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.6f, 0.6f, 0.6f, 1f));
-        ImGui.TextWrapped(FormatDistanceSummary(request));
-        ImGui.PopStyleColor();
-
-        // #162: pinned-target chips (click an enemy on the table to pin its opportunity field).
-        _tactical?.DrawPanelSection();
+        ImGui.SameLine();
+        if (ImGui.SmallButton(_formationMode.IsGroup ? "Group (G)##mvmode" : "Single (G)##mvmode")) _formationMode.Toggle();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Group: the whole unit moves together. Single: move one model at a time.");
+        // (Distances, pinned targets and the per-model roster live under "More options" now.)
 
         // #155: live terrain-consequence warnings (ghost-aware, computed in Draw).
         if (dangerousCrossers > 0)
@@ -1382,6 +1475,10 @@ public class GuiDefineMovementResolver
 
         bool group = _formationMode.IsGroup;
 
+        if (_moreOptions)
+        {
+        ImGui.TextWrapped(FormatDistanceSummary(request));
+        _tactical?.DrawPanelSection();
         ImGui.Spacing();
         if (group)
         {
@@ -1391,8 +1488,7 @@ public class GuiDefineMovementResolver
                 ? "current"
                 : $"{_formationCycle.Label} ({_formationCycle.Index + 1}/{_formationCycle.Count})";
             ImGui.TextUnformatted($"Group move - rotation {deg:0} deg   formation: {formation}");
-            ImGui.TextDisabled("Wheel / R / Shift+R: rotate 15 deg   Ctrl+Wheel: formation");
-            ImGui.TextDisabled("L-click: place step   R-click: undo   Backspace: back");
+
         }
         else
         {
@@ -1414,7 +1510,10 @@ public class GuiDefineMovementResolver
             }
             DrawSingleModeHints();
         }
+        }
 
+        if (_moreOptions)
+        {
         if (ImGui.Button(group ? "Mode: Group (G)" : "Mode: Single (G)"))
             _formationMode.Toggle();
         ImGui.SameLine();
@@ -1424,6 +1523,7 @@ public class GuiDefineMovementResolver
         ImGui.Checkbox("Show targeting", ref _showTargeting);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Show ranged weapons in range AND with line of sight to each enemy unit (green), how many of your models can charge it (yellow), fire lines from the selected model, and a charge line when the ghost is within melee range. Fire lines turn yellow and dashed when the shot passes through cover (+1 to the target's defense roll). When no enemy model is visible to a weapon, a red blocked-stub with an X marks where the shot would hit a wall. Ranged info hides if the unit has moved too far to shoot.");
+        }
 
         ImGui.Spacing();
         float spacing = ImGui.GetStyle().ItemSpacing.X;
@@ -1445,7 +1545,7 @@ public class GuiDefineMovementResolver
             entry => { var (_, rush, maxDist) = request.BudgetFor(entry.Model.GetValue().ID);
                        return new ModelMoveBudget(rush, maxDist); },
             enemyFootprints, request.CanMoveThroughEnemies, request.IgnoresDifficultTerrain, request.IgnoresImpassibleTerrain, terrain, out var engineErrors,
-            friendlyFootprints);
+            friendlyFootprints, lenientCoherency: true); // the same coherency rule DefinePathStage applies
         var finals = BuildFinalPositions(pt.CurrentPaths, null, null);
         var cohesion = CheckCohesion(finals);
 
@@ -1459,6 +1559,13 @@ public class GuiDefineMovementResolver
                     e.ErrorReasonType == EErrorReasonType.TooFarFromAllUnitModels) continue;
                 issues.Add(MovementUtilities.ErrorReasonToString(e.ErrorReasonType));
             }
+            // Rules accuracy: the engine also requires ONE unbroken 1" chain. Every model can have a
+            // neighbour within 1" (so the check below passes) while the unit is split into separate groups.
+            if (cohesion.TooFarFromAny.Count == 0
+                && engineErrors.Any(e => e.ErrorReasonType == EErrorReasonType.TooFarFromAnyUnitModel))
+                issues.Add("Cohesion: the unit is split into separate groups - models must form one unbroken 1\" chain");
+            // One message per kind of problem is plenty.
+            issues = issues.Distinct().ToList();
         }
         foreach (var t in cohesion.TooFarFromAny)
             issues.Add($"Cohesion: model is {t.dist:F2}\" from nearest other (max {FormatInches(GameWideConstants.MAX_MODEL_DISTANCE_FROM_ANY_OTHER_MODEL_INCHES)}\")");
@@ -1475,8 +1582,8 @@ public class GuiDefineMovementResolver
         // Primary: Done -- larger, accented, commits on click or the Confirm key (gated on a valid move).
         // Muted while the confirmation is up (#333), so the same Enter press cannot both answer the popup
         // and re-press Done behind it.
-        bool donePressed = ResolverButtons.Primary("Done",
-            new Vector2(fullW, ResolverPanelLayout.OptionRowHeight()),
+        bool donePressed = ResolverButtons.Primary("Confirm move",
+            new Vector2(btnW, ResolverPanelLayout.ActionRowHeight()),
             enabled: canSubmit && !_donePopupOpen);   // #298
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             ImGui.SetTooltip(canSubmit
@@ -1500,8 +1607,9 @@ public class GuiDefineMovementResolver
         // spends the unit's Move action. Nothing has been mutated yet, so this is always safe here.
         if (request.AllowCancel)
         {
-            bool backPressed = ResolverButtons.Deemphasized("Back (Backspace)",
-                new Vector2(fullW, ResolverPanelLayout.ActionRowHeight()));
+            ImGui.SameLine();
+            bool backPressed = ResolverButtons.Deemphasized("Back",
+                new Vector2(btnW, ResolverPanelLayout.ActionRowHeight()));
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Cancel the move and pick a different action. The unit keeps its move.");
             if (backPressed)
@@ -1512,6 +1620,13 @@ public class GuiDefineMovementResolver
             }
         }
 
+        // The rest is folded away under "More options" (mode, checkboxes, skip, auto-advance, undo/redo/clear).
+        if (ImGui.SmallButton(_moreOptions ? "Fewer options" : "More options"))
+            _moreOptions = !_moreOptions;
+        ImGui.SameLine();
+        ImGui.TextDisabled("Click: add a point   Right-click: remove last point");
+        if (_moreOptions)
+        {
         // Secondary row: Skip (de-emphasized) + Auto-advance.
         bool skipPressed = ResolverButtons.Deemphasized("Skip all",
             new Vector2(btnW, ResolverPanelLayout.ActionRowHeight()));
@@ -1539,17 +1654,39 @@ public class GuiDefineMovementResolver
 
         // Destructive: Clear -- set apart below a separator, red-tinted.
         ImGui.Separator();
+        float histGap = ImGui.GetStyle().ItemSpacing.X;
+        float thirdW  = (fullW - 2 * histGap) / 3f;
+
+        ImGui.BeginDisabled(_undoPlans.Count == 0);
+        bool undoPressed = ImGui.Button("Undo", new Vector2(thirdW, ResolverPanelLayout.ActionRowHeight()));
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Ctrl+Z: take back your last change to the plan\n(a waypoint, a removal, or a Clear).");
+        if (undoPressed) UndoPlan(pt);
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(_redoPlans.Count == 0);
+        bool redoPressed = ImGui.Button("Redo", new Vector2(thirdW, ResolverPanelLayout.ActionRowHeight()));
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Ctrl+X: put back the change you just undid.");
+        if (redoPressed) RedoPlan(pt);
+
+        ImGui.SameLine();
         bool clearPressed = ResolverButtons.Destructive(group ? "Clear all" : "Clear selected",
-            new Vector2(fullW, ResolverPanelLayout.ActionRowHeight()));
+            new Vector2(thirdW, ResolverPanelLayout.ActionRowHeight()));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(group
                 ? "Remove all waypoints from every model in the unit."
                 : "Remove all waypoints from the currently selected model.");
         if (clearPressed)
         {
+            RecordPlanChange(pt);
             if (group) pt.ClearAllSteps();
             else if (_selectedModel != null) pt.ClearModelSteps(_selectedModel);
         }
+
+        }   // end "More options"
 
         if (DrawDoneConfirmation(request, pt, unmovedOrdinals, livingModels.Count, tcs))
         {

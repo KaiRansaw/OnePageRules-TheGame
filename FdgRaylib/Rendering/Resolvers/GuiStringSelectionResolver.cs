@@ -1,6 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using FDG;
+using FDG.Data;
+using FDG.Rules.Dispatch;
+using FDG.Stages;
 using FDG.StageResolution;
 using FDG.StageResolution.Requests;
 using ImGuiNET;
@@ -8,18 +13,26 @@ using ImGuiNET;
 namespace FdgRaylib.Rendering.Resolvers;
 
 public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest, string>,
-    IStageResolver<ChooseActionRequest, string>, IGuiResolver
+    IStageResolver<ChooseActionRequest, string>, IGuiResolver, ICanvasInteractionHandler
 {
+    /// <summary>True while the pending menu is the activation's action menu (Hold / Advance / Rush /
+    /// Charge / Special), which draws as a small pop-up next to the unit instead of the side panel.</summary>
+    private bool _actionMenu;
     /// <summary>
     /// #191 B1 step 5a: Choose Action is its own request type now, but the menu/canvas rendering
     /// below is unchanged - so this mirrors the request into the shape <see cref="Resolve(StringSelectionRequest)"/>
     /// already draws rather than duplicating the ImGui layout. The mirror never crosses the wire;
     /// it exists only for this one in-process call.
     /// </summary>
-    public Task<string> Resolve(ChooseActionRequest request) => Resolve(new StringSelectionRequest(
-        request.TargetPlayerID, request.TaskID, "Choose Action", request.ValidOptions, request.InvalidOptions,
-        request.OptionDescriptions, request.AllowCancel, secondaryActions: null, request.DisplayName,
-        optionRules: null, request.OptionDescriptionRules));
+    public Task<string> Resolve(ChooseActionRequest request)
+    {
+        Task<string> task = Resolve(new StringSelectionRequest(
+            request.TargetPlayerID, request.TaskID, "Choose Action", request.ValidOptions, request.InvalidOptions,
+            request.OptionDescriptions, request.AllowCancel, secondaryActions: null, request.DisplayName,
+            optionRules: null, request.OptionDescriptionRules));
+        lock (_lock) _actionMenu = true;
+        return task;
+    }
 
     /// <summary>#311 — the Pass confirmation's title, which doubles as its ImGui popup id.</summary>
     private const string ConfirmPassTitle = "End this activation?";
@@ -50,7 +63,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
     public Task<string> Resolve(StringSelectionRequest request)
     {
         var tcs = new TaskCompletionSource<string>();
-        lock (_lock) { _tcs = tcs; _request = request; _confirmingPass = false; _focusedOption = null; }
+        lock (_lock) { _tcs = tcs; _request = request; _confirmingPass = false; _focusedOption = null; _actionMenu = false; }
         return tcs.Task;
     }
 
@@ -109,8 +122,14 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         StringSelectionRequest? request;
         TaskCompletionSource<string>? tcs;
         bool confirming;
-        lock (_lock) { request = _request; tcs = _tcs; confirming = _confirmingPass; }
+        bool actionMenu;
+        lock (_lock) { request = _request; tcs = _tcs; confirming = _confirmingPass; actionMenu = _actionMenu; }
         if (request == null || tcs == null) return;
+        if (actionMenu) { DrawActionPopup(request, tcs); return; }
+        // Every other menu (melee weapons, abilities, yes/no-style picks...) is a compact pop-up beside the
+        // acting unit too - the old side panel below is no longer drawn.
+        DrawCompactMenu(request, tcs);
+        return;
 
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
@@ -785,9 +804,359 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
     private static string LabelFor(string option, char? letter) =>
         letter is char key ? $"[{key}] {option}" : option;
 
+    // ── The action pop-up ──────────────────────────────────────────────────────────────────────────────
+    private Vector2 _popupSize = new(220f, 220f);
+
+    /// <summary>The player chose Charge but had to move into contact first; take the charge when offered.</summary>
+    private bool _chargeIntent;
+
+    /// <summary>True when any living enemy model is within <paramref name="inches"/> (base to base) of any of
+    /// the unit's models - i.e. there is something to charge.</summary>
+    private static bool EnemyWithin(IUnit unit, float inches)
+    {
+        ITableState? table = PopupAnchor.TableState;
+        if (table == null) return false;
+        foreach (IUnit enemy in table.Units.Objects)
+        {
+            if (enemy.PlayerID == unit.PlayerID) continue;
+            foreach (IModel em in enemy.Models)
+            {
+                if (!em.GetIsAlive() || (em.Position.x == 0f && em.Position.z == 0f)) continue;
+                foreach (IModel m in unit.Models)
+                {
+                    if (!m.GetIsAlive() || (m.Position.x == 0f && m.Position.z == 0f)) continue;
+                    float d = DistanceUtilities.GetBaseToBaseDistanceInches_3D(
+                        m.Position, em.Position, m.BaseShape, m.Facing, em.BaseShape, em.Facing);
+                    if (d <= inches) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // ── Compact menu for every other choice (melee weapons, abilities, ...) ─────────────────────────────
+    private Vector2 _menuSize = new(320f, 200f);
+    private const float MenuWidth = 320f;
+
+    /// <summary>
+    /// Any non-action menu as a small window beside the acting unit: title, instructions (wrapped), one
+    /// wrapped button per option (its description on hover), a companion button under its row where the
+    /// option has one (melee "Hold back"), greyed options with their reason on hover, and Back / right-click
+    /// when the menu can be cancelled.
+    /// </summary>
+    private void DrawCompactMenu(StringSelectionRequest request, TaskCompletionSource<string> tcs)
+    {
+        ImGui.SetNextWindowPos(PopupAnchor.Place(_menuSize), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        ImGui.Begin("##compactmenu", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + MenuWidth);
+        if (!string.IsNullOrEmpty(request.DisplayName)) ImGui.TextUnformatted(request.DisplayName);
+        if (!string.IsNullOrEmpty(request.Instructions) && request.Instructions != request.DisplayName)
+            ImGui.TextDisabled(request.Instructions);
+        ImGui.PopTextWrapPos();
+        ImGui.Separator();
+
+        HashSet<string> companions = CompanionOptions(request);
+        string? picked = null;
+        for (int i = 0; i < request.ValidOptions.Count; i++)
+        {
+            string opt = request.ValidOptions[i];
+            if (companions.Contains(opt)) continue;
+            if (WrappedButton(opt, $"opt{i}", MenuWidth, enabled: true)) picked = opt;
+            if (request.OptionDescriptions != null && request.OptionDescriptions.TryGetValue(opt, out string? desc)
+                && ImGui.IsItemHovered())
+                SetWrappedTooltip(desc);
+
+            // Melee's companion action ("Hold back" with this weapon) sits right under its row.
+            if (request.SecondaryActions != null && request.SecondaryActions.TryGetValue(opt, out var sec))
+            {
+                bool secValid = request.ValidOptions.Contains(sec.Option);
+                ImGui.Indent(16f);
+                if (WrappedButton(sec.ShortLabel, $"sec{i}", MenuWidth - 16f, secValid)) picked = sec.Option;
+                if (!secValid && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    SetWrappedTooltip(request.InvalidOptions.FirstOrDefault(x => x.Option == sec.Option)?.Reason ?? "Not available.");
+                ImGui.Unindent(16f);
+            }
+        }
+        foreach (var inv in request.InvalidOptions)
+        {
+            if (companions.Contains(inv.Option)) continue;
+            WrappedButton(inv.Option, $"inv{inv.Option}", MenuWidth, enabled: false);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) SetWrappedTooltip(inv.Reason);
+        }
+
+        bool cancelled = false;
+        if (request.AllowCancel)
+        {
+            ImGui.Spacing();
+            if (UiButton.Back("Back", new Vector2(120f, 0f)) || PopupAnchor.RightClickOnEmptyTable()) cancelled = true;
+        }
+
+        _menuSize = ImGui.GetWindowSize();
+        ImGui.End();
+
+        if (picked != null) Complete(tcs, picked);
+        else if (cancelled) Complete(tcs, null!);
+    }
+
+    private static void SetWrappedTooltip(string text)
+    {
+        ImGui.BeginTooltip();
+        ImGui.PushTextWrapPos(ImGui.GetFontSize() * 24f);
+        ImGui.TextUnformatted(text);
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+    }
+
+    /// <summary>A button whose label wraps onto as many lines as it needs within <paramref name="width"/>.</summary>
+    private static bool WrappedButton(string label, string id, float width, bool enabled)
+    {
+        const float padX = 10f, padY = 6f;
+        float wrap = width - padX * 2f;
+        List<string> lines = WrapText(label, wrap);
+        float lineH = ImGui.GetTextLineHeight();
+        Vector2 size = new(width, lines.Count * lineH + padY * 2f);
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+
+        ImGui.BeginDisabled(!enabled);
+        bool clicked = ImGui.InvisibleButton($"##{id}", size);
+        ImGui.EndDisabled();
+        bool hovered = ImGui.IsItemHovered(), held = ImGui.IsItemActive();
+
+        var style = ImGui.GetStyle();
+        Vector4 bg = !enabled ? style.Colors[(int)ImGuiCol.FrameBg] * new Vector4(1, 1, 1, 0.5f)
+            : held ? style.Colors[(int)ImGuiCol.ButtonActive]
+            : hovered ? style.Colors[(int)ImGuiCol.ButtonHovered]
+            : style.Colors[(int)ImGuiCol.Button];
+        var dl = ImGui.GetWindowDrawList();
+        dl.AddRectFilled(p0, p0 + size, ImGui.ColorConvertFloat4ToU32(bg), style.FrameRounding);
+        uint textCol = ImGui.ColorConvertFloat4ToU32(enabled ? style.Colors[(int)ImGuiCol.Text] : style.Colors[(int)ImGuiCol.TextDisabled]);
+        float y = p0.Y + padY;
+        foreach (string line in lines)
+        {
+            dl.AddText(new Vector2(p0.X + padX, y), textCol, line);
+            y += lineH;
+        }
+        if (clicked && enabled) UiSound.Navigate();
+        return clicked && enabled;
+    }
+
+    private static List<string> WrapText(string text, float maxW)
+    {
+        var lines = new List<string>();
+        foreach (string para in text.Split('\n'))
+        {
+            string current = "";
+            foreach (string word in para.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string attempt = current.Length == 0 ? word : current + " " + word;
+                if (current.Length > 0 && ImGui.CalcTextSize(attempt).X > maxW) { lines.Add(current); current = word; }
+                else current = attempt;
+            }
+            lines.Add(current);
+        }
+        return lines;
+    }
+
+    private static string MoveOpt   => FDG.Stages.ChooseActionStage.MOVEMENT_CHOICE_NAME;
+    private static string ChargeOpt => FDG.Stages.ChooseActionStage.CHARGE_CHOICE_NAME;
+    private static string ShootOpt  => FDG.Stages.ChooseActionStage.SHOOT_CHOICE_NAME;
+    private static string PassOpt   => FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME;
+
+    /// <summary>
+    /// The activation's choices as a small window beside the unit: Hold (stay and shoot, or just stay when
+    /// nothing is in range), Advance and Rush (both the engine's move; Advance keeps the move within the
+    /// advance distance), Charge (greyed with "No units in range" when it can't), and Special for anything
+    /// else the unit can do (spells, abilities, embarking...). Right-click backs out while the activation is
+    /// still untouched; clicking another of your units switches to it.
+    /// </summary>
+    private void DrawActionPopup(StringSelectionRequest request, TaskCompletionSource<string> tcs)
+    {
+        bool Valid(string o) => request.ValidOptions.Contains(o);
+        string? Reason(string o)
+        {
+            foreach (var inv in request.InvalidOptions) if (inv.Option == o) return inv.Reason;
+            return null;
+        }
+        bool Known(string o) => o == MoveOpt || o == ChargeOpt || o == ShootOpt || o == PassOpt;
+        var extraValid = request.ValidOptions.Where(o => !Known(o)).ToList();
+        var extraInvalid = request.InvalidOptions.Where(o => !Known(o.Option)).ToList();
+
+        IUnit? unit = PopupAnchor.Unit;
+        float advance = 0f, chargeDist = 0f;
+        bool hasMobility = unit != null && unit.GetMobility(out advance, out chargeDist);
+
+        // After the unit has moved the engine asks again. Carry straight on instead of making the player
+        // press Hold: a charge move goes into the charge, an advance goes into shooting (click a target or
+        // Hold fire). Only when there is nothing to shoot does the pop-up stay, saying "No Targets".
+        bool afterMove = !request.AllowCancel && !Valid(MoveOpt);
+        // A fresh activation: no charge in progress, and nothing has been declined yet.
+        if (request.AllowCancel)
+        {
+            _chargeIntent = false;
+            GuiChooseRangedAttackResolver.HeldFireThisActivation = false;
+        }
+        // Once the player has backed out of the weapon picker, never push them back into it - that is the
+        // Hold -> Hold fire -> Hold loop that made it impossible to simply stand still.
+        bool heldFire = GuiChooseRangedAttackResolver.HeldFireThisActivation;
+        if (afterMove && _chargeIntent && Valid(ChargeOpt)) { _chargeIntent = false; Complete(tcs, ChargeOpt); return; }
+        if (afterMove && !heldFire && Valid(ShootOpt) && !Valid(ChargeOpt)) { _chargeIntent = false; Complete(tcs, ShootOpt); return; }
+        if (afterMove && heldFire && Valid(PassOpt) && !Valid(ChargeOpt)) { Complete(tcs, PassOpt); return; }
+
+        ImGui.SetNextWindowPos(PopupAnchor.Place(_popupSize), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        ImGui.Begin("##actionpopup", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        if (unit != null)
+        {
+            ImGui.TextUnformatted(unit.Name);
+            ImGui.Separator();
+        }
+
+        string? picked = null;
+        bool cancelled = false;
+        Vector2 btn = new(200f, ResolverPanelLayout.OptionRowHeight() * 0.8f);
+
+        bool ActionButton(string label, bool enabled, string tooltip)
+        {
+            ImGui.BeginDisabled(!enabled);
+            bool clicked = UiButton.Navigate(label, btn);
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(tooltip);
+            return clicked && enabled;
+        }
+
+        // Hold: stay put and shoot; with nothing in range it just ends the activation.
+        bool canShoot = Valid(ShootOpt) && !heldFire, canPass = Valid(PassOpt);
+        string holdTip = canShoot ? "Stay in place and shoot."
+            : canPass ? "Stay in place. Nothing is in range to shoot."
+            : Reason(ShootOpt) ?? Reason(PassOpt) ?? "Not available.";
+        if (ActionButton(afterMove ? "End activation" : "Hold", canShoot || canPass,
+                afterMove ? "Nothing left to do this activation." : holdTip))
+            picked = canShoot ? ShootOpt : PassOpt;
+
+        // Holding is a legal action on its own - a unit may stand still and not shoot at all, and one with
+        // no ranged weapon has no other way to hold. Offered as its own button so the player never has to
+        // walk into the weapon picker just to come back out of it.
+        if (!afterMove && canPass && canShoot &&
+            ActionButton("Hold, don't shoot", true, "Stay in place and fire nothing this activation."))
+            picked = PassOpt;
+
+        bool canMove = Valid(MoveOpt);
+        string moveReason = Reason(MoveOpt) ?? "Not available.";
+        string advLabel = hasMobility ? $"Advance ({advance:0.#}\")" : "Advance";
+        string rushLabel = hasMobility ? $"Rush ({chargeDist:0.#}\")" : "Rush";   // rush = charge distance
+        if (!afterMove && ActionButton(advLabel, canMove, canMove ? "Move, then shoot." : moveReason))
+        {
+            GuiDefineMovementResolver.NextMoveAdvanceOnly = true;
+            picked = MoveOpt;
+        }
+        if (!afterMove && ActionButton(rushLabel, canMove, canMove ? "Move up to double, no shooting." : moveReason))
+        {
+            GuiDefineMovementResolver.NextMoveAdvanceOnly = false;
+            picked = MoveOpt;
+        }
+
+        // Charge: straight away when the engine offers it; otherwise, with an enemy within charge distance, it
+        // starts the move (up to the charge distance) and goes into the charge once the unit is in contact.
+        bool chargeNow = Valid(ChargeOpt);
+        bool chargeByMove = !chargeNow && canMove && unit != null && hasMobility && EnemyWithin(unit, chargeDist);
+        string chargeLabel = hasMobility ? $"Charge ({chargeDist:0.#}\")" : "Charge";
+        if ((!afterMove || chargeNow) && ActionButton(chargeLabel, chargeNow || chargeByMove,
+                chargeNow ? "Charge an enemy and fight in melee."
+                : chargeByMove ? "Move into contact with an enemy to charge it."
+                : "No units in range"))
+        {
+            if (chargeNow) picked = ChargeOpt;
+            else
+            {
+                _chargeIntent = true;
+                GuiDefineMovementResolver.NextMoveAdvanceOnly = false;
+                picked = MoveOpt;
+            }
+        }
+        if (afterMove && !Valid(ShootOpt) && !Valid(ChargeOpt) && extraValid.Count == 0)
+            ImGui.TextColored(new Vector4(1f, 0.75f, 0.35f, 1f), "No Targets");
+
+        // Special: everything else the unit can do this activation.
+        if (extraValid.Count > 0 || extraInvalid.Count > 0)
+        {
+            // Shown right here as full-size buttons (embark, spells, abilities...) - no separate pop-out.
+            ImGui.Spacing();
+            ImGui.TextDisabled("Special");
+            int si = 0;
+            foreach (string o in extraValid)
+            {
+                if (WrappedButton(o, $"special{si++}", 200f, enabled: true)) picked = o;
+                string? desc = request.OptionDescriptions != null && request.OptionDescriptions.TryGetValue(o, out string? d) ? d : null;
+                if (desc != null && ImGui.IsItemHovered()) SetWrappedTooltip(desc);
+            }
+            foreach (var inv in extraInvalid)
+            {
+                WrappedButton(inv.Option, $"special{si++}", 200f, enabled: false);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) SetWrappedTooltip(inv.Reason);
+            }
+        }
+
+        if (request.AllowCancel)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Right-click: back");
+            ImGui.TextDisabled("Click another unit to switch");
+        }
+
+        _popupSize = ImGui.GetWindowSize();
+        ImGui.End();
+
+        // A right-CLICK (released without dragging - right-drag turns the 3D camera) on empty table backs out
+        // of an untouched activation. Right-clicking a unit opens its card instead.
+        if (request.AllowCancel && PopupAnchor.RightClickOnEmptyTable())
+            cancelled = true;
+
+        if (picked != null) Complete(tcs, picked);
+        else if (cancelled) Complete(tcs, null!);
+    }
+
+    // Clicking another of your own units that hasn't activated, while the action pop-up is open on an
+    // untouched activation, switches to it: back out of this one and pre-pick that unit.
+    private static bool CanSwitchTo(IUnit unit)
+    {
+        IUnit? current = PopupAnchor.Unit;
+        IGameProgress? progress = PopupAnchor.Progress;
+        if (current == null || progress == null) return false;
+        if (unit.PlayerID != current.PlayerID || unit.ID.Equals(current.ID)) return false;
+        return progress.UnactivatedUnits.Any(u => u.ID.Equals(unit.ID));
+    }
+
+    public string? GetHoverLabel(IUnit unit, IModel model)
+    {
+        StringSelectionRequest? request;
+        bool actionMenu;
+        lock (_lock) { request = _request; actionMenu = _actionMenu; }
+        if (!actionMenu || request == null || !request.AllowCancel) return null;
+        return CanSwitchTo(unit) ? $"Click to activate {unit.Name} instead" : null;
+    }
+
+    public void HandleClick(IUnit unit, IModel model)
+    {
+        StringSelectionRequest? request;
+        TaskCompletionSource<string>? tcs;
+        bool actionMenu;
+        lock (_lock) { request = _request; tcs = _tcs; actionMenu = _actionMenu; }
+        if (!actionMenu || request == null || tcs == null || !request.AllowCancel) return;
+        if (!CanSwitchTo(unit)) return;
+        GuiUnitSelectionResolver.PendingActivationPick = unit;
+        Complete(tcs, null!);
+    }
+
     private void Complete(TaskCompletionSource<string> tcs, string choice)
     {
-        lock (_lock) { _request = null; _tcs = null; _confirmingPass = false; }
+        lock (_lock) { _request = null; _tcs = null; _confirmingPass = false; _actionMenu = false; }
         tcs.SetResult(choice);
     }
 }

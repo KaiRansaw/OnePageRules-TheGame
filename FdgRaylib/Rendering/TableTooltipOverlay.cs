@@ -50,7 +50,21 @@ public class TableTooltipOverlay
     {
         _tableState = tableState;
         _presentationPlayer = presentationPlayer;
+        _cards.Clear();
     }
+
+    // Pinned unit info cards (right-click a unit): the same content as the hover tooltip, in a movable,
+    // collapsible, closable window that stays up while you play. Render-thread only.
+    private sealed class PinnedCard
+    {
+        public required IUnit Unit;
+        public IModel? Model;
+        public bool BringToFront = true;
+        public Vector2 SpawnAt;
+    }
+
+    private readonly List<PinnedCard> _cards = new();
+    private const int MaxCards = 8;
 
     public void UpdateLayout(float scale, int originX, int originY, float tableH)
     {
@@ -67,9 +81,11 @@ public class TableTooltipOverlay
     /// for as long as they are there — a panel is a few seconds of transient reading; the labels are
     /// permanent and come straight back.
     /// </param>
+    /// <param name="rightClickReserved">The active table tool uses right-click itself (undo / back), so a
+    /// unit's info card needs Shift + right-click; otherwise a plain right-click on a unit opens it.</param>
     public void Draw(int screenW, int screenH,
         TableHitTester hitTester, ICanvasInteractionHandler? interactionHandler,
-        Rectangle? rollStackBounds = null)
+        Rectangle? rollStackBounds = null, bool rightClickReserved = false)
     {
         if (_tableState == null) return;
 
@@ -87,16 +103,36 @@ public class TableTooltipOverlay
         var hoveredUnit    = hitTester.HoveredUnit;
         var hoveredModel   = hitTester.HoveredModel;
         var hoveredTerrain = hitTester.HoveredTerrain;
+        var hoveredObjective = hitTester.HoveredObjective;
 
         // Route canvas clicks to the active resolver (suppressed while the in-game menu is open, #246).
         if (!EscapeRouter.MenuOpen && hitTester.Clicked && hoveredUnit != null && hoveredModel != null)
             interactionHandler?.HandleClick(hoveredUnit, hoveredModel);
 
-        // Draw tooltip
-        if (hoveredUnit != null && hoveredModel != null)
-            DrawUnitTooltip(hoveredUnit, hoveredModel, interactionHandler);
-        else if (hoveredTerrain != null)
-            DrawTerrainTooltip(hoveredTerrain);
+        // Right-click a unit: pin its info card. While the active tool owns right-click (undo / back),
+        // Shift + right-click does it instead. Claiming the mouse keeps the click from ALSO undoing in that
+        // tool - this overlay draws before the resolvers read WantCaptureMouse.
+        if (!EscapeRouter.MenuOpen && hoveredUnit != null && ImGui.IsMouseClicked(ImGuiMouseButton.Right)
+            && (ImGui.GetIO().KeyShift || !rightClickReserved))
+        {
+            OpenCard(hoveredUnit, hoveredModel, screenW, screenH);
+            ImGui.GetIO().WantCaptureMouse = true;
+        }
+
+        DrawCards();
+
+        // Draw tooltip, once the mouse has settled on the thing. A card that pops the instant the pointer
+        // crosses a base covers whatever you were reading on the way past, so it waits for a short dwell -
+        // long enough that sweeping over the table stays clear, short enough not to feel sticky.
+        if (Settled(hoveredUnit as object ?? hoveredObjective as object ?? hoveredTerrain))
+        {
+            if (hoveredUnit != null && hoveredModel != null)
+                DrawUnitTooltip(hoveredUnit, hoveredModel, interactionHandler);
+            else if (hoveredObjective != null)
+                DrawObjectiveTooltip(hoveredObjective);
+            else if (hoveredTerrain != null)
+                DrawTerrainTooltip(hoveredTerrain);
+        }
 
         // Range / threat rings for the hovered unit (cyan shoot rings) were REPLACED by the #162
         // team-colored opportunity field, which shows the same weapon-range info in the selected unit's
@@ -110,12 +146,113 @@ public class TableTooltipOverlay
         DrawUnitOverlays();
     }
 
+    /// <summary>How long the pointer has to rest on something before its card opens.</summary>
+    public static float HoverDelaySeconds = 0.35f;
+
+    private object? _settlingOn;
+    private float _settledFor;
+
+    /// <summary>
+    /// True once the mouse has rested on <paramref name="target"/> for <see cref="HoverDelaySeconds"/>.
+    /// Moving to something else restarts the clock, so sweeping the pointer across the table opens
+    /// nothing.
+    /// </summary>
+    private bool Settled(object? target)
+    {
+        if (target == null)
+        {
+            _settlingOn = null;
+            _settledFor = 0f;
+            return false;
+        }
+        if (!ReferenceEquals(target, _settlingOn))
+        {
+            _settlingOn = target;
+            _settledFor = 0f;
+            return false;
+        }
+        _settledFor += ImGui.GetIO().DeltaTime;
+        return _settledFor >= HoverDelaySeconds;
+    }
+
     private void DrawUnitTooltip(IUnit unit, IModel model,
         ICanvasInteractionHandler? interactionHandler)
     {
         // Translucent well (ImGuiTheme.TooltipBg): a rule-heavy unit's block can cover half the board,
         // and you are usually hovering it to compare against what is underneath.
         ImGuiTheme.BeginTranslucentTooltip();
+        DrawCompactUnitInfo(unit, model, interactionHandler);   // the full card is on right-click
+        ImGuiTheme.EndTranslucentTooltip();
+    }
+
+    private void OpenCard(IUnit unit, IModel? model, int screenW, int screenH)
+    {
+        PinnedCard? existing = _cards.FirstOrDefault(c => ReferenceEquals(c.Unit, unit));
+        if (existing != null)
+        {
+            existing.Model = model;
+            existing.BringToFront = true;
+            return;
+        }
+
+        if (_cards.Count >= MaxCards) _cards.RemoveAt(0);
+        Vector2 mouse = ImGui.GetIO().MousePos;
+        _cards.Add(new PinnedCard
+        {
+            Unit = unit,
+            Model = model,
+            SpawnAt = new Vector2(Math.Clamp(mouse.X + 24f, 0f, Math.Max(0f, screenW - 320f)),
+                                  Math.Clamp(mouse.Y - 40f, 0f, Math.Max(0f, screenH - 200f))),
+        });
+    }
+
+    private void DrawCards()
+    {
+        if (_tableState == null) return;
+
+        foreach (PinnedCard card in _cards.ToList())
+        {
+            if (!_tableState.Units.Objects.Contains(card.Unit))
+            {
+                _cards.Remove(card);
+                continue;
+            }
+
+            if (card.BringToFront)
+            {
+                ImGui.SetNextWindowPos(card.SpawnAt, ImGuiCond.Appearing);
+                ImGui.SetNextWindowCollapsed(false, ImGuiCond.Always);
+                ImGui.SetNextWindowFocus();
+                card.BringToFront = false;
+            }
+            ImGui.SetNextWindowSizeConstraints(new Vector2(260f, 0f), new Vector2(440f, 2000f));
+            ImGui.SetNextWindowBgAlpha(0.94f);
+
+            bool open = true;
+            if (ImGui.Begin($"{card.Unit.Name}##unitcard{card.Unit.ID.ID}", ref open,
+                    ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+            {
+                // The clicked model if it still lives, else any living one (the card outlives casualties).
+                IModel? model = card.Model != null && card.Model.GetIsAlive()
+                    ? card.Model
+                    : card.Unit.Models.FirstOrDefault(m => m.GetIsAlive());
+                if (!card.Unit.GetIsAlive())
+                {
+                    ImGui.TextColored(new Vector4(1f, 0.30f, 0.30f, 1f), "Destroyed.");
+                    ImGui.Separator();
+                }
+                DrawUnitInfo(card.Unit, model, interactionHandler: null);
+            }
+            ImGui.End();
+
+            if (!open) _cards.Remove(card);
+        }
+    }
+
+    // The unit's full info block - shared by the hover tooltip and the pinned cards. <paramref name="model"/>
+    // is the model the section at the top describes (null skips it, e.g. a destroyed unit's card).
+    private void DrawUnitInfo(IUnit unit, IModel? model, ICanvasInteractionHandler? interactionHandler)
+    {
 
         // Activation state up top, in red, so a spent unit reads before anything else.
         if (HasActivated(unit))
@@ -129,9 +266,10 @@ public class TableTooltipOverlay
         // #342: for the joined hero that section is headed by the hero's NAME instead of the generic
         // "This model" — hovering the star is the natural "who is this?" gesture, and until #342 the name
         // wasn't anywhere in the game to answer with.
-        bool isHero = HeroMarkerRenderer.IsHeroModel(unit, model);
+        bool isHero = model != null && HeroMarkerRenderer.IsHeroModel(unit, model);
         HeroAttachment? heroAttachment = isHero ? (unit as UnitData)?.HeroAttachment : null;
-        DrawModelSection(model, isHero ? heroAttachment?.Name : null);
+        if (model != null)
+            DrawModelSection(model, isHero ? heroAttachment?.Name : null);
 
         // Joined-Hero tag (#227): if the hovered model is the unit's joined hero, call it out with the hero's
         // OWN Quality / Defense (which diverge from the host unit's). The stats live on HeroAttachment, off
@@ -251,15 +389,13 @@ public class TableTooltipOverlay
         }
 
         // Contextual line from the active resolver
-        string? hoverLabel = interactionHandler?.GetHoverLabel(unit, model);
+        string? hoverLabel = model == null ? null : interactionHandler?.GetHoverLabel(unit, model);
         if (hoverLabel != null)
         {
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.TextUnformatted(hoverLabel);
         }
-
-        ImGuiTheme.EndTranslucentTooltip();
     }
 
     // The section for the specific model under the cursor: the weapon(s) IT carries (matters in mixed units
@@ -295,6 +431,42 @@ public class TableTooltipOverlay
         if (model.TotalWounds > 1f)
             ImGui.TextUnformatted(
                 $"Wounds: {WoundFormat.Fraction(model.TotalWounds - model.WoundsDealt, model.TotalWounds)}");
+    }
+
+    /// <summary>
+    /// Objective hover: who controls it, and in Horde Mode its number, remaining health (three damage
+    /// markers destroy it) and whether it is the current priority objective. ASCII only.
+    /// </summary>
+    private void DrawObjectiveTooltip(IObjective objective)
+    {
+        ImGuiTheme.BeginTranslucentTooltip();
+
+        ImGui.PushFont(RaylibRenderer.LargeFont);
+        ImGui.TextUnformatted(objective.HordeNumber is int number ? $"Objective {number}" : "Objective");
+        ImGui.PopFont();
+
+        if (objective.HordeNumber != null)
+        {
+            const int maxHealth = FDG.StateMachine.HordeRules.ObjectiveDamageToDestroy;
+            int health = Math.Max(0, maxHealth - objective.HordeDamage);
+            Vector4 healthColor = health >= maxHealth ? new Vector4(0.45f, 0.85f, 0.45f, 1f)
+                : health == 1 ? ImGuiTheme.WoundsRed
+                : ImGuiTheme.HitsYellow;
+            ImGui.TextColored(healthColor, $"Health: {health}/{maxHealth}");
+
+            if (objective.IsHordePriority)
+                ImGui.TextColored(ImGuiTheme.HeroGold, "Priority objective");
+        }
+
+        string controller = "Nobody";
+        if (objective.OwnerID is PlayerID owner && _tableState != null)
+        {
+            controller = _tableState.Players.Objects
+                .FirstOrDefault(p => p.IsFilled && p.PlayerID.Equals(owner))?.Name ?? "A player";
+        }
+        ImGui.TextUnformatted($"Controlled by: {controller}");
+
+        ImGuiTheme.EndTranslucentTooltip();
     }
 
     private static void DrawTerrainTooltip(ITerrain terrain)
@@ -337,6 +509,11 @@ public class TableTooltipOverlay
             float minRadiusPx = float.MaxValue;
             float minLeftX = float.MaxValue, maxRightX = float.MinValue;
 
+            // Status outline around every base: red = Shaken, green = activated this round (Shaken wins).
+            uint? statusOutline = IsShaken(unit)
+                ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.95f, 0.20f, 0.20f, 1f))
+                : HasActivated(unit) ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.25f, 0.85f, 0.35f, 1f)) : null;
+
             foreach (var model in unit.Models)
             {
                 if (!model.GetIsAlive()) continue;
@@ -349,6 +526,9 @@ public class TableTooltipOverlay
                 float mx = _originX + pos.x * _scale;
                 float my = _originY + (_tableH - pos.z) * _scale;
                 float mr = model.BaseRadiusInches * _scale;
+                if (statusOutline is uint outlineColor)
+                    ModelBaseRenderer.DrawOutlineImGui(drawList, model.BaseShape, new Vector2(mx, my), _scale,
+                        outlineColor, MathF.Max(2f, _scale * 0.12f), 0.08f, model.Facing);
 
                 sumX += mx;
                 sumY += my;
@@ -395,32 +575,7 @@ public class TableTooltipOverlay
                 // The activation marker hangs off the name's left edge, so it shares the name's fate.
                 bool labelHidden = Occluded(labelX, labelY, textSize.X, textSize.Y);
 
-                // Activation marker: a red disc with a white "A" just left of the name, so a spent unit
-                // reads at a glance. The currently-activating unit already has its own spotlight halo, so
-                // it is excluded (see HasActivated) and does not get the marker until its turn ends.
-                if (HasActivated(unit) && !labelHidden)
-                {
-                    float   radius = textSize.Y * 0.6f;
-                    Vector2 center = new Vector2(labelX - 5f - radius, labelY + textSize.Y * 0.5f);
 
-                    drawList.AddCircleFilled(center, radius, red);
-                    drawList.AddCircle(center, radius, shadow, 0, 1.5f); // thin outline
-
-                    // "A" from line segments, so it sits geometrically centered in the disc (the text
-                    // glyph has uneven side bearings and never quite centers). Apex at top, two legs to
-                    // the base corners, and a crossbar a little below middle.
-                    float   h    = radius * 1.15f;               // glyph height
-                    float   w    = radius * 0.95f;               // glyph width
-                    Vector2 apex = new Vector2(center.X, center.Y - h * 0.5f);
-                    Vector2 botL = new Vector2(center.X - w * 0.5f, center.Y + h * 0.5f);
-                    Vector2 botR = new Vector2(center.X + w * 0.5f, center.Y + h * 0.5f);
-                    Vector2 barL = apex + (botL - apex) * 0.62f;
-                    Vector2 barR = apex + (botR - apex) * 0.62f;
-                    float   thick = MathF.Max(1.4f, radius * 0.2f);
-                    drawList.AddLine(apex, botL, white, thick);
-                    drawList.AddLine(apex, botR, white, thick);
-                    drawList.AddLine(barL, barR, white, thick);
-                }
 
                 if (!labelHidden)
                 {
@@ -432,6 +587,7 @@ public class TableTooltipOverlay
                 // down into the panel the moment the name yields.
                 stackTopY = labelY;
             }
+
 
             // Transport occupancy badge (#096) — "Carrying X/Y" above the name. Shown for any transport
             // (empty included, so remaining capacity always reads) regardless of the label toggle, like
@@ -491,6 +647,111 @@ public class TableTooltipOverlay
 
     // #329: the definition lives in UnitActivation, shared with the army list overlay.
     private bool HasActivated(IUnit unit) => UnitActivation.HasActivated(_tableState!.Progress, unit);
+
+    private static bool IsShaken(IUnit unit) => unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
+
+    private static readonly IRuleResolver SharedResolver = CoreRuleCatalog.CreateResolver();
+
+    /// <summary>Names of the tokens a unit carries (all of them, not just the ones shown as chips).</summary>
+    internal static IReadOnlyList<string> VisibleTokenNames(IUnit unit) =>
+        TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit).Select(t => t.Name).ToList();
+
+    /// <summary>
+    /// Status symbols drawn right-to-left ending at <paramref name="rightCenter"/> (the right edge, vertical
+    /// centre): a green disc with a check when the unit has activated this round, a red disc with "!" when it
+    /// is Shaken.
+    /// </summary>
+    private void DrawStatusMarkers(ImDrawListPtr dl, Vector2 rightCenter, float radius, IUnit unit)
+    {
+        uint white  = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1));
+        uint shadow = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.75f));
+        uint green  = ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.68f, 0.28f, 1));
+        uint red    = ImGui.ColorConvertFloat4ToU32(new Vector4(0.85f, 0.14f, 0.14f, 1));
+        float x = rightCenter.X - radius;
+        float thick = MathF.Max(1.5f, radius * 0.22f);
+
+        if (HasActivated(unit))
+        {
+            Vector2 c = new(x, rightCenter.Y);
+            dl.AddCircleFilled(c, radius, green);
+            dl.AddCircle(c, radius, shadow, 0, 1.5f);
+            dl.AddLine(c + new Vector2(-radius * 0.45f, 0f), c + new Vector2(-radius * 0.1f, radius * 0.38f), white, thick);
+            dl.AddLine(c + new Vector2(-radius * 0.1f, radius * 0.38f), c + new Vector2(radius * 0.5f, -radius * 0.4f), white, thick);
+            x -= radius * 2f + 3f;
+        }
+        if (IsShaken(unit))
+        {
+            Vector2 c = new(x, rightCenter.Y);
+            dl.AddCircleFilled(c, radius, red);
+            dl.AddCircle(c, radius, shadow, 0, 1.5f);
+            dl.AddLine(c + new Vector2(0f, -radius * 0.55f), c + new Vector2(0f, radius * 0.15f), white, thick);
+            dl.AddCircleFilled(c + new Vector2(0f, radius * 0.45f), thick * 0.6f, white);
+        }
+    }
+
+    /// <summary>The hover card: name, status, Quality / Defense, wounds, special rules (with what they do)
+    /// and tokens. The full card with weapons opens on right-click.</summary>
+    private void DrawCompactUnitInfo(IUnit unit, IModel? model, ICanvasInteractionHandler? interactionHandler)
+    {
+        ImGui.PushFont(RaylibRenderer.LargeFont);
+        ImGui.TextUnformatted(unit.Name);
+        ImGui.PopFont();
+
+        if (HasActivated(unit)) ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated");
+        if (IsShaken(unit)) ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");
+        if (FDG.Stages.FirefightRules.MarkerSummary(unit) is { } markers)
+            UiText.Colored(new Vector4(1f, 0.65f, 0.3f, 1f), markers);
+
+        int live = unit.Models.Count(m => m.GetIsAlive());
+        ImGui.TextUnformatted($"Quality {unit.Quality}+   Defense {unit.Defense}+");
+        ImGui.TextDisabled($"{live} model{(live == 1 ? "" : "s")}   Wounds {WoundFormat.Fraction(unit.RemainingWounds, unit.MaxWounds)}");
+
+        // While a tool is aiming at it (shooting, charging, picking), keep the card short so it doesn't
+        // bury the pop-up: just what the tool says. The rules are a right-click away.
+        string? aimLabel = model == null ? null : interactionHandler?.GetHoverLabel(unit, model);
+        if (aimLabel != null)
+        {
+            ImGui.Separator();
+            ImGui.TextUnformatted(aimLabel);
+            return;
+        }
+
+        var rules = unit.RuleDefinitions
+            .Where(r => r.Definition.Name != CoreRuleCatalog.DisembarkRuleName
+                     && r.Definition.Name != CoreRuleCatalog.EmbarkRuleName)
+            .ToList();
+        if (rules.Count > 0)
+        {
+            ImGui.Separator();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
+            foreach (var rule in rules)
+            {
+                ImGui.TextUnformatted(RuleDisplayName(rule));
+                if (!string.IsNullOrEmpty(rule.Definition.Description))
+                {
+                    ImGui.Indent();
+                    ImGui.TextDisabled(rule.Definition.Description);
+                    ImGui.Unindent();
+                }
+            }
+            ImGui.PopTextWrapPos();
+        }
+
+        var tokens = VisibleTokenNames(unit);
+        if (tokens.Count > 0)
+        {
+            ImGui.Separator();
+            ImGui.TextDisabled("Tokens: " + string.Join(", ", tokens));
+        }
+
+        string? hoverLabel = model == null ? null : interactionHandler?.GetHoverLabel(unit, model);
+        if (hoverLabel != null)
+        {
+            ImGui.Separator();
+            ImGui.TextUnformatted(hoverLabel);
+        }
+        ImGui.TextDisabled("Right-click: full card");
+    }
 
     // Per-model weapon-range and charge-reach rings for the hovered unit, drawn in world space centred on
     // each model — a unit's true reach is the union of its models' circles, not a single centroid sphere.

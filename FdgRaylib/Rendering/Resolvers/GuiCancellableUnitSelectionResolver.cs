@@ -72,9 +72,58 @@ public class GuiCancellableUnitSelectionResolver
 
     public override void Draw(int screenW, int screenH)
     {
+        // Pick by clicking a ringed unit on the table; a small pop-up beside the acting unit says what is
+        // being picked and offers Back (right-click on empty table backs out too). No side list.
         DrawTargetRings();
-        base.Draw(screenW, screenH);
+        DrawCompactPicker();
         _hoveredValidRef = null;
+    }
+
+    private Vector2 _pickerSize = new(260f, 120f);
+
+    private void DrawCompactPicker()
+    {
+        CancellableSelectionRequest<UnitData>? request;
+        TaskCompletionSource<CancellableResult<DataBinding<UnitData>>>? tcs;
+        lock (_lock) { request = _request; tcs = _tcs; }
+        if (request == null || tcs == null) return;
+
+        ImGui.SetNextWindowPos(PopupAnchor.Place(_pickerSize), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        ImGui.Begin("##unitpicker", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        if (!string.IsNullOrEmpty(request.DisplayName)) ImGui.TextUnformatted(request.DisplayName);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
+        if (!string.IsNullOrEmpty(request.Instructions)) ImGui.TextDisabled(request.Instructions);
+        ImGui.PopTextWrapPos();
+        ImGui.Separator();
+
+        bool done = false;
+        if (request.ValidOptions.Count == 0)
+            ImGui.TextUnformatted("No units in range");
+        else
+            ImGui.TextUnformatted("Click a highlighted unit.");
+
+        // Units that can't be clicked because nothing of them is on the table (inside a transport).
+        foreach (var opt in request.ValidOptions)
+        {
+            UnitData u = opt.Option.GetValue();
+            bool onTable = u.Models.Any(m => m.GetIsAlive() && (m.Position.x != 0f || m.Position.z != 0f));
+            if (onTable) continue;
+            if (!done && UiButton.Navigate($"{opt.Name}##pick{opt.Option.Reference}", new Vector2(260f, 0f)))
+            {
+                Complete(tcs, new Selected<DataBinding<UnitData>>(opt.Option));
+                done = true;
+            }
+        }
+
+        if (!done && (UiButton.Back("Back", new Vector2(120f, 0f)) || PopupAnchor.RightClickOnEmptyTable()))
+            Complete(tcs, new Cancelled<DataBinding<UnitData>>());
+
+        _pickerSize = ImGui.GetWindowSize();
+        ImGui.End();
     }
 
     // #248: keyboard highlight rings the unit like a hover. Rings draw before the base dialog each

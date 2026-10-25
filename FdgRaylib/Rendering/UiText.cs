@@ -48,4 +48,11 @@ internal static class UiText
         ImGui.TextUnformatted(text);
         ImGui.PopTextWrapPos();
     }
+
+    /// <summary>A bullet point - <c>ImGui.BulletText</c> without the format pass.</summary>
+    internal static void Bullet(string text)
+    {
+        ImGui.Bullet();
+        ImGui.TextUnformatted(text);
+    }
 }

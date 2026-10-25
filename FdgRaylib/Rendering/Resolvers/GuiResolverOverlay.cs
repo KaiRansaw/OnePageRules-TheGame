@@ -115,6 +115,51 @@ public class GuiResolverOverlay
     /// Returns the ICanvasInteractionHandler for the currently active resolver, if it
     /// implements one. Null when no resolver is pending or the active one doesn't opt in.
     /// </summary>
+    /// <summary>
+    /// Whether the active table tool uses right-click itself (movement / placement / consolidation undo,
+    /// objective / terrain back-out). Unit info cards then need Shift + right-click instead of a plain one.
+    /// </summary>
+    public bool ActiveToolUsesRightClick
+    {
+        get
+        {
+            foreach (IGuiResolver r in _resolvers)
+                if (r.HasPendingRequest && r is IRightClickConsumer)
+                    return true;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Whether the active table tool uses Ctrl+Z / Ctrl+X itself (deployment unit undo, movement planning
+    /// undo). The game-wide Take Back keys then leave them to it.
+    /// </summary>
+    public bool ActiveToolUsesUndoKeys
+    {
+        get
+        {
+            foreach (IGuiResolver r in _resolvers)
+                if (r.HasPendingRequest && r is IUndoKeyConsumer { UsesUndoKeys: true })
+                    return true;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Whether the active tool works by clicking on the table (moving, deploying, picking a unit or target),
+    /// which only the 2D view supports - the renderer leaves 3D while one is open.
+    /// </summary>
+    public bool ActiveToolNeedsTable
+    {
+        get
+        {
+            foreach (IGuiResolver r in _resolvers)
+                if (r.HasPendingRequest && (r is IGuiCanvasOverlay || r is ICanvasInteractionHandler))
+                    return true;
+            return false;
+        }
+    }
+
     public ICanvasInteractionHandler? ActiveInteractionHandler
     {
         get

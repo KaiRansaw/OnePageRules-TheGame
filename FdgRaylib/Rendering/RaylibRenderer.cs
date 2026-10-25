@@ -25,8 +25,8 @@ public class RaylibRenderer
     public static ImGuiNET.ImFontPtr MenuFont;
     public static float MenuFontPx;
 
-    private const float TableWIn      = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES;
-    private const float TableHIn      = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
+    private static float TableWIn      => GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES;
+    private static float TableHIn      => GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
     private const int   MinMargin     = 20;
     // Anchor for the resolution-derived UI scale (see ComputeUiScale): the multiplier that was tuned
     // by hand on a 4K (2160p) desktop. Smaller displays scale down from here, larger ones cap here.
@@ -54,6 +54,11 @@ public class RaylibRenderer
     public HostModal         HostModal    { get; } = new();
     public ClientModal       ClientModal  { get; } = new();
     public LobbyScreen       LobbyScreen  { get; } = new();
+    public ArmyPickerScreen  ArmyPicker   { get; } = new();
+    public LoadGameScreen    LoadGame     { get; } = new();
+    public HeroBuilderScreen HeroBuilder  { get; } = new();
+    public CampaignScreen Campaigns       { get; } = new();
+    public StrikeTeamScreen StrikeTeams   { get; } = new();
 
     private IAppScreen _currentScreen;
 
@@ -78,10 +83,13 @@ public class RaylibRenderer
     private Previews.PreviewPublisher? _previewPublisher;
     private Previews.RemotePreviewOverlay? _remotePreviews;
     private PresentationPlayer? _presentationPlayer;
+    private PresentationPlayer? _reportHookedPlayer;   // the player the battle report listens to
     private AudioManager? _audio;
     private readonly TableTooltipOverlay _tooltipOverlay = new();
     private readonly TableHitTester      _hitTester      = new();
     private readonly MeasurementOverlay  _measurementOverlay = new();
+    // Host-only Game Master panel (Play Style = Game Master); draws nothing in any other game.
+    private readonly GameMasterPanel     _gameMasterPanel = new();
     private readonly TacticalOverlay.TacticalOverlayController _tacticalOverlay = new();
     private readonly EscapeMenuOverlay _escapeMenu = new();
     private readonly ArmyListOverlay _armyListOverlay = new();
@@ -104,6 +112,70 @@ public class RaylibRenderer
 
     // Fired at the end of ExitGame() — i.e. on every path that tears a running game down (#271).
     public Action? OnGameExited;
+
+    /// <summary>What the Take Back / Redo buttons show. Null (or no provider) = Take Back isn't offered
+    /// in this game (networked play, a client, the --scenario launch).</summary>
+    public sealed record TakeBackStatus(bool CanTakeBack, string TakeBackTip, bool CanRedo, string RedoTip);
+
+    /// <summary>Program.cs supplies the current Take Back state; read once per frame while in game.</summary>
+    public Func<TakeBackStatus?>? TakeBackStatusProvider;
+
+    /// <summary>Take Back (false) or Redo (true) was pressed. Program.cs relaunches the game from the
+    /// chosen save point. Invoked at the top of a frame, outside any drawing.</summary>
+    public Action<bool>? OnTakeBackRequested;
+
+    // Set by the button / hotkey mid-frame; acted on at the top of the next frame so the game is never torn
+    // down in the middle of drawing it.
+    private bool? _pendingTakeBack;
+
+    /// <summary>Tears the running game down (same as quitting to the menu, minus the navigation).</summary>
+    public void ExitCurrentGame() => ExitGame();
+
+    // ── 3D view ──────────────────────────────────────────────────────────────────────────
+    // The player's choice (button / F3). Stage 2: the whole game plays in 3D. Every table tool keeps doing
+    // exactly what it does in 2D, but onto a flat "virtual board" (Board3DScale pixels per inch, origin at
+    // the table's top-left) instead of the screen; that picture is then painted onto the 3D table (see
+    // CaptureBoardOverlay), and the mouse reaches the tools through TableInput as the point of the 3D table
+    // it is over.
+    private bool _want3D;
+    private Table3DView? _view3D;
+
+    private bool Showing3D => _inGame && _want3D && _gameOverResult == null;
+
+    /// <summary>Virtual-board resolution in 3D: pixels per table inch.</summary>
+    private const float Board3DScale = 16f;
+
+    private Layout VirtualBoardLayout => new(Board3DScale, 0, 0,
+        (int)(TableWIn * Board3DScale), (int)(TableHIn * Board3DScale));
+
+    // 3D: the last board point the pointer was over (kept while the pointer is off the 3D view).
+    private Vector2? _last3DBoardPoint;
+
+    private RenderTexture2D _boardOverlayRT;
+    private bool _boardOverlayReady;
+
+
+    // Take Back relaunch in progress: the old board stays up (dimmed, inputs off) until the relaunched
+    // game's launch is picked up straight from the lobby screen - which is never shown - and
+    // TransitionToGame swaps the new game in.
+    private bool _takeBackInProgress;
+    private double _takeBackStartedAt;
+    private const double TakeBackTimeoutSeconds = 30.0;
+
+    /// <summary>Program.cs: a Take Back relaunch is starting - keep the board on screen meanwhile.</summary>
+    public void BeginTakeBack()
+    {
+        _takeBackInProgress = true;
+        _takeBackStartedAt = Raylib.GetTime();
+    }
+
+    /// <summary>Program.cs: the relaunch could not start. Leave the stopped game for the main menu.</summary>
+    public void AbortTakeBack()
+    {
+        _takeBackInProgress = false;
+        ExitGame();
+        NavigateTo(MainMenu);
+    }
     // Set from the engine thread when the game ends (see ShowGameOver); read on the main thread to draw
     // the game-over overlay. Non-null = game finished, result string to display.
     private volatile string? _gameOverResult = null;
@@ -124,8 +196,9 @@ public class RaylibRenderer
     private bool _exclusionRTReady;
     private int  _exclusionRTW, _exclusionRTH;
     // Opaque while painting the union; the final on-table alpha comes from the composite tint below.
-    private static readonly Color ExclusionFill = new(235, 95, 95, 255);
-    private const byte ExclusionCompositeAlpha = 70;
+    private static readonly Color ExclusionFill = new(235, 70, 70, 255);
+    private static readonly Color ExclusionRim = new(255, 40, 40, 255);
+    private const byte ExclusionCompositeAlpha = 105;
 
     // Subtle mottling over the felt: a small tileable Perlin-noise texture generated once, then tiled
     // across the table rect (repeat wrap) and composited additively at a low dark tint so it reads as
@@ -158,6 +231,29 @@ public class RaylibRenderer
     // play. A model belonging to an off-table unit (Ambush reserve, embarked, an Aircraft that flew off)
     // sits at the world origin, which maps to the table's bottom-left corner - it must not be drawn there.
     private readonly ConcurrentDictionary<IModel, (Color Color, IUnit Unit)> _placedModels = new();
+
+    /// <summary>The grey a downed hero's base is tinted (matches PresentationPlayer's own).</summary>
+    private static readonly TextColor DownedHeroTint = new(150, 150, 170, 255);
+
+    /// <summary>
+    /// Star Quest: a hero that goes down is unconscious, not dead - it lies where it fell until the party
+    /// revives it. The engine counts a unit with no living model as off the battlefield, so the draw loops
+    /// have to ask this as well, or a knocked-out hero's token vanishes the moment it drops and there is
+    /// nothing left to walk over to.
+    /// </summary>
+    private static bool IsDownedHeroOnTable(IUnit unit) =>
+        unit is UnitData { IsQuestHero: true }
+        && unit.Models.Any(m => m.Position.x != 0f || m.Position.z != 0f);
+
+    /// <summary>Where a model is drawn when no animation is playing: a downed hero stays, greyed.</summary>
+    private static ModelDrawState RestingDrawState(IUnit unit, IModel model)
+    {
+        if (model.GetIsAlive()) return new ModelDrawState(true, model.Position, 1f, null);
+        if (unit is UnitData { IsQuestHero: true } && (model.Position.x != 0f || model.Position.z != 0f))
+            return new ModelDrawState(true, model.Position, 0.45f, DownedHeroTint);
+        return ModelDrawState.Hidden;
+    }
+
     private bool _autoScroll = true;
     private int  _lastLogCount = 0;
 
@@ -209,9 +305,33 @@ public class RaylibRenderer
         Func<string?>? saveGameToJson = null,
         GuiPlayerMessageUI? playerMessageUI = null)
     {
+        // Take Back: the old (stopped) game is still on screen. Clear it out without the full exit
+        // (Program.cs has already torn its lobby down), and keep the view where the player had it.
+        (float Zoom, Vector2 Pan, bool Chat, bool Log)? keptView = null;
+        DiceTray.Reset();
+        if (_inGame)
+        {
+            keptView = (_zoom, _pan, _showChat, _showLog);
+            ExitGame(notifyExited: false);
+        }
+        _takeBackInProgress = false;
+
         _tableState         = tableState;
         _colorForPlayer     = colorForPlayer;
+        // Star Quest: downed heroes stay drawn (greyed) so the party can find and revive them.
+        PresentationPlayer.IsUnconsciousHero = model => tableState.Units.Objects
+            .Any(u => u is UnitData { IsQuestHero: true } && u.Models.Contains(model));
         _log                = log;
+        // The battle report says who shot at whom (blue = yours, red = the opponent's).
+        GuiChooseRangedAttackResolver.ShotChosen = null;
+        GuiAssignWoundsResolver.ClearActive();
+        var localIds = taskDisplay?.LocalPlayerIDs.ToList() ?? new List<PlayerID>();
+        DiceTray.IsMine = u => localIds.Contains(u.PlayerID);
+        if (presentationPlayer != null && !ReferenceEquals(_reportHookedPlayer, presentationPlayer))
+        {
+            presentationPlayer.BeatStarted += DiceTray.OnBeat;
+            _reportHookedPlayer = presentationPlayer;
+        }
         _resolverOverlay    = resolverOverlay;
         _taskDisplay        = taskDisplay;
         _presentationPlayer = presentationPlayer;
@@ -226,6 +346,8 @@ public class RaylibRenderer
         _armyListOverlay.Attach(tableState, colorForPlayer,
             taskDisplay?.LocalPlayerIDs ?? [], resolverOverlay);
         _escapeMenu.AttachSave(saveGameToJson);
+        // A save made before round 1 can't be resumed, so saving opens once the first round starts.
+        _escapeMenu.CanSaveNow = () => _tableState?.Progress.RoundCount != null;
         // #226: the bug reporter captures this launch's log + chat and (on the host) the save hook,
         // so a report carries everything the session knows. The announce hook rides the chat relay
         // so the other players - whose chat and army lists a report carries - are told it happened.
@@ -290,6 +412,14 @@ public class RaylibRenderer
         foreach (var objective in tableState.Objectives.Objects)
             AddObjective(objective);
 
+        if (keptView is { } view)
+        {
+            _zoom     = view.Zoom;
+            _pan      = view.Pan;
+            _showChat = view.Chat;
+            _showLog  = view.Log;
+        }
+
         _inGame = true;
     }
 
@@ -325,7 +455,12 @@ public class RaylibRenderer
     /// the engine thread (via the lobby's <c>OnGameEnded</c>), so it only stores the result — the actual
     /// teardown + navigation happens on the main thread when the player clicks "Return to Main Menu".
     /// </summary>
-    public void ShowGameOver(string result) => _gameOverResult = result;
+    public void ShowGameOver(string result)
+    {
+        _gameOverResult = result;
+        // Star Quest: the heroes keep what they earned (XP, levels) - write it back to their hero files.
+        if (_tableState != null) FdgRaylib.Quest.QuestHeroSync.WriteBack(_tableState);
+    }
 
     /// <summary>
     /// #187: a secondary line for the game-over card, used to tell the host where the recovery save for a
@@ -334,13 +469,19 @@ public class RaylibRenderer
     /// </summary>
     public void SetGameOverNote(string? note) => _gameOverNote = note;
 
+    /// <summary>GF: Firefight Campaign: writes each strike team's result to its file (host, end of game). Returns a
+    /// line for the game-over card, or null when no strike team played.</summary>
+    public string? RecordStrikeTeams(GameResult result) => FdgRaylib.Quest.StrikeTeamFiles.WriteBack(_tableState, result);
+
     /// <summary>
     /// Tears down all in-game state so the renderer can return to the screen stack and a later launch
     /// starts clean. Unsubscribes the table-state event handlers wired in <see cref="TransitionToGame"/>
     /// and drops every per-game reference. Runs on the main thread.
     /// </summary>
-    private void ExitGame()
+    private void ExitGame(bool notifyExited = true)
     {
+        _view3D?.Unload();
+        _view3D = null;
         if (_tableState != null)
         {
             _tableState.Models.OnObjectCreated      -= SubscribeToModel;
@@ -351,6 +492,7 @@ public class RaylibRenderer
         }
 
         _measurementOverlay.Reset();
+        _gameMasterPanel.Reset();
         _tacticalOverlay.Detach();
         _escapeMenu.Close();
         _escapeMenu.AttachBugReport(null); // per-game refs (log, save hook) must not outlive the game
@@ -385,7 +527,269 @@ public class RaylibRenderer
 
         // Every game teardown funnels through here (game-over card, escape-menu quit-to-menu,
         // escape-menu load). Program.cs uses this to stop the public-listing heartbeat (#271).
-        OnGameExited?.Invoke();
+        // Take Back's in-place swap skips it: its new lobby is already the active one.
+        if (notifyExited) OnGameExited?.Invoke();
+    }
+
+    /// <summary>
+    /// Take Back / Redo, just left of the Measure button, plus their keys (Ctrl+Z / Ctrl+X) whenever the
+    /// active tool isn't using those keys for its own undo (deployment, movement planning).
+    /// </summary>
+    /// <summary>Dims the board and swallows input while a Take Back relaunch is on its way.</summary>
+    private void DrawTakeBackCurtain(int screenW, int screenH)
+    {
+        ImGui.SetNextWindowPos(Vector2.Zero);
+        ImGui.SetNextWindowSize(new Vector2(screenW, screenH));
+        ImGui.SetNextWindowBgAlpha(0.35f);
+        ImGui.SetNextWindowFocus();
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove
+            | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoNav;
+        if (ImGui.Begin("##takeBackCurtain", flags))
+        {
+            const string text = "Taking back...";
+            Vector2 size = ImGui.CalcTextSize(text);
+            ImGui.SetCursorPos(new Vector2((screenW - size.X) * 0.5f, (screenH - size.Y) * 0.5f));
+            ImGui.TextUnformatted(text);
+        }
+        ImGui.End();
+    }
+
+    /// <returns>The buttons' left edge, so the 3D toggle can sit beside them; null when not drawn.</returns>
+    private float? DrawTakeBackButtons(float? rightEdge)
+    {
+        if (_takeBackInProgress) return null;
+        TakeBackStatus? status = TakeBackStatusProvider?.Invoke();
+        if (status == null || rightEdge == null) return null;
+
+        const string takeBackLabel = "Take Back";
+        const string redoLabel = "Redo";
+        var style = ImGui.GetStyle();
+        float width = ImGui.CalcTextSize(takeBackLabel).X + ImGui.CalcTextSize(redoLabel).X
+            + style.FramePadding.X * 4f + style.ItemSpacing.X;
+        float x = MathF.Max(4f, rightEdge.Value - 10f - width);
+        float y = StatusHudOverlay.StripTop + (StatusHudOverlay.StripHeight - ImGui.GetFrameHeight()) * 0.5f;
+
+        ImGui.SetNextWindowPos(new Vector2(x, MathF.Max(2f, y)));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground
+            | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove;
+        if (ImGui.Begin("##takeBack", flags))
+        {
+            ImGui.BeginDisabled(!status.CanTakeBack);
+            if (ImGui.Button(takeBackLabel)) _pendingTakeBack = false;
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(status.TakeBackTip);
+
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!status.CanRedo);
+            if (ImGui.Button(redoLabel)) _pendingTakeBack = true;
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(status.RedoTip);
+        }
+        ImGui.End();
+        ImGui.PopStyleVar(2);
+
+        var io = ImGui.GetIO();
+        if (io.KeyCtrl && !io.WantCaptureKeyboard && !(_resolverOverlay?.ActiveToolUsesUndoKeys ?? false))
+        {
+            if (status.CanTakeBack && ImGui.IsKeyPressed(ImGuiKey.Z, false)) _pendingTakeBack = false;
+            else if (status.CanRedo && ImGui.IsKeyPressed(ImGuiKey.X, false)) _pendingTakeBack = true;
+        }
+        return x;
+    }
+
+    /// <summary>The 2D / 3D switch, left of the Take Back buttons (or the Measure button).</summary>
+    private void Draw3DToggle(float? rightEdge, bool showing3D)
+    {
+        if (rightEdge == null) return;
+        string label = !_want3D ? "3D View" : showing3D ? "2D View" : "3D View (game over)";
+        var style = ImGui.GetStyle();
+        float width = ImGui.CalcTextSize(label).X + style.FramePadding.X * 2f;
+        float x = MathF.Max(4f, rightEdge.Value - 10f - width);
+        float y = StatusHudOverlay.StripTop + (StatusHudOverlay.StripHeight - ImGui.GetFrameHeight()) * 0.5f;
+
+        ImGui.SetNextWindowPos(new Vector2(x, MathF.Max(2f, y)));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground
+            | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove;
+        if (ImGui.Begin("##view3dToggle", flags))
+        {
+            bool on = _want3D;
+            if (on)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.ButtonCommit);
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiTheme.ButtonCommitHover);
+            }
+            if (ImGui.Button(label)) _want3D = !_want3D;
+            if (on) ImGui.PopStyleColor(2);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(!_want3D
+                    ? "Switch to the 3D view (F3 or V)."
+                    : showing3D
+                        ? "Back to the 2D view (F3 or V)."
+                        : "The game-over screen shows the 2D board. Click to turn 3D off (F3 or V).");
+        }
+        ImGui.End();
+        ImGui.PopStyleVar(2);
+    }
+
+    /// <summary>
+    /// 3D view: paints this frame's table-tool drawing onto the virtual board texture the 3D table shows.
+    /// The tools drew it on ImGui's background draw list in virtual-board coordinates; this renders that
+    /// list into the texture (with rlImGui's own triangle routine) and then empties it, so none of it also
+    /// lands on the screen. The tactical overlay's Raylib-drawn field goes underneath it. The 3D table shows
+    /// the result from the next frame on, a lag no one can see.
+    /// </summary>
+    private void CaptureBoardOverlay()
+    {
+        if (_view3D == null) return;
+        int w = (int)(TableWIn * Board3DScale), h = (int)(TableHIn * Board3DScale);
+        if (!_boardOverlayReady || _boardOverlayRT.Texture.Width != w || _boardOverlayRT.Texture.Height != h)
+        {
+            if (_boardOverlayReady) Raylib.UnloadRenderTexture(_boardOverlayRT);
+            _boardOverlayRT = Raylib.LoadRenderTexture(w, h);
+            Raylib.SetTextureFilter(_boardOverlayRT.Texture, TextureFilter.Bilinear);
+            _boardOverlayReady = true;
+        }
+
+        ImDrawListPtr dl = ImGui.GetBackgroundDrawList();
+        dl.PopClipRect();
+
+        // The Ambush no-go area paints into its own texture first (texture modes can't nest), and the reach
+        // field rebuilds into its own textures here too, for the same reason.
+        Layout board = VirtualBoardLayout;
+        _tacticalOverlay.PrepareField();
+        bool exclusion = RenderAmbushExclusion(board, w, h, out var exclusionWaivers);
+
+        Raylib.BeginTextureMode(_boardOverlayRT);
+        Raylib.ClearBackground(new Color(0, 0, 0, 0));
+        // Premultiplied output: color blends as usual, alpha accumulates (1 - a) the normal way, so the
+        // picture composites onto the table exactly as it would have onto the screen.
+        const int SrcAlpha = 0x0302, OneMinusSrcAlpha = 0x0303, One = 1, FuncAdd = 0x8006;
+        Rlgl.SetBlendFactorsSeparate(SrcAlpha, OneMinusSrcAlpha, One, OneMinusSrcAlpha, FuncAdd, FuncAdd);
+        Raylib.BeginBlendMode(BlendMode.CustomSeparate);
+
+        // The tactical overlay's reach field and contours are drawn with Raylib, under the tools.
+        _tacticalOverlay.DrawField();
+        _tacticalOverlay.DrawContours();
+        if (exclusion) CompositeAmbushExclusion(board, exclusionWaivers);
+
+        Rlgl.DrawRenderBatchActive();
+        Rlgl.DisableBackfaceCulling();
+        ImPtrVector<ImDrawCmdPtr> cmds = dl.CmdBuffer;
+        for (int i = 0; i < cmds.Size; i++)
+        {
+            ImDrawCmdPtr cmd = cmds[i];
+            if (cmd.UserCallback != IntPtr.Zero || cmd.ElemCount == 0) continue;
+            DrawImGuiTriangles(dl, cmd);
+            cmd.ElemCount = 0;   // drawn on the table - don't also draw it on the screen
+        }
+        Rlgl.DrawRenderBatchActive();
+        Rlgl.SetTexture(0);
+        Rlgl.EnableBackfaceCulling();
+
+        Raylib.EndBlendMode();
+        Raylib.EndTextureMode();
+        _view3D.SetOverlay(_boardOverlayRT.Texture);
+    }
+
+    /// <summary>
+    /// Draws one ImGui draw command's triangles with Rlgl, into whatever target is bound (the 3D table's board
+    /// texture). Our own copy of what rlImGui does at the end of the frame - it used to borrow rlImGui's
+    /// private routine through reflection, which isn't found in every build of rlImGui; when it went missing
+    /// the tools' drawing stayed on the screen, huge, instead of moving onto the table.
+    /// </summary>
+    private static unsafe void DrawImGuiTriangles(ImDrawListPtr dl, ImDrawCmdPtr cmd)
+    {
+        var verts = (ImDrawVert*)dl.VtxBuffer.Data;
+        var indices = (ushort*)dl.IdxBuffer.Data;
+        uint texture = (uint)cmd.TextureId.ToInt64();
+        // Begin first: starting a new draw resets its texture to the default one.
+        Rlgl.Begin(DrawMode.Triangles);
+        Rlgl.SetTexture(texture);
+        for (uint n = 0; n + 2 < cmd.ElemCount; n += 3)
+        {
+            // Keep each triangle inside one batch (Rlgl flushes when full, and must not split a triangle).
+            if (Rlgl.CheckRenderBatchLimit(3))
+            {
+                Rlgl.Begin(DrawMode.Triangles);
+                Rlgl.SetTexture(texture);
+            }
+            for (uint k = 0; k < 3; k++)
+            {
+                ImDrawVert v = verts[indices[cmd.IdxOffset + n + k] + cmd.VtxOffset];
+                Rlgl.Color4ub((byte)(v.col & 0xFF), (byte)((v.col >> 8) & 0xFF), (byte)((v.col >> 16) & 0xFF),
+                    (byte)((v.col >> 24) & 0xFF));
+                Rlgl.TexCoord2f(v.uv.X, v.uv.Y);
+                Rlgl.Vertex2f(v.pos.X, v.pos.Y);
+            }
+        }
+        Rlgl.End();
+    }
+
+    /// <summary>Gathers this frame's table state and hands it to the 3D view.</summary>
+    private void Draw3DBoard(Rectangle boardRect)
+    {
+        if (_view3D == null || _tableState == null) return;
+
+        var liveUnitByModel = new Dictionary<ModelID, IUnit>();
+        foreach (IUnit u in _tableState.Units.Objects)
+            foreach (IModel m in u.Models)
+                liveUnitByModel[m.ID] = u;
+        UnitID? active = _tableState.Progress.ActivatingUnit?.ID;
+
+        Dictionary<PlayerID, string> factionByPlayer = FactionByPlayer();
+
+        var models = new List<Table3DView.ModelDraw>();
+        foreach (var (model, (color, cachedUnit)) in _placedModels)
+        {
+            IUnit unit = liveUnitByModel.TryGetValue(model.ID, out IUnit? live) ? live : cachedUnit;
+            if (!unit.GetIsOnBattlefield() && !IsDownedHeroOnTable(unit)) continue;
+            ModelDrawState draw = _presentationPlayer?.GetModelDrawState(model) ?? RestingDrawState(unit, model);
+            if (!draw.Visible) continue;
+
+            bool joinedHero = HeroMarkerRenderer.IsHeroModel(unit, model);
+            bool heroUnit = joinedHero || unit.RuleDefinitions.Any(r => r.Definition.Name == "Hero");
+            string label = joinedHero ? ((unit as UnitData)?.HeroAttachment?.Name ?? unit.Name) : unit.Name;
+            Color baseColor = draw.Tint is { } tint ? new Color(tint.R, tint.G, tint.B, (byte)255) : color;
+            models.Add(new Table3DView.ModelDraw(draw.Position, model.BaseRadiusInches, baseColor, draw.Alpha,
+                unit.ID, label, heroUnit, active.HasValue && unit.ID == active.Value, model.ID,
+                factionByPlayer.TryGetValue(unit.PlayerID, out string? faction) ? faction : ""));
+        }
+
+        ITerrain[] terrainSnapshot;
+        lock (_terrainLock) terrainSnapshot = _terrain.ToArray();
+        var terrain = terrainSnapshot
+            .Select(t => new Table3DView.TerrainDraw(t.Shape, t.TerrainType, t.HeightInches)).ToList();
+
+        IObjective[] objectiveSnapshot;
+        lock (_objectivesLock) objectiveSnapshot = _objectives.ToArray();
+        var objectives = new List<Table3DView.ObjectiveDraw>();
+        for (int i = 0; i < objectiveSnapshot.Length; i++)
+        {
+            IObjective obj = objectiveSnapshot[i];
+            Color c = obj.OwnerID.HasValue ? _colorForPlayer!(obj.OwnerID.Value) : ObjectiveNeutralColor;
+            objectives.Add(new Table3DView.ObjectiveDraw(obj.Position, (obj.HordeNumber ?? i + 1).ToString(), c,
+                obj.IsHordePriority));
+        }
+        foreach (QuestMarkerDraw m in QuestMarkerDraws())
+            objectives.Add(new Table3DView.ObjectiveDraw(m.Position, m.Label, m.Color, false, IsToken: true));
+        foreach (FDG.QuestToken token in QuestTokens())
+            objectives.Add(new Table3DView.ObjectiveDraw(new Position(token.X, token.Z), token.IsTreasure ? "$" : "?",
+                token.IsTreasure ? QuestTreasureColor : QuestSearchColor, false, IsToken: true));
+
+        var attacks = new List<Table3DView.AttackDraw>();
+        if (_presentationPlayer != null)
+            foreach ((AttackBeat beat, float progress) in _presentationPlayer.GetActiveAttacks())
+                attacks.Add(new Table3DView.AttackDraw(beat.From, beat.To, beat.IsMelee,
+                    progress * Math.Max(1, beat.VolleyCount)));
+
+        _view3D.Draw(boardRect, _backgroundStyle.Surface, _backgroundStyle.Border, Background,
+            terrain, objectives, models, attacks);
     }
 
     private void SubscribeToModel(IModel model)
@@ -461,6 +865,11 @@ public class RaylibRenderer
         float uiScale = ComputeUiScale(monitorH);
 
         rlImGui.Setup(true);
+        // Let one draw list hold more than 65,536 points. Without this, a busy table layer (big weapon-range
+        // circles on long-ranged units) overflowed ImGui's 16-bit point numbers, and the 3D table showed
+        // shapes built from the wrong points: the moving unit's ghost jumped away from the mouse and
+        // flickered. Our 3D capture (DrawImGuiTriangles) honours each command's VtxOffset.
+        ImGui.GetIO().BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
         // Apply the app-wide "Dark Grimness" theme BEFORE scaling, so its rounding/border sizes scale
         // with the display too (colors are unaffected by ScaleAllSizes).
         ImGuiTheme.Apply();
@@ -507,6 +916,24 @@ public class RaylibRenderer
                 UserConfig.Save();
             }
 
+            if (_pendingTakeBack is bool redoRequested)
+            {
+                _pendingTakeBack = null;
+                if (_inGame && !_takeBackInProgress) OnTakeBackRequested?.Invoke(redoRequested);
+            }
+
+            // Take Back: pick up the relaunched game as soon as its lobby hands it over (that lobby is
+            // never drawn). A relaunch that never arrives gives up rather than freezing on the curtain.
+            if (_takeBackInProgress)
+            {
+                LobbyScreen.ConsumePendingLaunch();
+                if (_takeBackInProgress && Raylib.GetTime() - _takeBackStartedAt > TakeBackTimeoutSeconds)
+                {
+                    Console.WriteLine("Take Back: the relaunched game did not start in time.");
+                    AbortTakeBack();
+                }
+            }
+
             int screenW = Raylib.GetScreenWidth();
             int screenH = Raylib.GetScreenHeight();
 
@@ -515,10 +942,42 @@ public class RaylibRenderer
 
             if (_inGame)
             {
-                _presentationPlayer?.Update(Raylib.GetFrameTime());
+                // Options > Game speed: the engine waits longer/shorter per beat, the animations play to match.
+                FDG.Presentation.RealtimePresentationClock.PaceScale = 1f / Math.Clamp(ViewSettings.GameSpeed, 0.25f, 4f);
+                _presentationPlayer?.Update(Raylib.GetFrameTime() * Math.Clamp(ViewSettings.GameSpeed, 0.25f, 4f));
 
-                HandleTableViewInput(screenW, screenH);
+                bool show3D = Showing3D;
+                if (!show3D) HandleTableViewInput(screenW, screenH);
                 var layout = ComputeLayout(screenW, screenH);
+                var boardRect = new Rectangle(0, 0, layout.AreaW, screenH);
+                // Where the table tools draw and measure: the screen in 2D, the virtual board in 3D.
+                var tl = show3D ? VirtualBoardLayout : layout;
+                TableInput.Override = null;
+                TableInput.CardHit = null;
+                if (show3D)
+                {
+                    _view3D ??= new Table3DView(TableWIn, TableHIn);
+                    var io3 = ImGui.GetIO();
+                    bool toolActive = (_resolverOverlay?.ActiveToolNeedsTable ?? false) || _gameMasterPanel.UsesTable;
+                    _view3D.HandleInput(boardRect, mouseFree: !io3.WantCaptureMouse,
+                        keysFree: !io3.WantCaptureKeyboard && !_escapeMenu.IsOpen && !_armyListOverlay.IsOpen,
+                        rightDragOrbits: !(_resolverOverlay?.ActiveToolUsesRightClick ?? false) && !_gameMasterPanel.UsesTable,
+                        plainWheelZooms: !toolActive,
+                        letterKeysMove: true);   // letters always drive the camera (panel letter shortcuts are off)
+                    var (tablePoint, card) = _view3D.Pick(boardRect, Raylib.GetMousePosition());
+                    // A pointer that leaves the 3D view (over the side panel, say, to press Done) keeps its
+                    // last table point. Sending it far off the board instead made the move ghosts and sight
+                    // lines swing away toward that faraway point the moment the mouse left the table.
+                    if (tablePoint is Float2 tp)
+                        _last3DBoardPoint = new Vector2(tp.X * Board3DScale, (TableHIn - tp.Y) * Board3DScale);
+                    TableInput.Override = _last3DBoardPoint ?? TableInput.OffTable;
+                    _view3D.Cursor = tablePoint;
+                    TableInput.CardHit = card;
+                    _tacticalOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
+                    Draw3DBoard(boardRect);
+                }
+                else
+                {
                 // Push the layout to the tactical overlay once per frame so both its canvas-pass draws
                 // (below) and its ImGui-pass instruments read the same world<->screen mapping.
                 _tacticalOverlay.UpdateLayout(layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
@@ -529,9 +988,11 @@ public class RaylibRenderer
                 DrawTerrain(layout);
                 _tacticalOverlay.DrawContours(); // threat + secondary contours: above terrain, under objectives
                 DrawObjectives(layout);
+                DrawQuestTokens(layout);
                 DrawAmbushExclusion(layout, screenW, screenH);
                 DrawActiveUnitSpotlight(layout);
                 DrawModels(layout);
+                DrawUnitQuestMarkers(layout);   // poison / silence chips ride on top of their token
                 DrawDeathBursts(layout);
 
                 // #327: usually one attack, occasionally two overlapping (the next weapon fires before
@@ -566,6 +1027,7 @@ public class RaylibRenderer
                     DustOverlay.Draw(arrivalBeat, arrivalProgress, layout.Scale, layout.OriginX,
                         layout.OriginY, TableHIn);
                 }
+                } // end 2D board
 
                 // #327: handed to the tooltip overlay below. Its unit labels are ImGui draw-list text and
                 // therefore land ON TOP of these Raylib-drawn panels, so they have to know where the stack
@@ -587,8 +1049,11 @@ public class RaylibRenderer
                     // Hovering it freezes every panel's timer; the bounds it reports are what the pointer
                     // is tested against next frame (a frame of lag is invisible and avoids measuring the
                     // stack twice).
-                    rollStackBounds = DiceOverlay.DrawStack(_presentationPlayer.GetRollStack(),
-                        layout.AreaW, screenH, diceAvoid, _presentationPlayer.IsRollStackHovered);
+                    // The dice now live in the dice tray (top of the right column, drawn in the ImGui pass);
+                    // nothing is drawn over the board any more. Hovering the tray freezes the rolls.
+                    _ = diceAvoid;
+                    int trayW = RightColumnWidth(screenW);
+                    rollStackBounds = new Rectangle(screenW - trayW, 0, trayW, (int)(screenH * DecisionPanelHeightFraction));
                     // #386: GetMousePosition only updates from in-window motion, so once the pointer
                     // leaves the window (second monitor, OBS) it reports the last in-window position
                     // forever — a stale point the growing stack can reach and "hover" with nobody there.
@@ -616,10 +1081,37 @@ public class RaylibRenderer
                 // Right-column regions: resolver panel (top half) + log/chat console (bottom half).
                 int rightW    = RightColumnWidth(screenW);
                 int rightX    = screenW - rightW;
-                int panelH    = (int)(screenH * ResolverPanelLayout.ScreenHeightFraction);
+                // Right column, top to bottom: decision panel, the unit info window, Chat / Log.
+                // The info window shows the unit taking its turn, otherwise the last unit clicked on the table.
+                if (_selectedInfoUnit != null && _selectedInfoUnit is not UnitData { IsQuestHero: true } && !_selectedInfoUnit.Models.Any(m => m.GetIsAlive())) _selectedInfoUnit = null;
+                // A unit a tool is working on (the one being deployed) shows here too.
+                IUnit? focusUnit = PopupAnchor.FocusUnit;
+                PopupAnchor.FocusUnit = null;
+                // Whoever starts activating takes the card; from then on, clicking a unit swaps to it.
+                // (It used to be the other way round - the activating unit always won, so clicking another
+                // unit mid-activation left the card showing someone else.)
+                IUnit? activating = _tableState?.Progress.ActivatingUnit;
+                if (!Equals(activating?.ID, _lastActingUnit))
+                {
+                    _lastActingUnit = activating?.ID;
+                    _selectedInfoUnit = null;
+                }
+                IUnit? infoUnit = _gameOverResult == null
+                    ? (focusUnit ?? _selectedInfoUnit ?? activating)
+                    : null;
+                // The card keeps its place in the right column even with nothing selected: a panel that
+                // appears and disappears shunts the battle report up and down the screen as you play.
+                int infoH = _gameOverResult != null ? 0
+                    : _unitInfoCollapsed ? (int)(ImGui.GetFrameHeight() + ImGui.GetStyle().WindowPadding.Y * 2f + 4f)
+                    : (int)(screenH * UnitInfoHeightFraction);
+                int panelH    = (int)(screenH * DecisionPanelHeightFraction);
                 ResolverPanelLayout.Set(rightX, 0, rightW, panelH);
 
                 rlImGui.Begin();
+                // 3D: the tools draw on the virtual board, which reaches well past the screen - widen the
+                // table layer's clip so nothing they draw is trimmed away before it is captured.
+                if (show3D)
+                    ImGui.GetBackgroundDrawList().PushClipRect(new Vector2(-1e5f, -1e5f), new Vector2(1e5f, 1e5f), false);
                 // Reset the Escape arbiter before any consumer runs this frame. Passing the menu's open
                 // state mutes every other Escape consumer while the menu owns the key. The army list
                 // modal (#329) counts as "menu open" for the same reason: while it covers the board,
@@ -628,27 +1120,87 @@ public class RaylibRenderer
                 EscapeRouter.BeginFrame(_escapeMenu.IsOpen || _armyListOverlay.IsOpen);
                 // Runs before the hit tester / resolvers so its Alt-measure WantCaptureMouse override
                 // lands before they read that flag (see MeasurementOverlay).
-                _measurementOverlay.UpdateLayout(layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
+                // F3 toggles the 3D view (when no text box has the keyboard).
+                {
+                    var kio = ImGui.GetIO();
+                    bool keysOk = !kio.WantCaptureKeyboard && !_escapeMenu.IsOpen;
+                    // F3 or V: switch 2D / 3D.
+                    if (keysOk && !kio.KeyCtrl && (ImGui.IsKeyPressed(ImGuiKey.F3, false) || ImGui.IsKeyPressed(ImGuiKey.V, false)))
+                        _want3D = !_want3D;
+                    // Ctrl+S: quick save into Saved Games (host only - a client has nothing to save).
+                    if (keysOk && kio.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.S, false))
+                    {
+                        string? saved = _escapeMenu.QuickSave();
+                        // One reason, said the same way in the log and in the battle report. Before the
+                        // first round the engine has nothing to resume from, which is the usual case and
+                        // deserves the explanation rather than a bare "can't save right now".
+                        bool beforeRound1 = (_tableState?.Progress.RoundCount ?? 0) < 1;
+                        string why = saved != null ? $"Game saved: {Path.GetFileNameWithoutExtension(saved)}"
+                            : beforeRound1 ? "You can save once round 1 has started."
+                            : "Quick save isn't available here.";
+                        _log?.Add(why, saved != null ? new TextColor(120, 220, 120, 255) : new TextColor(255, 160, 120, 255));
+                        DiceTray.AddNote(why,
+                            saved != null ? new Vector4(0.47f, 0.86f, 0.47f, 1f) : new Vector4(1f, 0.63f, 0.47f, 1f));
+                    }
+                    // O: show or hide the Star Quest mission window. (M is the measuring tool.)
+                    if (keysOk && !kio.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.O, false))
+                        QuestMissionPanel.Open = !QuestMissionPanel.Open;
+                    // F1: the controls list.
+                    if (!kio.WantCaptureKeyboard && ImGui.IsKeyPressed(ImGuiKey.F1, false))
+                        _showControlsHelp = !_showControlsHelp;
+                }
+                _measurementOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _measurementOverlay.Draw(screenW, screenH);
-                _hitTester.Update(_tableState!, layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
+                // The measuring tool's toggle button, beside the round / score strip. Hidden while a
+                // full-screen overlay (menu, army list, game-over card) is up.
+                if (!_escapeMenu.IsOpen && !_armyListOverlay.IsOpen && _gameOverResult == null)
+                {
+                    float? measureLeft = _measurementOverlay.DrawToggleButton(_statusStripLeft, layout.AreaW);
+                    float? takeBackLeft = DrawTakeBackButtons(measureLeft);
+                    Draw3DToggle(takeBackLeft ?? measureLeft, show3D);
+                    if (show3D) _view3D?.DrawControls(boardRect);
+                }
+                // Game Master tools: also claim their table clicks before the hit tester reads them.
+                _gameMasterPanel.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
+                _gameMasterPanel.Draw(hidden: _escapeMenu.IsOpen || _armyListOverlay.IsOpen || _gameOverResult != null,
+                    tableTools: true);
+                _hitTester.Update(_tableState!, tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 // Overlay input (F toggle, hover timing, pins) runs after the hit tester so hover state
                 // is fresh; heavy rebuilds happen in the next frame's DrawField.
                 _tacticalOverlay.UpdateInput(Raylib.GetFrameTime(), _hitTester);
-                DrawConsole(rightX, panelH, rightW, screenH - panelH);
-                _tooltipOverlay.UpdateLayout(layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
+                // Clicking a unit selects it; clicking bare table lets it go again. The hit tester reports
+                // no click at all while ImGui owns the mouse, so pressing a button in the activation
+                // pop-up is not a click on the table and never drops the selection.
+                if (_hitTester.Clicked)
+                    _selectedInfoUnit = _hitTester.HoveredUnit;
+                // Right column, top to bottom: battle report (fills), wound window (only while wounds are
+                // waiting), unit info (pinned to the bottom). The chat/log console is gone.
+                int woundH = GuiAssignWoundsResolver.AnyPending ? (int)(screenH * 0.40f) : 0;
+                int reportH = Math.Max(80, screenH - infoH - woundH);
+                GuiAssignWoundsResolver.Dock = new Vector4(rightX, reportH, rightW, woundH > 0 ? woundH : (int)(screenH * 0.40f));
+                if (infoH > 0) DrawUnitInfoPanel(infoUnit, rightX, reportH + woundH, rightW, infoH);
+                if (woundH > 0) DrawWoundWaitPanel(rightX, reportH, rightW, woundH);
+                _tooltipOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _tooltipOverlay.Draw(screenW, screenH, _hitTester, _resolverOverlay?.ActiveInteractionHandler,
-                    rollStackBounds);
-                _resolverOverlay?.UpdateLayout(layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
+                    rollStackBounds, rightClickReserved: _resolverOverlay?.ActiveToolUsesRightClick ?? false);
+                _resolverOverlay?.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 // #280: other players' live previews (ghosts / planned paths) - same background
                 // draw list layer as the local resolver's own ghosts, drawn regardless of what the
                 // local player is doing (they're someone else's state).
-                _remotePreviews?.UpdateLayout(layout.Scale, layout.OriginX, layout.OriginY, TableHIn);
+                _remotePreviews?.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _remotePreviews?.Draw();
                 // Hold interactive prompts until the animation queue drains, so the player always
                 // sees movement / shots land before being asked to react.
                 bool animating = _presentationPlayer?.IsAnimating ?? false;
                 bool resolverShown = false;
-                if (!_resolverOverlayFaulted && !animating)
+                UpdatePopupAnchor(layout, show3D, boardRect, screenH);
+                // The dice tray: top of the right column, every roll of the game, newest first.
+                DiceTray.Draw(rightX, 0, rightW, Math.Max(80, screenH - infoH - (GuiAssignWoundsResolver.AnyPending ? (int)(screenH * 0.40f) : 0)));
+                // Star Quest: objectives, weather, the live event and the marker key, on screen for the
+                // whole mission instead of in a banner that flashed once in round one.
+                if (!_escapeMenu.IsOpen && !_armyListOverlay.IsOpen && _gameOverResult == null)
+                    QuestMissionPanel.Draw(_tableState, screenW, screenH);
+                if (!_resolverOverlayFaulted && !animating && !_takeBackInProgress)
                 {
                     try
                     {
@@ -660,6 +1212,7 @@ public class RaylibRenderer
                         _resolverOverlayFaulted = true;
                         var errColor = new TextColor(255, 120, 120, 255);
                         _log?.Add($"[RESOLVER ERROR] {ex.GetType().Name}: {ex.Message}", errColor);
+                        DiceTray.AddNote($"Error: {ex.GetType().Name}: {ex.Message}", new Vector4(1f, 0.47f, 0.47f, 1f));
                         _log?.Add(ex.StackTrace ?? "(no stack trace)", errColor);
                     }
                 }
@@ -672,7 +1225,7 @@ public class RaylibRenderer
                 _previewPublisher?.Tick(Raylib.GetTime());
                 // Fill the resolver panel with an idle placeholder whenever nothing is prompting, so the
                 // top-right region always reads as an intentional panel rather than empty space.
-                if (!resolverShown) DrawIdleResolverPanel();
+                // (The top of the right column is the dice tray now - drawn before the resolvers above.)
                 DrawGameOverOverlay(screenW, screenH);
 
                 // Standalone "Menu" button in the bottom-left corner (where the retired toolbar sat),
@@ -695,6 +1248,13 @@ public class RaylibRenderer
                     justOpenedMenu = true;
                 }
                 _escapeMenu.Draw(screenW, screenH, justOpenedMenu);
+                if (_showControlsHelp) DrawControlsHelp(screenW, screenH);
+
+                if (_takeBackInProgress) DrawTakeBackCurtain(screenW, screenH);
+
+                // 3D: lift everything the tools drew this frame off the screen and onto the 3D table.
+                if (show3D) CaptureBoardOverlay();
+                else _view3D?.SetOverlay(null);
 
                 rlImGui.End();
             }
@@ -713,6 +1273,7 @@ public class RaylibRenderer
         }
 
         rlImGui.Shutdown();
+        if (_boardOverlayReady) { Raylib.UnloadRenderTexture(_boardOverlayRT); _boardOverlayReady = false; }
         if (_exclusionRTReady) Raylib.UnloadRenderTexture(_exclusionRT);
         if (_mottleReady) Raylib.UnloadTexture(_mottleTex);
         _audio?.Dispose();
@@ -781,6 +1342,44 @@ public class RaylibRenderer
             _pan.Y += d.Y;
         }
 
+        // Keyboard (2D): WASD pans, Shift+W / S zooms around the middle of the view. Skipped while typing,
+        // in a menu, or with Ctrl held (Ctrl+S and friends).
+        var kio2 = ImGui.GetIO();
+        bool ctrlDown = Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl);
+        if (!kio2.WantCaptureKeyboard && !_escapeMenu.IsOpen && !_armyListOverlay.IsOpen && !ctrlDown)
+        {
+            float dt = MathF.Min(Raylib.GetFrameTime(), 0.05f);
+            bool shiftDown = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+            float panPx = 700f * dt * ViewSettings.CameraSpeed;
+            if (!shiftDown)
+            {
+                if (Raylib.IsKeyDown(KeyboardKey.W)) _pan.Y += panPx;
+                if (Raylib.IsKeyDown(KeyboardKey.S)) _pan.Y -= panPx;
+                if (Raylib.IsKeyDown(KeyboardKey.A)) _pan.X += panPx;
+                if (Raylib.IsKeyDown(KeyboardKey.D)) _pan.X -= panPx;
+            }
+            else
+            {
+                float zoomStep = 0f;
+                if (Raylib.IsKeyDown(KeyboardKey.W)) zoomStep += 1f;
+                if (Raylib.IsKeyDown(KeyboardKey.S)) zoomStep -= 1f;
+                if (zoomStep != 0f)
+                {
+                    float cx = viewportW / 2f, cy = screenH / 2f;
+                    float scaleOld   = fit * _zoom;
+                    float originXOld = (viewportW - TableWIn * scaleOld) / 2f + _pan.X;
+                    float originYOld = (screenH   - TableHIn * scaleOld) / 2f + _pan.Y;
+                    float worldXin   = (cx - originXOld) / scaleOld;
+                    float worldYin   = (cy - originYOld) / scaleOld;
+                    float newZoom  = Math.Clamp(_zoom * MathF.Pow(2.2f, zoomStep * dt * ViewSettings.CameraSpeed), MinZoom, MaxZoom);
+                    float scaleNew = fit * newZoom;
+                    _pan.X = cx - (viewportW - TableWIn * scaleNew) / 2f - worldXin * scaleNew;
+                    _pan.Y = cy - (screenH   - TableHIn * scaleNew) / 2f - worldYin * scaleNew;
+                    _zoom  = newZoom;
+                }
+            }
+        }
+
         // Bound the pan by the overflow of the scaled table past the viewport, plus (when zoomed in) a 5%
         // margin so a strip of background shows past the edge and it reads as the edge. At min zoom there's
         // no overflow and no margin, so the table stays locked centered.
@@ -793,11 +1392,124 @@ public class RaylibRenderer
         _pan.Y = Math.Clamp(_pan.Y, -(overflowY + marginY), overflowY + marginY);
     }
 
+    // ── Decision pop-ups: where the acting unit is on screen ──────────────────────────────
+    private void UpdatePopupAnchor(Layout layout, bool show3D, Rectangle boardRect, int screenH)
+    {
+        PopupAnchor.AreaW = layout.AreaW;
+        PopupAnchor.ScreenH = screenH;
+        PopupAnchor.Progress = _tableState?.Progress;
+        PopupAnchor.HoveredUnit = _hitTester.HoveredUnit;
+        PopupAnchor.TableState = _tableState;
+        PopupAnchor.CardImageFor ??= CardImage;
+        IUnit? unit = _tableState?.Progress.ActivatingUnit;
+        PopupAnchor.Unit = unit;
+        PopupAnchor.UnitScreenRect = null;
+        if (unit == null) return;
+
+        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+        foreach (IModel m in unit.Models)
+        {
+            if (!m.GetIsAlive()) continue;
+            Position p = m.Position;
+            if (p.x == 0f && p.z == 0f) continue;
+            Vector2? s;
+            float r;
+            if (show3D)
+            {
+                s = _view3D?.WorldToScreen(boardRect, p.x, p.z);
+                r = 18f;
+            }
+            else
+            {
+                s = new Vector2(layout.OriginX + p.x * layout.Scale, layout.OriginY + (TableHIn - p.z) * layout.Scale);
+                r = m.BaseRadiusInches * layout.Scale;
+            }
+            if (s is not Vector2 sp) continue;
+            minX = MathF.Min(minX, sp.X - r); maxX = MathF.Max(maxX, sp.X + r);
+            minY = MathF.Min(minY, sp.Y - r); maxY = MathF.Max(maxY, sp.Y + r);
+        }
+        if (minX <= maxX)
+            PopupAnchor.UnitScreenRect = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    // ── F1: controls list ──────────────────────────────────────────────────────────────
+    private bool _showControlsHelp;
+
+    private static readonly (string Keys, string What)[] ControlsHelp =
+    {
+        ("WASD / arrows", "Move the camera"),
+        ("Q / E", "Turn the camera (3D)"),
+        ("Shift + W / S", "Zoom in / out"),
+        ("Shift + Q / E", "Tilt up / down (3D)"),
+        ("Mouse wheel, Alt + wheel", "Zoom"),
+        ("Middle-drag / right-drag", "Pan (2D) / orbit (3D)"),
+        ("V or F3", "Switch 2D / 3D"),
+        ("Ctrl + S", "Quick save into Saved Games"),
+        ("Ctrl + Z / Ctrl + X", "Undo / redo while placing or moving"),
+        ("Z / X", "Take Back / Redo an activation"),
+        ("Enter / Space", "Done / confirm"),
+        ("Backspace", "Back / undo a step"),
+        ("Wheel, R / Shift+R", "Rotate while moving or placing"),
+        ("Ctrl + wheel", "Cycle formation (group moves)"),
+        ("G", "Group / single model moves"),
+        ("Alt + drag, M", "Measure"),
+        ("N", "Unit labels"),
+        ("O", "Mission window (objectives, weather, marker key)"),
+        ("T", "Show all tokens"),
+        ("B", "Weapon reach overlay"),
+        ("L", "Army lists"),
+        ("Right-click a unit", "Unit card"),
+        ("Esc", "Menu"),
+        ("F1", "This list"),
+    };
+
+    private void DrawControlsHelp(int screenW, int screenH)
+    {
+        ImGui.SetNextWindowPos(new Vector2(screenW * 0.5f, screenH * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        bool open = true;
+        if (ImGui.Begin("Controls (F1)", ref open, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse |
+                                                   ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove))
+        {
+            if (ImGui.BeginTable("##controls", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+            {
+                foreach (var (keys, what) in ControlsHelp)
+                {
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.TextUnformatted(keys);
+                    ImGui.TableNextColumn();
+                    ImGui.TextDisabled(what);
+                }
+                ImGui.EndTable();
+            }
+        }
+        ImGui.End();
+        if (!open) _showControlsHelp = false;
+    }
+
     // Border thickness (px) framing the table rect.
     private const float TableBorderThickness = 3f;
 
+    /// <summary>
+    /// Each player's faction (the army's list name when the file has no faction), for the per-faction
+    /// picture folders - and makes UnitImages/&lt;faction&gt; for each one, in either view.
+    /// </summary>
+    private Dictionary<PlayerID, string> FactionByPlayer()
+    {
+        var factions = new Dictionary<PlayerID, string>();
+        if (_tableState == null) return factions;
+        foreach (ArmyData army in _tableState.Armies.Objects.OfType<ArmyData>())
+        {
+            string name = !string.IsNullOrWhiteSpace(army.Faction) ? army.Faction : army.ArmyName ?? "";
+            if (factions.TryAdd(army.PlayerID, name)) UnitImageLibrary.EnsureFactionFolder(name);
+        }
+        return factions;
+    }
+
     private void DrawTable(Layout l)
     {
+        FactionByPlayer();
         int tw = (int)(TableWIn * l.Scale);
         int th = (int)(TableHIn * l.Scale);
         Raylib.DrawRectangle(l.OriginX, l.OriginY, tw, th, _backgroundStyle.Surface);
@@ -884,6 +1596,114 @@ public class RaylibRenderer
     private const float ObjectiveMarkerRadiusInches = 0.5f;
     private const float ObjectiveSeizureRadiusInches = 3f;
 
+    private static readonly Color QuestSearchColor = new(150, 90, 220, 255);
+    private static readonly Color QuestTreasureColor = new(225, 175, 40, 255);
+
+    /// <summary>Star Quest: the search tokens and treasure markers on the table (none in other games).</summary>
+    private IReadOnlyList<FDG.QuestToken> QuestTokens() =>
+        (IReadOnlyList<FDG.QuestToken>?)_tableState?.Progress.Quest?.Tokens ?? Array.Empty<FDG.QuestToken>();
+
+    private static readonly Color QuestObjectiveColor = new(60, 200, 210, 255);
+    private static readonly Color QuestDeliveryColor = new(230, 110, 60, 255);
+
+    /// <summary>Star Quest mission markers: objectives ("!", or "!2/6" while held), delivery ("D") and
+    /// extraction ("X") markers. A carried objective is drawn on its carrier.</summary>
+    /// <summary>The marker kinds that really cover an area, and so earn the faint 3" ring.</summary>
+    private static readonly HashSet<string> AreaMarkerKinds =
+        new() { "grease", "smoke", "fire", "spikes", "spores", "biotrap", "noise", "phantasm" };
+
+    /// <summary>
+    /// A marker to draw. <paramref name="OnUnit"/> markers (poison, silence) ride a model rather than
+    /// sitting on the table, so they are drawn after the models instead of underneath them, and they get
+    /// no area ring - a 3" circle around a poisoned unit says "this area is poisoned", which it is not.
+    /// </summary>
+    private readonly record struct QuestMarkerDraw(Position Position, string Label, Color Color, bool Area, bool OnUnit);
+
+    private List<QuestMarkerDraw> QuestMarkerDraws()
+    {
+        var list = new List<QuestMarkerDraw>();
+        if (_tableState?.Progress.Quest is not { } quest) return list;
+        foreach (FDG.QuestMarker m in quest.Markers)
+        {
+            Position p = FDG.Stages.QuestMission.Where(_tableState, m);
+            string label = m.Kind switch
+            {
+                "delivery" => "D",
+                "extraction" => "X",
+                "noise" => "N", "grease" => "G", "smoke" => "S", "fire" => "F", "phantasm" => "P",
+                "silence" => "Si", "poison" => "Po",
+                _ => m.Action == "seize" && m.Activated ? $"{m.Tokens}/{m.TokensNeeded}" : "!",
+            };
+            bool onUnit = false;
+            if (m.Kind is "silence" or "poison" && _tableState.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == m.OnUnit) is { } on
+                && on.Models.FirstOrDefault(x => x.GetIsAlive()) is { } carrier)
+            {
+                // On the token's upper-right shoulder, just clear of its base, whatever size that base is.
+                float off = carrier.BaseRadiusInches + 0.5f;
+                p = new Position(carrier.Position.x + off * 0.7f, carrier.Position.z + off * 0.7f);
+                onUnit = true;
+            }
+            Color color = m.Kind switch
+            {
+                "objective" => QuestObjectiveColor,
+                "delivery" or "extraction" => QuestDeliveryColor,
+                "fire" => new Color(240, 90, 40, 255),
+                "smoke" => new Color(170, 170, 170, 255),
+                "grease" => new Color(120, 100, 60, 255),
+                "poison" => new Color(110, 200, 70, 255),
+                _ => new Color(200, 120, 230, 255),
+            };
+            list.Add(new QuestMarkerDraw(p, label, color, AreaMarkerKinds.Contains(m.Kind), onUnit));
+        }
+        return list;
+    }
+
+    /// <summary>Star Quest search tokens ("?") and treasure markers ("$", with what they hold).</summary>
+    private void DrawQuestTokens(Layout l)
+    {
+        foreach (QuestMarkerDraw m in QuestMarkerDraws())
+            if (!m.OnUnit) DrawQuestMarker(l, m);
+        foreach (FDG.QuestToken token in QuestTokens())
+        {
+            int cx = l.OriginX + (int)(token.X * l.Scale);
+            int cy = l.OriginY + (int)((TableHIn - token.Z) * l.Scale);
+            float r = 0.45f * l.Scale;
+            Color fill = token.IsTreasure ? QuestTreasureColor : QuestSearchColor;
+            Raylib.DrawCircle(cx, cy, r, fill);
+            Raylib.DrawCircleLines(cx, cy, r, Color.Black);
+            string mark = token.IsTreasure ? "$" : "?";
+            int fs = Math.Max(8, (int)(r * 1.5f));
+            Raylib.DrawText(mark, cx - Raylib.MeasureText(mark, fs) / 2, cy - fs / 2, fs, Color.White);
+            if (token.IsTreasure && token.Contents.Count > 0)
+            {
+                string what = string.Join(" + ", token.Contents);
+                int small = Math.Max(9, (int)(r * 0.9f));
+                int tw = Raylib.MeasureText(what, small);
+                Raylib.DrawRectangle(cx - tw / 2 - 3, (int)(cy + r + 2), tw + 6, small + 4, new Color(0, 0, 0, 170));
+                Raylib.DrawText(what, cx - tw / 2, (int)(cy + r + 4), small, QuestTreasureColor);
+            }
+        }
+    }
+
+    /// <summary>Markers that ride a model (poison, silence). Drawn after the models, so they sit on top.</summary>
+    private void DrawUnitQuestMarkers(Layout l)
+    {
+        foreach (QuestMarkerDraw m in QuestMarkerDraws())
+            if (m.OnUnit) DrawQuestMarker(l, m);
+    }
+
+    private static void DrawQuestMarker(Layout l, QuestMarkerDraw m)
+    {
+        int mx = l.OriginX + (int)(m.Position.x * l.Scale);
+        int my = l.OriginY + (int)((TableHIn - m.Position.z) * l.Scale);
+        float mr = (m.OnUnit ? 0.45f : 0.6f) * l.Scale;
+        if (m.Area) Raylib.DrawCircleLines(mx, my, 3f * l.Scale, new Color(m.Color.R, m.Color.G, m.Color.B, (byte)120));
+        Raylib.DrawCircle(mx, my, mr, m.Color);
+        Raylib.DrawCircleLines(mx, my, mr, Color.Black);
+        int mfs = Math.Max(8, (int)(mr * (m.Label.Length > 1 ? 0.9f : 1.4f)));
+        Raylib.DrawText(m.Label, mx - Raylib.MeasureText(m.Label, mfs) / 2, my - mfs / 2, mfs, Color.White);
+    }
+
     private void DrawObjectives(Layout l)
     {
         IObjective[] snapshot;
@@ -912,8 +1732,9 @@ public class RaylibRenderer
             Raylib.DrawCircle(cx, cy, markerPx, baseColor);
             Raylib.DrawCircleLines(cx, cy, markerPx, Color.Black);
 
-            // Index number centered inside the marker.
-            string label = (i + 1).ToString();
+            // Number centered inside the marker. Horde Mode markers keep their fixed 1-5 number, so the
+            // label still matches the banners after another objective is destroyed.
+            string label = (obj.HordeNumber ?? i + 1).ToString();
             int fontSize = Math.Max(8, (int)(markerPx * 1.5f));
             int textW    = Raylib.MeasureText(label, fontSize);
             Raylib.DrawText(label, cx - textW / 2, cy - fontSize / 2, fontSize, Color.White);
@@ -929,16 +1750,28 @@ public class RaylibRenderer
     // why the hole exists.
     private void DrawAmbushExclusion(Layout l, int screenW, int screenH)
     {
+        if (RenderAmbushExclusion(l, screenW, screenH, out var waivers))
+            CompositeAmbushExclusion(l, waivers);
+    }
+
+    /// <summary>
+    /// Ambush (and other "over X\" from enemies") placement: paints the no-go area - the union of every
+    /// enemy model's keep-out disc - into its own texture, with a solid red rim along the outside edge so the
+    /// border reads clearly, and Ambush Beacon bubbles cut back out. False when no such placement is up.
+    /// Must run outside any other texture mode (it uses its own).
+    /// </summary>
+    private bool RenderAmbushExclusion(Layout l, int w, int h, out IReadOnlyList<PlacementDisc> waivers)
+    {
+        waivers = Array.Empty<PlacementDisc>();
         IEnemyExclusionProvider? provider = _resolverOverlay?.ActiveEnemyExclusion;
-        if (provider == null) return;
-        if (!provider.TryGetEnemyExclusion(out IReadOnlyList<PlacementDisc> keepOut,
-                out IReadOnlyList<PlacementDisc> waivers)
+        if (provider == null) return false;
+        if (!provider.TryGetEnemyExclusion(out IReadOnlyList<PlacementDisc> keepOut, out waivers)
             || keepOut.Count == 0)
         {
-            return;
+            return false;
         }
 
-        EnsureExclusionTexture(screenW, screenH);
+        EnsureExclusionTexture(w, h);
 
         Vector2 ToPx(Position c) => new(
             l.OriginX + c.x * l.Scale,
@@ -946,10 +1779,13 @@ public class RaylibRenderer
 
         Raylib.BeginTextureMode(_exclusionRT);
         Raylib.ClearBackground(new Color(0, 0, 0, 0));
+        // Rim first (the full discs in the rim colour), then the fill over them a few pixels smaller: where
+        // discs overlap the fill covers the inner rims, so only the outside edge of the whole area keeps one.
+        float rim = MathF.Max(2f, 0.12f * l.Scale);
         foreach (PlacementDisc disc in keepOut)
-        {
-            Raylib.DrawCircleV(ToPx(disc.Center), disc.RadiusInches * l.Scale, ExclusionFill);
-        }
+            Raylib.DrawCircleV(ToPx(disc.Center), disc.RadiusInches * l.Scale, ExclusionRim);
+        foreach (PlacementDisc disc in keepOut)
+            Raylib.DrawCircleV(ToPx(disc.Center), MathF.Max(0f, disc.RadiusInches * l.Scale - rim), ExclusionFill);
 
         // Erase the waiver bubbles: custom blend (src x 0 + dst x (1 - srcAlpha)) turns an opaque draw
         // into a pure alpha-cut, so the beacon's bubble reads as legal ground, not a lighter wash.
@@ -961,6 +1797,16 @@ public class RaylibRenderer
         }
         Raylib.EndBlendMode();
         Raylib.EndTextureMode();
+        return true;
+    }
+
+    /// <summary>Lays the texture <see cref="RenderAmbushExclusion"/> painted onto the current target (the
+    /// screen in 2D, the 3D table's board picture in 3D), plus the beacons' green outlines.</summary>
+    private void CompositeAmbushExclusion(Layout l, IReadOnlyList<PlacementDisc> waivers)
+    {
+        Vector2 ToPx(Position c) => new(
+            l.OriginX + c.x * l.Scale,
+            l.OriginY + (TableHIn - c.z) * l.Scale);
 
         // Composite the opaque union once. Render-texture contents are y-flipped, hence the negative
         // source height. The tint must be WHITE (it multiplies the texture's colour, so a coloured tint
@@ -1032,8 +1878,54 @@ public class RaylibRenderer
         }
     }
 
+    // 2D token portraits: UnitImages/<faction>/Portraits/<unit>.png (or UnitImages/Portraits for every faction).
+    private readonly UnitImageLibrary _portraits = new(UnitImageLibrary.PortraitFolderName);
+    private readonly UnitImageLibrary _cardImages = new();
+    private readonly UnitImageLibrary _deployImages = new(UnitImageLibrary.DeploymentFolderName);
+
+    /// <summary>A unit's picture for the deploy cards: UnitImages/&lt;faction&gt;/Deployment, else its portrait,
+    /// else its full standee picture.</summary>
+    private Texture2D? CardImage(IUnit unit)
+    {
+        string faction = FactionByPlayer().TryGetValue(unit.PlayerID, out string? f) ? f : "";
+        return _deployImages.Get(unit.Name, faction) ?? _portraits.Get(unit.Name, faction) ?? _cardImages.Get(unit.Name, faction);
+    }
+
+    /// <summary>
+    /// A unit portrait inside a 2D token: cropped to a circle (centred side to side, from the top for tall
+    /// pictures, where the face usually is), leaving a ring of the owner's colour around it.
+    /// </summary>
+    private static void DrawPortraitDisc(Texture2D tex, int cx, int cy, float radius, byte alpha)
+    {
+        if (radius < 2f) return;
+        float w = tex.Width, h = tex.Height;
+        float side = MathF.Min(w, h);
+        float u0 = (w - side) / 2f / w, v0 = h > w ? 0f : (h - side) / 2f / h;
+        float du = side / w, dv = side / h;
+        int segments = Math.Clamp((int)(radius * 1.5f), 16, 64);
+
+        Rlgl.Begin(DrawMode.Triangles);
+        Rlgl.SetTexture(tex.Id);
+        Rlgl.Color4ub(255, 255, 255, alpha);
+        for (int i = 0; i < segments; i++)
+        {
+            float a0 = MathF.Tau * i / segments, a1 = MathF.Tau * (i + 1) / segments;
+            (float X, float Y) p0 = (MathF.Cos(a0), MathF.Sin(a0)), p1 = (MathF.Cos(a1), MathF.Sin(a1));
+            if (Rlgl.CheckRenderBatchLimit(3)) { Rlgl.Begin(DrawMode.Triangles); Rlgl.SetTexture(tex.Id); Rlgl.Color4ub(255, 255, 255, alpha); }
+            Rlgl.TexCoord2f(u0 + du * 0.5f, v0 + dv * 0.5f);
+            Rlgl.Vertex2f(cx, cy);
+            Rlgl.TexCoord2f(u0 + du * (0.5f + 0.5f * p1.X), v0 + dv * (0.5f + 0.5f * p1.Y));
+            Rlgl.Vertex2f(cx + radius * p1.X, cy + radius * p1.Y);
+            Rlgl.TexCoord2f(u0 + du * (0.5f + 0.5f * p0.X), v0 + dv * (0.5f + 0.5f * p0.Y));
+            Rlgl.Vertex2f(cx + radius * p0.X, cy + radius * p0.Y);
+        }
+        Rlgl.End();
+        Rlgl.SetTexture(0);
+    }
+
     private void DrawModels(Layout l)
     {
+        Dictionary<PlayerID, string> factionByPlayer = FactionByPlayer();
         // #309: resolve each model's owning unit from LIVE table state, not the instance captured at
         // registration. A networked client's store REPLACES UnitData instances on every replicated
         // update (token changes ride a whole-object rebroadcast), so a captured instance keeps stale
@@ -1055,14 +1947,11 @@ public class RaylibRenderer
 
             // Not in play: held in Ambush reserve, riding a transport, or an Aircraft that flew off the
             // edge. Its models are parked at the origin, which is the table's bottom-left corner.
-            if (!unit.GetIsOnBattlefield()) continue;
+            if (!unit.GetIsOnBattlefield() && !IsDownedHeroOnTable(unit)) continue;
 
             // The presentation player decides position/visibility/effects: gliding mid-move,
             // tinted while dying (red, fading) or hurt (orange), hidden once dead, else authoritative.
-            ModelDrawState draw = _presentationPlayer?.GetModelDrawState(model)
-                ?? (model.GetIsAlive()
-                    ? new ModelDrawState(true, model.Position, 1f, null)
-                    : ModelDrawState.Hidden);
+            ModelDrawState draw = _presentationPlayer?.GetModelDrawState(model) ?? RestingDrawState(unit, model);
 
             if (!draw.Visible) continue;
 
@@ -1079,6 +1968,17 @@ public class RaylibRenderer
             Color outline = new((byte)0, (byte)0, (byte)0, a);
 
             ModelBaseRenderer.DrawFilledRaylib(model.BaseShape, cx, cy, l.Scale, fill, outline, facing);
+
+            // The unit's portrait (UnitImages/<faction>/Portraits) inside the base, ringed by the owner's colour.
+            bool joinedHeroModel = HeroMarkerRenderer.IsHeroModel(unit, model);
+            string portraitName = joinedHeroModel ? ((unit as UnitData)?.HeroAttachment?.Name ?? unit.Name) : unit.Name;
+            if (_portraits.Get(portraitName, factionByPlayer.TryGetValue(unit.PlayerID, out string? fac) ? fac : "")
+                is Texture2D portrait)
+            {
+                float r = model.BaseRadiusInches * l.Scale;
+                DrawPortraitDisc(portrait, cx, cy, r - MathF.Max(2f, r * 0.16f), a);
+            }
+
             ModelBaseRenderer.DrawHeadingRaylib(model.BaseShape, cx, cy, l.Scale, facing,
                 new Color((byte)255, (byte)255, (byte)255, a));
 
@@ -1093,6 +1993,10 @@ public class RaylibRenderer
     // Top-center status strip: current round (from ITableState.Progress) + a live objective scoreboard
     // (one player-colored pip + controlled count per player). Both read as live state each frame -- the
     // round comes from the replicated GameProgressData, the counts from the objectives' owners.
+    // Where this frame's status strip starts (null when it shows no round or score), so the measuring
+    // tool's button can dock to its left. Written in the Raylib pass, read in the ImGui pass of the same frame.
+    private int? _statusStripLeft;
+
     private void DrawStatusHud(Layout l)
     {
         if (_tableState == null || _colorForPlayer == null) return;
@@ -1112,7 +2016,79 @@ public class RaylibRenderer
             foreach (var task in _taskDisplay.GetWaitingOnOthers())
                 waiting.Add((_colorForPlayer(task.PlayerInfo.PlayerID), task.PlayerInfo.Name, task.TaskName));
 
-        StatusHudOverlay.Draw(l.AreaW, progress.RoundCount, progress.TotalRounds, scores, waiting);
+        // Horde Mode: objective counts mean nothing there, so the strip shows the wave and the defenders'
+        // points instead of the per-player pips.
+        List<(string text, Color color)>? segments = null;
+        if (progress.GameMode == EGameMode.Horde && progress.RoundCount is int hordeRound)
+        {
+            int wave = FDG.StateMachine.HordeRules.WaveOfRound(hordeRound);
+            int waves = FDG.StateMachine.HordeRules.WaveOfRound(progress.TotalRounds);
+            segments = new List<(string text, Color color)>
+            {
+                ($"WAVE {wave} / {waves}", new Color(255, 140, 90, 255)),
+                ($"{progress.HordePointsAvailable ?? 0} PTS", new Color(255, 215, 0, 255)),
+            };
+        }
+        else if (progress.GameMode == EGameMode.StarQuestHorde && progress.Quest is { } quest)
+        {
+            segments = new List<(string text, Color color)>
+            {
+                ($"WAVE {quest.Wave} / {FDG.StateMachine.StarQuestHordeRules.FinalWave}", new Color(255, 140, 90, 255)),
+                ($"ALERTNESS {quest.Alertness} / {FDG.StateMachine.StarQuestHordeRules.AlertnessToEndWave}", new Color(255, 190, 90, 255)),
+                ($"{quest.PartyXp} XP", new Color(255, 215, 0, 255)),
+            };
+            AddQuestConditions(segments, quest);
+        }
+        else if (progress.GameMode == EGameMode.StarQuestMission && progress.Quest is { } mission && mission.Difficulty > 0)
+        {
+            string Objective(bool sec)
+            {
+                int n = sec ? mission.Secondary : mission.Primary;
+                string name = sec ? FDG.StateMachine.StarQuestMissionRules.SecondaryNames[n] : FDG.StateMachine.StarQuestMissionRules.PrimaryNames[n];
+                bool done = sec ? mission.SecondaryDone : mission.PrimaryDone;
+                var held = mission.Markers.FirstOrDefault(m => m.ForSecondary == sec && m.Action == "seize");
+                string extra = done ? " DONE" : held != null && held.Activated ? $" {held.Tokens}/{held.TokensNeeded}" : "";
+                return (sec ? "SECONDARY " : "PRIMARY ") + name.ToUpperInvariant() + extra;
+            }
+            segments = new List<(string text, Color color)>
+            {
+                (FDG.StateMachine.StarQuestMissionRules.DifficultyNames[mission.Difficulty].ToUpperInvariant(), new Color(200, 170, 255, 255)),
+                (Objective(false), mission.PrimaryDone ? new Color(120, 230, 140, 255) : new Color(255, 215, 0, 255)),
+            };
+            if (mission.Secondary > 0)
+                segments.Add((Objective(true), mission.SecondaryDone ? new Color(120, 230, 140, 255) : new Color(255, 215, 0, 255)));
+            segments.Add(($"ALERTNESS {mission.Alertness} / 6", new Color(255, 190, 90, 255)));
+            if (mission.PrimaryDone)
+                segments.Add(("EXIT: ALL HEROES TO ONE CORNER", new Color(130, 200, 255, 255)));
+            AddQuestConditions(segments, mission);
+        }
+
+        // Second line: units each player has left to activate this round, and whose unit is acting.
+        List<(string text, Color color)>? subline = null;
+        if (progress.RoundCount != null)
+        {
+            subline = new List<(string text, Color color)>();
+            var leftByPlayer = progress.UnactivatedUnits.GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
+            var dim = new Color(190, 196, 205, 235);
+            bool first = true;
+            foreach (IPlayerSlotInfo slot in _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID))
+            {
+                if (!first) subline.Add(("    ", dim));
+                first = false;
+                subline.Add((slot.Name, _colorForPlayer(slot.PlayerID)));
+                int left = leftByPlayer.TryGetValue(slot.PlayerID, out int n) ? n : 0;
+                subline.Add(($": {left} left", dim));
+            }
+            if (progress.ActivatingUnit is IUnit acting)
+            {
+                string owner = _tableState.Players.Objects.FirstOrDefault(p => p.PlayerID == acting.PlayerID)?.Name ?? "";
+                subline.Add(("    -    ", dim));
+                subline.Add(($"{owner}'s turn", _colorForPlayer(acting.PlayerID)));
+            }
+        }
+
+        _statusStripLeft = StatusHudOverlay.Draw(l.AreaW, progress.RoundCount, progress.TotalRounds, scores, waiting,
+            segments, subline);
     }
 
     // #331: start the fireworks the frame the game-over card first appears, then keep them running while
@@ -1259,6 +2235,121 @@ public class RaylibRenderer
     // shared LogEntry.Sequence). The engine GameLog is the Log source; the sender-coloured chat store is
     // the Chat source, which also shows the Global/Team channel toggle + input. Chat flags unread when a
     // message arrives while Chat is toggled off.
+    // ── Unit info window (right column, between the decision panel and Chat / Log) ─────────────
+    private const float DecisionPanelHeightFraction = 0.42f;
+    private const float UnitInfoHeightFraction = 0.30f;
+    private bool _unitInfoCollapsed;
+    private IUnit? _selectedInfoUnit;
+
+    /// <summary>The unit that was activating last frame, so a new activation can take over the card.</summary>
+    private UnitID? _lastActingUnit;
+
+    /// <summary>The info window: the acting (or last clicked) unit's status, stats, weapons, special rules
+    /// with what they do, and tokens. The header button folds it to one line. Stays on screen with nothing
+    /// selected so the right column keeps its shape.</summary>
+    private void DrawUnitInfoPanel(IUnit? unit, int x, int y, int w, int h)
+    {
+        ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
+        ImGui.Begin("##unitinfo",
+            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus |
+            (_unitInfoCollapsed ? ImGuiWindowFlags.NoScrollbar : ImGuiWindowFlags.None));
+
+        if (ImGui.SmallButton((_unitInfoCollapsed ? "+" : "-") + "##unitinfofold"))
+            _unitInfoCollapsed = !_unitInfoCollapsed;
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(_unitInfoCollapsed ? "Show the unit's card." : "Fold the unit's card away.");
+        ImGui.SameLine();
+        bool acting = unit != null && _tableState?.Progress.ActivatingUnit?.ID.Equals(unit.ID) == true;
+        ImGui.TextDisabled(unit == null ? "Unit card" : acting ? "Active unit" : "Selected unit");
+        if (unit == null)
+        {
+            if (!_unitInfoCollapsed)
+            {
+                ImGui.Separator();
+                ImGui.TextDisabled("Click a unit on the table to see its card here.");
+            }
+            ImGui.End();
+            return;
+        }
+        if (_unitInfoCollapsed)
+        {
+            ImGui.SameLine();
+            ImGui.TextUnformatted(unit.Name);
+        }
+        else
+        {
+            ImGui.Separator();
+            // Status first: activated / Shaken / in reserve.
+            if (_tableState != null && UnitActivation.HasActivated(_tableState.Progress, unit))
+                ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated this round");
+            if (unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken))
+                ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");
+            if (FDG.Stages.FirefightRules.MarkerSummary(unit) is { } woundMarkers)
+                UiText.Colored(new Vector4(1f, 0.65f, 0.3f, 1f), woundMarkers);
+            if (UnitActivation.IsInReserve(unit))
+                ImGui.TextDisabled("In reserve (off the table)");
+
+            float wrap = Math.Max(120f, ImGui.GetContentRegionAvail().X - 20f);
+            if (unit is UnitData { IsQuestHero: true } questHero)
+                DrawQuestHeroStats(questHero, _tableState?.Progress.Quest);
+            UnitStatBlockRenderer.Draw(unit, includeRuleDescriptions: true, descriptionWrapWidth: wrap,
+                quest: _tableState?.Progress.Quest);
+
+            var tokens = TableTooltipOverlay.VisibleTokenNames(unit);
+            if (tokens.Count > 0)
+            {
+                ImGui.Spacing();
+                ImGui.TextUnformatted("Tokens:");
+                foreach (string t in tokens) ImGui.TextUnformatted($"- {t}");
+            }
+        }
+        ImGui.End();
+    }
+
+    /// <summary>Star Quest: the hero's power, Str/Dex/Wil, level and skills, above its stat block.</summary>
+    /// <summary>Star Quest optional challenges in the status strip: time of day, weather, the random event.</summary>
+    private static void AddQuestConditions(List<(string text, Color color)> segments, FDG.QuestProgress quest)
+    {
+        if (quest.TimeOfDay.Length > 0) segments.Add((quest.TimeOfDay.ToUpperInvariant(), new Color(170, 180, 255, 255)));
+        if (quest.Weather.Length > 0) segments.Add((quest.Weather.ToUpperInvariant() + " WEATHER", new Color(150, 210, 230, 255)));
+        if (quest.Event.Length > 0) segments.Add(("EVENT " + quest.Event.ToUpperInvariant(), new Color(220, 160, 255, 255)));
+        if (quest.BossFight == 1) segments.Add(("BOSS FIGHT", new Color(255, 100, 80, 255)));
+    }
+
+    private static void DrawQuestHeroStats(UnitData hero, FDG.QuestProgress? quest)
+    {
+        FDG.Quest.QuestHero? sheet = FDG.Quest.QuestHero.FromJson(hero.QuestHeroJson);
+        if (sheet == null) return;
+        if (!hero.GetIsAlive())
+            ImGui.TextColored(new Vector4(0.75f, 0.75f, 0.85f, 1f), "UNCONSCIOUS - a hero within 3 inches can revive it (Skill, 2 power).");
+        ImGui.TextColored(new Vector4(1f, 0.86f, 0.5f, 1f), $"Level {sheet.Level} {sheet.Class}   XP {sheet.Xp}");
+        ImGui.TextColored(new Vector4(0.45f, 0.75f, 1f, 1f), $"Power {hero.QuestPower}/{sheet.Power}");
+        ImGui.SameLine();
+        ImGui.TextUnformatted($"   Str {sheet.Strength}+   Dex {sheet.Dexterity}+   Wil {sheet.Willpower}+"
+            + (hero.QuestStatBonus != 0 ? $"   (next stat roll +{hero.QuestStatBonus})" : ""));
+        var skills = new List<string>();
+        if (sheet.ClassFeat.Length > 0) skills.Add(sheet.ClassFeat + (hero.QuestFeatsUsed.Contains(sheet.ClassFeat) ? " (used)" : ""));
+        skills.AddRange(sheet.Skills);
+        ImGui.PushTextWrapPos(0f);
+        if (skills.Count > 0)
+            ImGui.TextDisabled("Skills: " + string.Join(", ", skills));
+        string pack = sheet.Items.Count == 0 ? "nothing" : string.Join(", ", sheet.Items.GroupBy(i => i)
+            .Select(g => g.Count() > 1 ? $"{g.Key} x{g.Count()}" : g.Key));
+        ImGui.TextColored(new Vector4(1f, 0.82f, 0.3f, 1f), $"{sheet.Credits}c");
+        ImGui.SameLine();
+        ImGui.TextUnformatted("  Items: " + pack);
+        if (sheet.Conditions.Count > 0)
+            UiText.Colored(new Vector4(1f, 0.5f, 0.4f, 1f), "Conditions: " + string.Join(", ", sheet.Conditions));
+        // Skills in play this round (Reckless, Dread Attack ready, +6" next spell...).
+        List<string> active = FDG.Stages.QuestFlags.Describe(quest, hero);
+        if (active.Count > 0)
+            UiText.Colored(new Vector4(0.6f, 0.9f, 0.6f, 1f), "This round: " + string.Join(", ", active));
+        ImGui.PopTextWrapPos();
+        ImGui.Separator();
+    }
+
     private void DrawConsole(int x, int y, int w, int h)
     {
         if (_log == null) return;
@@ -1294,6 +2385,18 @@ public class RaylibRenderer
         ImGui.Separator();
         DrawConsoleContent();
 
+        ImGui.End();
+    }
+
+    // Behind the wound window: keeps its slot filled while the last dice animations finish playing.
+    private static void DrawWoundWaitPanel(int x, int y, int w, int h)
+    {
+        ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
+        ImGui.Begin("##woundwait", ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoInputs |
+            ImGuiWindowFlags.NoSavedSettings);
+        ImGui.TextDisabled("Wounds incoming...");
         ImGui.End();
     }
 

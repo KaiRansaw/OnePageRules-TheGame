@@ -39,6 +39,33 @@ public class GuiStringSelectionCompanionTests
     [Test]
     public void AssignRowLetters_SkipsCompanions_WithoutShiftingTheOthers()
     {
+        // Letter shortcuts are off in the game (the camera uses the letters); switch them on to check the
+        // assignment itself, which comes back if they are ever turned on again.
+        bool wasDisabled = ResolverHotkeys.LettersDisabled;
+        ResolverHotkeys.LettersDisabled = false;
+        try { CheckRowLetters(); }
+        finally { ResolverHotkeys.LettersDisabled = wasDisabled; }
+    }
+
+    [Test]
+    public void AssignRowLetters_WhileLettersAreOff_GivesNoLetters()
+    {
+        StringSelectionRequest paired = Request(
+            valid: new[] { Bomb, HoldBomb, Blade, HoldBlade },
+            secondaries: new() { [Bomb] = HoldBomb, [Blade] = HoldBlade });
+        bool wasDisabled = ResolverHotkeys.LettersDisabled;
+        ResolverHotkeys.LettersDisabled = true;
+        try
+        {
+            char?[] letters = GuiStringSelectionResolver.AssignRowLetters(
+                paired, GuiStringSelectionResolver.CompanionOptions(paired));
+            Assert.That(letters, Has.All.Null, "no letter hints while the camera owns the letter keys");
+        }
+        finally { ResolverHotkeys.LettersDisabled = wasDisabled; }
+    }
+
+    private void CheckRowLetters()
+    {
         StringSelectionRequest paired = Request(
             valid: new[] { Bomb, HoldBomb, Blade, HoldBlade },
             secondaries: new() { [Bomb] = HoldBomb, [Blade] = HoldBlade });

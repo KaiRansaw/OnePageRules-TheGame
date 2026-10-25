@@ -7,6 +7,7 @@ using FDG.StageResolution.Requests;
 using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 /// <summary>
@@ -28,7 +29,7 @@ namespace FdgRaylib.Rendering.Resolvers;
 /// </summary>
 public class GuiPlaceOneTerrainResolver
     : IStageResolver<PlaceOneTerrainRequest, TerrainPlacementResult>, IGuiResolver, IGuiCanvasOverlay,
-      IPreviewSource
+      IPreviewSource, IRightClickConsumer
 {
     private readonly ITableState _tableState;
     private readonly object _lock = new();
@@ -186,8 +187,8 @@ public class GuiPlaceOneTerrainResolver
             else
             {
                 // AwaitingClick: live ghost following cursor.
-                bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
-                var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+                bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
+                var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
                 Float2 center = new Float2(mx, mz);
 
                 IZone candidateShape = TerrainTemplateUtilities.TranslateToCenter(rotatedTemplate, center);

@@ -22,6 +22,13 @@ namespace FdgRaylib.Rendering;
 ///
 /// Drawn on the background draw list, so it sits over the table but under ImGui windows and never grabs
 /// the mouse itself.
+///
+/// <para><b>Measuring tool (toggle).</b> A "Measure" button beside the status strip (or the M key) turns on
+/// a plain click-and-drag ruler: the press locks the start - snapped to a model's base when it lands on
+/// one - and dragging draws a black line to the cursor with the distance from the BASE EDGE to the cursor
+/// (the OPR measuring convention), or point-to-point from bare table. The last ruler stays up after release
+/// until the next click or the tool is turned off. While on, only the left-button press/drag/release frames
+/// are captured from the resolvers, so hover tooltips keep working between measurements.</para>
 /// </summary>
 public class MeasurementOverlay
 {
@@ -35,6 +42,14 @@ public class MeasurementOverlay
     private MeasurePoint _anchor;
     private MeasurePoint _cursor;
 
+    /// <summary>Whether the click-and-drag measuring tool is on (the "Measure" button / M key).</summary>
+    public bool ToolEnabled { get; private set; }
+
+    private bool _toolDragging;
+    private bool _toolHasRuler;
+    private MeasurePoint _toolStart;   // snapped to a model when the press landed on one
+    private Position _toolEnd;          // always the raw cursor point
+
     // Snap a ruler end to a model whose centre is within (base radius + this) of the cursor, in inches.
     private const float SnapMarginInches = 0.35f;
 
@@ -43,12 +58,32 @@ public class MeasurementOverlay
     private static readonly uint TextColor  = U32(0.90f, 0.97f, 1.00f, 1.00f);
     private static readonly uint Shadow     = U32(0f, 0f, 0f, 0.75f);
 
+    // Measuring tool: a black line with a faint light halo so it still reads on the darker table felts.
+    private static readonly uint ToolLine   = U32(0f, 0f, 0f, 1f);
+    private static readonly uint ToolHalo   = U32(1f, 1f, 1f, 0.45f);
+    private static readonly uint ToolPill   = U32(1f, 1f, 1f, 0.90f);
+    private static readonly uint ToolText   = U32(0f, 0f, 0f, 1f);
+
     public void Attach(ITableState tableState) => _tableState = tableState;
 
     public void Reset()
     {
         _measuring = false;
         _hasRuler  = false;
+        ToolEnabled = false;
+        ClearTool();
+    }
+
+    private void SetToolEnabled(bool enabled)
+    {
+        ToolEnabled = enabled;
+        ClearTool();
+    }
+
+    private void ClearTool()
+    {
+        _toolDragging = false;
+        _toolHasRuler = false;
     }
 
     public void UpdateLayout(float scale, int originX, int originY, float tableH)
@@ -73,10 +108,22 @@ public class MeasurementOverlay
         bool alt      = io.KeyAlt || ImGui.IsKeyDown(ImGuiKey.LeftAlt) || ImGui.IsKeyDown(ImGuiKey.RightAlt);
         bool leftDown = ImGui.IsMouseDown(ImGuiMouseButton.Left);
 
+        // M toggles the measuring tool (muted while typing or while the in-game menu owns input, #246).
+        if (!io.WantCaptureKeyboard && !EscapeRouter.MenuOpen && ImGui.IsKeyPressed(ImGuiKey.M))
+            SetToolEnabled(!ToolEnabled);
+
+        // The toggled tool owns plain clicks; holding Alt still gives the original Alt-drag ruler.
+        if (ToolEnabled && !alt)
+        {
+            UpdateTool(io, overPanel, leftDown);
+            if (_toolHasRuler) DrawToolRuler();
+            return;
+        }
+
         // Begin a measurement on Alt+click over the table.
         if (alt && !overPanel && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
-            _anchor    = Snap(io.MousePos);
+            _anchor    = Snap(TableInput.MousePos);
             _cursor    = _anchor;
             _measuring = true;
             _hasRuler  = true;
@@ -84,7 +131,7 @@ public class MeasurementOverlay
         // Track the moving end while dragging (button held) with Alt.
         else if (_measuring && leftDown && !overPanel)
         {
-            _cursor = Snap(io.MousePos);
+            _cursor = Snap(TableInput.MousePos);
         }
 
         // The ruler lives only while a button is still held; the instant BOTH Alt and the left button
@@ -102,6 +149,124 @@ public class MeasurementOverlay
         if (_hasRuler)
             DrawRuler();
     }
+
+    private void UpdateTool(ImGuiIOPtr io, bool overPanel, bool leftDown)
+    {
+        bool pressed  = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        bool released = ImGui.IsMouseReleased(ImGuiMouseButton.Left);
+
+        if (pressed && !overPanel)
+        {
+            // The press locks the start: on a model it snaps to that model's base, otherwise the bare point.
+            _toolStart    = Snap(TableInput.MousePos);
+            _toolEnd      = ToTable(TableInput.MousePos);
+            _toolDragging = true;
+            _toolHasRuler = true;
+        }
+        else if (_toolDragging && leftDown)
+        {
+            _toolEnd = ToTable(TableInput.MousePos);
+        }
+
+        if (!leftDown) _toolDragging = false;
+
+        // Keep the press, drag and release away from the resolvers (no accidental moves / selections),
+        // but leave plain hovering alone so unit and objective tooltips still work while the tool is on.
+        if ((pressed && !overPanel) || _toolDragging || (released && !overPanel))
+            io.WantCaptureMouse = true;
+    }
+
+    private void DrawToolRuler()
+    {
+        var dl = ImGui.GetBackgroundDrawList();
+
+        // From a model: start on the base edge nearest the cursor and read the base-edge distance.
+        Position start;
+        IModel? model = _toolStart.Model;
+        if (model != null)
+            start = MeasurementGeometry.ClosestPointOnBase(model.BaseShape, model.Position, model.Facing, _toolEnd);
+        else
+            start = new Position(_toolStart.XIn, 0f, _toolStart.ZIn);
+
+        float dx = _toolEnd.x - start.x;
+        float dz = _toolEnd.z - start.z;
+        float inches = MathF.Sqrt(dx * dx + dz * dz);
+
+        Vector2 a = ToPixel(start.x, start.z);
+        Vector2 b = ToPixel(_toolEnd.x, _toolEnd.z);
+
+        dl.AddLine(a, b, ToolHalo, 6f);
+        dl.AddLine(a, b, ToolLine, 3f);
+        dl.AddCircleFilled(a, 5f, ToolHalo);
+        dl.AddCircleFilled(a, 3.5f, ToolLine);
+        dl.AddCircle(b, 6f, ToolHalo, 0, 4f);
+        dl.AddCircle(b, 6f, ToolLine, 0, 2f);
+
+        // Distance in a light pill just up-right of the cursor end, where the eye already is.
+        string label = $"{inches:0.0}\"";
+        Vector2 size = ImGui.CalcTextSize(label);
+        var pad = new Vector2(6f, 3f);
+        var at  = new Vector2(b.X + 12f, b.Y - size.Y - 14f);
+        dl.AddRectFilled(at - pad, at + size + pad, ToolPill, 4f);
+        dl.AddRect(at - pad, at + size + pad, ToolLine, 4f);
+        dl.AddText(at, ToolText, label);
+    }
+
+    /// <summary>
+    /// The "Measure" toggle, docked just left of the status strip's round / score text
+    /// (<paramref name="stripLeftX"/>, or top-centre when the strip is empty). Call inside the ImGui frame.
+    /// </summary>
+    /// <returns>The button's left edge (screen x), so neighbours can line up beside it; null when not drawn.</returns>
+    public float? DrawToggleButton(int? stripLeftX, int areaWidth)
+    {
+        if (_tableState == null) return null;
+
+        string label = ToolEnabled ? "Measuring" : "Measure";
+        var style = ImGui.GetStyle();
+        float buttonW = ImGui.CalcTextSize(label).X + style.FramePadding.X * 2f;
+        float buttonH = ImGui.GetFrameHeight();
+
+        float x = stripLeftX.HasValue
+            ? stripLeftX.Value - 16f - buttonW
+            : (areaWidth - buttonW) * 0.5f;
+        float y = StatusHudOverlay.StripTop + (StatusHudOverlay.StripHeight - buttonH) * 0.5f;
+
+        x = MathF.Max(4f, x);
+        ImGui.SetNextWindowPos(new Vector2(x, MathF.Max(2f, y)));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground
+            | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoMove;
+        if (ImGui.Begin("##measureTool", flags))
+        {
+            bool on = ToolEnabled;
+            if (on)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.ButtonCommit);
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiTheme.ButtonCommitHover);
+            }
+            if (ImGui.Button(label))
+                SetToolEnabled(!ToolEnabled);
+            if (on) ImGui.PopStyleColor(2);
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(on
+                    ? "Measuring tool is ON (M).\nClick and drag on the table to measure.\nStart on a model to measure from its base."
+                    : "Turn on the measuring tool (M).");
+            }
+        }
+        ImGui.End();
+        ImGui.PopStyleVar(2);
+        return x;
+    }
+
+    private Position ToTable(Vector2 mouse) =>
+        new((mouse.X - _originX) / _scale, 0f, _tableH - (mouse.Y - _originY) / _scale);
+
+    private Vector2 ToPixel(float xIn, float zIn) =>
+        new(_originX + xIn * _scale, _originY + (_tableH - zIn) * _scale);
 
     private void DrawRuler()
     {

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using FDG;
 using FDG.Ai;
 using FDG.ArmyBuilding;
@@ -54,7 +54,8 @@ public class LobbyScreen : IAppScreen
     // (SetViewModel touches it), because the armies folder doesn't change under us and re-reading 12 MB
     // of JSON per lobby would be waste. The ROTATION is per-lobby, so a fresh lobby re-rolls freely.
     private static readonly Lazy<ArmyCatalog> SharedArmyCatalog =
-        new(() => new ArmyCatalog(), LazyThreadSafetyMode.ExecutionAndPublication);
+        new(() => { ArmyPaths.EnsureGameTypeFolders(); return new ArmyCatalog(); },
+            LazyThreadSafetyMode.ExecutionAndPublication);
 
     private BotArmyPicker? _botArmyPicker;
 
@@ -74,6 +75,19 @@ public class LobbyScreen : IAppScreen
     // Host/Client dialogs via ImGuiTheme so every screen uses one accent.
     private static readonly Vector4 HeaderAccent = ImGuiTheme.HeaderAccent;
 
+    /// <summary>
+    /// Starts the game this lobby launched, if one is waiting. Normally done by <see cref="Draw"/>; Take
+    /// Back calls it directly so its relaunch takes over the board without the lobby ever being shown.
+    /// Main thread only.
+    /// </summary>
+    public void ConsumePendingLaunch()
+    {
+        IFDGGame? game = _pendingGame;
+        if (game == null) return;
+        _pendingGame = null;
+        HandleLaunch(game);
+    }
+
     public void SetViewModel(ILobbyViewModel viewModel)
     {
         _viewModel?.Dispose();
@@ -85,6 +99,7 @@ public class LobbyScreen : IAppScreen
         // this lobby its own rotation, so re-opening one starts the army cycle over.
         _botArmyPicker = null;
         _autoArmiedSlots.Clear();
+        _resetSections = true;   // Connection closed, the rest open, every time the lobby opens
         _ = SharedArmyCatalog.Value;
         viewModel.OnLaunched += game => _pendingGame = game;
         // Fires on the engine thread; the renderer just records it and reacts on the main thread.
@@ -112,16 +127,18 @@ public class LobbyScreen : IAppScreen
     public void Draw(int screenW, int screenH)
     {
         // Consume a pending launch on the main thread
-        if (_pendingGame != null)
-        {
-            HandleLaunch(_pendingGame);
-            _pendingGame = null;
-        }
+        ConsumePendingLaunch();
 
         if (_viewModel == null) return;
 
         DrawScaled(screenW, screenH);
+
+        // Map maker (Custom Map > Create / Edit): drawn over the whole lobby while open.
+        if (_mapEditor.IsOpen) _mapEditor.Draw(screenW, screenH);
     }
+
+    private readonly MapEditor _mapEditor = new();
+    private string? _mapPendingDelete;
 
     // How much smaller the window is than the monitor the fonts were baked for, clamped to
     // [0.5, 1]. 1 when fullscreen/maximized; shrinks proportionally as the window does.
@@ -138,6 +155,12 @@ public class LobbyScreen : IAppScreen
     {
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
+        // Clean-dark lobby look: softer corners and a little more breathing room, scoped to this window.
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 5f);
+        ImGui.PushStyleVar(ImGuiStyleVar.PopupRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.GrabRounding, 5f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10f, 7f));
         ImGui.Begin("Lobby",
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar);
@@ -151,40 +174,56 @@ public class LobbyScreen : IAppScreen
         float panelScale = 1.5f * ws;  // the "~50% bigger" panels, as tuned at fullscreen
 
         float margin       = 10f;
-        // Floor keeps the settings rows usable at small window sizes; the main column absorbs the rest.
-        float settingsW    = MathF.Max(280f, screenW * 0.25f);
-        float mainW        = screenW - settingsW - margin * 3;
         float baseFontSize = ImGui.GetFontSize();       // baked font px, unaffected by ws
         float fontSize     = baseFontSize * ws;         // layout metric the lobby's rows derive from
         float framePadY    = ImGui.GetStyle().FramePadding.Y;
         float naturalBtnH  = fontSize + framePadY * 2;
         float headerH      = MathF.Max(40f, naturalBtnH + 12f);
-        // Chat-input row (and Launch button on the right) ~50% taller than the standard
-        // button height so the action area at the bottom is easier to hit.
-        float chatInputH   = MathF.Max(45f, (naturalBtnH + 6f) * 1.5f);
-        float rightH       = screenH - margin * 2;
-        float innerH       = screenH - margin * 2 - headerH - chatInputH - margin * 2;
-        float playerListH  = innerH * 0.55f;
-        float chatH        = innerH - playerListH - margin;
+        // The bottom action bar (LAUNCH, and why it is greyed) ~50% taller than a standard button, so
+        // the one control that starts the game is the easiest thing on the screen to hit.
+        float actionH      = MathF.Max(45f, (naturalBtnH + 6f) * 1.5f);
+
+        // Three columns, the way the screen reads: what you SET on the left (mode, points, table,
+        // rules), WHO is playing and with which army in the wide middle, and WHERE you will fight on
+        // the right. Previously the settings were a right-hand rail and the map was a quarter-panel
+        // sharing the bottom with chat; the map is a thing you look at while choosing armies, so it
+        // gets a column of its own and the player rows get the height chat used to take.
+        // Floors keep the side columns usable when the window is small; the middle absorbs the rest.
+        float leftW        = MathF.Max(280f, screenW * 0.24f);
+        float rightW       = MathF.Max(300f, screenW * 0.26f);
+        // Clamped, not just subtracted: at a small enough window the two floored side columns can eat
+        // the whole width, and a negative child size means "fill minus this" to ImGui, which would
+        // silently invert the layout rather than overflow visibly.
+        float midW         = MathF.Max(240f, screenW - leftW - rightW - margin * 4f);
+        float headerW      = screenW - margin * 2f;
+        float contentY     = margin + headerH + margin;
+        float contentH     = MathF.Max(80f, screenH - contentY - margin - actionH - margin);
 
         // ── Header ────────────────────────────────────────────────────────────
         ImGui.SetCursorPos(new Vector2(margin, margin));
         // NoScrollbar: the Back button + window padding just overflow headerH, which would otherwise
         // draw a phantom scrollbar right next to Back.
-        ImGui.BeginChild("##header", new Vector2(mainW, headerH), ImGuiChildFlags.Borders,
+        ImGui.BeginChild("##header", new Vector2(headerW, headerH), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         float headerFontH  = headerH * 0.65f;
         float headerScale  = headerFontH / baseFontSize; // window-scale factor that renders at headerFontH px
         ImGui.SetWindowFontScale(headerScale);
         ImGui.SetCursorPosY((headerH - headerFontH) * 0.5f);
-        ImGui.TextUnformatted(_viewModel.ServerName);
+        // Draw() has already returned if there is no view model; the ! restates that for the null
+        // analysis, which cannot see across the call.
+        ImGui.TextUnformatted(_viewModel!.ServerName);
+        // One-line summary of the game being set up, readable even with the settings collapsed.
+        ImGui.SameLine(0f, 24f * ws);
+        ImGui.SetWindowFontScale(headerScale * 0.7f);
+        ImGui.SetCursorPosY((headerH - headerFontH * 0.7f) * 0.5f);
+        UiText.Disabled(GameSummary());
         ImGui.SetWindowFontScale(ws);
 
         // CalcTextSize ignores SetWindowFontScale, so apply ws to the measured width by hand.
         float backW = (ImGui.CalcTextSize("Back").X + 36f) * ws;
         float backH = headerH - 8f;
-        ImGui.SetCursorPos(new Vector2(mainW - backW - 4f, 4f));
+        ImGui.SetCursorPos(new Vector2(headerW - backW - 4f, 4f));
         if (UiButton.Back("Back", new Vector2(backW, backH)))
         {
             PersistHostSettings();
@@ -193,71 +232,63 @@ public class LobbyScreen : IAppScreen
 
         ImGui.EndChild();
 
-        // ── Player List ───────────────────────────────────────────────────────
-        float playerListY = margin + headerH + margin;
-        ImGui.SetCursorPos(new Vector2(margin, playerListY));
-        ImGui.BeginChild("##players", new Vector2(mainW, playerListH), ImGuiChildFlags.Borders);
-        ImGui.SetWindowFontScale(panelScale);  // rows + font ~50% bigger than the rest of the lobby
-        DrawPlayerList(mainW, panelScale);
-        ImGui.EndChild();
-
-        // ── Chat Log ──────────────────────────────────────────────────────────
-        float chatY = playerListY + playerListH + margin;
-        ImGui.SetCursorPos(new Vector2(margin, chatY));
-        ImGui.BeginChild("##chatlog", new Vector2(mainW, chatH), ImGuiChildFlags.Borders,
-            ImGuiWindowFlags.HorizontalScrollbar);
-        ImGui.SetWindowFontScale(panelScale);  // match the player + settings panels
-        DrawChatLog();
-        ImGui.EndChild();
-
-        // ── Chat Input + Send ─────────────────────────────────────────────────
-        // Wrapped in a child so SetWindowFontScale applies locally — matches the chat log + launch button.
-        float chatInputY = screenH - margin - chatInputH;
-        ImGui.SetCursorPos(new Vector2(margin, chatInputY));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        ImGui.BeginChild("##chatrow", new Vector2(mainW, chatInputH), ImGuiChildFlags.None,
-            ImGuiWindowFlags.NoScrollbar);
-        ImGui.PopStyleVar();
-        ImGui.SetWindowFontScale(panelScale);
-
-        // Size the Send button to its text at the row's scaled font, so it doesn't clip to "Ser".
-        // (CalcTextSize ignores SetWindowFontScale; ws applied by hand, same as the Back button.)
-        float sendBtnW = (ImGui.CalcTextSize("Send").X + 36f) * ws;
-
-        // InputText height = font + 2*FramePadding.Y. Recompute padding against the now-scaled font size.
-        float scaledFontSize  = ImGui.GetFontSize();
-        float inputVerticalPad = MathF.Max(framePadY, (chatInputH - scaledFontSize) * 0.5f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding,
-            new Vector2(ImGui.GetStyle().FramePadding.X, inputVerticalPad));
-        ImGui.SetNextItemWidth(mainW - sendBtnW - margin);
-        if (ImGui.InputText("##chatinput", ref _chatInput, 512, ImGuiInputTextFlags.EnterReturnsTrue))
-            SubmitChat();
-        ImGui.PopStyleVar();
-
-        ImGui.SameLine();
-        if (UiButton.Navigate("Send", new Vector2(sendBtnW, chatInputH)) &&
-            !string.IsNullOrWhiteSpace(_chatInput))
-            SubmitChat();
-
-        ImGui.EndChild();
-
-        // ── Settings + Launch (right panel) ───────────────────────────────────
-        float rightX = margin * 2 + mainW;
-        ImGui.SetCursorPos(new Vector2(rightX, margin));
-        ImGui.BeginChild("##settings", new Vector2(settingsW, rightH - chatInputH - margin),
-            ImGuiChildFlags.Borders);
+        // ── Left column: settings ─────────────────────────────────────────────
+        ImGui.SetCursorPos(new Vector2(margin, contentY));
+        ImGui.BeginChild("##settings", new Vector2(leftW, contentH),
+            ImGuiChildFlags.Borders, ImGuiWindowFlags.AlwaysVerticalScrollbar);
         ImGui.SetWindowFontScale(panelScale);  // settings fields ~50% bigger than the rest of the lobby
-        DrawSettings(settingsW);
+        DrawSettings(leftW);
+        ImGui.EndChild();
+        _resetSections = false;
+
+        // ── Middle column: players and their armies ───────────────────────────
+        float midX = margin * 2f + leftW;
+        ImGui.SetCursorPos(new Vector2(midX, contentY));
+        ImGui.BeginChild("##players", new Vector2(midW, contentH), ImGuiChildFlags.Borders);
+        ImGui.SetWindowFontScale(panelScale);  // rows + font ~50% bigger than the rest of the lobby
+        DrawPlayerList(midW, panelScale);
         ImGui.EndChild();
 
-        ImGui.SetCursorPos(new Vector2(rightX, margin + rightH - chatInputH));
+        // ── Right column: map preview (2D) ────────────────────────────────────
+        float rightX = margin * 3f + leftW + midW;
+        ImGui.SetCursorPos(new Vector2(rightX, contentY));
+        ImGui.BeginChild("##mappreview", new Vector2(rightW, contentH), ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetWindowFontScale(panelScale * 0.8f);
+        DrawMapPreview();
+        ImGui.EndChild();
+
+        // ── Action bar: why LAUNCH is greyed, then LAUNCH ─────────────────────
+        IReadOnlyList<string> launchBlockers = _viewModel.HasHostPrivileges && !_viewModel.IsResumeMode
+            ? _viewModel.BlockingLaunchProblems()
+            : Array.Empty<string>();
+
+        float actionY  = screenH - margin - actionH;
+        float launchW  = MathF.Max(leftW, screenW * 0.22f);
+        float blockerW = screenW - margin * 2f - launchW - margin;
+
+        if (launchBlockers.Count > 0 && blockerW > 0f)
+        {
+            ImGui.SetCursorPos(new Vector2(margin, actionY));
+            ImGui.BeginChild("##blockers", new Vector2(blockerW, actionH), ImGuiChildFlags.None,
+                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+            ImGui.SetWindowFontScale(panelScale * 0.8f);
+            ImGui.PushStyleColor(ImGuiCol.Text, OverPointsColor);
+            string more = launchBlockers.Count > 1 ? $"  (+{launchBlockers.Count - 1} more - hover LAUNCH)" : "";
+            UiText.Wrapped("Can't launch yet: " + launchBlockers[0] + more);
+            ImGui.PopStyleColor();
+            ImGui.EndChild();
+        }
+
+        ImGui.SetCursorPos(new Vector2(screenW - margin - launchW, actionY));
         // No border on the launch child — the button itself fills the panel and provides the visual edge.
-        ImGui.BeginChild("##launch", new Vector2(settingsW, chatInputH), ImGuiChildFlags.None);
-        ImGui.SetWindowFontScale(panelScale);  // match the chat row + other panels
-        DrawLaunch(settingsW, chatInputH);
+        ImGui.BeginChild("##launch", new Vector2(launchW, actionH), ImGuiChildFlags.None);
+        ImGui.SetWindowFontScale(panelScale);  // match the other panels
+        DrawLaunch(launchW, actionH);
         ImGui.EndChild();
 
         ImGui.End();
+        ImGui.PopStyleVar(5);
     }
 
     private void DrawPlayerList(float panelW, float panelScale)
@@ -279,21 +310,20 @@ public class LobbyScreen : IAppScreen
             chosen[i] = players[i].ColorIndex >= 0 ? players[i].ColorIndex : null;
         int[] effectiveColor = PlayerColorOptions.ResolveIndices(chosen);
 
-        if (ImGui.BeginTable("##ptable", 8,
+        if (ImGui.BeginTable("##ptable", 7,
             ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
         {
-            ImGui.TableSetupColumn("Name",    ImGuiTableColumnFlags.WidthStretch, 0.16f);
-            ImGui.TableSetupColumn("Type",    ImGuiTableColumnFlags.WidthStretch, 0.07f);
-            ImGui.TableSetupColumn("Army",    ImGuiTableColumnFlags.WidthStretch, 0.15f);
-            ImGui.TableSetupColumn("Faction", ImGuiTableColumnFlags.WidthStretch, 0.12f);
-            ImGui.TableSetupColumn("Pts",     ImGuiTableColumnFlags.WidthStretch, 0.051f);
-            ImGui.TableSetupColumn("Team",    ImGuiTableColumnFlags.WidthStretch, 0.085f);
+            ImGui.TableSetupColumn("Name",    ImGuiTableColumnFlags.WidthStretch, 0.17f);
+            ImGui.TableSetupColumn("Army",    ImGuiTableColumnFlags.WidthStretch, 0.32f);
+            ImGui.TableSetupColumn("Faction", ImGuiTableColumnFlags.WidthStretch, 0.13f);
+            ImGui.TableSetupColumn("Pts",     ImGuiTableColumnFlags.WidthStretch, 0.055f);
+            ImGui.TableSetupColumn("Team",    ImGuiTableColumnFlags.WidthStretch, 0.12f);
             ImGui.TableSetupColumn("Color",   ImGuiTableColumnFlags.WidthStretch, 0.12f);
             // #372: every row now carries Load Army AND Random Army, so Actions takes the width back
             // from Army/Faction (both of which wrap gracefully; a clipped button does not).
             // #405: Remove makes it three buttons on most rows, hence the extra width. The weights are
             // normalized by SizingStretchProp, so raising this one narrows the rest proportionally.
-            ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthStretch, 0.26f);
+            ImGui.TableSetupColumn("",        ImGuiTableColumnFlags.WidthStretch, 0.09f);
             ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
             ImGui.TableHeadersRow();
             ImGui.PopStyleColor();
@@ -305,18 +335,23 @@ public class LobbyScreen : IAppScreen
 
                 ImGui.TableNextColumn();
                 TextFitted(info.PlayerName, panelScale);
+                if (info.PlayerType != EPlayerType.Local)
+                {
+                    // The old Type column, folded into a small tag after the name.
+                    ImGui.SameLine();
+                    ImGui.SetWindowFontScale(panelScale * 0.65f);
+                    UiText.Disabled(PlayerTypeLabel(info.PlayerType).ToUpperInvariant());
+                    ImGui.SetWindowFontScale(panelScale);
+                }
 
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted(PlayerTypeLabel(info.PlayerType));
-
-                ImGui.TableNextColumn();
-                DrawArmyCell(info.ArmyListSummary, _viewModel.IsResumeMode, panelScale);
+                DrawArmyPicker(i, info, panelScale);
 
                 ImGui.TableNextColumn();
                 DrawFactionCell(info.ArmyListSummary, _viewModel.AllowedGameSystems, panelScale);
 
                 ImGui.TableNextColumn();
-                DrawPointsCell(info.ArmyListSummary, _viewModel.ArmyPoints);
+                DrawPointsCell(info.ArmyListSummary, GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
 
                 ImGui.TableNextColumn();
                 DrawTeamCell(i, info, players.Count);
@@ -344,27 +379,7 @@ public class LobbyScreen : IAppScreen
                 }
                 else
                 {
-                    bool canModify = _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID);
-                    ImGui.BeginDisabled(!canModify);
-                    if (UiButton.NavigateSmall($"Load Army##{i}"))
-                        TryLoadArmyForPlayer(info.PlayerID);
-                    ImGui.EndDisabled();
-
-                    // #372: roll a random army from the folder. Offered on EVERY row, not just bots -
-                    // it is the fastest way for a human to get a legal list too. Who may press it is
-                    // decided entirely by CheckCanModifyPlayerIDInfo, the same gate Load Army uses: the
-                    // host owns its own and the bots' rows but not a connected client's, and a client
-                    // owns only its own. So nobody can roll another player's army, and a client cannot
-                    // roll for a bot.
-                    ImGui.SameLine();
-                    ImGui.BeginDisabled(!canModify || !ArmyCatalogReady);
-                    if (UiButton.NavigateSmall($"Random Army##{i}"))
-                        AssignRandomArmy(info.PlayerID);
-                    ImGui.EndDisabled();
-                    // AllowWhenDisabled: the greyed-out case is the one that most needs explaining.
-                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        UiText.Tooltip(RandomArmyTooltip(canModify, info));
-
+                    // Armies are picked from the Army column's dropdown (the Game Type's folder).
                     // #405: drop the slot entirely. Shown only where it is actually allowed rather than
                     // greyed out - unlike Random Army, an absent Remove needs no explaining, and a
                     // disabled one on the host's OWN row would read as a bug. The engine owns the policy
@@ -376,7 +391,6 @@ public class LobbyScreen : IAppScreen
                     // frame.
                     if (_viewModel.CheckCanRemovePlayer(info.PlayerID))
                     {
-                        ImGui.SameLine();
                         if (UiButton.NavigateSmall($"Remove##{i}"))
                             _viewModel.RemovePlayer(info.PlayerID);
                         if (ImGui.IsItemHovered())
@@ -405,6 +419,15 @@ public class LobbyScreen : IAppScreen
             // #191 A6/B5: three bot flavors, one per ladder rung - the Strategist (searches ahead),
             // the Tactician (challenge AI, one ply), and the legacy solo-rules bot, rechristened
             // DerpBot (Chris's naming). Every rung stays selectable forever (plan G4).
+            if (GameSystemInfo.IsQuest(_viewModel.GameSystem))
+            {
+                // Star Quest: one bot, playing the Star Quest AI rules.
+                if (UiButton.Navigate("Add Star Quest AI"))
+                    _viewModel.AddAiPlayer(EAiProfile.StarQuest);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip("The enemy side, following the Star Quest AI flowchart:\nshoot or charge the closest hero it can see,\notherwise head for its AI Goal.");
+                return;
+            }
             if (UiButton.Navigate("Add Strategist Bot"))
                 _viewModel.AddAiPlayer(EAiProfile.Strategist);
             if (ImGui.IsItemHovered())
@@ -502,6 +525,8 @@ public class LobbyScreen : IAppScreen
 
         foreach (LobbyPlayerInfoSummary info in players)
         {
+            // Star Quest: a human row plays a party of heroes, picked by hand - no starter army.
+            if (GameSystemInfo.IsQuest(_viewModel.GameSystem) && info.PlayerType != EPlayerType.AI) continue;
             if (!NeedsStarterArmy(info.PlayerType, info.ArmyListSummary.IsAssigned,
                     _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID),
                     _autoArmiedSlots.Contains(info.PlayerID.ID)))
@@ -533,7 +558,8 @@ public class LobbyScreen : IAppScreen
         // from rolling its own row twice while the army it just sent is still in flight to the host.
         _autoArmiedSlots.Add(playerID.ID);
 
-        _botArmyPicker ??= new BotArmyPicker(SharedArmyCatalog.Value.Entries);
+        GameTypeArmies();   // (re)builds the picker for the current Game Type's folder
+        if (_botArmyPicker == null) return;
 
         // What everyone ELSE is holding, by the same name|faction|points identity the catalog uses - the
         // roster is the only view that covers remote clients, whose army file path never crosses the wire.
@@ -675,6 +701,212 @@ public class LobbyScreen : IAppScreen
         ImGui.SetWindowFontScale(baseScale);
     }
 
+    // ── Army dropdown (per Game Type folder) ─────────────────────────────────────────────────────────
+    private EGameSystem? _pickerSystem;
+    private IReadOnlyList<ArmyCatalogEntry>? _gameTypeArmies;
+
+    /// <summary>The armies in the current Game Type's folder (armies/GDF, armies/GF Firefight, ...),
+    /// sorted by name. Empty until the folder scan is in.</summary>
+    private IReadOnlyList<ArmyCatalogEntry> GameTypeArmies()
+    {
+        if (!ArmyCatalogReady) return Array.Empty<ArmyCatalogEntry>();
+        EGameSystem system = _viewModel!.GameSystem;
+        if (_gameTypeArmies == null || _pickerSystem != system)
+        {
+            // Star Quest: the enemies are ordinary Grimdark Future armies (the heroes come from the party picker).
+            _gameTypeArmies = ArmyPaths.EntriesFor(GameSystemInfo.IsQuest(system) ? EGameSystem.GrimdarkFuture : system,
+                    SharedArmyCatalog.Value.Entries)
+                // Grouped by 1000-point bracket (0-1000, 1001-2000, ...), then A-Z inside each bracket.
+                .OrderBy(e => e.Points <= 0 ? 0 : (e.Points - 1) / 1000)
+                .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            if (_pickerSystem != null && _pickerSystem != system) OnGameTypeChanged();
+            _pickerSystem = system;
+            _botArmyPicker = null;
+        }
+        _botArmyPicker ??= new BotArmyPicker(_gameTypeArmies);
+        return _gameTypeArmies;
+    }
+
+    /// <summary>The Game Type changed: every row this machine owns gets an army from the new folder.</summary>
+    private void OnGameTypeChanged()
+    {
+        if (_viewModel!.IsResumeMode) return;
+        foreach (LobbyPlayerInfoSummary info in _viewModel.PlayerInfos)
+            if (_viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID))
+                _autoArmiedSlots.Remove(info.PlayerID.ID);
+    }
+
+    /// <summary>The Army cell: a dropdown of the Game Type folder's armies for rows this machine may change,
+    /// otherwise just the army's name.</summary>
+    private void DrawArmyPicker(int row, LobbyPlayerInfoSummary info, float baseScale)
+    {
+        ArmyListSummary summary = info.ArmyListSummary;
+        bool canModify = !_viewModel!.IsResumeMode && _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID);
+        if (!canModify)
+        {
+            DrawArmyCell(summary, _viewModel.IsResumeMode, baseScale);
+            return;
+        }
+
+        if (GameSystemInfo.IsQuest(_viewModel.GameSystem) && info.PlayerType != EPlayerType.AI)
+        {
+            DrawPartyPicker(row, info);
+            return;
+        }
+
+        IReadOnlyList<ArmyCatalogEntry> armies = GameTypeArmies();
+        bool missing = LobbyArmySource.IsMissingArmy(summary, false);
+        string currentKey = summary.IsAssigned
+            ? ArmyCatalogEntry.KeyFor(summary.ArmyName, summary.FactionName, summary.PointCost)
+            : "";
+
+        // The Army cell is a BUTTON, not a dropdown: a dropdown gives one narrow column of names and
+        // nowhere to search, which stops working somewhere around a dozen lists. Clicking it hands the
+        // choice to the full-screen picker, which has room for a search box, a faction filter and a
+        // preview of the list you are about to take.
+        string cellLabel = summary.IsAssigned ? summary.ArmyName : "Choose an army...";
+        if (missing) ImGui.PushStyleColor(ImGuiCol.Text, OverPointsColor);
+        bool pressed = UiButton.Navigate($"{cellLabel}##army{row}", new Vector2(-1f, 0f));
+        if (missing) ImGui.PopStyleColor();
+        if (pressed)
+        {
+            // Snapshot what the picker needs before leaving the lobby, so it never reaches back into
+            // a view model that could be torn down while it is on screen.
+            _pickingFor      = info.PlayerID;
+            PickPlayerName   = info.PlayerName;
+            PickArmies       = armies;
+            PickPointsLimit  = _viewModel.ArmyPoints;
+            PickCurrentKey   = currentKey;
+            OnChooseArmyRequested?.Invoke();
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip($"Choose this player's army from armies\\{ArmyPaths.FolderNameFor(_viewModel.GameSystem)}.");
+    }
+
+    // ── Handing the army choice to the Choose Army screen ────────────────────────────────────────────
+
+    /// <summary>A player's Army cell was clicked: show the full-screen picker. Program.cs opens it with
+    /// the Pick* snapshot below and calls <see cref="ApplyPickedArmy"/> when a list comes back.</summary>
+    public Action? OnChooseArmyRequested;
+
+    /// <summary>Which slot is waiting on the picker. Null when nothing is.</summary>
+    private PlayerID? _pickingFor;
+
+    /// <summary>The waiting slot's player name, for the picker's heading.</summary>
+    public string PickPlayerName { get; private set; } = "";
+
+    /// <summary>The armies the picker should list - the current Game Type's folder.</summary>
+    public IReadOnlyList<ArmyCatalogEntry> PickArmies { get; private set; } = Array.Empty<ArmyCatalogEntry>();
+
+    /// <summary>The game's points limit, so the picker can mark lists that exceed it.</summary>
+    public int PickPointsLimit { get; private set; }
+
+    /// <summary>The army the waiting slot already has, so the picker opens on it.</summary>
+    public string PickCurrentKey { get; private set; } = "";
+
+    /// <summary>
+    /// A list came back from the Choose Army screen: load it and give it to the slot that asked. A
+    /// hand pick is never auto-replaced afterwards, the same as picking from the old dropdown was.
+    /// </summary>
+    public void ApplyPickedArmy(ArmyCatalogEntry entry)
+    {
+        if (_pickingFor is not { } playerID || _viewModel == null) { _pickingFor = null; return; }
+        if (entry.Key != PickCurrentKey && LoadArmyFile(entry.Path) is { } army)
+        {
+            _autoArmiedSlots.Add(playerID.ID);
+            _viewModel.UpdateArmyListFile(playerID, army);
+        }
+        _pickingFor = null;
+    }
+
+    // ── Star Quest party picker ──────────────────────────────────────────────────────────────────────
+    private readonly Dictionary<Guid, List<string>> _partyPicks = new();
+
+    /// <summary>Set by the campaign screen: the next party picker starts with these hero files picked.</summary>
+    public static List<string>? PendingParty;
+    private List<(string Path, FDG.Quest.QuestHero Hero)>? _savedHeroes;
+    private double _savedHeroesAt = -10;
+
+    /// <summary>Star Quest: the human row picks 2-4 saved heroes (from Star Quest Heroes) as its party.</summary>
+    private void DrawPartyPicker(int row, LobbyPlayerInfoSummary info)
+    {
+        if (_savedHeroes == null || ImGui.GetTime() - _savedHeroesAt > 3.0)
+        {
+            _savedHeroes = FdgRaylib.Quest.HeroPaths.LoadAll(HeroBuilderScreen.GameType);
+            _savedHeroesAt = ImGui.GetTime();
+        }
+        if (!_partyPicks.TryGetValue(info.PlayerID.ID, out List<string>? picks))
+        {
+            _partyPicks[info.PlayerID.ID] = picks = new List<string>();
+            if (PendingParty != null)
+            {
+                // A campaign mission: the campaign's party comes pre-picked.
+                picks.AddRange(PendingParty.Where(p => _savedHeroes.Any(s => s.Path == p)).Take(4));
+                PendingParty = null;
+                if (picks.Count > 0) SendParty(info.PlayerID, picks);
+            }
+        }
+        picks.RemoveAll(p => !_savedHeroes.Any(s => s.Path == p));
+
+        string preview = picks.Count == 0 ? "Choose 2-4 heroes..."
+            : string.Join(", ", picks.Select(p => _savedHeroes.First(s => s.Path == p).Hero.Name));
+        ImGui.SetNextItemWidth(-1f);
+        bool short_ = picks.Count < 2;
+        if (short_) ImGui.PushStyleColor(ImGuiCol.Text, OverPointsColor);
+        bool open = ImGui.BeginCombo($"##party{row}", preview, ImGuiComboFlags.HeightLarge);
+        if (short_) ImGui.PopStyleColor();
+        if (open)
+        {
+            if (_savedHeroes.Count == 0)
+                UiText.Disabled("No heroes yet - make some in Star Quest Heroes (main menu).");
+            bool changed = false;
+            foreach (var (path, hero) in _savedHeroes)
+            {
+                bool on = picks.Contains(path);
+                bool full = !on && picks.Count >= 4;
+                ImGui.BeginDisabled(full);
+                if (ImGui.Checkbox($"{hero.Name}   (Lvl {hero.Level} {hero.Class}, {hero.Faction}, {hero.Points} pts)##{path}", ref on))
+                {
+                    if (on) picks.Add(path); else picks.Remove(path);
+                    changed = true;
+                }
+                ImGui.EndDisabled();
+            }
+            ImGui.EndCombo();
+            if (changed) SendParty(info.PlayerID, picks);
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Your party: pick 2 to 4 heroes made in Star Quest Heroes.");
+
+        // The closed combo only has room for the names, so the party is listed under it in full. You pick
+        // a hero by reading its level, race and points, and then those facts disappeared the moment the
+        // list shut - exactly when you want to check the party adds up.
+        if (picks.Count > 0)
+        {
+            int total = 0;
+            foreach (string path in picks)
+            {
+                FDG.Quest.QuestHero hero = _savedHeroes.First(s => s.Path == path).Hero;
+                total += hero.Points;
+                ImGui.TextUnformatted("  " + hero.Name);
+                ImGui.SameLine();
+                UiText.Disabled($"Lvl {hero.Level} {hero.Class} - {hero.BaseHeroName} ({hero.Faction}) - {hero.Points} pts");
+            }
+            UiText.Disabled($"  Party: {picks.Count} hero{(picks.Count == 1 ? "" : "es")}, {total} pts");
+        }
+    }
+
+    private void SendParty(PlayerID playerID, List<string> picks)
+    {
+        var heroes = picks.Select(p => _savedHeroes!.First(s => s.Path == p).Hero).ToList();
+        if (heroes.Count == 0) return;
+        _autoArmiedSlots.Add(playerID.ID);
+        var books = BookLibrary.Load();
+        FDG.ArmyBuilding.BuiltArmyFile party = FDG.Quest.QuestArmy.Build(heroes,
+            faction => books.FirstOrDefault(b => string.Equals(b.Faction, faction, StringComparison.OrdinalIgnoreCase)));
+        _viewModel!.UpdateArmyListFile(playerID, party);
+    }
+
     private static void DrawArmyCell(ArmyListSummary summary, bool isResume, float baseScale)
     {
         bool missing = LobbyArmySource.IsMissingArmy(summary, isResume);
@@ -752,11 +984,11 @@ public class LobbyScreen : IAppScreen
         bool canModify = _viewModel!.CheckCanModifyPlayerIDInfo(info.PlayerID) && !_viewModel.IsResumeMode;
         ImGui.BeginDisabled(!canModify);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        if (ImGui.BeginCombo($"##team{rowIdx}", $"Team {(int)info.TeamNumber}"))
+        if (ImGui.BeginCombo($"##team{rowIdx}", TeamLabel((int)info.TeamNumber, playerCount)))
         {
             for (int n = 1; n <= Math.Min(playerCount, TeamOptions.MaxTeamNumber); n++)
             {
-                if (ImGui.Selectable($"Team {n}", n == (int)info.TeamNumber))
+                if (ImGui.Selectable(TeamLabel(n, playerCount), n == (int)info.TeamNumber))
                     _viewModel.SetPlayerTeam(info.PlayerID, (ETeamOption)n);
             }
             ImGui.EndCombo();
@@ -764,6 +996,24 @@ public class LobbyScreen : IAppScreen
         ImGui.EndDisabled();
     }
 
+    /// <summary>"Team 2", or in Horde "Defenders" (the first slot's team) and "Horde".</summary>
+    private string TeamLabel(int team, int playerCount)
+    {
+        if (!GameSystemInfo.IsHordeLike(_viewModel!.GameMode) || _viewModel.PlayerInfos.Count == 0) return $"Team {team}";
+        int defenders = (int)_viewModel.PlayerInfos[0].TeamNumber;
+        if (team == defenders) return GameSystemInfo.IsQuestMode(_viewModel.GameMode) ? "Heroes" : "Defenders";
+        if (GameSystemInfo.IsQuestMode(_viewModel.GameMode)) return "Enemies";
+        return playerCount > 2 ? $"Horde ({team})" : "Horde";
+    }
+
+    /// <summary>
+    /// NOT CURRENTLY DRAWN. The lobby's chat panel and its input row were taken off the screen when
+    /// the three-column layout went in: this build is played locally against bots, and the panel was
+    /// spending a quarter of the lobby on a conversation with nobody. The engine still receives and
+    /// stores chat (<c>ILobbyViewModel.ChatMessages</c>), and this method and <see cref="SubmitChat"/>
+    /// still work - restoring chat is a matter of giving them a panel again, not rewriting them. Kept
+    /// deliberately, because hosting for another player is still a supported thing to do.
+    /// </summary>
     private void DrawChatLog()
     {
         IReadOnlyList<LobbyChatMessage> msgs = _viewModel!.ChatMessages;
@@ -790,13 +1040,8 @@ public class LobbyScreen : IAppScreen
         ImGui.SetCursorPos(new Vector2(innerPad, innerPad));
 
         // Host-only: what address to give players. Drawn outside the disabled block so the copy buttons work.
-        if (isHost)
-        {
+        if (isHost && Section("Connection", defaultOpen: false))
             DrawHostConnectionInfo(panelW - innerPad * 2);
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-        }
 
         if (isHost && _viewModel.IsResumeMode)
         {
@@ -807,19 +1052,43 @@ public class LobbyScreen : IAppScreen
 
         ImGui.BeginDisabled(locked);
 
+        if (Section("Game"))
+        {
+        DrawGameSystemCombo();
+        DrawEnumCombo("Game Mode",     _viewModel.GameMode,       _viewModel.SetGameMode,
+            displayName: GameModeLabel,
+            explicitOrder: GameSystemInfo.Modes(_viewModel.GameSystem),
+            tooltip: "Which kind of game to play within the Game Type.\n" +
+                     "Standard: the normal game - four rounds, most objectives wins.\n" +
+                     "Horde: survive twelve rounds against waves of enemies. The first player slot\n" +
+                     "(and anyone on its team) defends from the table centre; every other team is\n" +
+                     "the enemy horde, arriving at the table corners and coming back every 3 rounds.");
+
+        // Play Style stays editable when resuming a save (host only): Game Master adds testing tools
+        // without changing any rule, so a saved game can be reopened with them on.
+        ImGui.EndDisabled();
+        ImGui.BeginDisabled(!isHost);
+        DrawEnumCombo("Play Style",    _viewModel.PlayStyle,      _viewModel.SetPlayStyle,
+            displayName: PlayStyleLabel,
+            tooltip: "Standard: play the game normally.\n" +
+                     "Game Master: for testing. The host gets a Game Master panel to end or jump\n" +
+                     "rounds, move any unit anywhere, wound / heal / kill / revive units, toggle\n" +
+                     "Shaken, give XP and traits, and (Horde) edit points, objectives and waves.\n" +
+                     "Works when resuming a save, too.");
+        ImGui.EndDisabled();
+        ImGui.BeginDisabled(locked);
+
         DrawIntField("Army Points",    _viewModel.ArmyPoints,    _viewModel.SetArmyPoints,
             tooltip: "The point budget each player's army is built to. An army over this limit is\n" +
                      "flagged red on its row and blocks the launch. Higher points means bigger battles.",
             step: 250);
-        // #402: which OPR collections' armies this table takes. All is the default and accepts anything,
-        // including an army from neither collection (OPR's custom-book tool makes those).
-        DrawEnumCombo("Army Source",   _viewModel.AllowedGameSystems, _viewModel.SetAllowedGameSystems,
-            displayName: GameSystems.DisplayName,
-            tooltip: "Which game systems' armies this lobby accepts.\n" +
-                     "All: anything, GDF and AoF at the same table if that is the plan.\n" +
-                     "Grimdark Future / Age of Fantasy: that collection only - an army from\n" +
-                     "the other one is flagged red on its row and blocks the launch.\n" +
-                     "An army list with no recorded system counts as Grimdark Future.");
+        DrawPointPresets();
+        // Army Source is no longer offered: each Game Type takes its own game's armies (set with the type).
+
+        }
+
+        if (Section("Table"))
+        {
         DrawEnumCombo("Terrain Mode",  _viewModel.TerrainPlacementMode, _viewModel.SetTerrainPlacementMode,
             debugLast: new[] { ETerrainPlacementMode.AutoFromLayout },
             // #301: explicit order keeps the two Alternating modes adjacent (the enum appends
@@ -838,7 +1107,8 @@ public class LobbyScreen : IAppScreen
                      "Alternating: Points: pieces cost 1-3 points by size; players take turns\n" +
                      "spending a per-turn allowance from a shared total (set both below), so one\n" +
                      "big piece or several small ones per turn.\n" +
-                     "Load From File: place a saved layout verbatim.\n" +
+                     "Custom Map: pick a saved map, or Create / Edit one in the map maker\n" +
+                     "(terrain, objectives and deployment zones).\n" +
                      "Auto From Layout: the server places a built-in default pool (fast, for testing).");
 
         // Conditional sub-options under Terrain Mode.
@@ -851,31 +1121,25 @@ public class LobbyScreen : IAppScreen
                 DrawTerrainPointsSliders(_viewModel);
                 break;
             case ETerrainPlacementMode.LoadFromFile:
-                DrawTerrainLayoutPicker(_viewModel.TerrainLayoutPath, _viewModel.SetTerrainLayoutPath);
+                DrawMapPicker();
                 break;
         }
 
+        // Horde Mode always uses its five fixed markers (centre + each table quarter), so the
+        // placement choice does nothing there - shown greyed out rather than hidden, so the panel
+        // doesn't jump around when the mode changes.
+        bool hordeMode = GameSystemInfo.IsHordeLike(_viewModel.GameMode);
+        ImGui.BeginDisabled(hordeMode);
         DrawEnumCombo("Objective Mode", _viewModel.ObjectivePlacementMode, _viewModel.SetObjectivePlacementMode,
             debugLast: new[] { EObjectivePlacementMode.AutoPlaced },
             displayName: ObjectiveModeLabel,
-            tooltip: "Where the objective markers go. Objectives decide the winner.\n" +
-                     "Auto-Placed: the server places them in balanced spots, no input needed.\n" +
-                     "Player-Placed: players take turns placing markers.");
-
-        DrawEnumCombo("Randomness",    _viewModel.RandomnessType, _viewModel.SetRandomnessType,
-            tooltip: "How dice are resolved.\n" +
-                     "Realistic: real dice are rolled - whole hits, swingy and unpredictable.\n" +
-                     "Probabilistic: results use expected values - smoother, less luck.");
-        DrawEnumCombo("Shooting",      _viewModel.ShootingMode,   _viewModel.SetShootingMode,
-            displayName: ShootingModeLabel,
-            tooltip: "When a shooting unit commits to its targets.\n" +
-                     "One At A Time: fire a weapon, see what it killed, then aim the next one.\n" +
-                     "Declare First: aim every weapon before any dice are rolled. Shots aimed\n" +
-                     "at a unit that an earlier weapon wipes out are lost.");
-        // Turn Style is deliberately NOT offered (#373): ETurnStyle.BoltAction is declared in the engine's
-        // GameSettings but nothing in the state machine reads TurnStyle, so the dropdown advertised a
-        // rule that never fired. The setting (and its config/save plumbing) stays put for when the
-        // random weighted-activation order is actually built; only the lobby control is gone.
+            tooltip: hordeMode
+                ? "Horde Mode always places five objectives: one at the table centre and\n" +
+                  "one at the centre of each table quarter."
+                : "Where the objective markers go. Objectives decide the winner.\n" +
+                  "Auto-Placed: the server places them in balanced spots, no input needed.\n" +
+                  "Player-Placed: players take turns placing markers.");
+        ImGui.EndDisabled();
 
         ImGui.EndDisabled();
 
@@ -889,6 +1153,16 @@ public class LobbyScreen : IAppScreen
         ImGui.EndDisabled();
 
         ImGui.BeginDisabled(locked);
+        }
+
+        if (Section("Rules"))
+        {
+        DrawEnumCombo("Randomness",    _viewModel.RandomnessType, _viewModel.SetRandomnessType,
+            tooltip: "How dice are resolved.\n" +
+                     "Realistic: real dice are rolled - whole hits, swingy and unpredictable.\n" +
+                     "Probabilistic: results use expected values - smoother, less luck.");
+        // Shooting is no longer offered: the official rules have every weapon group's target declared
+        // before rolling (Declare First), which the lobby now always uses.
 
         // #201 cover proximity house rules (default on). Inside the disabled block: host-only.
         bool coverProximity = _viewModel.CoverProximityExceptions;
@@ -916,8 +1190,233 @@ public class LobbyScreen : IAppScreen
         if (ImGui.IsItemHovered())
             UiText.Tooltip("House rule (default off): a shooting unit may split its fire between any\n" +
                              "number of enemy units. Off: at most 2 distinct units per shoot action.");
+        }
 
         ImGui.EndDisabled();
+
+        // Placeholder for optional OPR Advanced Rules - nothing in it yet.
+        if (Section("Advanced Rules"))
+            UiText.Disabled("Nothing here yet.");
+    }
+
+    private bool _resetSections = true;
+
+    /// <summary>A collapsible settings group. Each time the lobby opens, Connection starts closed and the
+    /// rest start open, whatever they were left as last time.</summary>
+    private bool Section(string title, bool defaultOpen = true)
+    {
+        ImGui.Spacing();
+        if (_resetSections) ImGui.SetNextItemOpen(defaultOpen, ImGuiCond.Always);
+        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
+        bool open = ImGui.CollapsingHeader(title + "##section");
+        ImGui.PopStyleColor();
+        return open;
+    }
+
+    /// <summary>Quick army sizes for the Game Type: 1k-10k for the big games, 250-2000 for the skirmish
+    /// ones. The typed box above stays for anything else.</summary>
+    private void DrawPointPresets()
+    {
+        bool skirmish = GameSystemInfo.IsSkirmish(_viewModel!.GameSystem);
+        int step = skirmish ? 50 : 1000, max = skirmish ? 1000 : 10000;
+        ImGui.TextUnformatted("Quick Size");
+        ImGui.SameLine();
+        FillRowItemWidth();
+        string Label(int pts) => skirmish ? $"{pts} pts" : $"{pts / 1000}k ({pts} pts)";
+        int current = _viewModel.ArmyPoints;
+        bool isPreset = current % step == 0 && current >= step && current <= max;
+        if (ImGui.BeginCombo("##quicksize", isPreset ? Label(current) : "Custom"))
+        {
+            for (int pts = step; pts <= max; pts += step)
+                if (ImGui.Selectable(Label(pts), pts == current))
+                    _viewModel.SetArmyPoints(pts);
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip(skirmish
+                ? "Common sizes for skirmish games (50 to 1000 points; Firefight is usually 200 or 300)."
+                : "Common army sizes (1000 to 10000 points).");
+    }
+
+    /// <summary>"Grimdark Future - Standard - 2000 pts" for the header.</summary>
+    private string GameSummary() =>
+        $"{GameSystemInfo.DisplayName(_viewModel!.GameSystem)}  -  {GameModeLabel(_viewModel.GameMode)}  -  {_viewModel.ArmyPoints} pts";
+
+    // ── Map preview ─────────────────────────────────────────────────────────────────────────────────
+    private string? _previewLayoutPath;
+    private FDG.SaveLoad.TerrainLayoutFile? _previewLayout;
+    private FDG.SaveLoad.TerrainLayoutFile? _defaultLayout;
+
+    private static uint U32(Raylib_cs.Color c, float alpha = 1f) =>
+        ImGui.ColorConvertFloat4ToU32(new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f * alpha));
+
+    private static uint U32(int r, int g, int b, int a = 255) =>
+        ImGui.ColorConvertFloat4ToU32(new Vector4(r / 255f, g / 255f, b / 255f, a / 255f));
+
+    /// <summary>A flat top-down picture of the table the lobby is set up for: surface colour, terrain (when
+    /// the layout is known before the game), deployment zones and fixed objectives.</summary>
+    private void DrawMapPreview()
+    {
+        (float tw, float th) = FDG.GameWideConstants.TableSizeFor(_viewModel!.GameSystem);
+        bool horde = GameSystemInfo.IsHordeLike(_viewModel!.GameMode);
+
+        FDG.SaveLoad.TerrainLayoutFile? layout = null;
+        string terrainNote;
+        switch (_viewModel.TerrainPlacementMode)
+        {
+            case ETerrainPlacementMode.AutoFromLayout:
+                layout = _defaultLayout ??= FDG.Stages.DefaultTerrainPool.Get();
+                terrainNote = "default terrain layout";
+                break;
+            case ETerrainPlacementMode.LoadFromFile:
+                if (_previewLayoutPath != _viewModel.TerrainLayoutPath)
+                {
+                    _previewLayoutPath = _viewModel.TerrainLayoutPath;
+                    _previewLayout = string.IsNullOrEmpty(_previewLayoutPath) ? null
+                        : FDG.SaveLoad.TerrainLayoutLoader.TryLoadFromFile(_previewLayoutPath, out _);
+                }
+                layout = _previewLayout;
+                terrainNote = layout != null ? $"map: {(string.IsNullOrWhiteSpace(layout.Name) ? Path.GetFileNameWithoutExtension(_previewLayoutPath) : layout.Name)}" : "no map chosen";
+                break;
+            default:
+                terrainNote = "terrain placed by the players";
+                break;
+        }
+        bool mapObjectives = !horde && layout != null && layout.Objectives is { Count: > 0 }
+            && _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
+        bool mapZones = !horde && layout != null && layout.DeploymentZones is { Count: >= 2 }
+            && _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
+        string objectiveNote = horde ? "5 fixed objectives"
+            : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
+            : _viewModel.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced
+                ? "objectives placed by the players" : "objectives placed at the start";
+        UiText.Disabled($"Map preview - 6' x 4' - {terrainNote}, {objectiveNote}");
+
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        Vector2 avail = ImGui.GetContentRegionAvail();
+        float scale = MathF.Max(0.1f, MathF.Min(avail.X / tw, avail.Y / th));
+        Vector2 o = p0 + new Vector2((avail.X - tw * scale) / 2f, (avail.Y - th * scale) / 2f);
+        Vector2 P(float x, float z) => o + new Vector2(x * scale, (th - z) * scale);
+
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        TableBackgroundStyle style = TableBackgrounds.For(_viewModel.TableBackground);
+        dl.AddRectFilled(P(0, th), P(tw, 0), U32(style.Surface));
+        for (float x = 6; x < tw; x += 6) dl.AddLine(P(x, 0), P(x, th), U32(style.GridMinor));
+        for (float z = 6; z < th; z += 6) dl.AddLine(P(0, z), P(tw, z), U32(style.GridMinor));
+
+        // Deployment zones (Horde's corner zones are quarter circles: clip everything to the table).
+        dl.PushClipRect(P(0, th), P(tw, 0), true);
+        uint zoneA = U32(80, 160, 255, 70), zoneB = U32(255, 110, 90, 70);
+        if (horde)
+        {
+            dl.AddCircleFilled(P(tw / 2, th / 2), 9f * scale, zoneA, 40);
+            foreach (var (cx, cz) in new[] { (0f, 0f), (tw, 0f), (0f, th), (tw, th) })
+                dl.AddCircleFilled(P(cx, cz), 9f * scale, zoneB, 40);
+        }
+        else if (mapZones)
+        {
+            for (int k = 0; k < layout!.DeploymentZones.Count; k++)
+            {
+                FDG.SaveLoad.MapDeploymentZoneEntry z = layout.DeploymentZones[k];
+                dl.AddRectFilled(P(MathF.Min(z.Left, z.Right), MathF.Max(z.Bottom, z.Top)),
+                    P(MathF.Max(z.Left, z.Right), MathF.Min(z.Bottom, z.Top)), k % 2 == 0 ? zoneA : zoneB);
+            }
+        }
+        else
+        {
+            float d = FDG.GameWideConstants.DEPLOYMENT_DISTANCE_INCHES;
+            dl.AddRectFilled(P(0, d), P(tw, 0), zoneA);
+            dl.AddRectFilled(P(0, th), P(tw, th - d), zoneB);
+        }
+
+        // Terrain.
+        if (layout != null)
+            foreach (FDG.SaveLoad.TerrainPieceEntry piece in layout.Pieces)
+                if (piece.Shape != null) DrawPreviewZone(dl, piece.Shape, TerrainPreviewColor(piece.TerrainType), P, scale);
+        dl.PopClipRect();
+
+        // Horde's five fixed objectives: centre, then the centre of each table quarter.
+        if (horde)
+        {
+            var spots = new[] { (tw / 2, th / 2), (tw / 4, th / 4), (tw * 3 / 4, th / 4), (tw / 4, th * 3 / 4), (tw * 3 / 4, th * 3 / 4) };
+            for (int k = 0; k < spots.Length; k++)
+            {
+                Vector2 c = P(spots[k].Item1, spots[k].Item2);
+                dl.AddCircleFilled(c, MathF.Max(5f, 1.2f * scale), U32(235, 235, 235), 20);
+                dl.AddCircle(c, MathF.Max(5f, 1.2f * scale), U32(20, 20, 20), 20, 2f);
+                string n = (k + 1).ToString();
+                Vector2 ts = ImGui.CalcTextSize(n);
+                dl.AddText(c - ts / 2f, U32(20, 20, 20), n);
+            }
+        }
+
+        // A custom map's own objectives.
+        if (mapObjectives)
+        {
+            for (int k = 0; k < layout!.Objectives.Count; k++)
+            {
+                Vector2 c = P(layout.Objectives[k].X, layout.Objectives[k].Z);
+                dl.AddCircleFilled(c, MathF.Max(5f, 1.2f * scale), U32(235, 235, 235), 20);
+                dl.AddCircle(c, MathF.Max(5f, 1.2f * scale), U32(20, 20, 20), 20, 2f);
+                string n = (k + 1).ToString();
+                Vector2 ts = ImGui.CalcTextSize(n);
+                dl.AddText(c - ts / 2f, U32(20, 20, 20), n);
+            }
+        }
+
+        dl.AddRect(P(0, th), P(tw, 0), U32(style.Border), 0f, ImDrawFlags.None, 3f);
+    }
+
+    private static uint TerrainPreviewColor(ETerrainType type)
+    {
+        if (type.HasFlag(ETerrainType.Dangerous)) return U32(150, 60, 40, 230);
+        if (type.HasFlag(ETerrainType.Blocking) || type.HasFlag(ETerrainType.Impassible)) return U32(75, 75, 82, 240);
+        if (type.HasFlag(ETerrainType.Cover) && type.HasFlag(ETerrainType.Difficult)) return U32(25, 70, 30, 230);
+        if (type.HasFlag(ETerrainType.Cover)) return U32(120, 95, 60, 230);
+        if (type.HasFlag(ETerrainType.Difficult)) return U32(95, 85, 55, 220);
+        return U32(110, 110, 110, 200);
+    }
+
+    private static void DrawPreviewZone(ImDrawListPtr dl, IZone shape, uint color, Func<float, float, Vector2> P, float scale)
+    {
+        switch (shape)
+        {
+            case RectangularZone r:
+                dl.AddRectFilled(P(r.Left, r.Top), P(r.Right, r.Bottom), color);
+                break;
+            case CircularZone c:
+                dl.AddCircleFilled(P(c.Center.X, c.Center.Y), c.Radius * scale, color, 24);
+                break;
+            case CompositeZone composite:
+                foreach (IZone part in composite.Parts) DrawPreviewZone(dl, part, color, P, scale);
+                break;
+            case RotatedZoneWrapper rot when rot.Inner is RectangularZone rr:
+            {
+                float a = rot.AngleDegrees * MathF.PI / 180f, cos = MathF.Cos(a), sin = MathF.Sin(a);
+                Vector2 Corner(float x, float z)
+                {
+                    float dx = x - rot.Pivot.X, dz = z - rot.Pivot.Y;
+                    return P(rot.Pivot.X + dx * cos - dz * sin, rot.Pivot.Y + dx * sin + dz * cos);
+                }
+                dl.AddQuadFilled(Corner(rr.Left, rr.Bottom), Corner(rr.Right, rr.Bottom),
+                    Corner(rr.Right, rr.Top), Corner(rr.Left, rr.Top), color);
+                break;
+            }
+            case RotatedZoneWrapper other:
+                foreach (IZone primitive in ((IZone)other).Primitives()) DrawPreviewZone(dl, primitive, color, P, scale);
+                break;
+        }
+    }
+
+    /// <summary>A small accent-coloured group heading with a rule under it, e.g. "GAME", "TABLE".</summary>
+    private static void SectionHeader(string title)
+    {
+        ImGui.Spacing();
+        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
+        ImGui.TextUnformatted(title);
+        ImGui.PopStyleColor();
+        ImGui.Separator();
+        ImGui.Spacing();
     }
 
     // After a label + SameLine, size the upcoming control to exactly the space left in the row, so
@@ -938,9 +1437,7 @@ public class LobbyScreen : IAppScreen
             StartPublicIpFetch();
         }
 
-        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
-        UiText.Wrapped("Connection (share with players)");
-        ImGui.PopStyleColor();
+        UiText.Disabled("Share these with players:");
 
         DrawCopyableAddress("LAN:    ", _lanAddresses ?? "unavailable", "lanip");
         DrawCopyableAddress("Public: ", _publicAddress, "pubip");
@@ -1144,6 +1641,73 @@ public class LobbyScreen : IAppScreen
     };
 
     // #371. Spelled out rather than left as the enum name, which would read "OneAtATime".
+    private static string PlayStyleLabel(EPlayStyle style) => style switch
+    {
+        EPlayStyle.Standard => "Standard",
+        EPlayStyle.GameMaster => "Game Master",
+        _ => style.ToString(),
+    };
+
+    /// <summary>
+    /// The Game Type: which OPR game (Grimdark Future, Age of Fantasy, GF: Firefight...). Games whose rules
+    /// aren't in yet are listed greyed out. Picking one also points the Army Source at that game's armies.
+    /// </summary>
+    private void DrawGameSystemCombo()
+    {
+        ImGui.TextUnformatted("Game Type");
+        ImGui.SameLine();
+        FillRowItemWidth();
+        EGameSystem current = _viewModel.GameSystem;
+        if (ImGui.BeginCombo("##Game Type", GameSystemInfo.DisplayName(current)))
+        {
+            foreach (EGameSystem system in GameSystemInfo.DisplayOrder)
+            {
+                bool available = GameSystemInfo.IsAvailable(system);
+                string label = GameSystemInfo.DisplayName(system) + (available ? "" : "  (coming soon)");
+                ImGui.BeginDisabled(!available);
+                if (ImGui.Selectable(label, system == current) && available && system != current)
+                    ApplyGameSystem(_viewModel, system);
+                ImGui.EndDisabled();
+            }
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Which OPR game to play.\n" +
+                           "Grimdark Future / Age of Fantasy: the full-size army games.\n" +
+                           "GF: Firefight: the skirmish version of Grimdark Future, played with\n" +
+                           "Grimdark Future armies.\n" +
+                           "Picking a game also sets the Army Source to that game's armies.");
+    }
+
+    /// <summary>
+    /// Point a lobby at a Game Type, with everything choosing one implies: the army source, the shooting
+    /// mode, a points default that suits the game's scale, and a Game Mode the game actually offers.
+    /// Shared by the combo above and by the main menu's Game Type tiles, which make the same choice a
+    /// screen earlier - the two must agree, so there is one copy of it.
+    /// </summary>
+    public static void ApplyGameSystem(ILobbyViewModel viewModel, EGameSystem system)
+    {
+        EGameSystem current = viewModel.GameSystem;
+        viewModel.SetGameSystem(system);
+        viewModel.SetAllowedGameSystems(GameSystemInfo.ArmySource(system));
+        viewModel.SetShootingMode(EShootingMode.DeclareFirst);
+        // Firefight / Skirmish armies are 200-300 pts; moving back to a big game resets to 2000.
+        bool wasSkirmish = GameSystemInfo.IsSkirmish(current), isSkirmish = GameSystemInfo.IsSkirmish(system);
+        if (isSkirmish && !wasSkirmish) viewModel.SetArmyPoints(300);
+        else if (!isSkirmish && wasSkirmish) viewModel.SetArmyPoints(2000);
+        if (Array.IndexOf(GameSystemInfo.Modes(system), viewModel.GameMode) < 0)
+            viewModel.SetGameMode(GameSystemInfo.Modes(system)[0]);
+    }
+
+    private static string GameModeLabel(EGameMode mode) => mode switch
+    {
+        EGameMode.Standard => "Standard",
+        EGameMode.Horde => "Horde",
+        EGameMode.StarQuestHorde => "Star Quest Horde",
+        EGameMode.StarQuestMission => "Star Quest Mission",
+        _ => mode.ToString(),
+    };
+
     private static string ShootingModeLabel(EShootingMode mode) => mode switch
     {
         EShootingMode.OneAtATime => "One At A Time",
@@ -1156,7 +1720,7 @@ public class LobbyScreen : IAppScreen
         ETerrainPlacementMode.AutoFromLayout => "Auto From Layout",
         ETerrainPlacementMode.Alternating => "Alternating: One Per",
         ETerrainPlacementMode.AlternatingPoints => "Alternating: Points",
-        ETerrainPlacementMode.LoadFromFile => "Load From File",
+        ETerrainPlacementMode.LoadFromFile => "Custom Map",
         _ => mode.ToString(),
     };
 
@@ -1186,6 +1750,85 @@ public class LobbyScreen : IAppScreen
             UiText.Tooltip("How many terrain points each player spends on their turn - one big piece\n" +
                              "or several small ones. A piece costing more than this can still open a\n" +
                              "turn; the difference comes out of the player's next turn.");
+    }
+
+    /// <summary>Custom Map picker: a dropdown of saved maps (with "Create new map" and "Browse for a
+    /// file..."), plus Create / Edit / Delete buttons. Create and Edit open the map maker.</summary>
+    private void DrawMapPicker()
+    {
+        _mapEditor.OnSaved ??= path =>
+        {
+            _viewModel?.SetTerrainLayoutPath(path);
+            _previewLayoutPath = null;   // force the preview to re-read the (possibly overwritten) file
+        };
+
+        string? current = _viewModel!.TerrainLayoutPath;
+        bool haveCurrent = !string.IsNullOrEmpty(current) && File.Exists(current);
+        string display = string.IsNullOrEmpty(current) ? "(choose a map)" : Path.GetFileNameWithoutExtension(current);
+
+        ImGui.TextUnformatted("Map");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-1);
+        if (ImGui.BeginCombo("##MapPick", display, ImGuiComboFlags.HeightLarge))
+        {
+            if (ImGui.Selectable("+ Create new map")) _mapEditor.OpenNew();
+            ImGui.Separator();
+            IReadOnlyList<string> maps = FdgRaylib.SaveLoad.MapPaths.List();
+            if (maps.Count == 0) UiText.Disabled("No saved maps yet");
+            foreach (string path in maps)
+            {
+                bool selected = string.Equals(path, current, StringComparison.OrdinalIgnoreCase);
+                if (ImGui.Selectable($"{Path.GetFileNameWithoutExtension(path)}##{path}", selected))
+                {
+                    _viewModel.SetTerrainLayoutPath(path);
+                    _previewLayoutPath = null;
+                }
+            }
+            ImGui.Separator();
+            if (ImGui.Selectable("Browse for a file..."))
+            {
+                var (canceled, paths) = TinyDialogs.OpenFileDialog("Load Map",
+                    FdgRaylib.SaveLoad.MapPaths.FolderPath + Path.DirectorySeparatorChar, false, TerrainFilter);
+                string? picked = canceled ? null : paths?.FirstOrDefault();
+                if (!string.IsNullOrEmpty(picked)) { _viewModel.SetTerrainLayoutPath(picked); _previewLayoutPath = null; }
+            }
+            ImGui.EndCombo();
+        }
+
+        if (UiButton.NavigateSmall("Create")) _mapEditor.OpenNew();
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!haveCurrent);
+        if (UiButton.NavigateSmall("Edit")) _mapEditor.OpenExisting(current!);
+        ImGui.SameLine();
+        if (UiButton.NavigateSmall("Delete"))
+        {
+            _mapPendingDelete = current;
+            ImGui.OpenPopup("Delete map?");
+        }
+        ImGui.EndDisabled();
+
+        if (ImGui.BeginPopupModal("Delete map?", ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.TextUnformatted($"Delete the map \"{Path.GetFileNameWithoutExtension(_mapPendingDelete ?? "")}\"?");
+            UiText.Disabled("This can't be undone.");
+            if (UiButton.Back("Cancel", new Vector2(120, 0))) { _mapPendingDelete = null; ImGui.CloseCurrentPopup(); }
+            ImGui.SameLine();
+            if (UiButton.Confirm("Delete", new Vector2(120, 0)))
+            {
+                try
+                {
+                    if (_mapPendingDelete != null && File.Exists(_mapPendingDelete)) File.Delete(_mapPendingDelete);
+                    if (string.Equals(_mapPendingDelete, _viewModel.TerrainLayoutPath, StringComparison.OrdinalIgnoreCase))
+                        _viewModel.SetTerrainLayoutPath(null);
+                    _previewLayoutPath = null;
+                    _previewLayout = null;
+                }
+                catch (Exception ex) { Console.WriteLine($"Could not delete map: {ex.Message}"); }
+                _mapPendingDelete = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
     }
 
     private static void DrawTerrainLayoutPicker(string? current, Action<string?> setter)

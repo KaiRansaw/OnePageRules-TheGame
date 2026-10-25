@@ -37,6 +37,11 @@ public class CalculatorTextSafetyTests
         "FdgRaylib/Rendering/ArmyBuilderScreen.cs",
         "FdgRaylib/Rendering/ArmyListOverlay.cs",
         "FdgRaylib/Rendering/LobbyScreen.cs",
+        // Star Quest screens print skill / item text from the data files and names the player typed.
+        "FdgRaylib/Rendering/CampaignScreen.cs",
+        "FdgRaylib/Rendering/HeroBuilderScreen.cs",
+        "FdgRaylib/Rendering/GameMasterPanel.cs",
+        "FdgRaylib/Rendering/StrikeTeamScreen.cs",
     };
 
     // Every ImGui entry point that runs its argument through printf. TextUnformatted is the exception,

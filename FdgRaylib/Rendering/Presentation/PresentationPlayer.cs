@@ -778,11 +778,25 @@ public class PresentationPlayer : IPresentationSink
     /// override if one is active, else at its authoritative position (or hidden if dead with no
     /// death beat, e.g. a dangerous-terrain casualty).
     /// </summary>
+    /// <summary>Star Quest: true for a model of a hero who is down (unconscious, not dead). Set by the renderer.</summary>
+    public static Func<IModel, bool>? IsUnconsciousHero;
+
+    private static readonly TextColor UnconsciousTint = new(150, 150, 170, 255);
+
     public ModelDrawState GetModelDrawState(IModel model)
     {
         Guid id = model.ID.ID;
         lock (_lock)
         {
+            // A revived hero (Star Quest) is alive again: forget its death so it is drawn.
+            if (model.GetIsAlive() && _deaths.TryGetValue(id, out var revived) && revived.Done)
+                _deaths.Remove(id);
+
+            // An unconscious hero stays on the table, greyed out, so the party can see where to revive it.
+            if (model.GetIsDead() && IsUnconsciousHero?.Invoke(model) == true
+                && (!_deaths.TryGetValue(id, out var falling) || falling.Done))
+                return new ModelDrawState(true, model.Position, 0.45f, UnconsciousTint);
+
             if (_deaths.TryGetValue(id, out var death))
             {
                 return death.Done

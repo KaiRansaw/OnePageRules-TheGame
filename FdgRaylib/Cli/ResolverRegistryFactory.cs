@@ -41,7 +41,9 @@ public static class ResolverRegistryFactory
                 CancellableSelectionRequest<UnitData>, CancellableResult<FDG.Data.DataBinding<UnitData>>>(
                 cancelSelectUnitCli))
             .RegisterResolver(new PlaceObjectsResolver<ModelData>(tableState))
-            .RegisterResolver(new PlaceOneTerrainResolver(tableState));
+            .RegisterResolver(new PlaceOneTerrainResolver(tableState))
+            // The text interface has no shop: a CLI defender keeps its points.
+            .RegisterResolver(new FDG.Ai.Resolvers.AiHordeShopResolver());
     }
 
     /// <summary>GUI build — interactive resolvers where implemented, CLI fallback otherwise.</summary>
@@ -88,6 +90,7 @@ public static class ResolverRegistryFactory
         var placeObjects  = new GuiPlaceObjectsResolver<ModelData>(tableState, formationMode);
         var placeObjective = new GuiPlaceObjectiveResolver(tableState);
         var placeTerrain   = new GuiPlaceOneTerrainResolver(tableState);
+        var hordeShop      = new GuiHordeShopResolver();
         overlay.Register(yesNo);
         overlay.Register(selectUnit);
         overlay.Register(selectModel);
@@ -107,6 +110,7 @@ public static class ResolverRegistryFactory
         overlay.Register(placeObjects);
         overlay.Register(placeObjective);
         overlay.Register(placeTerrain);
+        overlay.Register(hordeShop);
 
         var registry = new StageResolverRegistry()
             .RegisterResolver(yesNo)                                         // GUI
@@ -136,7 +140,8 @@ public static class ResolverRegistryFactory
             .RegisterResolver(consolidate)                                   // GUI
             .RegisterResolver(placeObjects)                                  // GUI
             .RegisterResolver(placeObjective)                                // GUI
-            .RegisterResolver(placeTerrain);                                 // GUI
+            .RegisterResolver(placeTerrain)                                  // GUI
+            .RegisterResolver(hordeShop);                                    // GUI (Horde Mode shop)
 
         return (registry, overlay);
     }

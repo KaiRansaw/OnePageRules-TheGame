@@ -6,6 +6,7 @@ using FDG.StageResolution.Requests;
 using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 /// <summary>
@@ -23,7 +24,8 @@ namespace FdgRaylib.Rendering.Resolvers;
 /// move it once and the choice sticks.
 /// </summary>
 public class GuiPlaceObjectiveResolver
-    : IStageResolver<PlaceObjectiveRequest, Position>, IGuiResolver, IGuiCanvasOverlay, IPreviewSource
+    : IStageResolver<PlaceObjectiveRequest, Position>, IGuiResolver, IGuiCanvasOverlay, IPreviewSource,
+      IRightClickConsumer
 {
     private readonly ITableState _tableState;
     private readonly object _lock = new();
@@ -133,8 +135,8 @@ public class GuiPlaceObjectiveResolver
         else
         {
             // Live ghost mode — follows cursor; click commits to confirmation.
-            bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             var candidate = new Position(mx, mz);
 
             var validity = Validate(candidate, request);
@@ -240,7 +242,8 @@ public class GuiPlaceObjectiveResolver
         // Docked into the right-column resolver panel.
         ResolverPanelLayout.BeginDocked("Place Objective##placeobjectivepanel");
 
-        ImGui.TextUnformatted($"Objective {request.MarkerIndex} of {request.TotalMarkers}");
+        bool itemMarker = request.TotalMarkers == 0; // Star Quest grenade markers reuse this picker
+        ImGui.TextUnformatted(itemMarker ? request.TaskName : $"Objective {request.MarkerIndex} of {request.TotalMarkers}");
         ImGui.Spacing();
 
         if (pending.HasValue)
@@ -266,7 +269,8 @@ public class GuiPlaceObjectiveResolver
         }
         else
         {
-            ImGui.TextWrapped("Click in the green band, >9\" from other markers, outside impassable terrain.");
+            ImGui.TextWrapped(itemMarker ? "Click inside the green area to place the marker."
+                : "Click in the green band, >9\" from other markers, outside impassable terrain.");
             ImGui.Spacing();
             ImGui.TextDisabled("Hover the table to preview placement.");
         }

@@ -7,11 +7,12 @@ using FdgRaylib.Placement;
 using FdgRaylib.Rendering.Previews;
 using ImGuiNET;
 
+using FdgRaylib.Rendering;
 namespace FdgRaylib.Rendering.Resolvers;
 
 public class GuiPlaceObjectsResolver<T>
     : IStageResolver<PlaceObjectsRequest<T>, CancellableResult<List<PlacedObjectEntry<T>>>>, IGuiResolver, IGuiCanvasOverlay,
-      IEnemyExclusionProvider, IPreviewSource, IGhostFieldSource
+      IEnemyExclusionProvider, IPreviewSource, IGhostFieldSource, IRightClickConsumer, IUndoKeyConsumer
 {
     private readonly ITableState _tableState;
     private readonly FormationModeState _formationMode;
@@ -24,6 +25,15 @@ public class GuiPlaceObjectsResolver<T>
 
     // Request state
     private PlaceObjectsRequest<T>? _request;
+
+    /// <inheritdoc />
+    public bool UsesUndoKeys
+    {
+        get
+        {
+            lock (_lock) return _request != null && (_request.CanUndoUnit || _request.CanRedoUnit);
+        }
+    }
     private TaskCompletionSource<CancellableResult<List<PlacedObjectEntry<T>>>>? _tcs;
     private readonly List<PlacedObjectEntry<T>> _placed = new();
 
@@ -58,6 +68,9 @@ public class GuiPlaceObjectsResolver<T>
     // trusts it only while _snapshotRequest matches the pending request.
     private readonly Dictionary<int, (Position pos, Float2 facing)> _ghostSnapshot = new();
     private PlaceObjectsRequest<T>? _snapshotRequest;
+
+    // The compact placement panel's last size, used to keep it centred along the bottom of the board.
+    private Vector2 _placePanelSize = new(380f, 160f);
 
     // #230: the same frame's intended positions keyed by model, for the tactical overlay's ghost-anchored
     // field (IGhostFieldSource). Kept beside the index-keyed snapshot above rather than derived from it on
@@ -229,7 +242,7 @@ public class GuiPlaceObjectsResolver<T>
         var enemies = minEnemyDist > 0f ? GetEnemyPositions(request.TargetPlayerID) : _noEnemies;
 
         bool group = _formationMode.IsGroup;
-        bool overTable = IsOverTable(io.MousePos.X, io.MousePos.Y);
+        bool overTable = IsOverTable(TableInput.MousePos.X, TableInput.MousePos.Y);
         bool wantInput = !io.WantCaptureMouse && !io.WantCaptureKeyboard;
 
         DrawZone(dl, zone);
@@ -271,7 +284,7 @@ public class GuiPlaceObjectsResolver<T>
 
         if (_errorMessage != null && ImGui.GetTime() > _errorExpiry) _errorMessage = null;
 
-        DrawInfoPanel(screenW, request, tcs, owner);
+        DrawDeployStrip(request, tcs, owner);   // the old side panel (DrawInfoPanel) is no longer drawn
     }
 
     /// <summary>
@@ -318,7 +331,7 @@ public class GuiPlaceObjectsResolver<T>
     private void DrawSingleDeploy(ImDrawListPtr dl, ImGuiIOPtr io, PlaceObjectsRequest<T> request,
         IBoundedZone zone, List<Position> enemies, float minEnemyDist, bool overTable)
     {
-        var (mouseInX, mouseInZ) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+        var (mouseInX, mouseInZ) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
         bool clicked = overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
 
         // Rotation input rotates the facing of the one model being placed / dragged (#150); the pending
@@ -340,7 +353,7 @@ public class GuiPlaceObjectsResolver<T>
                 minEnemyDist, k, StartPositionOf(binding.GetValue()), request.MaxDistanceFromStartInches, out string? why);
             if (overTable)
             {
-                DrawGhost(dl, GetBaseShape(binding.GetValue()), io.MousePos, _scale, valid, facing);
+                DrawGhost(dl, GetBaseShape(binding.GetValue()), TableInput.MousePos, _scale, valid, facing);
                 _ghostSnapshot[k] = (cand, facing); // #280
             }
             if (clicked)
@@ -380,7 +393,7 @@ public class GuiPlaceObjectsResolver<T>
             minEnemyDist, -1, StartPositionOf(currentBinding.GetValue()), request.MaxDistanceFromStartInches, out string? reason);
         if (overTable)
         {
-            DrawGhost(dl, GetBaseShape(currentBinding.GetValue()), io.MousePos, _scale, ok, facing);
+            DrawGhost(dl, GetBaseShape(currentBinding.GetValue()), TableInput.MousePos, _scale, ok, facing);
             _ghostSnapshot[_placed.Count] = (candidate, facing); // #280
         }
         if (clicked)
@@ -466,7 +479,7 @@ public class GuiPlaceObjectsResolver<T>
         Position centroid;
         if (overTable && !io.WantCaptureMouse)
         {
-            var (mx, mz) = PixelToInches(io.MousePos.X, io.MousePos.Y);
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             centroid = new Position(mx, mz);
         }
         else
@@ -676,14 +689,21 @@ public class GuiPlaceObjectsResolver<T>
         int total = request.ModelsToPlace.Count;
         bool group = _formationMode.IsGroup;
         bool dropping = group && _placed.Count == 0; // showing the whole-unit ghost
-        float panelW = ResolverPanelLayout.W;   // dock into the right-column resolver panel
-        ImGui.SetNextWindowPos(new Vector2(ResolverPanelLayout.X, ResolverPanelLayout.Y), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(ResolverPanelLayout.W, ResolverPanelLayout.H), ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.10f, 0.15f, 0.92f));
+        // A compact panel along the bottom of the board; the unit's full card shows in the info window.
+        float panelW = 380f;
+        ImGui.SetNextWindowPos(PopupAnchor.PlaceBottomCenter(_placePanelSize), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(panelW, 0f), ImGuiCond.Always);   // height fits the content
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.10f, 0.15f, 0.94f));
         ImGui.Begin("##PlacePanel",
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus);
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar);
         ImGui.PopStyleColor();
+        _placePanelSize = ImGui.GetWindowSize();
+        if (deploying != null)
+        {
+            PopupAnchor.FocusUnit = deploying;
+            ImGui.TextUnformatted(deploying.Name);
+        }
 
         ImGui.TextUnformatted($"Deploy: {_placed.Count} / {total} models placed");
         ImGui.SameLine();
@@ -704,7 +724,7 @@ public class GuiPlaceObjectsResolver<T>
         // offered where there is a unit to show reach for (not for objective / terrain placement).
         if (deploying != null)
         {
-            ImGui.Checkbox("Weapon reach (V)", ref ViewSettings.ShowReachOverlay);
+            ImGui.Checkbox("Weapon reach (B)", ref ViewSettings.ShowReachOverlay);
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Show what this spot could hit from here: weapon-range bands, shaded for\n" +
                                  "line of sight and cover from the pending positions.\n" +
@@ -740,19 +760,7 @@ public class GuiPlaceObjectsResolver<T>
         // #288: the box fills whatever is left above the footer instead of a fixed 118px — a rule-heavy
         // unit was reading three lines at a time through a keyhole. Measuring the footer first is what
         // keeps Done/Back on screen no matter how much the unit has to say.
-        if (deploying != null)
-        {
-            ImGui.Spacing();
-            float statsH = PlacementPanelLayout.StatsHeight(ImGui.GetContentRegionAvail().Y,
-                MeasureFooterHeight(request, statusText, cohesionIssue, edgeText),
-                ImGui.GetTextLineHeight());
-            ImGui.BeginChild("##DeployStats", new Vector2(0, statsH), ImGuiChildFlags.Borders);
-            // Wrap descriptions at the child's own width: the shared renderer's tooltip default (300px)
-            // is wider than this docked column and would run rule text off the edge.
-            UnitStatBlockRenderer.Draw(deploying, includeRuleDescriptions: true,
-                descriptionWrapWidth: MathF.Max(120f, ImGui.GetContentRegionAvail().X - ImGui.GetStyle().IndentSpacing));
-            ImGui.EndChild();
-        }
+        // (The unit's stats now show in the unit info window on the right, not in this panel.)
 
         ImGui.Spacing();
         ImGui.PushStyleColor(ImGuiCol.Text, statusColor);
@@ -814,6 +822,47 @@ public class GuiPlaceObjectsResolver<T>
                 ImGui.SetTooltip(request.CancelHint);
         }
 
+        // Horde deployment: unit-level history, one row of two half-width buttons. "Undo Last Unit" picks the
+        // previous unit back up (and abandons this one's in-progress clicks - it goes back to the list);
+        // "Redo Unit" puts a just-undone unit back where it was. Ctrl+Z / Ctrl+X, beside right-click's
+        // model-level Undo below, which only ever touches the unit being placed now.
+        if (request.CanUndoUnit || request.CanRedoUnit)
+        {
+            float gap   = ImGui.GetStyle().ItemSpacing.X;
+            float halfW = (fullW - gap) * 0.5f;
+            float rowH  = PlacementPanelLayout.UnitHistoryRowHeight(lineH);
+            var   io    = ImGui.GetIO();
+            bool  ctrl  = io.KeyCtrl && !io.WantCaptureKeyboard;
+
+            ImGui.BeginDisabled(!request.CanUndoUnit);
+            bool undoUnit = ImGui.Button("Undo Last Unit", new Vector2(halfW, rowH))
+                || (request.CanUndoUnit && ctrl && ImGui.IsKeyPressed(ImGuiKey.Z, false));
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Ctrl+Z: pick up the unit you placed before this one\nand place it again.");
+
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!request.CanRedoUnit);
+            bool redoUnit = ImGui.Button("Redo Unit", new Vector2(halfW, rowH))
+                || (request.CanRedoUnit && ctrl && ImGui.IsKeyPressed(ImGuiKey.X, false));
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Ctrl+X: put this unit back exactly where it was\nbefore you pressed Undo.");
+
+            if (undoUnit)
+            {
+                CompleteWith(tcs, new UndoUnitRequested<List<PlacedObjectEntry<T>>>());
+                ImGui.End();
+                return;
+            }
+            if (redoUnit)
+            {
+                CompleteWith(tcs, new RedoUnitRequested<List<PlacedObjectEntry<T>>>());
+                ImGui.End();
+                return;
+            }
+        }
+
         // Secondary row: Undo. #343 — action-granular (drag-edits and group drops reverse as one
         // gesture each), driven by the history rather than the placed list: after Restart the list is
         // empty but the restart itself can still be undone. Right-click is the canvas gesture for the
@@ -836,6 +885,121 @@ public class GuiPlaceObjectsResolver<T>
         }
         ImGui.EndDisabled();
 
+        ImGui.End();
+    }
+
+    private Vector2 _stripSize = new(700f, 40f);
+
+    /// <summary>
+    /// The placement tools as one thin strip under the top bar, out of the deployment zones: the unit and
+    /// how many models are down, Group / Single mode, Done, Back, Undo, Restart (and unit-level Undo / Redo
+    /// in Horde). A second line appears only to say what is wrong. The unit's card shows in the info window.
+    /// </summary>
+    private void DrawDeployStrip(PlaceObjectsRequest<T> request,
+        TaskCompletionSource<CancellableResult<List<PlacedObjectEntry<T>>>> tcs, IUnit? deploying)
+    {
+        int total = request.ModelsToPlace.Count;
+        bool group = _formationMode.IsGroup;
+        bool dropping = group && _placed.Count == 0;
+        if (deploying != null) PopupAnchor.FocusUnit = deploying;
+        string? cohesionIssue = PlacementCohesion.Describe(FinalCohesion(request));
+        bool touchingEdge = request.MustTouchTableEdge && PlacedTouchesEdge(request);
+        bool canDone = _placed.Count == total && !_dragIndex.HasValue
+            && (!request.MustTouchTableEdge || touchingEdge) && cohesionIssue == null;
+
+        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(_stripSize), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.92f);
+        ImGui.Begin("##deploystrip", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoFocusOnAppearing);
+
+        ImGui.TextUnformatted(deploying?.Name ?? "Placing");
+        ImGui.SameLine();
+        ImGui.TextDisabled($"{_placed.Count} / {total} placed");
+        ImGui.SameLine();
+        if (ImGui.SmallButton(group ? "Group (G)##dpmode" : "Single (G)##dpmode")) { _formationMode.Toggle(); _dragIndex = null; }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Group: place the whole unit at once (wheel rotates, Ctrl+wheel changes formation).\nSingle: place one model at a time.");
+        if (dropping && _formationCycle != null)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled($"{_formationCycle.Label}");
+        }
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!canDone);
+        bool done = ResolverButtons.Primary("Done##dpdone", new Vector2(90f, 0f), enabled: canDone);
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && !canDone)
+            ImGui.SetTooltip(cohesionIssue ?? (request.MustTouchTableEdge && !touchingEdge
+                ? "A model must touch a table edge." : "Place every model first."));
+        if (done)
+        {
+            Complete(tcs, new List<PlacedObjectEntry<T>>(_placed));
+            ImGui.End();
+            return;
+        }
+
+        if (request.AllowCancel)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Back##dpback"))
+            {
+                CompleteCancelled(tcs);
+                ImGui.End();
+                return;
+            }
+            if (ImGui.IsItemHovered() && !string.IsNullOrEmpty(request.CancelHint)) ImGui.SetTooltip(request.CancelHint);
+        }
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!_history.CanUndo);
+        if (ImGui.Button("Undo##dpundo")) UndoLastAction();
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip("Right-click also undoes.");
+
+        ImGui.SameLine();
+        ImGui.BeginDisabled(_placed.Count == 0);
+        if (ImGui.Button("Restart##dprestart"))
+        {
+            _history.RecordRestart(_placed);
+            _placed.Clear();
+            _dragIndex = null;
+            _errorMessage = null;
+        }
+        ImGui.EndDisabled();
+
+        if (request.CanUndoUnit || request.CanRedoUnit)
+        {
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!request.CanUndoUnit);
+            var kio = ImGui.GetIO();
+            bool ctrlKey = kio.KeyCtrl && !kio.WantCaptureKeyboard;
+            bool undoUnit = ImGui.Button("Undo Last Unit##dpuu")
+                || (request.CanUndoUnit && ctrlKey && ImGui.IsKeyPressed(ImGuiKey.Z, false));
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            ImGui.BeginDisabled(!request.CanRedoUnit);
+            bool redoUnit = ImGui.Button("Redo Unit##dpru")
+                || (request.CanRedoUnit && ctrlKey && ImGui.IsKeyPressed(ImGuiKey.X, false));
+            ImGui.EndDisabled();
+            if (undoUnit) { CompleteWith(tcs, new UndoUnitRequested<List<PlacedObjectEntry<T>>>()); ImGui.End(); return; }
+            if (redoUnit) { CompleteWith(tcs, new RedoUnitRequested<List<PlacedObjectEntry<T>>>()); ImGui.End(); return; }
+        }
+
+        // Only what is wrong gets a line.
+        string? problem = _errorMessage ?? cohesionIssue
+            ?? (request.MustTouchTableEdge && !touchingEdge ? "A model must touch a table edge." : null);
+        if (problem != null)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.55f, 0.4f, 1f));
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 560f);
+            ImGui.TextWrapped(problem);
+            ImGui.PopTextWrapPos();
+            ImGui.PopStyleColor();
+        }
+
+        _stripSize = ImGui.GetWindowSize();
         ImGui.End();
     }
 
@@ -866,7 +1030,8 @@ public class GuiPlaceObjectsResolver<T>
             WrappedTextHeight(statusText, wrapW),
             cohesionIssue != null ? WrappedTextHeight(cohesionIssue, wrapW) : null,
             edgeText != null ? WrappedTextHeight(edgeText, wrapW) : null,
-            request.AllowCancel);
+            request.AllowCancel,
+            request.CanUndoUnit || request.CanRedoUnit);
     }
 
     private static float WrappedTextHeight(string text, float wrapWidth) =>
