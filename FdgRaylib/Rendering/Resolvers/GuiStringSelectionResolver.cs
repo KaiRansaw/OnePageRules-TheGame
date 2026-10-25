@@ -836,7 +836,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
 
     // ── Compact menu for every other choice (melee weapons, abilities, ...) ─────────────────────────────
     private Vector2 _menuSize = new(320f, 200f);
-    private const float MenuWidth = 320f;
+    private static float MenuWidth => MathF.Max(240f, ResolverPanelLayout.ContentWidth);
 
     /// <summary>
     /// Any non-action menu as a small window beside the acting unit: title, instructions (wrapped), one
@@ -846,11 +846,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
     /// </summary>
     private void DrawCompactMenu(StringSelectionRequest request, TaskCompletionSource<string> tcs)
     {
-        ImGui.SetNextWindowPos(PopupAnchor.Place(_menuSize), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.94f);
-        ImGui.Begin("##compactmenu", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoFocusOnAppearing);
+        ResolverPanelLayout.BeginDocked("##compactmenu");   // the Actions window (right column)
 
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + MenuWidth);
         if (!string.IsNullOrEmpty(request.DisplayName)) ImGui.TextUnformatted(request.DisplayName);
@@ -1006,11 +1002,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         if (afterMove && !heldFire && Valid(ShootOpt) && !Valid(ChargeOpt)) { _chargeIntent = false; Complete(tcs, ShootOpt); return; }
         if (afterMove && heldFire && Valid(PassOpt) && !Valid(ChargeOpt)) { Complete(tcs, PassOpt); return; }
 
-        ImGui.SetNextWindowPos(PopupAnchor.Place(_popupSize), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.94f);
-        ImGui.Begin("##actionpopup", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoFocusOnAppearing);
+        ResolverPanelLayout.BeginDocked("##actionpopup");   // the Actions window (right column)
 
         if (unit != null)
         {
@@ -1020,7 +1012,8 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
 
         string? picked = null;
         bool cancelled = false;
-        Vector2 btn = new(200f, ResolverPanelLayout.OptionRowHeight() * 0.8f);
+        // Full width of the Actions window.
+        Vector2 btn = new(MathF.Max(200f, ImGui.GetContentRegionAvail().X), ResolverPanelLayout.OptionRowHeight() * 0.8f);
 
         bool ActionButton(string label, bool enabled, string tooltip)
         {
@@ -1092,13 +1085,13 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
             int si = 0;
             foreach (string o in extraValid)
             {
-                if (WrappedButton(o, $"special{si++}", 200f, enabled: true)) picked = o;
+                if (WrappedButton(o, $"special{si++}", btn.X, enabled: true)) picked = o;
                 string? desc = request.OptionDescriptions != null && request.OptionDescriptions.TryGetValue(o, out string? d) ? d : null;
                 if (desc != null && ImGui.IsItemHovered()) SetWrappedTooltip(desc);
             }
             foreach (var inv in extraInvalid)
             {
-                WrappedButton(inv.Option, $"special{si++}", 200f, enabled: false);
+                WrappedButton(inv.Option, $"special{si++}", btn.X, enabled: false);
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) SetWrappedTooltip(inv.Reason);
             }
         }

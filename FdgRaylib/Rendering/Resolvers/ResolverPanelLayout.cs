@@ -108,8 +108,27 @@ public static class ResolverPanelLayout
     {
         ImGui.SetNextWindowPos(new Vector2(X, Y), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(W, H), ImGuiCond.Always);
-        return ImGui.Begin(idOrTitle,
+        bool open = ImGui.Begin(idOrTitle,
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoSavedSettings);
+            ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoSavedSettings |
+            (idOrTitle.StartsWith("##") ? ImGuiWindowFlags.NoTitleBar : ImGuiWindowFlags.None));
+        if (open && idOrTitle.StartsWith("##")) PanelHeading("ACTIONS");
+        return open;
+    }
+
+    /// <summary>The small accent heading every right-column window starts with.</summary>
+    public static void PanelHeading(string title)
+    {
+        // The pack's title bar behind the heading, full width.
+        Vector2 p = ImGui.GetCursorScreenPos();
+        float w = ImGui.GetContentRegionAvail().X;
+        float h = ImGui.GetTextLineHeight() + 8f;
+        UiSkin.DrawTitleBar(ImGui.GetWindowDrawList(), p - new Vector2(4f, 0f), p + new Vector2(w + 4f, h));
+        ImGui.SetCursorScreenPos(p + new Vector2(6f, 4f));
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.HeaderAccent);
+        ImGui.TextUnformatted(title);
+        ImGui.PopStyleColor();
+        ImGui.SetCursorScreenPos(new Vector2(p.X, p.Y + h + 4f));
+        ImGui.Spacing();
     }
 }

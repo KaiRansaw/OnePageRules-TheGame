@@ -88,11 +88,7 @@ public class GuiCancellableUnitSelectionResolver
         lock (_lock) { request = _request; tcs = _tcs; }
         if (request == null || tcs == null) return;
 
-        ImGui.SetNextWindowPos(PopupAnchor.Place(_pickerSize), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.94f);
-        ImGui.Begin("##unitpicker", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoFocusOnAppearing);
+        ResolverPanelLayout.BeginDocked("##unitpicker");   // the Actions window (right column)
 
         if (!string.IsNullOrEmpty(request.DisplayName)) ImGui.TextUnformatted(request.DisplayName);
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
@@ -112,7 +108,7 @@ public class GuiCancellableUnitSelectionResolver
             UnitData u = opt.Option.GetValue();
             bool onTable = u.Models.Any(m => m.GetIsAlive() && (m.Position.x != 0f || m.Position.z != 0f));
             if (onTable) continue;
-            if (!done && UiButton.Navigate($"{opt.Name}##pick{opt.Option.Reference}", new Vector2(260f, 0f)))
+            if (!done && UiButton.Navigate($"{opt.Name}##pick{opt.Option.Reference}", new Vector2(MathF.Max(260f, ImGui.GetContentRegionAvail().X), 0f)))
             {
                 Complete(tcs, new Selected<DataBinding<UnitData>>(opt.Option));
                 done = true;

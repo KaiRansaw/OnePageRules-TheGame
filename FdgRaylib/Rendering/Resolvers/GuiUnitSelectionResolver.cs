@@ -357,10 +357,7 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
 
     private void DrawActivationHint(ChooseUnitToActivateRequest request, TaskCompletionSource<DataBinding<UnitData>> tcs)
     {
-        ImGui.SetNextWindowPos(new Vector2(PopupAnchor.AreaW * 0.5f, 70f), ImGuiCond.Always, new Vector2(0.5f, 0f));
-        ImGui.SetNextWindowBgAlpha(0.85f);
-        ImGui.Begin("##activatehint", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing);
+        ResolverPanelLayout.BeginDocked("##activatehint");   // the Actions window (right column)
         ImGui.TextUnformatted("Your turn: click a unit to activate it.");
 
         // Units with no models on the table (inside a transport) can't be clicked - offer them as buttons.
@@ -369,7 +366,7 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
             UnitData u = opt.Option.GetValue();
             bool onTable = u.Models.Any(m => m.GetIsAlive() && (m.Position.x != 0f || m.Position.z != 0f));
             if (onTable) continue;
-            if (UiButton.Navigate($"{opt.Name}##act{opt.Option.Reference}", new Vector2(260f, 0f)))
+            if (UiButton.Navigate($"{opt.Name}##act{opt.Option.Reference}", new Vector2(MathF.Max(260f, ImGui.GetContentRegionAvail().X), 0f)))
             {
                 ImGui.End();
                 Complete(tcs, opt.Option);

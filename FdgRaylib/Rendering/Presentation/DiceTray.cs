@@ -299,6 +299,13 @@ public static class DiceTray
 
         ImGui.TextDisabled("BATTLE REPORT");
         ImGui.Separator();
+        DrawBody();
+        ImGui.End();
+    }
+
+    /// <summary>The report's lines, newest first, drawn into the current window - the Battle Report tab.</summary>
+    public static void DrawBody()
+    {
         if (Entries.Count == 0)
             ImGui.TextDisabled("Attacks, saves and casualties show up here.");
 
@@ -316,7 +323,6 @@ public static class DiceTray
             ImGui.PopID();
             ImGui.Dummy(new Vector2(1f, 3f));
         }
-        ImGui.End();
     }
 
     /// <summary>
@@ -468,11 +474,23 @@ public static class DiceTray
             string[] words = text.Split(' ');
             for (int i = 0; i < words.Length; i++)
             {
-                if (i > 0) x += space;
+                // No space at the start of a line (a wrapped line used to start indented).
+                if (i > 0 && x > 0f) x += space;
                 string word = words[i];
                 if (word.Length == 0) continue;
                 float ww = ImGui.CalcTextSize(word).X;
                 if (x > 0f && x + ww > width) { x = 0f; y += lh; }
+                // A word longer than the whole line (a long name or path) is broken across lines instead of
+                // running off the side of the report.
+                while (ww > width && word.Length > 1)
+                {
+                    int fit = 1;
+                    while (fit < word.Length && ImGui.CalcTextSize(word[..(fit + 1)]).X <= width - x) fit++;
+                    dl.AddText(o + new Vector2(x, y), col, word[..fit]);
+                    word = word[fit..];
+                    ww = ImGui.CalcTextSize(word).X;
+                    x = 0f; y += lh;
+                }
                 dl.AddText(o + new Vector2(x, y), col, word);
                 x += ww;
             }

@@ -62,7 +62,14 @@ public static class QuestMissionPanel
             return;
         }
         Open = open;
+        DrawBody(q);
+        ImGui.End();
+    }
 
+    /// <summary>The mission's contents (objectives, conditions, marker key), drawn into the current window -
+    /// the in-game Mission tab.</summary>
+    public static void DrawBody(QuestProgress q)
+    {
         ImGui.PushTextWrapPos(0f);
 
         // ── What the party has to do ──
@@ -118,7 +125,6 @@ public static class QuestMissionPanel
         }
 
         ImGui.PopTextWrapPos();
-        ImGui.End();
     }
 
     /// <summary>"Label: value" on one line, skipped when there is no value. True when it drew something.</summary>

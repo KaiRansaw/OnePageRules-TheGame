@@ -64,6 +64,9 @@ public class TableTooltipOverlay
     }
 
     private readonly List<PinnedCard> _cards = new();
+
+    /// <summary>Set by the renderer: right-clicking a unit shows it in the Active Unit window.</summary>
+    public Action<IUnit>? ShowUnitCard;
     private const int MaxCards = 8;
 
     public void UpdateLayout(float scale, int originX, int originY, float tableH)
@@ -115,7 +118,9 @@ public class TableTooltipOverlay
         if (!EscapeRouter.MenuOpen && hoveredUnit != null && ImGui.IsMouseClicked(ImGuiMouseButton.Right)
             && (ImGui.GetIO().KeyShift || !rightClickReserved))
         {
-            OpenCard(hoveredUnit, hoveredModel, screenW, screenH);
+            // The unit's card shows in the Active Unit window (no pop-up card any more).
+            if (ShowUnitCard != null) ShowUnitCard(hoveredUnit);
+            else OpenCard(hoveredUnit, hoveredModel, screenW, screenH);
             ImGui.GetIO().WantCaptureMouse = true;
         }
 
@@ -750,7 +755,7 @@ public class TableTooltipOverlay
             ImGui.Separator();
             ImGui.TextUnformatted(hoverLabel);
         }
-        ImGui.TextDisabled("Right-click: full card");
+        ImGui.TextDisabled("Right-click: show its card");
     }
 
     // Per-model weapon-range and charge-reach rings for the hovered unit, drawn in world space centred on

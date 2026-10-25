@@ -21,28 +21,30 @@ public static class ImGuiTheme
     // (A first pass lifted them ~3x that far and was too much; the owner asked for 10.) Relative order
     // is unchanged, so every colour below still means what it meant. Text tones are the originals: the
     // backgrounds moved a hair, so their contrast did not need buying back.
-    private static readonly Vector4 Ink        = R(25, 27, 30);    // darkest wells (title, scrollbar bg)
-    private static readonly Vector4 Panel       = R(36, 39, 44);   // window body
-    private static readonly Vector4 PanelRaised = R(44, 48, 54);   // buttons, headers
-    private static readonly Vector4 Frame        = R(31, 34, 38);   // input fields
-    private static readonly Vector4 FrameHover   = R(43, 47, 53);
-    private static readonly Vector4 FrameActive  = R(50, 55, 62);
-    private static readonly Vector4 Steel        = R(74, 81, 92);   // borders, grips, separators
-    private static readonly Vector4 SteelDim     = R(54, 59, 67);
-    private static readonly Vector4 Text         = R(224, 227, 231);
-    private static readonly Vector4 TextDim      = R(126, 132, 142);
+    // Sci-Fi UI pack palette (Assets/UI): deep teal-slate panels, a teal accent and a lime highlight.
+    private static readonly Vector4 Ink        = R(12, 18, 21);    // darkest wells (title, scrollbar bg)
+    private static readonly Vector4 Panel       = R(18, 26, 30);   // window body
+    private static readonly Vector4 PanelRaised = R(26, 38, 43);   // buttons, headers
+    private static readonly Vector4 Frame        = R(15, 23, 27);   // input fields
+    private static readonly Vector4 FrameHover   = R(25, 39, 44);
+    private static readonly Vector4 FrameActive  = R(32, 50, 56);
+    private static readonly Vector4 Steel        = R(72, 98, 106);  // borders, grips, separators
+    private static readonly Vector4 SteelDim     = R(42, 60, 66);
+    private static readonly Vector4 Text         = R(222, 231, 232);
+    private static readonly Vector4 TextDim      = R(124, 142, 147);
 
-    // Blue accent + a muted "pressed" variant.
-    private static readonly Vector4 Accent     = R(66, 135, 224);
-    private static readonly Vector4 AccentHot   = R(96, 165, 245);
-    private static readonly Vector4 AccentDim   = R(34, 60, 100);
+    // Teal accent + a muted "pressed" variant, and the pack's lime for "this one is on".
+    private static readonly Vector4 Accent     = R(31, 112, 100);
+    private static readonly Vector4 AccentHot   = R(48, 150, 134);
+    private static readonly Vector4 AccentDim   = R(19, 62, 58);
+    private static readonly Vector4 Lime        = R(166, 214, 58);
 
     // Shared bits screens reach for directly (not part of the ImGui color table), kept here so every
     // screen pulls one source of truth instead of redefining them.
 
     // Light-blue accent for section/column headers and dialog titles — the "this is a header" blue used
     // across the lobby and the Host/Client dialogs.
-    public static readonly Vector4 HeaderAccent = new(0.50f, 0.73f, 1.0f, 1f);
+    public static readonly Vector4 HeaderAccent = new(0.52f, 0.84f, 0.79f, 1f);
 
     // The theme's blue accent, exposed for surfaces that paint their own draw-list shapes in it —
     // the army list overlay's stat pills (#329) match the printed Army Forge pills with this.
@@ -82,10 +84,10 @@ public static class ImGuiTheme
     // screen: neutral grey undoes (Back, Cancel, Quit), muted blue goes somewhere (Choose unit, Load
     // list, Swap), full accent commits (LAUNCH, CREATE). Telling them apart was guesswork when all
     // three were the same grey.
-    public static readonly Vector4 ButtonBack        = R(64, 70, 80);
-    public static readonly Vector4 ButtonBackHovered = R(84, 91, 102);
-    public static readonly Vector4 ButtonGo          = R(44, 64, 96);
-    public static readonly Vector4 ButtonGoHovered   = R(62, 88, 126);
+    public static readonly Vector4 ButtonBack        = R(38, 48, 53);
+    public static readonly Vector4 ButtonBackHovered = R(52, 66, 72);
+    public static readonly Vector4 ButtonGo          = R(22, 44, 50);
+    public static readonly Vector4 ButtonGoHovered   = R(32, 64, 70);
     public static readonly Vector4 ButtonCommit      = Accent;
     public static readonly Vector4 ButtonCommitHover = AccentHot;
     public static readonly Vector4 ButtonPressed     = AccentDim;
@@ -135,6 +137,7 @@ public static class ImGuiTheme
         style.ScrollbarRounding = 3f;
         style.GrabRounding      = 3f;
         style.TabRounding       = 4f;
+        style.TabBarOverlineSize = 2f;   // the lime line over the chosen tab
         style.WindowBorderSize  = 1f;
         style.FrameBorderSize   = 1f;
         style.PopupBorderSize   = 1f;
@@ -158,13 +161,13 @@ public static class ImGuiTheme
         c[(int)ImGuiCol.ScrollbarGrab]         = SteelDim;
         c[(int)ImGuiCol.ScrollbarGrabHovered]  = Steel;
         c[(int)ImGuiCol.ScrollbarGrabActive]   = Accent;
-        c[(int)ImGuiCol.CheckMark]             = AccentHot;
+        c[(int)ImGuiCol.CheckMark]             = Lime;
         c[(int)ImGuiCol.SliderGrab]            = Accent;
         c[(int)ImGuiCol.SliderGrabActive]      = AccentHot;
         // Buttons sit clearly above the window body so they read as controls, not flat panels. This is
         // the unclassed default; UiButton pushes a role colour over it (see ButtonBack/Go/Commit).
-        c[(int)ImGuiCol.Button]                = R(58, 65, 75);
-        c[(int)ImGuiCol.ButtonHovered]         = R(72, 81, 93);
+        c[(int)ImGuiCol.Button]                = R(26, 44, 50);
+        c[(int)ImGuiCol.ButtonHovered]         = R(38, 64, 70);
         c[(int)ImGuiCol.ButtonActive]          = AccentDim;
         c[(int)ImGuiCol.Header]                = SteelDim;
         c[(int)ImGuiCol.HeaderHovered]         = R(62, 68, 77);
@@ -178,13 +181,14 @@ public static class ImGuiTheme
         c[(int)ImGuiCol.Tab]                   = Ink;
         c[(int)ImGuiCol.TabHovered]            = AccentDim;
         c[(int)ImGuiCol.TabSelected]           = PanelRaised;
+        c[(int)ImGuiCol.TabSelectedOverline]   = Lime;
         c[(int)ImGuiCol.TabDimmed]             = Ink;
         c[(int)ImGuiCol.TabDimmedSelected]     = SteelDim;
         c[(int)ImGuiCol.PlotLines]             = TextDim;
         c[(int)ImGuiCol.PlotLinesHovered]      = AccentHot;
         c[(int)ImGuiCol.PlotHistogram]         = Accent;
         c[(int)ImGuiCol.PlotHistogramHovered]  = AccentHot;
-        c[(int)ImGuiCol.TableHeaderBg]         = R(45, 53, 67); // subtle blue band -- header text carries the emphasis
+        c[(int)ImGuiCol.TableHeaderBg]         = R(24, 40, 45); // subtle teal band -- header text carries the emphasis
         c[(int)ImGuiCol.TableBorderStrong]     = Steel;
         c[(int)ImGuiCol.TableBorderLight]      = SteelDim;
         c[(int)ImGuiCol.TableRowBg]            = new Vector4(0, 0, 0, 0);

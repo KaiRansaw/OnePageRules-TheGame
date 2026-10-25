@@ -1148,11 +1148,7 @@ public class GuiChooseRangedAttackResolver
             if (first >= 0) _selectedWeaponIdx = first;
         }
 
-        ImGui.SetNextWindowPos(PopupAnchor.Place(_shootPopupSize), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.94f);
-        ImGui.Begin("##shootpopup", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoFocusOnAppearing);
+        ResolverPanelLayout.BeginDocked("##shootpopup");   // the Actions window (right column)
 
         ImGui.TextUnformatted($"Shoot: {request.AttackingUnit.GetValue().Name}");
         foreach (var d in request.Declarations)

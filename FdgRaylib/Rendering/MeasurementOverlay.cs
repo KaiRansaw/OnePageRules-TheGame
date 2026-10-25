@@ -217,6 +217,25 @@ public class MeasurementOverlay
     /// (<paramref name="stripLeftX"/>, or top-centre when the strip is empty). Call inside the ImGui frame.
     /// </summary>
     /// <returns>The button's left edge (screen x), so neighbours can line up beside it; null when not drawn.</returns>
+    /// <summary>The Measure button, drawn inline in the current window (the bottom-left bar).</summary>
+    public void DrawInlineToggle()
+    {
+        if (_tableState == null) return;
+        bool on = ToolEnabled;
+        if (on)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.ButtonCommit);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiTheme.ButtonCommitHover);
+        }
+        if (ImGui.Button(on ? "Measuring (M)" : "Measure (M)"))
+            SetToolEnabled(!ToolEnabled);
+        if (on) ImGui.PopStyleColor(2);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(on
+                ? "Measuring tool is ON (M).\nClick and drag on the table to measure.\nStart on a model to measure from its base."
+                : "Turn on the measuring tool (M).");
+    }
+
     public float? DrawToggleButton(int? stripLeftX, int areaWidth)
     {
         if (_tableState == null) return null;

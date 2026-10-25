@@ -1070,7 +1070,7 @@ public class RaylibRenderer
                     BannerOverlay.Draw(_presentationPlayer.GetBanners(), layout.AreaW, screenH);
                 }
 
-                DrawStatusHud(layout);
+                UpdateMissionInfo();
 
                 // #331: victory fireworks. Last of the Raylib-drawn pass, so they sit over the board and
                 // banners but under every ImGui window - the game-over card floats on top of them, which is
@@ -1099,13 +1099,12 @@ public class RaylibRenderer
                 IUnit? infoUnit = _gameOverResult == null
                     ? (focusUnit ?? _selectedInfoUnit ?? activating)
                     : null;
-                // The card keeps its place in the right column even with nothing selected: a panel that
-                // appears and disappears shunts the battle report up and down the screen as you play.
-                int infoH = _gameOverResult != null ? 0
-                    : _unitInfoCollapsed ? (int)(ImGui.GetFrameHeight() + ImGui.GetStyle().WindowPadding.Y * 2f + 4f)
-                    : (int)(screenH * UnitInfoHeightFraction);
-                int panelH    = (int)(screenH * DecisionPanelHeightFraction);
-                ResolverPanelLayout.Set(rightX, 0, rightW, panelH);
+                // Right column, top to bottom: Active Unit (always open), Actions (every decision the game
+                // asks for), then the tabbed Battle Report / Mission / Game Master window.
+                int infoH = _gameOverResult != null ? 0 : (int)(screenH * UnitInfoHeightFraction);
+                int actionsH = (int)(screenH * ActionsHeightFraction);
+                int tabsY = infoH + actionsH;
+                ResolverPanelLayout.Set(rightX, infoH, rightW, actionsH);
 
                 rlImGui.Begin();
                 // 3D: the tools draw on the virtual board, which reaches well past the screen - widen the
@@ -1151,19 +1150,19 @@ public class RaylibRenderer
                 }
                 _measurementOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _measurementOverlay.Draw(screenW, screenH);
-                // The measuring tool's toggle button, beside the round / score strip. Hidden while a
-                // full-screen overlay (menu, army list, game-over card) is up.
+                // The 2D/3D, Measure and Take Back buttons live in the bottom-left bar with Menu and Army
+                // Lists (DrawMenuButton). The 3D camera controls stay on the board.
                 if (!_escapeMenu.IsOpen && !_armyListOverlay.IsOpen && _gameOverResult == null)
                 {
-                    float? measureLeft = _measurementOverlay.DrawToggleButton(_statusStripLeft, layout.AreaW);
-                    float? takeBackLeft = DrawTakeBackButtons(measureLeft);
-                    Draw3DToggle(takeBackLeft ?? measureLeft, show3D);
+                    HandleTakeBackKeys();
                     if (show3D) _view3D?.DrawControls(boardRect);
                 }
+                _showing3D = show3D;
                 // Game Master tools: also claim their table clicks before the hit tester reads them.
                 _gameMasterPanel.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
+                // The tools' window is the Game Master tab now; this only runs their table clicks.
                 _gameMasterPanel.Draw(hidden: _escapeMenu.IsOpen || _armyListOverlay.IsOpen || _gameOverResult != null,
-                    tableTools: true);
+                    tableTools: true, window: false);
                 _hitTester.Update(_tableState!, tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 // Overlay input (F toggle, hover timing, pins) runs after the hit tester so hover state
                 // is fresh; heavy rebuilds happen in the next frame's DrawField.
@@ -1175,11 +1174,10 @@ public class RaylibRenderer
                     _selectedInfoUnit = _hitTester.HoveredUnit;
                 // Right column, top to bottom: battle report (fills), wound window (only while wounds are
                 // waiting), unit info (pinned to the bottom). The chat/log console is gone.
-                int woundH = GuiAssignWoundsResolver.AnyPending ? (int)(screenH * 0.40f) : 0;
-                int reportH = Math.Max(80, screenH - infoH - woundH);
-                GuiAssignWoundsResolver.Dock = new Vector4(rightX, reportH, rightW, woundH > 0 ? woundH : (int)(screenH * 0.40f));
-                if (infoH > 0) DrawUnitInfoPanel(infoUnit, rightX, reportH + woundH, rightW, infoH);
-                if (woundH > 0) DrawWoundWaitPanel(rightX, reportH, rightW, woundH);
+                // Wounds to assign are a decision too: they take the Actions window.
+                GuiAssignWoundsResolver.Dock = new Vector4(rightX, infoH, rightW, actionsH);
+                if (infoH > 0) DrawUnitInfoPanel(infoUnit, rightX, 0, rightW, infoH);
+                _tooltipOverlay.ShowUnitCard = u => _selectedInfoUnit = u;
                 _tooltipOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _tooltipOverlay.Draw(screenW, screenH, _hitTester, _resolverOverlay?.ActiveInteractionHandler,
                     rollStackBounds, rightClickReserved: _resolverOverlay?.ActiveToolUsesRightClick ?? false);
@@ -1194,12 +1192,8 @@ public class RaylibRenderer
                 bool animating = _presentationPlayer?.IsAnimating ?? false;
                 bool resolverShown = false;
                 UpdatePopupAnchor(layout, show3D, boardRect, screenH);
-                // The dice tray: top of the right column, every roll of the game, newest first.
-                DiceTray.Draw(rightX, 0, rightW, Math.Max(80, screenH - infoH - (GuiAssignWoundsResolver.AnyPending ? (int)(screenH * 0.40f) : 0)));
-                // Star Quest: objectives, weather, the live event and the marker key, on screen for the
-                // whole mission instead of in a banner that flashed once in round one.
-                if (!_escapeMenu.IsOpen && !_armyListOverlay.IsOpen && _gameOverResult == null)
-                    QuestMissionPanel.Draw(_tableState, screenW, screenH);
+                // Bottom of the right column: Battle Report / Mission / Game Master tabs.
+                DrawBottomTabs(rightX, tabsY, rightW, Math.Max(80, screenH - tabsY));
                 if (!_resolverOverlayFaulted && !animating && !_takeBackInProgress)
                 {
                     try
@@ -1216,6 +1210,9 @@ public class RaylibRenderer
                         _log?.Add(ex.StackTrace ?? "(no stack trace)", errColor);
                     }
                 }
+                // Nothing to decide right now: the Actions window says what's going on instead of vanishing.
+                if (!resolverShown && !GuiAssignWoundsResolver.AnyPending && _gameOverResult == null)
+                    DrawIdleResolverPanel();
                 // Instruments draw AFTER the resolver so the movement resolver has published this frame's
                 // ghost snapshot -- pips/counts/distance then track the ghost with no one-frame lag. On the
                 // background draw list (above tokens, under windows), same layer as the ghosts they annotate.
@@ -1997,8 +1994,10 @@ public class RaylibRenderer
     // tool's button can dock to its left. Written in the Raylib pass, read in the ImGui pass of the same frame.
     private int? _statusStripLeft;
 
-    private void DrawStatusHud(Layout l)
+    private void UpdateMissionInfo()
     {
+        _missionScores.Clear(); _missionLines.Clear(); _missionActivations.Clear(); _missionWaiting.Clear();
+        _missionTurn = null; _missionRound = null;
         if (_tableState == null || _colorForPlayer == null) return;
 
         // The aggregate progress read model does the work (round, per-player objective counts); the
@@ -2087,8 +2086,28 @@ public class RaylibRenderer
             }
         }
 
-        _statusStripLeft = StatusHudOverlay.Draw(l.AreaW, progress.RoundCount, progress.TotalRounds, scores, waiting,
-            segments, subline);
+        _missionRound = progress.RoundCount;
+        _missionTotalRounds = progress.TotalRounds;
+        foreach (PlayerObjectiveScore sc in progress.Scores)
+        {
+            string name = _tableState.Players.Objects.FirstOrDefault(pl => pl.PlayerID == sc.PlayerID)?.Name ?? "";
+            _missionScores.Add((_colorForPlayer(sc.PlayerID), name, sc.ObjectiveCount));
+        }
+        if (segments != null) _missionLines.AddRange(segments);
+        _missionWaiting.AddRange(waiting);
+        if (progress.RoundCount != null)
+        {
+            var leftByPlayer = progress.UnactivatedUnits.GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
+            foreach (IPlayerSlotInfo slot in _tableState.Players.Objects.Where(pl => pl.IsFilled).OrderBy(pl => pl.SlotID))
+                _missionActivations.Add((_colorForPlayer(slot.PlayerID), slot.Name,
+                    leftByPlayer.TryGetValue(slot.PlayerID, out int n) ? n : 0));
+            if (progress.ActivatingUnit is IUnit actingUnit)
+            {
+                string owner = _tableState.Players.Objects.FirstOrDefault(pl => pl.PlayerID == actingUnit.PlayerID)?.Name ?? "";
+                _missionTurn = $"{owner}'s turn";
+                _missionTurnColor = _colorForPlayer(actingUnit.PlayerID);
+            }
+        }
     }
 
     // #331: start the fireworks the frame the game-over card first appears, then keep them running while
@@ -2168,7 +2187,157 @@ public class RaylibRenderer
         ImGui.SameLine();
         if (ImGui.Button("Army Lists (L)"))
             _armyListOverlay.Toggle();
+        if (_gameOverResult == null && !_armyListOverlay.IsOpen)
+        {
+            // 2D / 3D switch.
+            ImGui.SameLine();
+            string viewLabel = !_want3D ? "3D View (V)" : _showing3D ? "2D View (V)" : "3D View (game over)";
+            bool on3D = _want3D;
+            if (on3D)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.ButtonCommit);
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiTheme.ButtonCommitHover);
+            }
+            if (ImGui.Button(viewLabel)) _want3D = !_want3D;
+            if (on3D) ImGui.PopStyleColor(2);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(_want3D ? "Back to the 2D view (F3 or V)." : "Switch to the 3D view (F3 or V).");
+
+            ImGui.SameLine();
+            _measurementOverlay.DrawInlineToggle();
+
+            // Take Back / Redo, when the game offers them.
+            if (!_takeBackInProgress && TakeBackStatusProvider?.Invoke() is { } status)
+            {
+                ImGui.SameLine();
+                ImGui.BeginDisabled(!status.CanTakeBack);
+                if (ImGui.Button("Take Back")) _pendingTakeBack = false;
+                ImGui.EndDisabled();
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(status.TakeBackTip);
+                ImGui.SameLine();
+                ImGui.BeginDisabled(!status.CanRedo);
+                if (ImGui.Button("Redo")) _pendingTakeBack = true;
+                ImGui.EndDisabled();
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(status.RedoTip);
+            }
+        }
         ImGui.End();
+    }
+
+    private bool _showing3D;
+
+    /// <summary>Ctrl+Z / Ctrl+X take back / redo a whole activation (the buttons are in the bottom-left bar).</summary>
+    private void HandleTakeBackKeys()
+    {
+        if (_takeBackInProgress || TakeBackStatusProvider?.Invoke() is not { } status) return;
+        var io = ImGui.GetIO();
+        if (io.KeyCtrl && !io.WantCaptureKeyboard && !(_resolverOverlay?.ActiveToolUsesUndoKeys ?? false))
+        {
+            if (status.CanTakeBack && ImGui.IsKeyPressed(ImGuiKey.Z, false)) _pendingTakeBack = false;
+            else if (status.CanRedo && ImGui.IsKeyPressed(ImGuiKey.X, false)) _pendingTakeBack = true;
+        }
+    }
+
+    // ── Bottom tabs: Battle Report / Mission / Game Master ──────────────────────────────────────────────
+    private static Vector4 ToVec4(Color c) => new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+
+    private void DrawBottomTabs(int x, int y, int w, int h)
+    {
+        ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.07f, 0.07f, 0.08f, 0.97f));
+        ImGui.Begin("##bottomtabs", ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.PopStyleColor();
+        if (ImGui.BeginTabBar("##bottomtabbar"))
+        {
+            if (ImGui.BeginTabItem("Battle Report"))
+            {
+                ImGui.BeginChild("##reportbody");
+                DiceTray.DrawBody();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Mission"))
+            {
+                ImGui.BeginChild("##missionbody");
+                DrawMissionTab();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            if (GameMasterPanel.Available && ImGui.BeginTabItem("Game Master"))
+            {
+                ImGui.BeginChild("##gmbody");
+                _gameMasterPanel.DrawBody();
+                ImGui.EndChild();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+        ImGui.End();
+    }
+
+    // What used to be the top status strip, gathered each frame for the Mission tab.
+    private int? _missionRound;
+    private int _missionTotalRounds;
+    private readonly List<(Color color, string name, int count)> _missionScores = new();
+    private readonly List<(string text, Color color)> _missionLines = new();
+    private readonly List<(Color color, string name, int left)> _missionActivations = new();
+    private readonly List<(Color color, string player, string task)> _missionWaiting = new();
+    private string? _missionTurn;
+    private Color _missionTurnColor;
+
+    private void DrawMissionTab()
+    {
+        ImGui.PushTextWrapPos(0f);
+        if (_missionRound is int round)
+            UiText.Colored(new Vector4(0.55f, 0.75f, 1f, 1f), $"ROUND {round} / {_missionTotalRounds}");
+        else
+            ImGui.TextDisabled("The game hasn't started its first round yet.");
+
+        if (_missionLines.Count > 0)
+        {
+            ImGui.Spacing();
+            foreach (var (text, color) in _missionLines) UiText.Colored(ToVec4(color), text);
+        }
+        else if (_missionScores.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Objectives held:");
+            foreach (var (color, name, count) in _missionScores)
+            {
+                ImGui.TextColored(ToVec4(color), "  " + name);
+                ImGui.SameLine();
+                ImGui.TextUnformatted($"{count}");
+            }
+        }
+
+        if (_missionActivations.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Activations left this round:");
+            foreach (var (color, name, left) in _missionActivations)
+            {
+                ImGui.TextColored(ToVec4(color), "  " + name);
+                ImGui.SameLine();
+                ImGui.TextUnformatted($"{left}");
+            }
+            if (_missionTurn != null) ImGui.TextColored(ToVec4(_missionTurnColor), _missionTurn);
+        }
+        foreach (var (color, player, task) in _missionWaiting)
+        {
+            ImGui.TextColored(ToVec4(color), player);
+            ImGui.SameLine();
+            ImGui.TextDisabled($"is deciding: {task}");
+        }
+        ImGui.PopTextWrapPos();
+
+        if (_tableState?.Progress.Quest is { } quest)
+        {
+            ImGui.Spacing();
+            ImGui.Separator();
+            QuestMissionPanel.DrawBody(quest);
+        }
     }
 
     // Centered "Game Over" card shown once the game ends. The board stays visible behind it; the player
@@ -2238,7 +2407,7 @@ public class RaylibRenderer
     // ── Unit info window (right column, between the decision panel and Chat / Log) ─────────────
     private const float DecisionPanelHeightFraction = 0.42f;
     private const float UnitInfoHeightFraction = 0.30f;
-    private bool _unitInfoCollapsed;
+    private const float ActionsHeightFraction = 0.30f;
     private IUnit? _selectedInfoUnit;
 
     /// <summary>The unit that was activating last frame, so a new activation can take over the card.</summary>
@@ -2253,34 +2422,19 @@ public class RaylibRenderer
         ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
         ImGui.Begin("##unitinfo",
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus |
-            (_unitInfoCollapsed ? ImGuiWindowFlags.NoScrollbar : ImGuiWindowFlags.None));
+            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus);
 
-        if (ImGui.SmallButton((_unitInfoCollapsed ? "+" : "-") + "##unitinfofold"))
-            _unitInfoCollapsed = !_unitInfoCollapsed;
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(_unitInfoCollapsed ? "Show the unit's card." : "Fold the unit's card away.");
-        ImGui.SameLine();
         bool acting = unit != null && _tableState?.Progress.ActivatingUnit?.ID.Equals(unit.ID) == true;
-        ImGui.TextDisabled(unit == null ? "Unit card" : acting ? "Active unit" : "Selected unit");
+        ResolverPanelLayout.PanelHeading(unit == null || acting ? "ACTIVE UNIT" : "SELECTED UNIT");
         if (unit == null)
         {
-            if (!_unitInfoCollapsed)
-            {
-                ImGui.Separator();
-                ImGui.TextDisabled("Click a unit on the table to see its card here.");
-            }
+            ImGui.PushTextWrapPos(0f);
+            ImGui.TextDisabled("Click a unit on the table (or right-click any unit) to see its card here.");
+            ImGui.PopTextWrapPos();
             ImGui.End();
             return;
         }
-        if (_unitInfoCollapsed)
         {
-            ImGui.SameLine();
-            ImGui.TextUnformatted(unit.Name);
-        }
-        else
-        {
-            ImGui.Separator();
             // Status first: activated / Shaken / in reserve.
             if (_tableState != null && UnitActivation.HasActivated(_tableState.Progress, unit))
                 ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated this round");
@@ -2407,9 +2561,19 @@ public class RaylibRenderer
         if (_log == null) return;
         if (ResolverPanelLayout.BeginDocked("##idleresolver"))
         {
-            ImGui.TextDisabled("No decision pending.");
-            ImGui.Spacing();
-            ImGui.TextDisabled("Prompts appear here on your turn.");
+            ImGui.PushTextWrapPos(0f);
+            if (_missionWaiting.Count > 0)
+                foreach (var (color, player, task) in _missionWaiting)
+                {
+                    ImGui.TextColored(ToVec4(color), player);
+                    ImGui.SameLine();
+                    ImGui.TextDisabled($"is deciding: {task}");
+                }
+            else if (_tableState?.Progress.ActivatingUnit is IUnit acting)
+                ImGui.TextDisabled($"{acting.Name} is taking its turn...");
+            else
+                ImGui.TextDisabled("Nothing to decide right now. Your options appear here on your turn.");
+            ImGui.PopTextWrapPos();
         }
         ImGui.End();
     }

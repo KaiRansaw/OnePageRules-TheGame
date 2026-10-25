@@ -1068,13 +1068,8 @@ public class LobbyScreen : IAppScreen
         // without changing any rule, so a saved game can be reopened with them on.
         ImGui.EndDisabled();
         ImGui.BeginDisabled(!isHost);
-        DrawEnumCombo("Play Style",    _viewModel.PlayStyle,      _viewModel.SetPlayStyle,
-            displayName: PlayStyleLabel,
-            tooltip: "Standard: play the game normally.\n" +
-                     "Game Master: for testing. The host gets a Game Master panel to end or jump\n" +
-                     "rounds, move any unit anywhere, wound / heal / kill / revive units, toggle\n" +
-                     "Shaken, give XP and traits, and (Horde) edit points, objectives and waves.\n" +
-                     "Works when resuming a save, too.");
+        // Play Style is gone from the lobby: the Game Master tools are in every game now, as a tab in the
+        // host's right column (players who join over the network don't get it).
         ImGui.EndDisabled();
         ImGui.BeginDisabled(locked);
 

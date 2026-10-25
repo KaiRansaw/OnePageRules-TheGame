@@ -68,7 +68,7 @@ public sealed class GameMasterPanel
 
     /// <summary>Call inside the ImGui frame, before the hit tester. <paramref name="hidden"/> suppresses the
     /// panel and tools (menu / army list / game-over overlays).</summary>
-    public void Draw(bool hidden, bool tableTools = true)
+    public void Draw(bool hidden, bool tableTools = true, bool window = true)
     {
         GameMasterHub? hub = GameMasterHub.Active;
         ITableState? table = hub?.TableState;
@@ -86,7 +86,22 @@ public sealed class GameMasterPanel
             HandleTableInput(hub, table);
             DrawHighlights(table);
         }
-        DrawWindow(hub, table);
+        if (window) DrawWindow(hub, table);
+    }
+
+    /// <summary>Whether the Game Master tools are available in this game.</summary>
+    public static bool Available => GameMasterHub.Active?.TableState != null;
+
+    /// <summary>The tools, drawn into the current window - the in-game Game Master tab.</summary>
+    public void DrawBody()
+    {
+        GameMasterHub? hub = GameMasterHub.Active;
+        ITableState? table = hub?.TableState;
+        if (hub == null || table == null) return;
+        if (_selected != null && !table.Units.Objects.Contains(_selected)) _selected = null;
+        ImGui.PushTextWrapPos(0f);
+        DrawWindowBody(hub, table);
+        ImGui.PopTextWrapPos();
     }
 
     // ------------------------------------------------------------------ table tools
@@ -217,7 +232,13 @@ public sealed class GameMasterPanel
             return;
         }
         ImGui.PushTextWrapPos(0f);
+        DrawWindowBody(hub, table);
+        ImGui.PopTextWrapPos();
+        ImGui.End();
+    }
 
+    private void DrawWindowBody(GameMasterHub hub, ITableState table)
+    {
         UiText.Colored(ImGuiTheme.HeroGold, "Testing tools - changes ignore the rules.");
         UiText.Disabled("Hover any button to see what it does. Changes land straight away while it is your turn.");
         if (hub.PendingCount > 0)
@@ -236,9 +257,6 @@ public sealed class GameMasterPanel
             DrawQuestParty(hub, quest);
         }
         DrawSelectedUnit(hub, table);
-
-        ImGui.PopTextWrapPos();
-        ImGui.End();
     }
 
     private enum EItemKind { Button, Radio }
