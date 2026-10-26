@@ -1,0 +1,89 @@
+9.1 - works
+9.2 its showing partial matches as well. im unsure if i like taht, but it might also be because of how the ui looks wo well come back to this later
+9.3 works
+9.4 works, but same issue as 9.2 with the ui
+9.5 works but same ui issue
+i think my main issue is with the ui lol. i know itll all come together later, but man i dont like it lmao
+9.6 we moved the mission info to the tabs next to battle report and game master
+9.7 works
+9.8 works
+9.9 works
+9.10 works
+9.11 this doesn't work. i want to add it so that when you right click after choosing an action, right clicking cancels the activation, and unselects the selected unit.
+9.12 unsure of what this means
+9.13 works
+9.14 works 
+9.15 i noticed that when using concussion grenade on the unit, it can push them off of the map. but i see that they move back onto the map, so the modfels dont just die, theyre jusdt off the map. can we fix that? 
+
+- also, something i just thought of, how well will these tests transfer over to the 3d view when we go to GODOT?
+- ive noticed that when swapping the selected hero (im assuming this happens in non Hero based game modes as well), the ACTIONS window doesn't swap to the new selected unit. ie, I select Hero A. Hero A comes up in "Selected Unit", and also shows which actions it can take in "ACTIONS". I then click on Hero B. "Selected Unit" updates to now show Hero B info, but "ACTIONS" still shows Hero A actions. I want the actions window to automatically swap to the selected unit/hero, UNLESS an action has been make with the selected unit. ie, I select Hero A, and dont click anything. I then click on Hero B, the Actions window should swap to Hero B. BUT. Lets say i select Hero A, and do an advane move. i HAVE to finish the activation before i can select another unit/hero. HOWEVER, lets say i select Hero A and click on either Skill/Cast/whatever. Just clicking on those options dont lock me out, because im not making a selection yet. Clicking on "Skill" or "Cast" will only show me what i can do in those options, not actually making an action. 
+
+9.16 works, but i dont want the activation to be ended as soon as "Hold, dont shoot" is selected. like what if i wanted to hold but not shoot so i could do an action? 
+
+- also, double check how activations work. Am i allowed to charge/shoot/cast a spell and STILL do a skill?
+
+9.17 it bounces back to the Hold/Hold,dont shoot/Advance etc screen
+9.19 got this error/crash after selecting and killing a hero using the DM option 
+[DEBUG] Shoot stage entered.
+[LOG] Holding fire with Flamer Pistol - not used this shoot action.
+[LOG] Held fire with every weapon - returning to Choose Action.
+[DEBUG] Entered Choose Action.
+[DEBUG] Shoot stage entered.
+[LOG] Holding fire with Flamer Pistol - not used this shoot action.
+[LOG] Held fire with every weapon - returning to Choose Action.
+[DEBUG] Entered Choose Action.
+[LOG] Game Master: Bio destroyed.
+[DEBUG] Shoot stage entered.
+[GAME ERROR] State machine faulted: System.Exception: Available weapon dictionary was empty when entering ChooseRangedAttackStage.
+   at FDG.Stages.ChooseRangedAttackStage.Enter(ICombatActionContext context) in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\MainPhaseRoundStage\SingleRoundStage\SingleTurnStage\MainUnitActionStage\ShootStage\ChooseRangedWeaponStage\ChooseRangedAttackStage.cs:line 60
+   at FDG.Stages.ParentStage`2.TransitionToChild(StageBase`1 newChild, TContextChild childContext) in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\ParentStage.cs:line 92
+   at FDG.Stages.ParentStage`2.Enter(TContextSelf context) in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\ParentStage.cs:line 52
+   at FDG.Stages.ShootStage.Enter(IUnitActionContext context) in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\MainPhaseRoundStage\SingleRoundStage\SingleTurnStage\MainUnitActionStage\ShootStage\ShootStage.cs:line 24
+   at FDG.Stages.ParentStage`2.TransitionToChild(StageBase`1 newChild, TContextChild childContext) in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\ParentStage.cs:line 92
+   at FDG.Stages.ParentStage`2.TransitionSetBuilder.<>c__DisplayClass3_0.<<AddChild>b__0>d.MoveNext() in D:\OnePageRules\OnePageRules-TheGame\FutureOfDarkGrimness\StateMachine\ParentStage.cs:line 135
+--- End of stack trace from previous location ---
+
+
+"Game Over : Game error: Available weapon dictionary was empty when entering ChooseRangedAttackStage" was shown in game as well. it gave me a return to main menu button
+ 
+i realized i press the "kill" button in the Selected Unit part of GM Tools, not Knock Out
+
+clicking "Knock Out' didn't crash anuthing, buit theres no skull icon, tje circl is grayed out though. if the icon isn't needed right now,we can add it later.
+
+cant click on the unconscious hero at all. it doesn't show in Actions, doenst show in Active Unit, and it doesn't register that a hero is unconscious next to them so i cant use the revive hero skill. 
+
+9.20/21 cant click on the unconscious hero at all. it doesn't show in Actions, doenst show in Active Unit, and it doesn't register that a hero is unconscious next to them so i cant use the revive hero skill. cant even interact with the dead hero in GM mode
+
+9.22 works
+9.23 works 
+- when forcing a success for 9.23, i selected scurry. it worked, but i literally couldn't finish the scurry move. im unsure if its because of the "no ending/moving 1" away from models rule. check teh screenshot "cant finish scurry move.png". if thats the reasoning behind it, we need to change that engine rule, or get rid of it. its a pain in the ass to not be able to do moves. maybe change it to "Cant move through ENEMY units, and cant end a move within 1" of an ENEMY unit." i want to make sure that models CANNOT slip into eachother, and that theres still rules that keep friendly units from stacking on top of each other. we need to flush this out asap, this is a core gameplay mechanic thats hard to play with.      UPDATE: i just had Select turned on in teh GM tools. But regardless of that, the core issue is still one ive noticed a lot in normal games. we need to fine tune this rule somehow. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
