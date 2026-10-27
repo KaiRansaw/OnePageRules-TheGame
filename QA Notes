@@ -1,8 +1,42 @@
+we really need dto edit the GM screen options. thje layout, table layout, text wrapping, everything is just horrible and is such a pain in the ass to use to test things. i know im not tiving you much to work with, but just... idk, simplify it so its easier to see and find what i want? see "GM shit format 1.png"
+
+i mentioned it once or twice in this list, but i want to rework the BR messages for things. is this somethign that can be spent time right now? if so, i think this might be a high priority for me. if we should wait, then ill wait. same thing with the popup info and stuff like that. 
+
+
 3.10 - on a failed roll, the game auto forces the use of a power to succeed the roll. i dont want it to automate that, always give the option to use power.
 3.11 the area around the rogue is a square, not a circle, and its not centered correctly around the token. see "Trickster Issues.png. other than that, it works. 
 3.12 same issue as 3.11 with the highlighted area to show 9" for FoW is a swuare not a circle, and its not centered correctly. the circle showing the smoke effect area shows up properly, but im unsire if the -1 to hit applied properly. check "Fog Cloud Issue.png"
 3.13 works
-3.14 
+3.13b in the Battle Report chat, reckless says "one extra wound dealt (melee/within 12") and taken this round", its confusing. make it more clear. remember, less is more. make tooltips explain the tip in a short way that anyoen can understnad. like the popout tooltip for reckless is good, but i want the BR chat message to be a bit more to the point, like "Soldier: Reckless Succeded - This hero deals +1 wound in melee/within 12", but takes +1 to each wound."
+Vengeful Strike - i am unsure if the modifiers are correctly being applied. that being said, i really want to rework the popups for the dice rolling in the BR tab. if thats somethign that is better left until we start porting into GODOT, then thats fine, i can wait, but if its something that will correctly port directly over lets put that on the todo list. please see Vengeful Strike.png
+i think im going to put the rest of 3.13b/3.13c on standby until we figure out if we should do the ui changes so i can actually tell if the stat buffs are applying.
+3.14 it works, but i want to change the BR message for succeeded discovery/auto pickup. Instead of it being "Search token X: Item" and "Hero picks up Item", its "Hero picked up Item". if its discovered and picked up at the same time, all we need to know is which hero pickd up the item. 
+3.15 works. instead of the inital discover message being "Search token X: item", have it just be "Item has been discovered" 
+3.17 smoke grenade area that i can place it is also square, not round. make the message in BR "Hero threw Smoke Grenade!" (make "Smoke Grenade" highlightd with dotted underscore and when you hover over it, a popup appears 1/3 of a second later that describes what the grenade does. lets make this a new standard for when heroes throw items. the message will now be "Hero throws Item!" and the item name will have the highlioght, underscore and popout.). that being siad, the tken and aoe appears, idk what cover grants tho
+3.18 noise grenade area that i can place is also square not round. make the BR message "Hero threw Noise Grenade!" and do the hero throws item thing. that being siad, the noise grenade works. 
+3.19 make the message ion BR "Hero throws Poison Grenade!" and do the hero throws item thing. when a unit rolls for poison, have the BR message be "Unit fails to fight off Poison." when hovering over the message, have the popup show the roll and what poison does (unit takes 1 damage) and how many units were lost if any. if the unit succeds, have the message be "Unit fights off Poison." and have the popup be the dice roll and what Poison does.
+3.20 have the BR message be "Hero Throws Fire Grenade!" and do the thing. the area i can throw the grenade is square not round as well. when a unit interacts with the dangerous terrain from the fire grenade, have the message be "Unit burns in flames" and have the popup show what damaged them and any rolls, and if any models were lost. 
+3.21 have the message be "The flames die out"
+3.22 works
+3.23 works
+3.24when clicking on "kill" it completely makes the hero uninteractable. i need to be able to click on the dead unit/hero to still be able to do actions (like revive or whatever). the revive skill wont activate near a dead hero. same thing when a hero is only Knocked Out.
+3.25 unsure as of now.
+3.29 im unsure of how to force this to happen. 
+3.30 reinforcement wortks, unsure how to do ambushers
+3.31the movement halves, but i dont see anywhere on the unit card that says -1 to melee
+3.32 i want to have a list of phrases the random events can have, like "Surprise surprise! Dazing Spores!" "Holy shit, didnt see that coming! Dazing SPores!" or whatever else. its not a primary focus, but i feel like that will add more uniqueness in the final build. and then when hovering over the message in BR itll popup what the event is/does. also want to eidt how it pops up on sscreen, but thatll be finalized later
+3.33 yup
+3.34 this run was just succeed the check and remove the objective
+3.35 the secondary this game was Scavenge. it placed two objective markers, but it took both off the board and completed the secondary objective after i only succeeded a single roll on a single marker. 
+3.36 yup
+3.37 i want to edit the shopping experience, ui, and everything. if thats something we should wait until later, we can.
+i noticed that the heros save their stats after the game which is nice. i do see that both heros that were unconcious got the sdame injury, double check to make sure that they can roll different ones, or if Blinded Eye is the only one right now.
+
+
+
+
+
+
 
 9.1 - works
 9.2 its showing partial matches as well. im unsure if i like taht, but it might also be because of how the ui looks wo well come back to this later
@@ -63,14 +97,40 @@ cant click on the unconscious hero at all. it doesn't show in Actions, doenst sh
 9.22 works
 9.23 works 
 - when forcing a success for 9.23, i selected scurry. it worked, but i literally couldn't finish the scurry move. im unsure if its because of the "no ending/moving 1" away from models rule. check teh screenshot "cant finish scurry move.png". if thats the reasoning behind it, we need to change that engine rule, or get rid of it. its a pain in the ass to not be able to do moves. maybe change it to "Cant move through ENEMY units, and cant end a move within 1" of an ENEMY unit." i want to make sure that models CANNOT slip into eachother, and that theres still rules that keep friendly units from stacking on top of each other. we need to flush this out asap, this is a core gameplay mechanic thats hard to play with.      UPDATE: i just had Select turned on in teh GM tools. But regardless of that, the core issue is still one ive noticed a lot in normal games. we need to fine tune this rule somehow. 
+9.24 yup
+9.25 yup - a hero was taking its turn when i added a level. it looks like the levelup mid action broke the game. the game is still running, but on the action acreen its stuck on "Hero is taking its turn..." . normally this isnt an issue since heros only level up at the end of the missions. 
+9.26 - 9.30 these were all talked about before i think. 
+9.31 yup
+9.32 yup
 
+made it to round 3 in a StarQuest game. when i finisihed both m yheros actiuvations, the bot tried to start an activation on a squad of Prime Brothers, but the Actions window is frekaing out, swapping betwen "Ai is choosing an action" and "Prime Brothers is taking its turn". game is stalled.
 
+after rewinding  turn, the games Process Memory spikes to an extremely high number (currently 713and still climbing
+4.1 it didnt ask me for a boss fight at the end. if its supposed to ask, double check the rules. if its an auto thing, keep it as an auto thing. i was able to exfil by having all heros in a corner even with the bossfight active. do boss fihts block exfil in the rules or nah?
+4.2 yup
+4.3 yup
 
+5.1 yes
+5.1b yes
+5.2 set ity to 6, ended round. screen splash said reinforcements incoming, but no models were put onto the field.
+5.3 will try when ui is slightly better
+5.4 unsure of how to reinact
+5.5 boss fight was not offered
+5.6 yup
+5.7 yup
 
+6.1 yup
+6.2 yup
+6.3 yup
+6.4 yup
+6.5 yup
+6.6 yup
+6.7 yup
+at the end of the mission it said every hero get 5c and 0xp. is that correct?
+when finishing the mission, it loads us back into the main menu by button press. have it instead load us back into the SQ Campaign screen, and have the button say "Continue"
 
-
-
-
+7.1 points become 300, map preview still says 6x4
+that being said, ive noticed that all maps ive played on are equal squares i think, including GF. 
 
 
 
