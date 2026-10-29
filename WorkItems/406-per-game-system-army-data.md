@@ -1,70 +1,88 @@
 # 406 — Armies must carry their own game system's stats, not be shared across systems
 
-**Status:** open. Foundation only - nothing built yet.
-**Raised by:** Kai, 2026-10-29, immediately after #M2 made Firefight lists importable.
+**Status:** open. Foundation / framework only - stats and book data come later.
+**Raised by:** Kai, 2026-10-29, immediately after M2 made Firefight lists importable.
+**Decisions taken:** Kai, 2026-10-29 (below). Build the framework now; fill the data in later.
 
 ## The problem
 
-OPR publishes a **separate army book per game system**. The same named unit has different points,
-different weapon profiles and different special rules in Grimdark Future, GF: Firefight and
-GF: Star Quest. They are not the same data scaled - they are different entries.
+OPR publishes a **separate army book per game system**. The same named unit can differ in points,
+unit size, available units and upgrade options between Grimdark Future and GF: Firefight.
 
-`OprListImporter` (M2, 2026-10-29) made `gff` and `aofs` share lists importable by mapping them onto
-their PARENT system's slug:
+Kai's own examples (Alien Hives):
+
+| | Grimdark Future | GF: Firefight |
+|---|---|---|
+| Assault Grunts | 105 pts for 10, combine to 20 | 30 pts for 3, combine to 6 |
+| Hive Lord (Hero) | available | **not in the book at all** |
+| Snatcher Lord | same points, stats and weapon stats as GFF | same base, but **upgrade costs differ** and some upgrades differ (e.g. Hive Protector) |
+
+So it is **not** a wholesale different dataset. The pattern is: same core profiles much of the time,
+but different **unit sizes**, **points**, **which units exist**, and **upgrade options/costs**. A
+conversion by scaling points is therefore impossible - the differences are editorial, not arithmetic.
+
+M2 (2026-10-29) made `gff`/`aofs` importable by mapping them onto their parent system's slug:
 
 ```
 ["gff"]  = GameSystems.GrimdarkFuture
 ["aofs"] = GameSystems.AgeOfFantasy
 ```
 
-That was the minimum change to unblock Firefight testing, and it works in the sense that the list
-imports and is pickable. **But it throws away which system the list is actually for.** Consequences
-Kai hit straight away:
+That unblocked Firefight testing but **throws away which system the list is for**, so an imported
+Firefight army is stamped `grimdark-future` and is offered in a plain GF lobby with the wrong points.
 
-- An imported Firefight army is stamped `grimdark-future`, so it also shows up in a plain Grimdark
-  Future lobby, where its points and profiles are wrong for the game being played.
-- Points totals do not match what Army Forge shows, because the per-unit costs came from one system's
-  book and the game treats them as another's.
-- Weapons and abilities differ from the book the player actually built against.
+## Decisions (Kai, 2026-10-29)
 
-The bundled book snapshots under `FdgRaylib/Assets/Books/` have the same shape of problem:
-`MatchBundledBook(faction, gameSystem)` matches on the parent slug, so a Firefight army can get
-Grimdark Future rule definitions attached to it.
+1. **Lobbies are strict. No warnings, no "allow anyway".** Each game type shows ONLY its own lists:
+   - **GF** -> only GF lists
+   - **GF: Firefight** -> only GFF lists
+   - **AoF** -> only AoF lists
+   - **AoF: Skirmish** -> only AoFS lists
+2. **Horde inherits from its parent game type**, it is not a system of its own:
+   - GF Horde uses GF lists/stats; GFF Horde uses GFF; AoF Horde uses AoF; AoFS Horde uses AoFS.
+   - So the army source keys off the **game system**, not the game mode.
+3. **In-game army builder for every system: build the framework now, fill the data later.** Kai wants
+   the scaffolding in place (per-system books, the builder screen able to target a system) without
+   committing to stat values yet.
+4. **Do not finalise stats or book contents yet.** OPR is currently in a **beta** reworking unit stats,
+   so anything entered now is likely to change. Build so that swapping the data later is cheap -
+   data-driven, not hard-coded.
+5. **Importing stays as-is for now.** It works, and it is how armies get in while the builder is built.
 
-## What the fix has to do
+## Open question - still to check
 
-1. **Record the real source system on the army file.** `ArmyListFile.GameSystem` needs to distinguish
-   `gff` / `aofs` / `gfsq` from `gf` / `aof`, rather than collapsing them. This is the foundation -
-   everything else follows from it.
-2. **Make the lobby filter honest.** `GameSystemInfo.ArmySource` currently answers
-   `EAllowedGameSystems.GrimdarkFuture` for both `GrimdarkFuture` and `GFFirefight`. Each game type
-   should accept only armies built for it. `EAllowedGameSystems` grows members to match.
-3. **Keep the bundled books per system.** `MatchBundledBook` must match the exact system, and
-   `Assets/Books/` needs the Firefight / Skirmish books alongside the existing ones, or attach nothing
-   rather than attach the wrong book's rules.
-4. **Decide what happens to armies already imported** under the M2 behaviour. They are stamped
-   `grimdark-future` and there is no way to tell from the file which system they came from. Options:
-   leave them (they are wrong only if used in the wrong mode), or re-import. Kai's call - do not
-   silently migrate.
-5. **Star Quest** uses its own hero data (`Assets/StarQuest/`) and the Hero Builder, so heroes are not
-   affected. The ENEMY army in a Star Quest game is a GF army file, and that is correct per the rules -
-   worth confirming against GFSQ Core Rules v2.0.1 rather than assuming.
+- **Do GF: Star Quest and AoF: Quest have their own unit stats for the ENEMY army?** Heroes are built
+  in the Hero Builder from `Assets/StarQuest/` and are unaffected. But the enemy force in a Star Quest
+  game is a GF army file today. Check GFSQ Core Rules v2.0.1 / AoFQ Core Rules v2.0.1 before assuming
+  that is right. If Star Quest has its own enemy book, it becomes a fifth/sixth system here.
 
-## Open questions for Kai
+## What the framework has to do
 
-- Should a Firefight lobby refuse a Grimdark Future army outright, or allow it with a warning? Refusing
-  is correct; allowing is friendlier if he wants to reuse a list he has not rebuilt yet.
-- Is it worth an in-game army builder for Firefight / Skirmish, or is importing from Army Forge enough?
-  (He flagged in QA Notes that there is no in-game builder for those systems.)
+1. **Record the real source system on the army file.** `ArmyListFile.GameSystem` must distinguish
+   `gff` / `aofs` (and `gfsq` / `aofq` if the check above says so) from `gf` / `aof` instead of
+   collapsing them. **This is the foundation - everything else follows from it.**
+2. **`EAllowedGameSystems` grows a member per system**, and `GameSystemInfo.ArmySource` returns the
+   exact system for each `EGameSystem` - with Horde modes inheriting their parent's system per
+   decision 2. Today it answers `GrimdarkFuture` for both `GrimdarkFuture` and `GFFirefight`.
+3. **Bundled books become per-system.** `MatchBundledBook(faction, gameSystem)` must match the exact
+   system; `Assets/Books/` gains the Firefight / Skirmish books. Until a book exists for a system,
+   attach **nothing** rather than the wrong system's rules.
+4. **The army builder targets a system.** The builder and Army Forge screens pick which system's book
+   they are building against, and stamp it on the saved file. Unit size ranges, points and upgrade
+   lists all come from that book - so per-system differences are data, not code.
+5. **Armies already imported under M2** are stamped `grimdark-future` with no record of their origin.
+   Kai's call what happens to them; do not silently migrate. Simplest honest answer is to re-import.
 
 ## Do NOT do
 
-- Do not try to convert an army between systems by scaling points. The entries genuinely differ; a
-  conversion would be invented data.
-- Do not revert M2's import mapping before the replacement is in. It is the only way Firefight armies
-  get into the game at all right now, and sessions 7 and 8 depend on it.
+- **No points-scaling conversion between systems.** The differences include units that do not exist in
+  one book and upgrades that differ in kind, not just cost. A conversion would be invented data.
+- **Do not revert M2's import mapping before the replacement is in.** It is the only way Firefight
+  armies get into the game right now, and test plan sessions 7 and 8 depend on it.
+- **Do not hard-code stat values.** OPR's beta will change them.
 
 ## Notes
 
-- 2026-10-29: raised. M2's mapping is a deliberate, documented stopgap - see the comment on
-  `OprListImporter.SupportedGameSystems`, which should be updated when this lands.
+- 2026-10-29: raised, then scoped with Kai's decisions the same day. M2's mapping is a deliberate,
+  documented stopgap - the comment on `OprListImporter.SupportedGameSystems` should be updated when
+  this lands.
