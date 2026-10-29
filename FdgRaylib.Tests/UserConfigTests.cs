@@ -203,6 +203,7 @@ public class UserConfigTests
             CoverProximityExceptions = false,
             SeeThroughFriendlyUnits = true,
             UnlimitedSplitFire = true,
+            FriendlyUnitsMayOverlap = true,
         };
 
         saved.ApplyTo(lobby);
@@ -224,6 +225,7 @@ public class UserConfigTests
             Assert.That(lobby.CoverProximityExceptions, Is.False);
             Assert.That(lobby.SeeThroughFriendlyUnits, Is.True);
             Assert.That(lobby.UnlimitedSplitFire, Is.True);
+            Assert.That(lobby.FriendlyUnitsMayOverlap, Is.True);
         });
     }
 
@@ -274,6 +276,7 @@ public class UserConfigTests
             CoverProximityExceptions = false,
             SeeThroughFriendlyUnits = true,
             UnlimitedSplitFire = true,
+            FriendlyUnitsMayOverlap = true,
         };
         string path = PathFor("config.json");
 
@@ -298,6 +301,7 @@ public class UserConfigTests
             Assert.That(nextLobby.CoverProximityExceptions, Is.False);
             Assert.That(nextLobby.SeeThroughFriendlyUnits, Is.True);
             Assert.That(nextLobby.UnlimitedSplitFire, Is.True);
+            Assert.That(nextLobby.FriendlyUnitsMayOverlap, Is.True);
         });
     }
 
@@ -327,6 +331,8 @@ public class UserConfigTests
         public bool CoverProximityExceptions { get; set; } = true;
         public bool SeeThroughFriendlyUnits { get; set; }
         public bool UnlimitedSplitFire { get; set; }
+
+        public bool FriendlyUnitsMayOverlap { get; set; }
         public ETableBackground TableBackground { get; set; }
 
         public void SetArmyPoints(int armyPoints) => ArmyPoints = armyPoints;
@@ -346,6 +352,8 @@ public class UserConfigTests
         public void SetCoverProximityExceptions(bool enabled) => CoverProximityExceptions = enabled;
         public void SetSeeThroughFriendlyUnits(bool enabled) => SeeThroughFriendlyUnits = enabled;
         public void SetUnlimitedSplitFire(bool enabled) => UnlimitedSplitFire = enabled;
+
+        public void SetFriendlyUnitsMayOverlap(bool enabled) => FriendlyUnitsMayOverlap = enabled;
         public void SetTableBackground(ETableBackground background) => TableBackground = background;
 
         public void Dispose() { }
@@ -376,6 +384,8 @@ public class UserConfigTests
         public IObservable<bool> CoverProximityExceptionsObservable => throw new NotSupportedException();
         public IObservable<bool> SeeThroughFriendlyUnitsObservable => throw new NotSupportedException();
         public IObservable<bool> UnlimitedSplitFireObservable => throw new NotSupportedException();
+
+        public IObservable<bool> FriendlyUnitsMayOverlapObservable => throw new NotSupportedException();
         public IObservable<ETableBackground> TableBackgroundObservable => throw new NotSupportedException();
         public string ServerName => throw new NotSupportedException();
         public IReadOnlyList<LobbyChatMessage> ChatMessages => throw new NotSupportedException();

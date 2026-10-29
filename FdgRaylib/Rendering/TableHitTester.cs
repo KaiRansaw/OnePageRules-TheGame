@@ -1,4 +1,5 @@
 using FDG;
+using FdgRaylib.Rendering.Presentation;
 using ImGuiNET;
 
 namespace FdgRaylib.Rendering;
@@ -28,6 +29,22 @@ public class TableHitTester
     /// <summary>Left mouse button clicked this frame, not consumed by an ImGui widget.</summary>
     public bool Clicked { get; private set; }
 
+    /// <summary>
+    /// Whether a model can be pointed at. Alive models always can. A downed Star Quest hero is
+    /// <see cref="IModel.GetIsDead"/> but is still DRAWN on the table (greyed, by
+    /// <c>PresentationPlayer.GetModelDrawState</c>), and the party has to be able to walk over and
+    /// revive it - so it must be clickable too.
+    /// <para>
+    /// Before this, the hit tester skipped every model that was not alive, so an unconscious hero
+    /// could be seen but not selected: no hover card, nothing in Active Unit or Actions, and the
+    /// Revive skill had no way to target it (QA 9.20/9.21/3.24). The test mirrors the renderer's
+    /// own predicate exactly, so anything drawn can be picked and nothing invisible can.
+    /// </para>
+    /// </summary>
+    private static bool CanBePointedAt(IModel model) =>
+        model.GetIsAlive()
+        || (model.GetIsDead() && PresentationPlayer.IsUnconsciousHero?.Invoke(model) == true);
+
     public void Update(ITableState tableState, float scale, int originX, int originY, float tableH)
     {
         HoveredUnit    = null;
@@ -54,7 +71,7 @@ public class TableHitTester
 
             foreach (var model in unit.Models)
             {
-                if (!model.GetIsAlive()) continue;
+                if (!CanBePointedAt(model)) continue;
                 var pos = model.Position;
                 if (pos.x == 0f && pos.z == 0f) continue;
 
@@ -80,7 +97,7 @@ public class TableHitTester
                 if (!unit.GetIsOnBattlefield()) continue;
                 foreach (var model in unit.Models)
                 {
-                    if (!model.GetIsAlive() || !model.ID.Equals(cardHit)) continue;
+                    if (!CanBePointedAt(model) || !model.ID.Equals(cardHit)) continue;
                     HoveredModel = model;
                     HoveredUnit  = unit;
                 }

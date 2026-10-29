@@ -192,6 +192,8 @@ public sealed class HostGameSettings
     public bool SeeThroughFriendlyUnits { get; set; }
     public bool UnlimitedSplitFire { get; set; }
 
+    public bool FriendlyUnitsMayOverlap { get; set; }
+
     /// <summary>The engine's own defaults - one source of truth for what a fresh config holds.</summary>
     public static HostGameSettings FromDefaults() => From(GameSettings.GetDefault());
 
@@ -214,6 +216,7 @@ public sealed class HostGameSettings
         CoverProximityExceptions = settings.CoverProximityExceptionsEnabled,
         SeeThroughFriendlyUnits = settings.SeeThroughFriendlyUnits,
         UnlimitedSplitFire     = settings.UnlimitedSplitFire,
+        FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
     /// <summary>Snapshots what the lobby panel currently shows.</summary>
@@ -236,6 +239,7 @@ public sealed class HostGameSettings
         CoverProximityExceptions = viewModel.CoverProximityExceptions,
         SeeThroughFriendlyUnits = viewModel.SeeThroughFriendlyUnits,
         UnlimitedSplitFire     = viewModel.UnlimitedSplitFire,
+        FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
     /// <summary>
@@ -265,5 +269,6 @@ public sealed class HostGameSettings
         viewModel.SetCoverProximityExceptions(CoverProximityExceptions);
         viewModel.SetSeeThroughFriendlyUnits(SeeThroughFriendlyUnits);
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
+        viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }

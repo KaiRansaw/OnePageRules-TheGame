@@ -1579,6 +1579,21 @@ public class GuiDefineMovementResolver
             livingModels.Select(m => pt.GetTotalDistanceMoved(m)).ToList());
 
         bool canSubmit = issues.Count == 0;
+
+        // Say WHY the move is refused, in the panel, instead of only in the disabled button's tooltip.
+        // A greyed-out Confirm with no visible reason reads as the game being broken rather than the move
+        // being illegal - the single most common complaint in QA. One line per distinct problem.
+        if (!canSubmit)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.WoundsRed);
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + btnW);
+            foreach (string issue in issues)
+                ImGui.TextWrapped("- " + issue);
+            ImGui.PopTextWrapPos();
+            ImGui.PopStyleColor();
+            ImGui.Spacing();
+        }
+
         // Primary: Done -- larger, accented, commits on click or the Confirm key (gated on a valid move).
         // Muted while the confirmation is up (#333), so the same Enter press cannot both answer the popup
         // and re-press Done behind it.

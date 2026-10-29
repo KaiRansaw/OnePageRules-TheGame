@@ -1185,6 +1185,19 @@ public class LobbyScreen : IAppScreen
         if (ImGui.IsItemHovered())
             UiText.Tooltip("House rule (default off): a shooting unit may split its fire between any\n" +
                              "number of enemy units. Off: at most 2 distinct units per shoot action.");
+
+        // Friendly-overlap house rule (default off).
+        bool friendlyOverlap = _viewModel.FriendlyUnitsMayOverlap;
+        if (UiButton.Checkbox("Friendly Units May Overlap", ref friendlyOverlap))
+            _viewModel.SetFriendlyUnitsMayOverlap(friendlyOverlap);
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("House rule (default ON): your own units may finish a move within 1\" of\n" +
+                             "each other and may move past each other. Models still cannot END on top\n" +
+                             "of another model, and enemies still need the 1\" gap.\n" +
+                             "Turn it OFF for the rules as written: units may only be within 1\" of\n" +
+                             "another unit when charging - friendly units included.\n" +
+                             "On by default because the written rule is painful in Star Quest and\n" +
+                             "Quest, where every hero is its own unit and a party can never close up.");
         }
 
         ImGui.EndDisabled();
