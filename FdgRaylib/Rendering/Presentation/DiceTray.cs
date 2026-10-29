@@ -428,6 +428,17 @@ public static class DiceTray
         // UiText, not TextColored: a unit's name is data and may carry a '%' (#398).
         FdgRaylib.Rendering.UiText.Colored(whoColor, who);
         ImGui.TextUnformatted($"{d.Label} ({d.SuccessThreshold}+)");
+
+        // #407: show WHY the threshold is what it is. The beat has carried these all along (#245
+        // composes them where the arithmetic happens - "Quality 4+", "Vengeful Strike +1", "buff +1",
+        // "Fatigued: 6s only") and the dice overlay draws them as chips, but this hover - the one you
+        // actually read in the Battle Report, after the roll has gone past - dropped them. So a
+        // player had no way to tell whether a skill's modifier applied, which is what put several QA
+        // items on standby. Nothing new is recorded; this just stops the report hiding it.
+        if (d.ModifierTags is { Count: > 0 })
+        {
+            ImGui.TextDisabled(string.Join("   ", d.ModifierTags));
+        }
         if (d.Mode != ERandomnessType.Realistic)
         {
             ImGui.TextDisabled($"about {Num(d.Successes)} of {Num(d.Total)} (average)");
