@@ -45,6 +45,44 @@ Kai's wording spec from QA Notes - shorter lines, the *"Hero throws \<Item\>!"* 
 underline and a ~1/3s hover popup, Poison / Fire / search-token phrasings. Those are quick once the
 data is there, and are tracked in `claude/fdg-todo.md`.
 
+## Investigation, 2026-10-29 - most of the plumbing already exists
+
+Checked before building anything, per the note below. Findings:
+
+- **`--trace-rules` is NOT reusable here.** `RuleTrace` narrates hook evaluation as free text into the
+  Debug log channel. It proves a rule fired, but it is prose, it is not attached to a particular roll,
+  and it cannot be hung off a hover. Useful for manual debugging, not for this.
+- **The evaluator ALREADY knows the source rule.** `RuleEvaluator` has
+  `EvaluateAllNamed` / `EvaluateAllNamedLive`, both returning
+  `IReadOnlyList<(RuleOperation Op, string RuleName)>` - the per-frame UI queries use them. So the
+  rule name is available at dispatch; nothing new needs recording at the rules layer.
+- **`RollModifierSink` is where provenance is thrown away.** It folds every operation into
+  `Dictionary<ERollKind, int>` - a single net integer per roll kind. `Add(roll, delta)` takes no
+  source, and `ApplyFrom(IEnumerable<RuleOperation>)` takes the un-named operations. That is the one
+  choke point: by the time the stage reads `Net(roll)`, "+1 from Vengeful Strike" has become "+1".
+- **Each operation can already describe itself.** `RuleOperation.Describe()` is abstract and every
+  operation implements it ("added -1 to Hit rolls"), with a documented phrasing contract. The
+  evaluator pairs it with bearer + rule for the game log. So the text for each line is in hand.
+
+### The shape of the change
+
+1. `RollModifierSink` keeps a list of entries (roll kind, delta, source rule, bearer) alongside the
+   running total, and exposes it. `Net(roll)` keeps working unchanged, so nothing that reads it breaks.
+2. `Add` takes an optional source; `ApplyFrom` gains an overload taking the `(Op, RuleName)` pairs the
+   named evaluator already returns.
+3. The six call sites switch to the named evaluation and pass it through:
+   - `DetermineHitRollStage` (hit rolls) - do this one first, end to end.
+   - `RollToHitStage` (saves), `SyntheticHitResolution` (saves),
+     `MoraleUtilities` (morale), `ShootingForecast` (the pre-roll forecast),
+     `Ai/Tactician/CombatMath` (bot maths - may not need it at all; check before touching).
+4. The breakdown rides along to the Battle Report hover, which already shows both sides' dice (U1).
+5. The same pattern then applies to `WoundModifierSink` and `MovementModifierSink` - wounds and the
+   move-distance question Kai raised separately (QA 3.31: Crippled's -1 to melee is not shown
+   anywhere).
+
+**Start with hit rolls only.** One vertical slice, per CLAUDE.md - prove the whole path from rule to
+hover, then repeat for saves, morale and wounds.
+
 ## Notes
 
 - 2026-10-29: agreed with Kai. He chose the engine half over the visible wording changes, on the
