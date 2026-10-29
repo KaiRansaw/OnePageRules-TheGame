@@ -48,6 +48,12 @@ Firefight army is stamped `grimdark-future` and is offered in a plain GF lobby w
    so anything entered now is likely to change. Build so that swapping the data later is cheap -
    data-driven, not hard-coded.
 5. **Importing stays as-is for now.** It works, and it is how armies get in while the builder is built.
+6. **Armies imported before the fix get re-imported**, not migrated. They are stamped
+   `grimdark-future` with no record of their origin, so there is nothing honest to migrate from -
+   paste the share links again once the system fix lands.
+7. **The builder asks which game system first**, then offers only that book's units, sizes and
+   upgrades. Not "build once, flag it legal in several systems" - unit sizes and costs genuinely
+   differ per book, so one army cannot be correct in two systems at once.
 
 ## Open question - still to check
 
@@ -70,8 +76,7 @@ Firefight army is stamped `grimdark-future` and is offered in a plain GF lobby w
 4. **The army builder targets a system.** The builder and Army Forge screens pick which system's book
    they are building against, and stamp it on the saved file. Unit size ranges, points and upgrade
    lists all come from that book - so per-system differences are data, not code.
-5. **Armies already imported under M2** are stamped `grimdark-future` with no record of their origin.
-   Kai's call what happens to them; do not silently migrate. Simplest honest answer is to re-import.
+5. **Armies already imported under M2** get re-imported (decision 6). Do not write a migration.
 
 ## Do NOT do
 
