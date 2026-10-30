@@ -36,8 +36,8 @@ PROJECT="$ROOT_DIR/FdgRaylib/FdgRaylib.csproj"
 DIST_DIR="$ROOT_DIR/dist"
 
 # Release archives are stamped with the OnePageRules rules-set version the build
-# implements, e.g. FdgRaylib-win-x64-OPR_3_5_1.zip. Override: RULES_VERSION=... scripts/build-dist.sh
-RULES_VERSION="${RULES_VERSION:-OPR_3_5_1}"
+# implements, e.g. FdgRaylib-win-x64-OPR_3_6_0.zip. Override: RULES_VERSION=... scripts/build-dist.sh
+RULES_VERSION="${RULES_VERSION:-OPR_3_6_0}"
 
 # Trimming is intentionally OFF: the app uses Newtonsoft with TypeNameHandling.Auto
 # (reflection-based) for .fdgarmy files, which a trimmer would break.
@@ -61,7 +61,7 @@ COMMON_ARGS+=("-p:InformationalVersion=$GIT_STAMP")
 echo ">> Build stamp: $GIT_STAMP"
 
 # Release archive suffix: both axes, so the file itself names the app AND rules version
-# (e.g. FdgRaylib-win-x64-v0.2.0-OPR_3_5_1.zip). Keep RULES_VERSION verbatim here - the
+# (e.g. FdgRaylib-win-x64-v0.2.0-OPR_3_6_0.zip). Keep RULES_VERSION verbatim here - the
 # archive name is for humans, not SemVer, so the readable OPR_3_5_1 form is right.
 ARCHIVE_SUFFIX="v${APP_VERSION:-0.0.0}-${RULES_VERSION}"
 echo ">> Archive suffix: $ARCHIVE_SUFFIX"

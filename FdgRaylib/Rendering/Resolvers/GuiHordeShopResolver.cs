@@ -10,10 +10,12 @@ using ImGuiNET;
 namespace FdgRaylib.Rendering.Resolvers;
 
 /// <summary>
-/// Horde Mode's shop window (end of a wave). Recruit tab: new units from your army's book, configured with
-/// the same editor the Army Forge uses. Upgrade tab: your units within 9" of a seized objective, re-equipped
-/// for the difference between their new and current cost (a cheaper loadout pays points back). The engine
-/// then takes the points, re-equips the upgraded units and asks you to place each recruit.
+/// Horde Mode's shop window, opened at a point-reward round. Recruit tab: new units from your army's book,
+/// configured with the same editor the Army Forge uses. Upgrade tab: your units within 9" of a seized
+/// objective, re-equipped for the difference between their new and current cost (a cheaper loadout pays
+/// points back). Reinforce tab (#409, new in OPR 3.6.0): your units in range that are down to half
+/// strength, brought back up for half their point value. The engine then takes the points, applies the
+/// upgrades and reinforcements, and asks you to place each recruit.
 /// </summary>
 public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, HordeShopReply>, IGuiResolver
 {
@@ -29,6 +31,8 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
     private BuilderList _cart = new();
     private readonly List<int> _cartObjectives = new();
     private readonly Dictionary<Guid, UpgradeEdit> _upgrades = new();
+    /// <summary>#409: units ticked for reinforcement in this shop visit.</summary>
+    private readonly HashSet<Guid> _reinforce = new();
     private int _selectedRecruit = -1;
     private Guid? _selectedUpgrade;
     private string _filter = "";
@@ -113,7 +117,10 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         int recruitCost = rows.Sum(r => r.PointCost);
         List<UpgradeEdit> pending = _upgrades.Values.Where(u => u.Changed).ToList();
         int upgradeCost = pending.Sum(PriceOf);
-        int total = recruitCost + upgradeCost;
+        List<HordeShopUnit> reinforcing = request.Upgradable
+            .Where(u => u.NotReinforceableReason == null && _reinforce.Contains(u.UnitId)).ToList();
+        int reinforceCost = reinforcing.Sum(u => u.ReinforceCost);
+        int total = recruitCost + upgradeCost + reinforceCost;
         int left = request.PointsAvailable - total;
 
         // ---- header: points + book
@@ -166,6 +173,11 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
                 DrawUpgradeList(request);
                 ImGui.EndTabItem();
             }
+            if (ImGui.BeginTabItem($"Reinforce ({request.Upgradable.Count(u => u.NotReinforceableReason == null)})"))
+            {
+                DrawReinforceList(request);
+                ImGui.EndTabItem();
+            }
             ImGui.EndTabBar();
         }
         ImGui.EndChild();
@@ -185,12 +197,12 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         // ---- right: cart
         ImGui.SameLine();
         ImGui.BeginChild("##shopCart", new Vector2(cartW, paneH), ImGuiChildFlags.Borders);
-        DrawCart(rows, pending);
+        DrawCart(rows, pending, reinforcing);
         ImGui.EndChild();
 
         // ---- footer
         ImGui.Spacing();
-        int items = _cart.Units.Count + pending.Count;
+        int items = _cart.Units.Count + pending.Count + reinforcing.Count;
         float btnW = 240f, btnH = ImGui.GetFrameHeight() * 1.4f;
         bool canBuy = items > 0 && left >= 0;
         bool buy = ResolverButtons.Primary(items == 0 ? "Buy" : $"Buy ({Signed(total)} pts)",
@@ -202,7 +214,7 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         bool skip = ResolverButtons.Deemphasized("Done - buy nothing", new Vector2(btnW, btnH));
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Close the shop and keep your points for later waves.");
 
-        if (buy && canBuy) return BuildReply(pending);
+        if (buy && canBuy) return BuildReply(pending, reinforcing);
         if (skip) return HordeShopReply.Nothing;
         return null;
     }
@@ -259,6 +271,45 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
     }
 
     // ------------------------------------------------------------------ upgrade
+
+    // ------------------------------------------------------------------ reinforce (#409)
+
+    private void DrawReinforceList(HordeShopRequest request)
+    {
+        UiText.Disabled($"Units within {FDG.StateMachine.HordeRules.ShopRangeInches:0}\" of a seized "
+            + "objective that are down to half or less. Half their points brings back up to half their "
+            + "models (or wounds, for a single model). They keep their XP and traits.");
+        ImGui.Separator();
+
+        if (request.Upgradable.Count == 0)
+        {
+            UiText.Disabled("You have no units on the table.");
+            return;
+        }
+        if (!request.Upgradable.Any(u => u.NotReinforceableReason == null))
+        {
+            UiText.Disabled("Nothing to reinforce - no unit in range is down to half strength.");
+        }
+
+        foreach (HordeShopUnit info in request.Upgradable.OrderBy(u => u.NotReinforceableReason != null))
+        {
+            ImGui.PushID("rfl" + info.UnitId);
+            if (info.NotReinforceableReason == null)
+            {
+                bool ticked = _reinforce.Contains(info.UnitId);
+                if (ImGui.Checkbox($"{info.Name} ({info.ReinforceRestores}) - {info.ReinforceCost} pts", ref ticked))
+                {
+                    if (ticked) _reinforce.Add(info.UnitId);
+                    else _reinforce.Remove(info.UnitId);
+                }
+            }
+            else
+            {
+                UiText.Disabled($"{info.Name} - {info.NotReinforceableReason}");
+            }
+            ImGui.PopID();
+        }
+    }
 
     private void DrawUpgradeList(HordeShopRequest request)
     {
@@ -384,7 +435,8 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
 
     // ------------------------------------------------------------------ cart + reply
 
-    private void DrawCart(List<UnitFileEntry> rows, List<UpgradeEdit> pending)
+    private void DrawCart(List<UnitFileEntry> rows, List<UpgradeEdit> pending,
+        List<HordeShopUnit> reinforcing)
     {
         UiText.Colored(ImGuiTheme.HeaderAccent, "CART");
         int remove = -1;
@@ -418,7 +470,19 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
             ImGui.PopID();
         }
 
-        if (rows.Count == 0 && pending.Count == 0) UiText.Disabled("Empty.");
+        Guid? unreinforce = null;
+        foreach (HordeShopUnit info in reinforcing)
+        {
+            ImGui.PushID("rf" + info.UnitId);
+            if (ImGui.SmallButton("X")) unreinforce = info.UnitId;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Take this reinforcement out of the cart");
+            ImGui.SameLine();
+            ImGui.Text($"Reinforce {info.Name} ({info.ReinforceRestores}) - {info.ReinforceCost} pts");
+            ImGui.PopID();
+        }
+        if (unreinforce is Guid rid) _reinforce.Remove(rid);
+
+        if (rows.Count == 0 && pending.Count == 0 && reinforcing.Count == 0) UiText.Disabled("Empty.");
 
         if (remove >= 0)
         {
@@ -429,7 +493,7 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         if (undo != null) ResetEdit(undo);
     }
 
-    private HordeShopReply BuildReply(List<UpgradeEdit> pending)
+    private HordeShopReply BuildReply(List<UpgradeEdit> pending, List<HordeShopUnit> reinforcing)
     {
         string? recruitsJson = null;
         if (_cart.Units.Count > 0)
@@ -451,6 +515,10 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
             reply.UpgradeUnitIds = pending.Select(e => e.Info.UnitId).ToList();
             reply.UpgradeLoadouts = pending.Select(e => (string?)new HordeLoadout { BookName = _book.Name, Unit = e.Unit! }.ToJson()).ToList();
         }
+
+        // #409: a reinforcement carries no list and no loadout - it restores the unit already on the
+        // table, so the engine only needs to know which units and re-checks the price itself.
+        reply.ReinforceUnitIds = reinforcing.Select(u => u.UnitId).ToList();
         return reply;
     }
 
@@ -490,6 +558,9 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         _cart = new BuilderList();
         _cartObjectives.Clear();
         _upgrades.Clear();
+        // #409: reinforcement ticks are per shop visit - a unit reinforced now is not half-strength at the
+        // next reward round, and leaving the tick set would re-buy it.
+        _reinforce.Clear();
         _selectedRecruit = -1;
         _selectedUpgrade = null;
         tcs.SetResult(reply);
