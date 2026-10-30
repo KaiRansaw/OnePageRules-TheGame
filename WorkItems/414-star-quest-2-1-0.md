@@ -18,6 +18,46 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - power costs on the v2.1.0 reference
+
+Verified against the **POWER REFERENCE** section of GFSQ Core Rules v2.1.0 before changing anything,
+because these are numbers the player pays every activation:
+
+| | v2.0.1 (was) | v2.1.0 (now) |
+|---|---|---|
+| Any one additional action | 2 | **3** |
+| Revive an Unconscious Hero | 2 | **3** |
+| Count a failed Str/Dex/Wil test as passed | 2 | 2 |
+| Ignore being Shaken from a failed Morale Test | 2 | 2 |
+| A failed Hero Skill test | 1 | 1 |
+
+An extra **Skill** action is "any one additional action", so it takes the extra-action cost - the two
+already shared a branch in `ChooseActionStage`.
+
+**The costs are now named constants on `QuestActions`** (`ExtraActionPower`, `RevivePower`,
+`PassStatTestPower`, `IgnoreShakenPower`, `FailedSkillPower`) rather than literals. That is the
+substantive part of the change, not tidying: each cost appeared **both in the rule and in the
+player-facing label**, written out separately across five files - `QuestActions` (the option name, the
+revive skill name, the revive description, two `SpendPower` calls, the stat-test prompt),
+`ChooseActionStage` (two tooltips and a comment), `MoraleUtilities` (the Shaken prompt and its
+`SpendPower`) and `UnitActionContext` (a doc comment). A sweep that caught the rule and missed a label
+would leave the button quoting a price the game does not charge, which is worse than either being
+wrong on its own.
+
+`ReviveName` had to become `static readonly` rather than `const` to interpolate the constant. It is
+looked up by name (`QuestSkill.Find(QuestSkill.ReviveName)`), so `QuestPowerCostTests` checks that the
+lookup still resolves - that is the test that catches a half-finished rename.
+
+**Verified in a played game**, not just by test: a headless Star Quest Horde run now prints
+`Extra Action (3 power)`, `Extra Skill (3 power)`, `Revive a hero (3 power)` and
+`Spend 3 power to take another action`.
+
+**Next in this cluster, not done:** v2.1.0 made the 1-power payment for a failed hero skill
+**optional** - fail, and you *may* pay to count it as passed, where 2.0.1 forced the payment and
+resolved the skill either way. This build still forces it. That also settles QA 3.10 ("never
+auto-spend power, always ask"), which is currently filed as a preference and is in fact a rules
+requirement.
+
 ### 2026-10-30 - the once-per-game mechanism: what is actually missing
 
 **The headline finding: the engine DOES have a per-unit once-per-game offer.** Three separate docs say
