@@ -1,6 +1,8 @@
 # 407 — Every roll should be able to say why it came out that way
 
-**Status:** open, next up. Agreed with Kai 2026-10-29 as the FIRST half of the Battle Report rework.
+**Status:** the granted-buff half is DONE on branch `rules-360` (2026-10-30). Passive rules were already
+named (#245) and the hover already drew them (commit 0211c9e, 2026-10-29) - what was missing was every
+GRANTED buff, which showed as an anonymous "buff +1". Remaining: wounds and movement (see below).
 **Bucket:** PERMANENT (engine records and exposes new data - survives the Godot port).
 
 ## The problem
@@ -82,6 +84,57 @@ Checked before building anything, per the note below. Findings:
 
 **Start with hit rolls only.** One vertical slice, per CLAUDE.md - prove the whole path from rule to
 hover, then repeat for saves, morale and wounds.
+
+## What was built, 2026-10-30
+
+The investigation above was right that `RollModifierSink` throws provenance away - but wrong that it
+mattered. The sink is not what feeds the chips: `ComposeThresholdTags` reads the NAMED operations
+straight off the evaluator, so passive rules were already attributed ("Stealth -1"), and commit
+0211c9e had already taught the Battle Report hover to draw them. A sink-level provenance list was
+built first, found to be a second mechanism for a job already done, and reverted.
+
+**The actual gap was granted buffs.** Everything that arrives as a token or an out-of-engine int -
+Star Quest skills, items, injuries, random events, Firefight campaign skills, spell buffs - was summed
+into one anonymous `"buff +1"` chip. That is precisely the class Kai's ~120 skills fall into, and
+precisely why he could not tell whether one had fired.
+
+What changed:
+
+1. **`TokenPayload.StatModifier` gained `Source`.** Optional, so old saves read as unattributed
+   rather than failing. Note it widens the token merge key (`AddToken` matches on payload equality):
+   two +1 buffs from different sources now stay separate entries instead of collapsing into one count.
+   Deliberate - and the same reasoning already recorded there for `RuleGrant`. The net is unchanged,
+   since `GrantedRollModifiers` sums `Delta * Count`.
+2. **`Effect.StatModifier` credits the firing rule automatically** from `RuleInvocation.Definition`,
+   so every rule- and spell-driven buff is named with no call-site change. `Effect.BuildStatModifierToken`
+   is the one place that maps a lifetime onto a clear trigger for this token family.
+3. **`GrantedRollModifiers.PeekDetailed` / `ConsumeDetailed`** return the buffs itemised by source,
+   grouped so two copies of one skill read as "Bless +2" rather than twice. `ConsumeDetailed` reads the
+   detail BEFORE draining one-shot grants - otherwise every "next roll" buff, the ones most worth
+   naming, would come back empty on the roll that spends it.
+4. **`QuestFlags.OnAttack` returns `QuestAttackModifiers`** (itemised) instead of a pre-summed `int`.
+   This is Vengeful Strike's actual path - a direct int, not a token.
+5. **All 29 `QuestActions.Grant` roll-modifier call sites pass their skill, item or event name.**
+   The random events use the existing `QuestChallenges.EventNames` table.
+6. **Hit, save and morale chips all name each granted buff**, falling back to the summed "buff" chip
+   when a caller has no detail (the pre-roll forecast).
+
+Pinned by `RollProvenanceTests` (10 cases, including the save-compat and spend-ordering edges) plus a
+name assertion on Vengeful Strike in `QuestStartingSkillsTests`.
+
+**Worth knowing:** two of the 29 call sites were mis-named by the automated first pass (the anchor
+scan picked up a neighbouring skill) - QuestFlags' Disarming Attack and Toughen Up. Caught by
+cross-checking each site against its own adjacent log line. Anything similar in future should be
+verified the same way rather than trusted.
+
+## Still to do
+
+- **Wounds** (`WoundModifierSink`) - Reckless's extra wound and friends. Same shape as above.
+- **Movement** (`MovementModifierSink`) - QA 3.31: Crippled's -1 to melee is not shown anywhere, and
+  the unit card does not mention it.
+- **The AI's own maths** (`Ai/Tactician/CombatMath`) was left alone deliberately: it computes
+  expectations for the bot and never renders, so provenance would be dead weight there.
+- The visible half (Kai's wording spec) is unchanged and still next: see `claude/fdg-todo.md`.
 
 ## Notes
 
