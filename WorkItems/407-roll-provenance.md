@@ -1,6 +1,6 @@
 # 407 — Every roll should be able to say why it came out that way
 
-**Status:** the granted-buff half is DONE on branch `rules-360` (2026-10-30). Passive rules were already
+**Status:** DONE on branch `rules-360` (2026-10-30) for rolls and stat tests. Passive rules were already
 named (#245) and the hover already drew them (commit 0211c9e, 2026-10-29) - what was missing was every
 GRANTED buff, which showed as an anonymous "buff +1". Remaining: wounds and movement (see below).
 **Bucket:** PERMANENT (engine records and exposes new data - survives the Godot port).
@@ -127,11 +127,52 @@ scan picked up a neighbouring skill) - QuestFlags' Disarming Attack and Toughen 
 cross-checking each site against its own adjacent log line. Anything similar in future should be
 verified the same way rather than trusted.
 
+## Stat tests, 2026-10-30 (second pass)
+
+`QuestActions.StatTest` had the same flaw as the roll stages, and it matters more for Star Quest than
+any of them, because a hero spends most of its time making Str/Dex/Wil tests. It summed FOUR sources -
+a stored skill bonus, Impaired, an injury, and a random event - into one `"bonus +2"` / `"penalty -1"`
+chip. A hero failing Str tests could not tell which was responsible, or whether two had cancelled.
+
+Now itemised, reusing `GrantedModifier` so a stat test reads like every other roll in the game:
+
+```
+Str 4+   Impaired -1   Broken Arm -1
+```
+
+- `StarQuestMission.InjuryPenaltyNamed` and `QuestChallenges.EventStatBonusNamed` return the penalty
+  WITH its cause. Both already computed the name internally and discarded it; the originals stay as
+  thin wrappers so nothing else changed.
+- Random events name themselves from the existing `EventNames` table.
+- `hero.QuestStatBonus` is credited generically as "skill bonus". It is a bare int on `UnitData` with
+  nowhere to put a source, written by Concentrate, Guidance, Inspire and one treasure item. Naming it
+  would mean a new field and so a save-format change; the unit card already shows "(next stat roll +X)"
+  separately. Left deliberately, recorded here.
+
+## Closed: QA 3.31 was a misreading, not a bug
+
+Kai's note reads *"Crippled shows no -1 to melee on the unit card - movement halves correctly."*
+
+**Crippled has no -1 to melee.** GFSQ Core Rules v2.1.0: *"Crippled: When activated, must pass a Dex
+test to remove status. Crippled models halve their movement distance."* That is the whole rule, and the
+bundled `StarQuestRules.json` entry matches it word for word. The game is correct and there is nothing
+to display.
+
+The rule Kai is most likely thinking of is **Impaired** - *"-1 to all stat rolls"* - which IS real, and
+whose penalty is exactly what the stat-test work above now names on screen. So the underlying want
+("I cannot see what is modifying this hero") is served; the specific claim was not a defect.
+
+No code change. Do not "fix" this one.
+
 ## Still to do
 
-- **Wounds** (`WoundModifierSink`) - Reckless's extra wound and friends. Same shape as above.
-- **Movement** (`MovementModifierSink`) - QA 3.31: Crippled's -1 to melee is not shown anywhere, and
-  the unit card does not mention it.
+- **Wounds.** Looked at and deliberately left. Every extra-wound source already announces itself by
+  name as its own Battle Report line (`"Reckless: X deals one extra wound."`, Shred, Blood Frenzy,
+  Spiteful Vow), so the provenance is not missing - what is missing is a single consolidated wound
+  breakdown on hover, and there is no wound beat to hang one off. Inventing one is a presentation
+  design question, so it belongs with the Battle Report wording rework rather than here.
+- **Movement** is likewise already explained: U1 put a "Move changed by: ..." line on the unit card
+  naming Fast / Slow / Crippled / bad weather. Nothing to add.
 - **The AI's own maths** (`Ai/Tactician/CombatMath`) was left alone deliberately: it computes
   expectations for the bot and never renders, so provenance would be dead weight there.
 - The visible half (Kai's wording spec) is unchanged and still next: see `claude/fdg-todo.md`.
