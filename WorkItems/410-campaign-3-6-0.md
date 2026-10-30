@@ -8,6 +8,76 @@ project doc `claude/campaign-rules-delta.md`.
 
 ---
 
+## 2026-10-30 - slice 2: mission setup, the economy and the event table
+
+Engine 3,727 passed / 0 failed. UI 2,997 passed / 0 failed. Headless smoke exits 0. Pushed to
+`campaign-360`.
+
+Everything between missions that does not need the table.
+
+### What landed
+
+- **`Campaign/CampaignPreGame.cs`** - step 1 (Mission Setup):
+  - `MaxPointsForMission` / `CannotBring` - an army may bring any units it likes, up to
+    `ArmyCapOverLowest` over the lowest army's value, and at least one unit.
+  - `UnderdogPoints` - one per step behind the biggest army. **Arithmetic only**: deferred by Kai's
+    call, because the first build is one human army against a bot and underdog points mean nothing
+    with one real army. Tested so the rule is recorded correctly.
+  - `RollSpecialObjective` / `CanComplete` / `CompleteSpecialObjective` - the six-entry table with
+    the book's re-roll rule. Only Hexer has a real precondition (no caster, no four spells).
+  - `IsOver` / `RollCampaignLength` - Endless never ends, which is the type Kai chose; the other
+    three are recognised so a campaign saved as one still opens.
+- **`Campaign/CampaignEvents.cs`** - the 36-entry random event table, identical in all four books.
+  Each entry carries a structured `ECampaignEventKind`, `ECampaignEventScope` and amount, so wiring
+  it into the round start is mechanical instead of 36 hand-written cases. Rolled as first digit then
+  second digit; fires on a 5+ at the start of each round. **Data only - nothing rolls or applies it
+  yet.**
+- **`Campaign/CampaignEconomy.cs`** - steps 5 and 6:
+  - `ChangeUpgrades` - buying and selling are the same operation, a swap to a different loadout. The
+    price is the difference between the two compiled costs, never a sum of option prices, so
+    unpriced options (`CostUnpriced`), per-model costs and charged-once sections stay honest.
+  - `SellValue` / `SellsFivePointItem` - half, rounded down to a 5; the 5pt item's 4+ roll.
+  - `Recruit` - pays from the treasury, names the recruit uniquely, gives it a sheet and a loadout,
+    merges the book's rules and spells into the army file. One new Hero per mission, at most 3 in
+    the army, and the veteran recruit's surcharge for arriving at 5 XP (which is a level, so it
+    rolls its trait on arrival).
+  - `Disband` / `DisbandArmy` - no refund, which is the book's explicit wording. Disbanding a unit
+    detaches any Hero whose `JoinsUnitId` pointed at it, so the file keeps no dangling link.
+
+### The design decision worth remembering
+
+**A campaign unit's upgrade selections live on its own sheet (`StrikeUnit.LoadoutJson`), not in the
+army's `BuiltArmyFile.Selections`.**
+
+The strike team screen nulls `Selections` on purpose, with the comment "re-compiling it there would
+wipe the campaign changes" - and it is right. A campaign unit carries levels, injuries, talents,
+skills and the points they cost, none of which the book has heard of, so compiling the whole army
+from a builder list would throw them away.
+
+Keeping one `BuilderUnit` per unit means an upgrade re-compiles exactly that unit and then
+`ReapplyCampaignChanges` puts its history back: the rules its traits, injuries, talents and skills
+granted, the Tough(+3) per Toughened talent, and `CostChange` on top of the fresh book price. Horde
+Mode keeps its mid-game loadout the same way (`HordeLoadoutJson`), so this is a proven shape rather
+than a new one. `CampaignRules.Start` copies the selections across when an army is built from a book,
+so a Forge-built army is upgradeable from its first mission; a hand-written or import-only army has
+no loadout and simply can't be upgraded, which `ChangeUpgrades` says in plain words.
+
+`CampaignEconomyTests.UpgradingKeepsTheUnitsCampaignChanges` is the test that pins this, and it is
+the one to run first if anything here is ever refactored.
+
+### Not in this slice
+
+- **No UI.** Nothing in slices 1 or 2 has a screen: the Firefight Campaign screen still only offers
+  what FC1 gave it. **Kai cannot play-test the economy until there is one.** This is the next thing.
+- Applying a random event to the table, and scoring a special objective during a game. Both need the
+  in-game half; the data and the rules are ready for them.
+- Spending an underdog point on a roll.
+- A bot army with its own treasury and an automatic spender.
+- Playing on past round 4 until a winner; conceding; No Permadeath.
+- Campaign types other than Endless.
+
+---
+
 ## 2026-10-30 - slice 1: numbers, tables and the after-game loop
 
 Engine 3,691 passed / 0 failed. UI 2,997 passed / 0 failed. Headless smoke exits 0.
