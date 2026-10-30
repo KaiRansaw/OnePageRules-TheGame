@@ -749,3 +749,8 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > `8b6f598`: detail files max **404**, archive max **401**, index high-water **398**, and no `40x`
 > branch on either remote. **405 = lobby Remove player/bot + add-button tooltips.** No collision.
 
+
+> **2026-10-30 - number 414 filed clean.** `git fetch origin` before filing, from `origin/main`: index
+> high-water **408**, archive max **404**, detail files max **413** (409-413 unmerged on this clone's
+> `campaign-360`), and no `41x` branch on any remote (`campaign-360`, `main`, `rules-360` only).
+> **414 = Star Quest rebased onto GFSQ v2.1.0.** No collision.

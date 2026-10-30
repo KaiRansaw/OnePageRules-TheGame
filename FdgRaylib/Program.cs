@@ -941,6 +941,7 @@ if (headless && armyIdx >= 0 && armyIdx + 1 < args.Length)
 //   --play-style   standard | game-master
 //   --army-points  <n>          --army1 <file.fdgarmy>   --army2 <file.fdgarmy>
 //   --party        auto | auto:<2-4> | <file.fdghero>... | <folder>   (Star Quest's local side)
+//   --challenges   all | boss,injuries,alertness,time,weather,events  (Star Quest optional challenges)
 static string? ArgValue(string[] a, string name)
 {
     int i = Array.IndexOf(a, name);
@@ -990,6 +991,32 @@ int? cliPoints = int.TryParse(ArgValue(args, "--army-points"), out int cliPoints
 //   --party auto            --party "heroes/GF Star Quest"      --party a.fdghero b.fdghero
 int partyIdx = Array.IndexOf(args, "--party");
 List<string>? cliParty = partyIdx >= 0 ? TrailingPaths(args, partyIdx + 1) : null;
+
+// #413 --challenges: Star Quest's optional challenges (Boss Fights, Hero Injuries, Increased Alertness,
+// Time of Day, Weather, Random Events). They are picked from a menu at mission set-up, and an automated
+// answerer takes the first option - "Start" - so a scripted run always played with NONE of them on, and
+// the boss fight in particular could never be reached. `all` switches every one on; otherwise name them
+// comma-separated, matching loosely ("boss", "random-events").
+//   --challenges all        --challenges boss,weather
+if (ArgValue(args, "--challenges") is { } challengeText)
+{
+    var wanted = new List<string>();
+    if (challengeText.Equals("all", StringComparison.OrdinalIgnoreCase))
+        wanted.AddRange(FDG.Stages.QuestChallenges.AllChallenges);
+    else
+        foreach (string raw in challengeText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            string key = raw.Replace("-", "").Replace(" ", "").ToLowerInvariant();
+            string? match = FDG.Stages.QuestChallenges.AllChallenges.FirstOrDefault(c =>
+                c.Replace(" ", "").ToLowerInvariant().StartsWith(key, StringComparison.Ordinal));
+            if (match == null)
+                throw new ArgumentException($"Unknown --challenges entry '{raw}'. Known: "
+                    + string.Join(", ", FDG.Stages.QuestChallenges.AllChallenges) + ", or 'all'.");
+            if (!wanted.Contains(match)) wanted.Add(match);
+        }
+    FDG.Stages.QuestChallenges.ForceForTests = wanted;
+    Console.WriteLine("Optional challenges: " + string.Join(", ", wanted));
+}
 
 if (cliParty != null && ArgValue(args, "--army1") != null)
     throw new ArgumentException("--party and --army1 both set slot 0: name one or the other. "
