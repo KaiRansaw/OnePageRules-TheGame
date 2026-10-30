@@ -8,6 +8,49 @@ project doc `claude/campaign-rules-delta.md`.
 
 ---
 
+## 2026-10-30 - slice 4: playing the mission
+
+Engine 3,728 / 0. UI 2,997 / 0. Smoke exits 0. Pushed.
+
+"Play next mission" opens a lobby of the right game type with the campaign army in the host's own slot
+and the points limit lifted to fit it, and "who is coming" is obeyed.
+
+- `LobbyScreen.PendingCampaignArmy` + `ApplyPendingCampaignArmy()`, mirroring the `PendingParty` seam
+  the Star Quest campaign already uses. Consumed in `Program.cs` **after** `ApplyGameSystem`, which
+  resets both the points limit and the allowed systems - `LaunchGate` blocks on either. Deliberately
+  **not** in `SetViewModel`, which clears `_autoArmiedSlots` and then re-applies the saved host settings
+  over the top, and which the client and Take Back paths also reach.
+- The host's own row is `PlayerInfos[0]`: the host view model creates exactly that one slot in its
+  constructor, and this runs the moment the lobby exists. Worth remembering **why there is no better
+  way**: the host's own slot is byte-for-byte identical to a hot-seat local player (#405), and
+  `_thisPlayerID` is private to the host view model. If this is ever needed from somewhere other than
+  lobby-creation time, the honest fix is a `ThisPlayerID` on `ILobbyViewModel` - the field exists on
+  both view models already.
+- The slot is added to `_autoArmiedSlots` the way every other deliberate assignment does, so the
+  starter-army roll leaves it alone.
+
+### Playing a subset
+
+A subset is played by writing a copy of the army file beside the campaign file with only the chosen
+units, as **`.fdgmission`**. The extension is the point: the army picker, the campaign list and every
+folder scan glob for `.fdgarmy`, so nothing else ever sees it, and there is no convention for hiding a
+`.fdgarmy` from them.
+
+It is safe because `StrikeTeamFiles.WriteBack` keys **only** on `StrikeUnit.TeamFile`, and
+`CampaignRules.AfterGame` matches each result to a unit by `StrikeUnit.Id`. A copy preserves both, so
+results land on the real campaign army. `CampaignEconomyTests.ResultsFromAPartialMissionLandOnTheReal
+ArmyByIdAndSkipTheUnitsLeftBehind` pins it - **a copy that ever regenerates sheet ids writes back
+nothing, silently.**
+
+### Still not in
+
+- Applying a random event, and scoring a special objective, during a game.
+- Clearing `SpecialObjective` and `Bringing` after a mission - `WriteBack` touches neither.
+- A bot campaign army with its own treasury and spender.
+- Campaign entries in the lobby for Grimdark Future, AoF and Skirmish.
+
+---
+
 ## 2026-10-30 - slice 3: the campaign screen
 
 Engine 3,727 / 0. UI 2,997 / 0. Headless smoke exits 0. Pushed to `campaign-360`.
