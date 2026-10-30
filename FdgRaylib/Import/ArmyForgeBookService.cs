@@ -165,8 +165,81 @@ public static class ArmyForgeBookService
         return new SectionShapeRefreshReport(bundled.Name, stamped, unmatched, samples);
     }
 
+    /// <summary>
+    /// #411 - a folder of saved Army Forge responses to read instead of (or before) the network.
+    /// <para>
+    /// Every importer mode goes through <see cref="GetAsync"/>, so setting this once makes all of them
+    /// work with no network at all. That matters because Claude's cloud workspace is refused at the
+    /// network gateway for onepagerules.com, while Kai's own machine and browser reach it normally: the
+    /// browser saves the responses into this folder, and the importers - which are already written and
+    /// tested - do the rest. A response fetched over the network is also written here, so the folder
+    /// doubles as a download cache and a second run never re-fetches.
+    /// </para>
+    /// </summary>
+    public static string? CacheFolder { get; set; }
+
+    /// <summary>
+    /// #411 - with a <see cref="CacheFolder"/>, never touch the network: a response that isn't already
+    /// saved is an error that names the URL and the file it must be saved as.
+    /// </summary>
+    public static bool CacheOnly { get; set; }
+
+    /// <summary>
+    /// The file name a URL's response is cached under: predictable, printable and safe on Windows, so a
+    /// person saving it by hand from a browser can get it right. Host and scheme are dropped; everything
+    /// that isn't a letter, digit, dot or dash becomes a dash.
+    /// </summary>
+    public static string CacheFileName(string url)
+    {
+        int cut = url.IndexOf("/api/", StringComparison.OrdinalIgnoreCase);
+        string tail = cut >= 0 ? url[(cut + 5)..] : url;
+        var sb = new System.Text.StringBuilder(tail.Length + 8);
+        foreach (char c in tail)
+            sb.Append(char.IsLetterOrDigit(c) || c == '.' || c == '-' ? c : '-');
+        string name = sb.ToString().Trim('-');
+        while (name.Contains("--", StringComparison.Ordinal)) name = name.Replace("--", "-");
+        return (name.Length == 0 ? "response" : name) + ".json";
+    }
+
+    /// <summary>The two book-index URLs - the starting point for a cache run, since every book URL is
+    /// derived from what they list.</summary>
+    public static IReadOnlyList<string> IndexUrls() => new[]
+    {
+        $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(GameSystems.GrimdarkFuture)}",
+        $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(GameSystems.AgeOfFantasy)}",
+    };
+
+    /// <summary>The URL one book's full JSON comes from, for a uid out of an index.</summary>
+    public static string BookUrl(string uid, string? gameSystem) =>
+        $"{BaseUrl}/api/army-books/{Uri.EscapeDataString(uid)}?gameSystem={GameSystemId(gameSystem)}";
+
+    /// <summary>The book index read straight from the cache folder, with no network. Null if not saved yet.</summary>
+    public static IReadOnlyDictionary<string, string>? IndexFromCache(string? gameSystem)
+    {
+        if (CacheFolder == null) return null;
+        string slug = GameSystems.Normalize(gameSystem);
+        string url = $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(slug)}";
+        string path = Path.Combine(CacheFolder, CacheFileName(url));
+        if (!File.Exists(path)) return null;
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
+        foreach (JsonElement e in doc.RootElement.EnumerateArray())
+            if (e.TryGetProperty("name", out JsonElement name) && e.TryGetProperty("uid", out JsonElement uid)
+                && name.GetString() is { Length: > 0 } n && uid.GetString() is { Length: > 0 } u)
+                index[n] = u;
+        return index;
+    }
+
     private static async Task<string> GetAsync(string url, string what, CancellationToken ct)
     {
+        string? cached = CacheFolder == null ? null : Path.Combine(CacheFolder, CacheFileName(url));
+        if (cached != null && File.Exists(cached)) return await File.ReadAllTextAsync(cached, ct);
+        if (cached != null && CacheOnly)
+            throw new InvalidOperationException(
+                $"Not in the cache: {what}." + Environment.NewLine +
+                $"  Save this URL's response as: {Path.GetFileName(cached)}" + Environment.NewLine +
+                $"  {url}");
+
         HttpResponseMessage response;
         try
         {
@@ -183,6 +256,21 @@ public static class ArmyForgeBookService
 
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"Army Forge returned HTTP {(int)response.StatusCode} fetching {what}.");
-        return await response.Content.ReadAsStringAsync(ct);
+        string body = await response.Content.ReadAsStringAsync(ct);
+        // A fetched response is saved, so the folder doubles as a download cache and a second run - or a
+        // run on a machine with no network - never has to go out again.
+        if (cached != null)
+        {
+            try
+            {
+                Directory.CreateDirectory(CacheFolder!);
+                await File.WriteAllTextAsync(cached, body, ct);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Caching is a convenience; a failure to save must not fail the import.
+            }
+        }
+        return body;
     }
 }

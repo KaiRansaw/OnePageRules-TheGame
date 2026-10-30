@@ -105,6 +105,68 @@ static List<string> TrailingPaths(string[] args, int startIdx)
     return paths;
 }
 
+// --book-cache <dir> [--book-cache-only]  (#411): every Army Forge fetch reads <dir> first and saves
+// what it does fetch back into it, so the whole importer family works from saved responses with no
+// network. With --book-cache-only it never goes out at all, and a response that isn't saved yet is an
+// error naming the URL and the exact file name to save it as. This is how the books get re-imported
+// from a machine that CAN reach onepagerules.com when Claude's workspace cannot.
+int bookCacheIdx = Array.IndexOf(args, "--book-cache");
+if (bookCacheIdx >= 0 && bookCacheIdx + 1 < args.Length)
+{
+    FdgRaylib.Import.ArmyForgeBookService.CacheFolder = args[bookCacheIdx + 1];
+    FdgRaylib.Import.ArmyForgeBookService.CacheOnly = args.Contains("--book-cache-only");
+    Directory.CreateDirectory(args[bookCacheIdx + 1]);
+}
+
+// --book-urls <books-dir>  (#411): print every Army Forge URL the importers need, each with the file
+// name its response must be saved as. Run it once to get the two index URLs; save those into the cache
+// folder; run it again and it lists a URL per book, because the book uids come out of the indexes.
+int bookUrlsIdx = Array.IndexOf(args, "--book-urls");
+if (bookUrlsIdx >= 0 && bookUrlsIdx + 1 < args.Length)
+{
+    string booksDir = args[bookUrlsIdx + 1];
+    var service = typeof(FdgRaylib.Import.ArmyForgeBookService);
+    Console.WriteLine("# Army Forge responses the importers need.");
+    Console.WriteLine("# Save each one's raw JSON into the --book-cache folder, under the name given.");
+    Console.WriteLine();
+
+    int listed = 0, pending = 0;
+    foreach (string url in FdgRaylib.Import.ArmyForgeBookService.IndexUrls())
+    {
+        Console.WriteLine($"{FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}\t{url}");
+        listed++;
+    }
+    Console.WriteLine();
+
+    string[] books = Directory.Exists(booksDir)
+        ? Directory.EnumerateFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p).ToArray()
+        : Array.Empty<string>();
+    if (books.Length == 0) Console.WriteLine($"# No {BookFile.EXTENSION_WITH_PERIOD} files in '{booksDir}'.");
+    var indexes = new Dictionary<string, IReadOnlyDictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
+    foreach (string path in books)
+    {
+        BookFile book;
+        try { book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options)!; }
+        catch (Exception e) when (e is IOException or JsonException) { continue; }
+        string system = FDG.ArmyBuilding.GameSystems.Normalize(book.GameSystem);
+        if (!indexes.TryGetValue(system, out var index))
+            indexes[system] = index = FdgRaylib.Import.ArmyForgeBookService.IndexFromCache(system);
+        if (index == null) { pending++; continue; }
+        if (!index.TryGetValue(book.Name, out string? uid))
+        {
+            Console.WriteLine($"# {book.Name}: no OPR official {system} book by that name.");
+            continue;
+        }
+        string url = FdgRaylib.Import.ArmyForgeBookService.BookUrl(uid, book.GameSystem);
+        Console.WriteLine($"{FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}\t{url}\t# {book.Name}");
+        listed++;
+    }
+    if (pending > 0)
+        Console.WriteLine($"{Environment.NewLine}# {pending} book(s) are waiting on an index above - save those two first, then run this again.");
+    Console.WriteLine($"{Environment.NewLine}# {listed} URL(s) listed.");
+    return;
+}
+
 // --import-opr <in.json> <out.fdgbook> [supplement.json ...]  (#153 P0b): one-time OnePageRules Army
 // Forge JSON → .fdgbook snapshot, via the engine importer. Data is OPR's, used under CC-BY-SA (stamped
 // on the book). Optional supplements embed curated rule definitions the book references (see
