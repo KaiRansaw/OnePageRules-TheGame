@@ -56,7 +56,45 @@ lookup still resolves - that is the test that catches a half-finished rename.
 **optional** - fail, and you *may* pay to count it as passed, where 2.0.1 forced the payment and
 resolved the skill either way. This build still forces it. That also settles QA 3.10 ("never
 auto-spend power, always ask"), which is currently filed as a preference and is in fact a rules
-requirement.
+requirement. *(Done - see the next note, below.)*
+
+### 2026-10-30 - the failed hero skill became optional (and can now fail)
+
+v2.1.0, verbatim: *"When using Hero Skills, take a test of that Skill's stat. If passed the effect is
+resolved, and if failed you **may** spend 1 Power to count as having passed it instead."* v2.0.1 ended
+that sentence *"...1 Power and then the effect is resolved"*.
+
+So the old behaviour was wrong **twice**, and the second half is the part that matters:
+
+1. It took the power without asking (QA 3.10 - Kai filed this as a preference; it is a rules
+   requirement).
+2. **A hero skill could never fail.** Fail the roll and the skill still happened, for a fee. That
+   quietly removed the risk from every hero skill in the game and made the stat on the card
+   decorative - a 6+ Wil skill and a 2+ Wil skill cost the same on average and both always worked.
+
+`QuestActions.HeroSkillTest` now returns `Task<bool>`: on a fail it offers the payment via
+`YesNoRequest` (default yes only while the hero can afford it - spending power a hero does not have
+costs a wound per missing point, same shape as the stat-test and Shaken offers), and a decline returns
+false. `QuestSkill.Use` honors that and skips `_resolve`.
+
+**Fixing only the prompt would have been the trap.** Ask, then resolve regardless, and it looks correct
+in play right up until someone declines - the prompt would be a lie. `QuestFailedSkillPaymentTests`
+pins the fizzle itself (`AFailedTest_FizzlesWhenThePaymentIsDeclined_AndCostsNothing`) as the real
+regression guard, plus the pass path asking nothing, the paid path charging exactly 1, and the
+affordability default - that last one is what every automated answerer takes (bots, EOF-piped headless
+runs, a dismissed dialog), so a broke hero must not be defaulted into wounding itself over a bad roll.
+
+Probe skill is **Rally**: non-common, non-feat, Wil test, and its whole effect is removing the Shaken
+token, so "did the skill resolve" is one observable flag with no table needed. Driven through
+`QuestSkill.Use` rather than `HeroSkillTest` alone, because the decision that matters lives in the
+caller.
+
+Also corrected the `QuestSkill` class comment, which still described hero skills as always working.
+
+Verified: engine 3,803 / 0 (one skipped by design), UI 3,026 / 0, `dotnet build` clean, standard
+headless smoke exit 0, and a seeded all-AI Star Quest mission (`--party auto --all-ai --seed 414`)
+exit 0 over 103 rounds. The AI happened not to fail a hero-skill test in that run, so the new branch
+is covered by the fixture rather than by that log.
 
 ### 2026-10-30 - the once-per-game mechanism: what is actually missing
 
