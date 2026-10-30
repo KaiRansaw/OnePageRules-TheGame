@@ -121,6 +121,21 @@ if (bookCacheIdx >= 0 && bookCacheIdx + 1 < args.Length)
 // --book-urls <books-dir>  (#411): print every Army Forge URL the importers need, each with the file
 // name its response must be saved as. Run it once to get the two index URLs; save those into the cache
 // folder; run it again and it lists a URL per book, because the book uids come out of the indexes.
+// --book-system-id <slug>=<id>  (#412): override an Army Forge game-system id. Repeatable. The
+// skirmish systems' ids are OPR's documented ordering rather than something verified against the live
+// API, so this is the one-flag fix if one turns out wrong, instead of a code change.
+foreach (string arg in args)
+{
+    int eq = arg.IndexOf('=');
+    int flag = Array.IndexOf(args, "--book-system-id");
+    if (flag < 0 || eq <= 0 || Array.IndexOf(args, arg) != flag + 1) continue;
+    if (int.TryParse(arg[(eq + 1)..], out int sysId))
+    {
+        FdgRaylib.Import.ArmyForgeBookService.SetGameSystemId(arg[..eq], sysId);
+        Console.WriteLine($"Army Forge id for '{arg[..eq]}' set to {sysId}.");
+    }
+}
+
 int bookUrlsIdx = Array.IndexOf(args, "--book-urls");
 if (bookUrlsIdx >= 0 && bookUrlsIdx + 1 < args.Length)
 {
@@ -158,13 +173,85 @@ if (bookUrlsIdx >= 0 && bookUrlsIdx + 1 < args.Length)
             continue;
         }
         string url = FdgRaylib.Import.ArmyForgeBookService.BookUrl(uid, book.GameSystem);
-        Console.WriteLine($"{FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}\t{url}\t# {book.Name}");
+        string warn = FdgRaylib.Import.ArmyForgeBookService.IdIsVerified(book.GameSystem) ? ""
+            : "  (game-system id unverified - see --book-system-id)";
+        Console.WriteLine($"{FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}\t{url}\t# {book.Name}{warn}");
         listed++;
     }
     if (pending > 0)
         Console.WriteLine($"{Environment.NewLine}# {pending} book(s) are waiting on an index above - save those two first, then run this again.");
     Console.WriteLine($"{Environment.NewLine}# {listed} URL(s) listed.");
     return;
+}
+
+// --book-diff <A> <B> [report.md]  (#412): compare two sets of .fdgbook files, unit by unit, and
+// write a Markdown report of every difference - points, unit size, quality, defense, weapons, rules,
+// upgrade options and their prices. Two uses, one mechanism:
+//   * old books vs refreshed books - did the 3.6 refresh do what it should, and what moved?
+//   * one game system's books vs another's - are Firefight and Grimdark Future really carrying their
+//     own data (#406), or did one silently fall back to the other?
+// A and B may each be a folder or a single .fdgbook. Books are paired by file name; one present in
+// only one side is reported rather than skipped.
+int bookDiffIdx = Array.IndexOf(args, "--book-diff");
+if (bookDiffIdx >= 0 && bookDiffIdx + 2 < args.Length)
+{
+    string leftPath = args[bookDiffIdx + 1], rightPath = args[bookDiffIdx + 2];
+    string? outPath = bookDiffIdx + 3 < args.Length && !args[bookDiffIdx + 3].StartsWith("--", StringComparison.Ordinal)
+        ? args[bookDiffIdx + 3] : null;
+    try
+    {
+        var left = LoadBookSet(leftPath);
+        var right = LoadBookSet(rightPath);
+        if (left.Count == 0 && right.Count == 0) { Console.WriteLine("No books found on either side."); Environment.Exit(1); }
+
+        string leftLabel = SetLabel(left, leftPath), rightLabel = SetLabel(right, rightPath);
+        var comparisons = BookDiff.CompareSets(left, right, leftLabel, rightLabel);
+        string report = BookDiff.Report(comparisons, $"Army book comparison: {leftLabel} vs {rightLabel}");
+
+        int touched = comparisons.Count(c => c.Any);
+        Console.WriteLine($"{comparisons.Count} book(s) compared, {touched} differ.");
+        Console.WriteLine($"  changed {comparisons.Sum(c => c.Changed)}, added {comparisons.Sum(c => c.Added)}, "
+            + $"only-on-the-left {comparisons.Sum(c => c.Removed)}");
+        if (outPath != null) { File.WriteAllText(outPath, report); Console.WriteLine($"Report written to {outPath}"); }
+        else Console.WriteLine(report);
+    }
+    catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+    {
+        Console.WriteLine($"Book comparison failed: {ex.Message}");
+        Environment.Exit(1);
+    }
+    return;
+
+    static Dictionary<string, BookFile> LoadBookSet(string target)
+    {
+        var set = new Dictionary<string, BookFile>(StringComparer.OrdinalIgnoreCase);
+        string[] paths = Directory.Exists(target)
+            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
+                .OrderBy(p => p).ToArray()
+            : File.Exists(target) ? new[] { target } : Array.Empty<string>();
+        foreach (string path in paths)
+        {
+            try
+            {
+                if (JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options) is { } book)
+                    set[Path.GetFileName(path)] = book;
+            }
+            catch (JsonException) { Console.WriteLine($"  (skipped unreadable book {Path.GetFileName(path)})"); }
+        }
+        return set;
+    }
+
+    // The label a side gets in the report: its books' own version stamp when they agree, else the path.
+    static string SetLabel(Dictionary<string, BookFile> set, string path)
+    {
+        var versions = set.Values.Select(b => b.Version).Where(v => !string.IsNullOrWhiteSpace(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var systems = set.Values.Select(b => FDG.ArmyBuilding.GameSystems.DisplayName(b.GameSystem))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        string system = systems.Count == 1 ? systems[0] + " " : "";
+        if (versions.Count == 1) return system + versions[0];
+        return system + Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+    }
 }
 
 // --import-opr <in.json> <out.fdgbook> [supplement.json ...]  (#153 P0b): one-time OnePageRules Army

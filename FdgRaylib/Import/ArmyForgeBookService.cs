@@ -29,7 +29,26 @@ public static class ArmyForgeBookService
     {
         [GameSystems.GrimdarkFuture] = 2,
         [GameSystems.AgeOfFantasy] = 4,
+        // #412: the skirmish systems. GDF=2 and AoF=4 were verified against the live API; these two are
+        // OPR's documented ordering and are NOT yet verified, because the site is refused at Claude's
+        // network gateway. They are overridable with --book-system-id for exactly that reason, and the
+        // importer prints the id it used so a wrong one is visible rather than silent. Verify by
+        // importing one Firefight book and checking a unit Kai already knows differs: Alien Hives
+        // Assault Grunts are 105 pts for 10 in Grimdark Future and 30 pts for 3 in Firefight.
+        [GameSystems.GFFirefight] = 3,
+        [GameSystems.AoFSkirmish] = 5,
     };
+
+    /// <summary>#412 - override a game system's Army Forge id, for when a guessed one turns out wrong.</summary>
+    public static void SetGameSystemId(string slug, int id) => GameSystemIds[GameSystems.Normalize(slug)] = id;
+
+    /// <summary>The Army Forge id this run will use for a slug, so it can be printed before it is used.</summary>
+    public static int IdFor(string? gameSystem) => GameSystemId(gameSystem);
+
+    /// <summary>Whether a slug's id was verified against the live API, or is still OPR's documented
+    /// ordering taken on trust (#412).</summary>
+    public static bool IdIsVerified(string? gameSystem) =>
+        GameSystems.Normalize(gameSystem) is GameSystems.GrimdarkFuture or GameSystems.AgeOfFantasy;
 
     private static int GameSystemId(string? gameSystem)
     {
