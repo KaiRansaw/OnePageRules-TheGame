@@ -18,6 +18,71 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - the once-per-game mechanism: what is actually missing
+
+**The headline finding: the engine DOES have a per-unit once-per-game offer.** Three separate docs say
+it does not - `Campaign36RuleCatalog`'s class comment, every one of the eight "not wired" skill
+descriptions, and the `RuleCatalogLintTests` allowlist reasons - and all of them are **out of date**.
+
+`Cost.OncePerGame` (`Rules/Foundation/Cost.cs:70`) is a first-class cost on `ActivatedAbility`, and
+`RuleEvaluator` implements the whole gate (`:992` affordability, `:1007` payment):
+
+```
+UsedMarker(ruleName) => new TokenType("AbilityUsed:" + ruleName)      // RuleEvaluator.cs:1032
+Cost.OncePerGame     => GrantTokenToUnit(bearer, new Token(marker, 1, ManualOnly()))
+```
+
+So the ledger is a per-rule token with a `ManualOnly` clear trigger - it serializes, saves, and takes
+back like any other token, and nothing sweeps it at end of round. It is already used by shipped core
+rules (`CoreRuleCatalog.cs:1757`, `:1779`, `:2091`, `:2183`) and is covered by integration tests that
+pin declining *without* spending the use (`AmbushRedeployRuleIntegrationTests`,
+`InquisitorialAgentRuleIntegrationTests`, `StormRuleIntegrationTests`).
+
+**So the nine do not share one gap. They split in two:**
+
+**Group A - four are ordinary activated abilities** that nobody ever wrote: Explorer (ignore Difficult
+and Dangerous terrain), Idol (ignore becoming Shaken), Berserker (ignore becoming Fatigued),
+Sharpshooter (+12" range when shooting). Each needs the right `EHookID` and an `Effect` that exists;
+the once-per-game part is free. `Morale_OnShakenApplied` (`EHookID.cs:305`) is already there for Idol.
+
+**Group B - five are one missing feature, not five:** Tactician (melee), Strategist (shooting),
+Mastermind (force an ENEMY re-roll when targeted) and `Trait: Elite` all say **"re-roll one roll of any
+kind"**, and the engine has no *player-offered* re-roll. What it has is passive: `RerollSink`
+(`Rules/Dispatch/RerollSink.cs`) folds rule-requested re-rolls into two flags - "re-roll saves at or
+above N" (Bane/Mischievous/Scrapper) and "re-roll a failed morale test" (Fearless) - which the stages
+then apply automatically. There is no path for "ask the player whether to spend a limited resource on
+this particular roll".
+
+Elite is the precedent and it is deliberately narrow: `MoraleUtilities.cs:150` calls
+`HordeExperience.TryUseElite` (`HordeStages/HordeExperience.cs:214`), which checks a bespoke
+`TokenType.HordeEliteUsed` and **auto-spends it with no prompt**, only on a failed morale test.
+
+**Kai's call, 2026-10-30, on the one question that is his:** a re-roll offer is made **only when it
+would help** - on a roll that actually failed, never on a successful one, and Idol/Berserker only when
+the Shaken/Fatigue is about to land. He rejected both "ask every time it could apply" (a hero with
+"re-roll any roll" would be asked on every roll it makes all game) and "arm it in advance" (committing
+before seeing the dice is strictly worse for a re-roll). This also brings Elite into line with his
+standing rule that the game never auto-picks - its current silent auto-use becomes a prompt.
+
+**The three seams a re-roll offer has to reach**, all small focused stages:
+- hit rolls - `ShootStage/FireStage/RollToHitStage/RollToHitStage.cs`, right after
+  `SubsetAtOrAbove` / `SubsetBelow` split the roll and before the attack beat
+- save rolls - `ShootStage/FireStage/RollToSaveStage/RollToSaveStage.cs`
+- morale - `MainUnitActionStage/MoraleUtilities.cs:147`, where Elite already sits
+
+**One wrinkle worth writing down:** dice results are float-counted per side (`DiceResults` wraps a
+`float[] perSideValues`) because the game supports probabilistic "average dice" as well as real ones.
+So "re-roll one die" cannot be done by mutating a die - it is: roll one fresh decisive die, and if it
+meets the threshold, rebuild the results with one count moved from a failing side to a passing one.
+`DiceResults(float[] perSideValues, int sideMin)` is public, so this is straightforward, but it is the
+part most likely to be got subtly wrong, and it needs a test per stage.
+
+**Scope split, said out loud rather than cut quietly:** Group A is being done first - it is four of the
+nine, it rides on a mechanism that already works and is already tested, and it carries no new
+architecture. Group B is a separate slice: one shared "offer a re-roll on a failure" helper plus three
+stage call sites, and **Mastermind is the odd one even within it**, because it spends the hero's use to
+force a re-roll on the *opponent's* roll rather than re-rolling the hero's own. Mastermind lands last.
+
 ### 2026-10-30 - progression table, and two QA notes closed by testing rather than fixing
 
 Kai's pick for this session was "mission rewards + the boss-fight offer", aimed at QA 6.x ("every hero
