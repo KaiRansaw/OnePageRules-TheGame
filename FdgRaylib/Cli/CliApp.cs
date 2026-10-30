@@ -45,6 +45,33 @@ public class CliApp
         _aiProfile = aiProfile;
     }
 
+    /// <summary>
+    /// #413 - what a scripted headless run is playing. Every field is optional; anything left null keeps
+    /// the engine default, which is what every run did before this existed (standard Grimdark Future).
+    /// <para>
+    /// This is what makes Firefight, Skirmish, Horde and the Game Master reachable without a window.
+    /// Before it, <c>GameSettings.GetDefault()</c> was the only thing a headless run could play, so most
+    /// of the test plan could only ever be checked by hand - which is why five patches reached Kai
+    /// untested at once.
+    /// </para>
+    /// </summary>
+    /// <param name="GameSystem">GF, GF: Firefight, AoF, AoF: Skirmish.</param>
+    /// <param name="GameMode">Standard, Horde, and the Star Quest modes.</param>
+    /// <param name="PlayStyle">Standard or Game Master.</param>
+    /// <param name="ArmyPoints">The lobby's points limit; a campaign army needs this lifted.</param>
+    /// <param name="Army1">Slot 0's army file. Null prompts, as before.</param>
+    /// <param name="Army2">Slot 1's army file. Null prompts, as before.</param>
+    public sealed record Setup(
+        EGameSystem? GameSystem = null,
+        EGameMode? GameMode = null,
+        EPlayStyle? PlayStyle = null,
+        int? ArmyPoints = null,
+        string? Army1 = null,
+        string? Army2 = null);
+
+    /// <summary>#413 - set before <see cref="RunAsync"/> to script what is played.</summary>
+    public Setup? Scripted { get; set; }
+
     // Creates the local game instance (and thus TableState) without any user prompts.
     // Call this before starting the Raylib window.
     public void Prepare()
@@ -102,6 +129,25 @@ public class CliApp
         gameSettings.RandomnessType = ERandomnessType.Realistic;
         gameSettings.ObjectivePlacementMode = EObjectivePlacementMode.AutoPlaced;
         gameSettings.DiceSeed = _diceSeed;
+
+        // #413: a scripted run overrides what it names and leaves the rest at the engine default.
+        if (Scripted is { } setup)
+        {
+            if (setup.GameSystem is { } system)
+            {
+                gameSettings.GameSystem = system;
+                // Match what the lobby does when a game type is picked: the army source follows the
+                // system, or an army of the right system is refused at the launch gate.
+                gameSettings.AllowedGameSystems = GameSystemInfo.ArmySource(system);
+                if (GameSystemInfo.IsSkirmish(system)) gameSettings.ArmyPoints = 300;
+            }
+            if (setup.GameMode is { } mode) gameSettings.GameMode = mode;
+            if (setup.PlayStyle is { } style) gameSettings.PlayStyle = style;
+            if (setup.ArmyPoints is { } points && points > 0) gameSettings.ArmyPoints = points;
+
+            Console.WriteLine($"Playing: {GameSystemInfo.DisplayName(gameSettings.GameSystem)} - "
+                + $"{gameSettings.GameMode} - {gameSettings.PlayStyle} - {gameSettings.ArmyPoints} pts");
+        }
 
         var gameEnded = new TaskCompletionSource();
         var server = new FDGServer(_gameDataStore!, _messageBus!, gameSettings, playerSlots);
@@ -184,9 +230,12 @@ public class CliApp
         PlayerColors[player1ID] = Color.Blue;
         PlayerColors[player2ID] = Color.Red;
 
-        var army1 = ArmyLoader.PromptForArmy("Player 1");
+        // #413: a scripted run names its armies, so nothing is read from stdin. A named file that
+        // cannot be loaded is fatal rather than quietly falling back to the built-in test army - a
+        // scripted run that silently plays the wrong army is worse than one that stops.
+        ArmyListFile army1 = LoadOrPrompt(Scripted?.Army1, "Player 1");
         Console.WriteLine();
-        var army2 = ArmyLoader.PromptForArmy("Player 2");
+        ArmyListFile army2 = LoadOrPrompt(Scripted?.Army2, "Player 2");
         Console.WriteLine();
 
         return new[]
@@ -194,6 +243,19 @@ public class CliApp
             new PlayerSlot(slotID: 0, teamNumber: 0, playerID: player1ID, armyListFile: army1, gameDataStore: _gameDataStore!),
             new PlayerSlot(slotID: 1, teamNumber: 1, playerID: player2ID, armyListFile: army2, gameDataStore: _gameDataStore!),
         };
+    }
+
+    /// <summary>
+    /// #413 - a named army file, or the interactive prompt when none was named. In a scripted run
+    /// nobody is at the keyboard, so an unnamed slot silently takes the built-in test army rather than
+    /// stalling on a prompt. A named file that will not load is an error, never a silent fallback.
+    /// </summary>
+    private ArmyListFile LoadOrPrompt(string? path, string label)
+    {
+        if (path == null)
+            return Scripted == null ? ArmyLoader.PromptForArmy(label) : ArmyLoader.TestArmy(label);
+        return ArmyLoader.LoadPath(path)
+            ?? throw new InvalidOperationException($"{label}: could not load the army file '{path}'.");
     }
 
     private IStageResolverRegistry BuildResolverRegistry()

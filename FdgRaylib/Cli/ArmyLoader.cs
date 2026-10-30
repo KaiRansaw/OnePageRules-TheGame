@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FDG.ArmyBuilding;
 using FDG.Rules.Serialization;
 using FDG.SaveLoad;
 
@@ -6,6 +7,29 @@ namespace FdgRaylib.Cli;
 
 public static class ArmyLoader
 {
+    /// <summary>
+    /// #413 - load an army from a path with no prompting, for an automated headless run. Returns null
+    /// (with a line saying why) rather than falling back silently, so a typo in a scripted run fails
+    /// loudly instead of quietly playing the built-in test army.
+    /// </summary>
+    public static ArmyListFile? LoadPath(string path)
+    {
+        if (!File.Exists(path)) { Console.WriteLine($"Army file not found: {path}"); return null; }
+        try
+        {
+            var army = JsonSerializer.Deserialize<BuiltArmyFile>(File.ReadAllText(path), RuleJson.Options);
+            if (army == null) throw new InvalidOperationException("Deserialized army was null.");
+            Console.WriteLine($"Loaded '{army.Name}' ({army.TotalPoints} pts, {army.Units.Count} units, "
+                + $"{FDG.ArmyBuilding.GameSystems.DisplayName(army.GameSystem)}).");
+            return army;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
+        {
+            Console.WriteLine($"Failed to load '{path}': {ex.Message}");
+            return null;
+        }
+    }
+
     public static ArmyListFile PromptForArmy(string playerLabel)
     {
         Console.WriteLine($"{playerLabel} - choose army:");
@@ -77,6 +101,12 @@ public static class ArmyLoader
             }
         }
     }
+
+    /// <summary>
+    /// #413 - the built-in test army, for a scripted run that named no file for this slot. Scripted runs
+    /// must never block on a prompt, so this is the silent equivalent of answering [2].
+    /// </summary>
+    public static ArmyListFile TestArmy(string playerLabel) => MakeTestArmy(playerLabel);
 
     private static ArmyListFile MakeTestArmy(string playerLabel)
     {

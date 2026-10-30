@@ -930,7 +930,61 @@ if (headless && armyIdx >= 0 && armyIdx + 1 < args.Length)
     Console.SetIn(new StringReader($"1\n{armyPath}\n1\n{armyPath}\n"));
 }
 
+// #413: what a scripted headless run plays. Before these, CliApp built every game from
+// GameSettings.GetDefault(), so headless could only ever reach standard Grimdark Future - which left
+// Firefight, Skirmish, Horde and the Game Master testable by hand only.
+//   --game-system  gf | gff | aof | aofs      (also the full names)
+//   --game-mode    standard | horde | star-quest-horde | star-quest-mission
+//   --play-style   standard | game-master
+//   --army-points  <n>          --army1 <file.fdgarmy>   --army2 <file.fdgarmy>
+static string? ArgValue(string[] a, string name)
+{
+    int i = Array.IndexOf(a, name);
+    return i >= 0 && i + 1 < a.Length ? a[i + 1] : null;
+}
+
+EGameSystem? cliSystem = ArgValue(args, "--game-system") is { } sysText
+    ? sysText.Replace("-", "").Replace(":", "").Replace(" ", "").ToLowerInvariant() switch
+    {
+        "gf" or "grimdarkfuture" => EGameSystem.GrimdarkFuture,
+        "gff" or "firefight" or "gffirefight" or "grimdarkfuturefirefight" => EGameSystem.GFFirefight,
+        "aof" or "ageoffantasy" => EGameSystem.AgeOfFantasy,
+        "aofs" or "skirmish" or "aofskirmish" or "ageoffantasyskirmish" => EGameSystem.AoFSkirmish,
+        "gfsq" or "starquest" or "gfstarquest" => EGameSystem.GFStarQuest,
+        "aofq" or "quest" or "aofquest" => EGameSystem.AoFQuest,
+        _ => throw new ArgumentException($"Unknown --game-system '{sysText}'."),
+    }
+    : null;
+
+EGameMode? cliMode = ArgValue(args, "--game-mode") is { } modeText
+    ? modeText.Replace("-", "").Replace(" ", "").ToLowerInvariant() switch
+    {
+        "standard" => EGameMode.Standard,
+        "horde" => EGameMode.Horde,
+        "starquesthorde" or "sqhorde" => EGameMode.StarQuestHorde,
+        "starquestmission" or "sqmission" => EGameMode.StarQuestMission,
+        _ => throw new ArgumentException($"Unknown --game-mode '{modeText}'."),
+    }
+    : null;
+
+EPlayStyle? cliStyle = ArgValue(args, "--play-style") is { } styleText
+    ? styleText.Replace("-", "").Replace(" ", "").ToLowerInvariant() switch
+    {
+        "standard" => EPlayStyle.Standard,
+        "gamemaster" or "gm" => EPlayStyle.GameMaster,
+        _ => throw new ArgumentException($"Unknown --play-style '{styleText}'."),
+    }
+    : null;
+
+int? cliPoints = int.TryParse(ArgValue(args, "--army-points"), out int cliPointsValue) ? cliPointsValue : null;
+
 var app = new CliApp(headless, slowDelayMs, diceSeed, aiProfile);
+if (cliSystem != null || cliMode != null || cliStyle != null || cliPoints != null
+    || ArgValue(args, "--army1") != null || ArgValue(args, "--army2") != null)
+{
+    app.Scripted = new CliApp.Setup(cliSystem, cliMode, cliStyle, cliPoints,
+        ArgValue(args, "--army1"), ArgValue(args, "--army2"));
+}
 
 if (headless)
 {
