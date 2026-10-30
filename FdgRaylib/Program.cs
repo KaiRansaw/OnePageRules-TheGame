@@ -770,6 +770,14 @@ else
         renderer.NavigateTo(renderer.StrikeTeams);
     renderer.StrikeTeams.OnBack = () =>
         renderer.NavigateTo(renderer.MainMenu);
+    // #410: "Play next mission" on the campaign screen. The screen has already recorded which army and
+    // which units (LobbyScreen.PendingCampaignArmy); here we only ask for the right game type, and the
+    // lobby picks the army up once it exists.
+    renderer.StrikeTeams.OnPlay = system =>
+    {
+        pendingGameSystem = system;
+        renderer.NavigateTo(renderer.HostModal);
+    };
 
     renderer.MainMenu.OnClientClicked = () =>
         renderer.NavigateTo(renderer.ClientModal);
@@ -971,6 +979,11 @@ else
         if (pendingGameSystem is { } picked)
             LobbyScreen.ApplyGameSystem(lobby, picked);
         pendingGameSystem = null;
+        // #410: a campaign army waiting to be played takes the host's own slot, with the points limit
+        // raised to fit it. Must follow ApplyGameSystem, which resets the points and the allowed
+        // systems, and cannot live in SetViewModel, which clears the auto-army marks and then re-applies
+        // the saved host settings over the top.
+        renderer.LobbyScreen.ApplyPendingCampaignArmy();
         renderer.NavigateTo(renderer.LobbyScreen);
     };
 

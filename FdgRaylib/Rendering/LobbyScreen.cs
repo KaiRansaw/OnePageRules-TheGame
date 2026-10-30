@@ -824,6 +824,44 @@ public class LobbyScreen : IAppScreen
 
     /// <summary>Set by the campaign screen: the next party picker starts with these hero files picked.</summary>
     public static List<string>? PendingParty;
+
+    /// <summary>
+    /// #410 - set by the campaign screen when "Play next mission" is pressed: the path of the army file
+    /// the host should start the next lobby with. Consumed once by
+    /// <see cref="ApplyPendingCampaignArmy"/> and cleared, so a lobby opened any other way is unaffected.
+    /// </summary>
+    public static string? PendingCampaignArmy;
+
+    /// <summary>
+    /// #410 - gives the host's own slot the campaign army the campaign screen chose, and raises the
+    /// points limit to fit it, because a campaign game has no points limit of its own.
+    /// <para>
+    /// Called from Program.cs right after the lobby is created and the game system applied - in that
+    /// order, because <see cref="ApplyGameSystem"/> resets both the points and the allowed systems, and
+    /// the launch gate refuses an army over the limit or from the wrong system. It lives here rather
+    /// than in Program.cs because the file loader and the auto-army marks are private to this screen.
+    /// </para>
+    /// <para>
+    /// The host's own row is <c>PlayerInfos[0]</c>: the host view model creates exactly that one slot in
+    /// its constructor, before anything else can add a row, and this runs the moment the lobby exists.
+    /// (The host's own slot is otherwise indistinguishable from a hot-seat local player - see #405.)
+    /// </para>
+    /// </summary>
+    public void ApplyPendingCampaignArmy()
+    {
+        string? path = PendingCampaignArmy;
+        PendingCampaignArmy = null;
+        if (path == null || _viewModel == null) return;
+        if (LoadArmyFile(path) is not { } army) return;
+        if (_viewModel.PlayerInfos.Count == 0) return;
+
+        PlayerID host = _viewModel.PlayerInfos[0].PlayerID;
+        // Campaign games have no points limit; the lobby still has one, so lift it clear of the army.
+        if (army.TotalPoints > _viewModel.ArmyPoints) _viewModel.SetArmyPoints(army.TotalPoints);
+        _viewModel.UpdateArmyListFile(host, army);
+        // Mark it the way every other deliberate assignment does, so the starter-army roll leaves it be.
+        _autoArmiedSlots.Add(host.ID);
+    }
     private List<(string Path, FDG.Quest.QuestHero Hero)>? _savedHeroes;
     private double _savedHeroesAt = -10;
 

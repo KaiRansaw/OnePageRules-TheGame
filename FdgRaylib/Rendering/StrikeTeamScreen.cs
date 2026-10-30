@@ -25,6 +25,9 @@ namespace FdgRaylib.Rendering;
 public sealed class StrikeTeamScreen : IAppScreen
 {
     public Action? OnBack;
+    /// <summary>#410 - "Play next mission": asks for a lobby of this game type. The army itself is
+    /// handed over through <see cref="LobbyScreen.PendingCampaignArmy"/>.</summary>
+    public Action<EGameSystem>? OnPlay;
 
     private enum EView { List, New, Camp, Recruit }
     private EView _view = EView.List;
@@ -700,8 +703,8 @@ public sealed class StrikeTeamScreen : IAppScreen
             case EView.Camp:
                 if (UiButton.Back("Campaign armies", btn) || esc) _view = EView.List;
                 ImGui.SetCursorPos(new Vector2(rx, by));
-                if (UiButton.Confirm("Play next mission", btn)) OnBack?.Invoke();
-                RightLabel(rx, by, btn, "Pick it in the lobby as your army", TextDim);
+                if (UiButton.Confirm("Play next mission", btn)) StartMission();
+                RightLabel(rx, by, btn, "Opens a lobby with this army already picked", TextDim);
                 DrawMessage(margin, by, btn);
                 break;
 
@@ -730,6 +733,49 @@ public sealed class StrikeTeamScreen : IAppScreen
                 DrawMessage(margin, by, btn);
                 break;
         }
+    }
+
+    // -- Starting the mission -----------------------------------------------------------------------
+
+    /// <summary>
+    /// #410 - hands the campaign army to the next lobby and asks for one. When only some of the army is
+    /// coming, a "this mission only" copy is written beside the campaign file holding just those units.
+    /// <para>
+    /// The copy is safe because every unit's sheet keeps its own id and its <c>TeamFile</c>, which is
+    /// what the after-game write-back keys on - so casualties, XP and level ups land on the real
+    /// campaign army, not on the copy. Units left at home simply never reach the table, so they take no
+    /// casualty roll and earn no XP, which is what the book intends.
+    /// </para>
+    /// <para>It is written as <c>.fdgmission</c>, not <c>.fdgarmy</c>, so it stays out of the army
+    /// picker, out of the campaign list and out of every folder scan - all of which glob for
+    /// <c>.fdgarmy</c>.</para>
+    /// </summary>
+    private void StartMission()
+    {
+        if (Current is not { } cur) return;
+        (string path, BuiltArmyFile army) = cur;
+        StrikeTeamInfo info = army.StrikeTeam!;
+
+        var coming = army.Units
+            .Where(u => CampaignRules.Sheet(u) is { } sh && (info.Bringing.Count == 0 || info.Bringing.Contains(sh.Id)))
+            .ToList();
+        if (coming.Count == 0) { Say("Tick at least one unit under \"Who is coming\".", true); return; }
+
+        string play = path;
+        if (coming.Count < army.Units.Count)
+        {
+            if (StrikeTeamFiles.Load(path) is not { } copy) { Say("Couldn't read the campaign army file.", true); return; }
+            var keep = new HashSet<string>(coming.Select(u => CampaignRules.Sheet(u)!.Id), StringComparer.Ordinal);
+            copy.Units.RemoveAll(u => CampaignRules.Sheet(u) is not { } sh || !keep.Contains(sh.Id));
+            play = Path.ChangeExtension(path, ".fdgmission");
+            if (!StrikeTeamFiles.Save(play, copy)) { Say("Couldn't write the mission army file.", true); return; }
+        }
+
+        LobbyScreen.PendingCampaignArmy = play;
+        // A new mission: the one-new-Hero-per-mission allowance comes back.
+        _heroRecruited = false;
+        Say($"Taking {coming.Count} unit(s), {coming.Sum(u => u.PointCost)} pts.");
+        OnPlay?.Invoke(info.GameSystem);
     }
 
     private void DrawMessage(float margin, float by, Vector2 btn)
