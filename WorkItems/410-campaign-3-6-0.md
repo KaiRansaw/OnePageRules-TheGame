@@ -8,6 +8,51 @@ project doc `claude/campaign-rules-delta.md`.
 
 ---
 
+## 2026-10-30 - slice 3: the campaign screen
+
+Engine 3,727 / 0. UI 2,997 / 0. Headless smoke exits 0. Pushed to `campaign-360`.
+
+**Kai's layout call, from the "Campaign screen - layout options" design canvas: B's three columns with
+C's cards.** `FdgRaylib/Rendering/StrikeTeamScreen.cs` rebuilt around it.
+
+- **List** - the campaign armies on disk; Open, New, Delete.
+- **Camp** - roster | selected unit | next mission, nothing behind a tab.
+  - Roster: level, XP, models, cost per unit, and a loud marker on one waiting for a choice.
+  - Unit: stats, book cost vs campaign cost, traits/skills/talents/injuries/weapons, pending choices,
+    the upgrade rows priced through `CampaignEconomy.PriceOfChange`, Disband behind a confirm.
+  - Mission: roll the special objective, tick who is coming with the cap measured against the other
+    campaign armies on disk, how to start the game, the last six history lines.
+- **Recruit** - a card per roster unit (quality, defense, best ranged and melee weapon, rules, price),
+  a cart with the 5-XP veteran tick, and the hero caps enforced per card so a card that can't be used
+  says why rather than failing on click.
+
+`StrikeTeamInfo` gained `SpecialObjective` and `Bringing` so both survive between sessions; empty
+`Bringing` means the whole army comes.
+
+**RENTAL - do not refine this.** One pass to make campaign playable. The remaining look-and-feel waits
+for Godot; only the information design (what each column shows) is permanent, and that is Kai's call
+already made.
+
+### Upgrade rows: the deliberate simplification
+
+Each section's options are drawn as one toggle row each, with `Count: 1`. That covers One/PickN
+sections, which is nearly all of them. Counted (`UpgradeAffects.Any`) sections will toggle a single
+application rather than offering a stepper, and `AddModels` sections are not offered at all. The full
+editor already exists - `FdgRaylib/Rendering/ForgeUnitDetail.DrawUpgrades` - and is the thing to reach
+for when this needs to be complete, rather than growing a second one here.
+
+### Not in this slice
+
+- **Starting a mission from the screen.** "Play next mission" returns to the menu; Kai still picks the
+  army in the lobby. Passing the campaign army and the chosen units into the lobby is PERMANENT work.
+- **Enforcing "who is coming"** - recorded on the file, ignored by the lobby.
+- Applying a random event, scoring a special objective during a game.
+- A bot campaign army with its own treasury and spender.
+- Campaign entries in the lobby for Grimdark Future, AoF and Skirmish - the screen is already written
+  against `CampaignNumbers`, so it is the lobby wiring that is missing, not the screen.
+
+---
+
 ## 2026-10-30 - slice 2: mission setup, the economy and the event table
 
 Engine 3,727 passed / 0 failed. UI 2,997 passed / 0 failed. Headless smoke exits 0. Pushed to
