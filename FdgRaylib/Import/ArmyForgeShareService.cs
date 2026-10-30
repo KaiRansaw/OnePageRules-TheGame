@@ -94,8 +94,15 @@ public static class ArmyForgeShareService
         if (bundled is not null)
             OprListImporter.AttachBookDefinitions(result.Army, bundled);
         else if (result.Army.Faction.Length > 0)
-            result.Warnings.Add($"No bundled book matches faction '{result.Army.Faction}' - " +
-                "faction-specific rules and spells will not be enforced.");
+            // #406: name the SYSTEM as well as the faction. Now that each system keeps its own slug,
+            // the usual miss is "we have this faction, but not its Firefight book" rather than "we
+            // have never heard of this faction" - and the old wording sent you looking for the wrong
+            // problem. Attaching the parent system's book instead would be worse than attaching
+            // nothing: its rules and costs are for a different book.
+            result.Warnings.Add(
+                $"No bundled {GameSystems.DisplayName(result.Army.GameSystem)} book matches faction " +
+                $"'{result.Army.Faction}' - faction-specific rules and spells will not be enforced. " +
+                "The army still imports with the stats Army Forge gave it.");
 
         // #241 v2: the editable session + pricing reconciliation. Best-effort — a failure here never
         // blocks the verbatim import, it just leaves the Open-in-Forge button disabled.
