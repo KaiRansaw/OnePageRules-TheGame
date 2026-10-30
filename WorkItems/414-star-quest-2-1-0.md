@@ -122,6 +122,36 @@ Both are small engine seams rather than rule authoring, and they belong with the
 The lint allowlist entries for Explorer and Sharpshooter are removed; the remaining six had their
 reason strings corrected, since every one of them claimed a gap that does not exist.
 
+#### Group B deferred by Kai, 2026-10-30 - except Elite's prompt
+
+Kai's call: the six remaining skills are **only reachable in Firefight Campaign, which he has not yet
+played a mission of**, and the re-roll plumbing runs through the shooting path - the most load-bearing
+code in the game, and the one T1 proved can break catastrophically and silently. Building for players
+who cannot reach the feature, in the riskiest file, is the wrong trade this week. Deferred whole.
+
+**One piece was carved out and done, because `Trait: Elite` is live** - it is a Horde trait a unit can
+roll on any level-up, so unlike the campaign skills it is in play today. Two things were wrong with it;
+this fixes the second:
+
+1. It only covers the morale test, where the book says "one roll of any kind". **Unchanged** - that is
+   the deferred breadth.
+2. **It spent itself silently.** `TryUseElite` checked the gate and paid it in one call, so the first
+   failed morale test of the game burned the unit's only re-roll, with no prompt and no log line the
+   player would read as a decision. A unit happy to fail a morale test lost its re-roll anyway.
+
+Split into `CanUseElite` (check, free) and `SpendElite` (pay), with a `YesNoRequest` between them in
+`MoraleUtilities`. The request's `DefaultAnswer` is `true`, so every automated answerer - bots, the AI
+resolvers, EOF-driven headless runs - behaves exactly as it did before, which is why the whole suite
+stayed green without a single expectation changing.
+
+`HordeTraitTests` gains the case that matters: **asking twice without accepting does not spend the
+use.** That is the half that silently breaks if the two calls are ever merged back together. The
+fixture's old name said "once per round", which 3.6 changed a patch ago; corrected to "once per game".
+
+**Note for whoever does the rest:** the headless smoke (`printf "2\n2\n" | ... --headless`) takes no
+seed, so its result varies run to run - it tied twice and lost once in a row here. Exit code 0 is the
+criterion, not the outcome line. Worth knowing before anyone reads a changed result as a regression.
+
 ### 2026-10-30 - progression table, and two QA notes closed by testing rather than fixing
 
 Kai's pick for this session was "mission rewards + the boss-fight offer", aimed at QA 6.x ("every hero
