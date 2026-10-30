@@ -77,11 +77,50 @@ meets the threshold, rebuild the results with one count moved from a failing sid
 `DiceResults(float[] perSideValues, int sideMin)` is public, so this is straightforward, but it is the
 part most likely to be got subtly wrong, and it needs a test per stage.
 
-**Scope split, said out loud rather than cut quietly:** Group A is being done first - it is four of the
-nine, it rides on a mechanism that already works and is already tested, and it carries no new
-architecture. Group B is a separate slice: one shared "offer a re-roll on a failure" helper plus three
-stage call sites, and **Mastermind is the odd one even within it**, because it spends the hero's use to
-force a re-roll on the *opponent's* roll rather than re-rolling the hero's own. Mastermind lands last.
+**Scope split, said out loud rather than cut quietly:** Group A is being done first - it rides on a
+mechanism that already works and is already tested, and it carries no new architecture. Group B is a
+separate slice: one shared "offer a re-roll on a failure" helper plus three stage call sites, and
+**Mastermind is the odd one even within it**, because it spends the hero's use to force a re-roll on
+the *opponent's* roll rather than re-rolling the hero's own. Mastermind lands last.
+
+#### Correction, same day: Group A is TWO, not four
+
+Mapping the hooks turned up a constraint that changes the count. **Only ten hooks ever offer an
+activated ability** (`RuleFireLint.AbilityOfferingHooks`, `Rules/Dispatch/RuleFireLint.cs:261`); an
+`ActivatedAbility` authored anywhere else is dead data the catalog fire-lint rejects. The terrain and
+range hooks are passive-only, so the shape for both buildable skills is: offer at
+`Activation_OnActivationStart`, grant a helper rule with `Effect.AddRule(..., ThisActivation)`, and put
+the real passive on the helper. That is the pattern `SpeedFeatRuleIntegrationTests` already uses.
+
+**Done (`CampaignOncePerGameSkillTests`, 8 cases):**
+- **Explorer** -> grants `Explorer: Surefooted`, whose passive is
+  `IgnoreTerrainEffects(ETerrainIgnoreScope.AllTerrain)` at `Movement_OnMoveThroughTerrain`. `AllTerrain`
+  and not `DifficultOnly` matters: `DifficultOnly` is Strider and does **not** waive Dangerous, so the
+  test asserts through `MovementRuleQueries.IgnoresAllTerrain`, which is the query that tells them apart.
+- **Sharpshooter** -> grants `Sharpshooter: Long Shot`, whose passive is `RangeModifier(+12)` at
+  `Shooting_OnRangeCheck`, asserted through `RangeRuleQueries.EffectiveRange` (the fold the shooting
+  stage actually reads). Offering at `Activation_OnBeforeAttackAction` would read closer to the book's
+  "when shooting", but abilities there are taken *instead of* attacking, so the skill would cancel the
+  shot it is meant to extend.
+
+Both helper rules are registered in `Campaign36RuleCatalog.All` so the resolver can find them, and a
+test pins that neither appears on any hero skill table - otherwise a level-up could roll
+"Explorer: Surefooted" as a skill.
+
+**Still blocked, and NOT for the reason the old comments gave:**
+- **Idol** ("may ignore becoming Shaken") - there is no cancellable Shaken hook.
+  `Morale_OnShakenApplied` fires *after* `ApplyShaken` has already added the token and is not an
+  offering hook, and **no Effect exists that removes or prevents a token** (`ConsumeToken` is
+  unconditional, `ClearTokenOnRoll` is dice-gated). Note there is already a hardcoded precedent for
+  exactly this shape in Star Quest - a prompt inside `MoraleUtilities.ApplyShakenWithPresentation` -
+  which is the seam to generalise.
+- **Berserker** ("may ignore becoming Fatigued") - worse: **no fatigue hook exists at all.**
+  `FatigueUtilities.ApplyFatigued` fires nothing, and `CountsAsFatiguedInMelee` reads tokens directly
+  with no rule dispatch, so either way that function has to change.
+
+Both are small engine seams rather than rule authoring, and they belong with the Group B slice.
+The lint allowlist entries for Explorer and Sharpshooter are removed; the remaining six had their
+reason strings corrected, since every one of them claimed a gap that does not exist.
 
 ### 2026-10-30 - progression table, and two QA notes closed by testing rather than fixing
 
