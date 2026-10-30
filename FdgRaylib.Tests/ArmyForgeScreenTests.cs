@@ -326,8 +326,7 @@ public class ArmyForgeScreenTests
     public void WarErrantMiniTitan_ShieldTradedForASecondHammer_SwapsBothHammers()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "Books",
-                "TitanLordsWarDisciples" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
+            File.ReadAllText(ShippedBooks.Path("TitanLordsWarDisciples" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
         RosterUnit errant = book.Units.Single(u => u.Name == "War Errant Mini-Titan");
         UpgradeSection hammers = errant.Sections.Single(s => s.Label == "Replace any Heavy Hammer");
         UpgradeSection shield = errant.Sections.Single(s => s.Label == "Replace Titan Shield");
@@ -361,8 +360,7 @@ public class ArmyForgeScreenTests
     public void TacticalGrunts_AllSwapLeavesTheSpecialistSwapAvailableAndCompiled()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "Books",
-                "DAOUnion" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
+            File.ReadAllText(ShippedBooks.Path("DAOUnion" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
         RosterUnit grunts = book.Units.Single(u => u.Name == "Tactical Grunts");
         UpgradeSection all = grunts.Sections.Single(s => s.Label == "Replace all Pulse Rifles");
         UpgradeSection one = grunts.Sections.Single(s => s.Label == "Replace one Pulse Rifle");
@@ -397,8 +395,7 @@ public class ArmyForgeScreenTests
     public void Guardians_ReplaceAllPistolsAndBashes_TakesTheBashesToo()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "Books",
-                "DwarfGuilds" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
+            File.ReadAllText(ShippedBooks.Path("DwarfGuilds" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
         RosterUnit guardians = book.Units.Single(u => u.Name == "Guardians");
         UpgradeSection swap = guardians.Sections.Single(s => s.Label == "Replace all Pistols and Bashes");
 
@@ -422,8 +419,7 @@ public class ArmyForgeScreenTests
     public void HiveWarriors_AnyModelMayReplaceOneRazorClaws_TakesThreeOfTheSameGun()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "Books",
-                "AlienHives" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
+            File.ReadAllText(ShippedBooks.Path("AlienHives" + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
         RosterUnit warriors = book.Units.Single(u => u.Name == "Hive Warriors");
         UpgradeSection section = warriors.Sections.Single(
             s => s.Label == "Any model may replace one Razor Claws");

@@ -39,7 +39,7 @@ public class CombatCalculatorBookProbeTests
         int probed = 0;
 
         foreach (string path in Directory
-                     .EnumerateFiles(ShippedBooks.Directory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+                     .EnumerateFiles(ShippedBooks.Directory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
                      .OrderBy(path => path))
         {
             BookFile? book;

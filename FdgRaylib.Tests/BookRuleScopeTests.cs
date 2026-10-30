@@ -39,7 +39,7 @@ public class BookRuleScopeTests
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
 
     private static IEnumerable<TestCaseData> Books() =>
-        Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+        Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
             .OrderBy(path => path)
             .Select(path => new TestCaseData(path).SetArgDisplayNames(Path.GetFileNameWithoutExtension(path)));
 
@@ -79,7 +79,7 @@ public class BookRuleScopeTests
     {
         var stillMismatched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string bookPath in Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD))
+        foreach (string bookPath in Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories))
         {
             BookFile book = LoadBook(bookPath);
             IRuleResolver resolver = ResolverFor(book);
@@ -104,7 +104,7 @@ public class BookRuleScopeTests
     [Test]
     public void SniperDrones_DroneController_UpgradesOnlyThePulseRifle()
     {
-        BookFile book = LoadBook(Path.Combine(BooksDirectory, "DAOUnion" + BookFile.EXTENSION_WITH_PERIOD));
+        BookFile book = LoadBook(ShippedBooks.Path("DAOUnion" + BookFile.EXTENSION_WITH_PERIOD));
         RosterUnit drones = book.Units.Single(u => u.Name == "Sniper Drones");
         UpgradeSection section = drones.Sections.Single(s => s.Targets.Contains("Pulse Rifles"));
 
@@ -149,7 +149,7 @@ public class BookRuleScopeTests
     [TestCase("DarkPrimeBrothers", "Darkborn (Offensive)")]
     public void Darkborn_ResolvesToTheArmyVariant(string bookFile, string expectedVariant)
     {
-        BookFile book = LoadBook(Path.Combine(BooksDirectory, bookFile + BookFile.EXTENSION_WITH_PERIOD));
+        BookFile book = LoadBook(ShippedBooks.Path(bookFile + BookFile.EXTENSION_WITH_PERIOD));
         IRuleResolver resolver = ResolverFor(book);
 
         List<Reference> darkbornRefs = ReferencesIn(book)

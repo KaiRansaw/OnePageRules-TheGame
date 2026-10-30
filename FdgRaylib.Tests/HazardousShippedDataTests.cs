@@ -163,7 +163,7 @@ public class HazardousShippedDataTests
         foreach (string bookName in Sites().Select(s => s.Book).Distinct())
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(
-                File.ReadAllText(Path.Combine(BooksDirectory, bookName + BookFile.EXTENSION_WITH_PERIOD)),
+                File.ReadAllText(ShippedBooks.Path(bookName + BookFile.EXTENSION_WITH_PERIOD)),
                 RuleJson.Options)!;
 
             RuleResolver resolver = CoreRuleCatalog.CreateResolver();

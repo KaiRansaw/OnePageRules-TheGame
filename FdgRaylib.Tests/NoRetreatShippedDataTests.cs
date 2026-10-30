@@ -126,7 +126,7 @@ public class NoRetreatShippedDataTests
         foreach (string bookName in sites.Select(s => s.Book).Distinct())
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(
-                File.ReadAllText(Path.Combine(BooksDirectory, bookName + BookFile.EXTENSION_WITH_PERIOD)),
+                File.ReadAllText(ShippedBooks.Path(bookName + BookFile.EXTENSION_WITH_PERIOD)),
                 RuleJson.Options)!;
 
             RuleResolver resolver = CoreRuleCatalog.CreateResolver();

@@ -100,7 +100,7 @@ public class ExtendedBuffRangeShippedDataTests
         // --apply-rules embeds the supplement's definition into the referencing book. A slice that edits
         // the supplement and forgets to re-embed ships a book whose radios are still an unresolvable name.
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(BooksDirectory, "HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
+            File.ReadAllText(ShippedBooks.Path("HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
             RuleJson.Options)!;
 
         RuleResolver resolver = CoreRuleCatalog.CreateResolver();
@@ -123,7 +123,7 @@ public class ExtendedBuffRangeShippedDataTests
         // the item's core entry resolved, attached at unit scope, and CapabilityRuleQueries collecting the
         // offer AbilityTargeting will scan for.
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(BooksDirectory, "HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
+            File.ReadAllText(ShippedBooks.Path("HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
             RuleJson.Options)!;
 
         RuleResolver resolver = CoreRuleCatalog.CreateResolver();

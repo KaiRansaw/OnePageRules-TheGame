@@ -34,7 +34,7 @@ public static class RuleCoverageReport
         var byName = new Dictionary<string, Tally>(StringComparer.OrdinalIgnoreCase);
         int totalRefs = 0;
 
-        foreach (string path in Directory.EnumerateFiles(booksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+        foreach (string path in Directory.EnumerateFiles(booksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
                      .OrderBy(p => p))
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options)!;

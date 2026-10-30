@@ -160,7 +160,7 @@ public static class ArmyForgeShareService
         string dir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
         if (!Directory.Exists(dir)) return null;
 
-        foreach (string path in Directory.EnumerateFiles(dir, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p))
+        foreach (string path in Directory.EnumerateFiles(dir, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p))
         {
             try
             {

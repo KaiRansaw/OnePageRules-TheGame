@@ -33,7 +33,7 @@ public class BookRuleFireLintTests
 
     private static IEnumerable<(string BookTag, SpecialRuleDefinition Rule)> AllBookRules()
     {
-        foreach (string path in Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+        foreach (string path in Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
                      .OrderBy(p => p, StringComparer.Ordinal))
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options)!;

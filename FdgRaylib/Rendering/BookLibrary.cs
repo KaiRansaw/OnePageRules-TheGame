@@ -38,7 +38,7 @@ internal static class BookLibrary
         if (Directory.Exists(directory))
         {
             foreach (string path in Directory
-                         .EnumerateFiles(directory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+                         .EnumerateFiles(directory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
                          .OrderBy(path => path))
             {
                 try

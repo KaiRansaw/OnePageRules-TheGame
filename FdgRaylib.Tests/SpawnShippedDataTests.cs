@@ -48,7 +48,7 @@ public class SpawnShippedDataTests
         string booksDir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
         List<string> problems = new List<string>();
 
-        foreach (string path in Directory.GetFiles(booksDir, "*.fdgbook"))
+        foreach (string path in Directory.GetFiles(booksDir, "*.fdgbook", SearchOption.AllDirectories))
         {
             string json = File.ReadAllText(path);
             if (!json.Contains($"\"name\": \"{RuleName}\"", StringComparison.Ordinal)) continue;
@@ -94,7 +94,7 @@ public class SpawnShippedDataTests
     public void ForgeCompile_EmbedsTheNamedAuxSpec_FromTheRealBook()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(
-            Path.Combine(AppContext.BaseDirectory, "Assets", "Books", "AlienHives.fdgbook")),
+            ShippedBooks.Path("AlienHives.fdgbook")),
             RuleJson.Options)!;
         RosterUnit artillery = book.Units.Single(u => u.Name == "Invasion Artillery Spore");
 

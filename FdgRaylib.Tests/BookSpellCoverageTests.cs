@@ -36,7 +36,7 @@ public class BookSpellCoverageTests
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
 
     private static IEnumerable<TestCaseData> Books() =>
-        Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+        Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
             .OrderBy(path => path)
             .Select(path => new TestCaseData(path).SetArgDisplayNames(Path.GetFileNameWithoutExtension(path)));
 

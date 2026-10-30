@@ -35,7 +35,7 @@ public class VengeanceShippedDataTests
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
 
     private static BookFile LoadBook(string name) => JsonSerializer.Deserialize<BookFile>(
-        File.ReadAllText(Path.Combine(BooksDirectory, name + BookFile.EXTENSION_WITH_PERIOD)),
+        File.ReadAllText(ShippedBooks.Path(name + BookFile.EXTENSION_WITH_PERIOD)),
         RuleJson.Options)!;
 
     private static SpecialRuleDefinition Supplement() =>

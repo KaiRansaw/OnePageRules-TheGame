@@ -54,7 +54,7 @@ public class ReinforcementShippedDataTests
         string booksDir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
         List<string> missing = new List<string>();
 
-        foreach (string path in Directory.GetFiles(booksDir, "*.fdgbook"))
+        foreach (string path in Directory.GetFiles(booksDir, "*.fdgbook", SearchOption.AllDirectories))
         {
             string json = File.ReadAllText(path);
             if (!json.Contains($"\"name\": \"{RuleName}\"", StringComparison.Ordinal)) continue;

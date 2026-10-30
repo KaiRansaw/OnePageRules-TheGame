@@ -106,7 +106,7 @@ public class ArmorShippedDataTests
         foreach (string bookName in Sites().Select(s => s.Book).Distinct())
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(
-                File.ReadAllText(Path.Combine(BooksDirectory, bookName + BookFile.EXTENSION_WITH_PERIOD)),
+                File.ReadAllText(ShippedBooks.Path(bookName + BookFile.EXTENSION_WITH_PERIOD)),
                 RuleJson.Options)!;
 
             RuleResolver resolver = CoreRuleCatalog.CreateResolver();
@@ -131,7 +131,7 @@ public class ArmorShippedDataTests
         // attached at unit scope, and UnitCreationRules folding the set onto the stat. HDF Veterans are
         // D5+ buying Heavy Armor (Armor(4)) for the whole unit.
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(BooksDirectory, "HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
+            File.ReadAllText(ShippedBooks.Path("HumanDefenseForce" + BookFile.EXTENSION_WITH_PERIOD)),
             RuleJson.Options)!;
 
         RuleResolver resolver = CoreRuleCatalog.CreateResolver();

@@ -21,7 +21,7 @@ public class PerModelSectionShippedDataTests
     private static IEnumerable<(string Book, RosterUnit Unit, UpgradeSection Section)> AllSections()
     {
         string booksDir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
-        foreach (string path in Directory.GetFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD))
+        foreach (string path in Directory.GetFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories))
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options)!;
             foreach (RosterUnit unit in book.Units)
@@ -68,8 +68,7 @@ public class PerModelSectionShippedDataTests
     public void TheReportedSections_AreStamped(string bookFile, string unitName, string label)
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "Books",
-                bookFile + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
+            File.ReadAllText(ShippedBooks.Path(bookFile + BookFile.EXTENSION_WITH_PERIOD)), RuleJson.Options)!;
         UpgradeSection section = book.Units.Single(u => u.Name == unitName)
             .Sections.Single(s => s.Label == label);
 

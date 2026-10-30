@@ -54,7 +54,7 @@ public class MeleeSlayerShippedDataTests
     public void EmbeddedGdfBookCopy_CarriesTheChargeGate()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(
-            File.ReadAllText(Path.Combine(BooksDirectory, "MachineCults" + BookFile.EXTENSION_WITH_PERIOD)),
+            File.ReadAllText(ShippedBooks.Path("MachineCults" + BookFile.EXTENSION_WITH_PERIOD)),
             RuleJson.Options)!;
 
         SpecialRuleDefinition rule = book.RuleDefinitions.Single(r => r.Name == RuleName);

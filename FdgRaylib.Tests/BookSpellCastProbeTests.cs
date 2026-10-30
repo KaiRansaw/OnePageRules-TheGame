@@ -39,7 +39,7 @@ public class BookSpellCastProbeTests
     [Test]
     public async Task EverySpellInEveryBundledBook_CastsCleanly()
     {
-        string[] bookPaths = Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD)
+        string[] bookPaths = Directory.EnumerateFiles(BooksDirectory, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories)
             .OrderBy(p => p, StringComparer.Ordinal).ToArray();
         Assert.That(bookPaths, Is.Not.Empty, $"no books in '{BooksDirectory}'.");
 

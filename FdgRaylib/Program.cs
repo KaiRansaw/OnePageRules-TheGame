@@ -154,7 +154,7 @@ if (bookUrlsIdx >= 0 && bookUrlsIdx + 1 < args.Length)
     Console.WriteLine();
 
     string[] books = Directory.Exists(booksDir)
-        ? Directory.EnumerateFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p).ToArray()
+        ? Directory.EnumerateFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p).ToArray()
         : Array.Empty<string>();
     if (books.Length == 0) Console.WriteLine($"# No {BookFile.EXTENSION_WITH_PERIOD} files in '{booksDir}'.");
     var indexes = new Dictionary<string, IReadOnlyDictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
@@ -234,7 +234,14 @@ if (bookDiffIdx >= 0 && bookDiffIdx + 2 < args.Length)
             try
             {
                 if (JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options) is { } book)
-                    set[Path.GetFileName(path)] = book;
+                {
+                    // Keyed by the path relative to the root, not the bare file name: the same book
+                    // exists under several game-system folders and the two must not collide.
+                    string key = Directory.Exists(target)
+                        ? Path.GetRelativePath(target, path).Replace('\\', '/')
+                        : Path.GetFileName(path);
+                    set[key] = book;
+                }
             }
             catch (JsonException) { Console.WriteLine($"  (skipped unreadable book {Path.GetFileName(path)})"); }
         }
@@ -248,9 +255,14 @@ if (bookDiffIdx >= 0 && bookDiffIdx + 2 < args.Length)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var systems = set.Values.Select(b => FDG.ArmyBuilding.GameSystems.DisplayName(b.GameSystem))
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        string system = systems.Count == 1 ? systems[0] + " " : "";
-        if (versions.Count == 1) return system + versions[0];
-        return system + Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        string folder = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        if (systems.Count == 1 && versions.Count == 1) return $"{systems[0]} {versions[0]}";
+        if (systems.Count == 1)
+            // Mixed versions within one system (the bundled corpus has both 3.5.2 and 3.5.3): name the
+            // system, and don't repeat it when the folder is already called that.
+            return string.Equals(systems[0], folder, StringComparison.OrdinalIgnoreCase)
+                ? systems[0] : $"{systems[0]} ({folder})";
+        return folder;
     }
 }
 
@@ -340,7 +352,7 @@ if (importBookIdx >= 0 && importBookIdx + 1 < args.Length)
     {
         string target = args[importBookIdx + 1];
         string[] bookPaths = Directory.Exists(target)
-            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p).ToArray()
+            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p).ToArray()
             : new[] { target };
         if (bookPaths.Length == 0) { Console.WriteLine($"No {BookFile.EXTENSION_WITH_PERIOD} files in '{target}'."); return; }
 
@@ -392,7 +404,7 @@ if (shapesIdx >= 0 && shapesIdx + 1 < args.Length)
     {
         string target = args[shapesIdx + 1];
         string[] bookPaths = Directory.Exists(target)
-            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p).ToArray()
+            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p).ToArray()
             : new[] { target };
         if (bookPaths.Length == 0) { Console.WriteLine($"No {BookFile.EXTENSION_WITH_PERIOD} files in '{target}'."); return; }
 
@@ -445,7 +457,7 @@ if (spellsIdx >= 0 && spellsIdx + 2 < args.Length)
         string snapshotDir = args[spellsIdx + 1];
         string target = args[spellsIdx + 2];
         string[] bookPaths = Directory.Exists(target)
-            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p).ToArray()
+            ? Directory.EnumerateFiles(target, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p).ToArray()
             : new[] { target };
         if (bookPaths.Length == 0) { Console.WriteLine($"No {BookFile.EXTENSION_WITH_PERIOD} files in '{target}'."); return; }
 
@@ -571,7 +583,7 @@ if (editableIdx >= 0 && editableIdx + 1 < args.Length)
     var books = new List<BookFile>();
     string booksDir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
     if (Directory.Exists(booksDir))
-        foreach (string p in Directory.EnumerateFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD).OrderBy(p => p))
+        foreach (string p in Directory.EnumerateFiles(booksDir, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p))
             try
             {
                 BookFile? b = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(p), RuleJson.Options);

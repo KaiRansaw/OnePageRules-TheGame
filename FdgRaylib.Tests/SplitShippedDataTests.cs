@@ -40,7 +40,7 @@ public class SplitShippedDataTests
     public void TheRealBooksSplitChain_CompilesBothLinksIntoTheArmy()
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(
-            Path.Combine(AppContext.BaseDirectory, "Assets", "Books", "WormholeDaemonsofChange.fdgbook")),
+            ShippedBooks.Path("WormholeDaemonsofChange.fdgbook")),
             RuleJson.Options)!;
         Assert.That(book.RuleDefinitions.Any(d => d.Name == RuleName), Is.True,
             "the book embeds the Split definition");
