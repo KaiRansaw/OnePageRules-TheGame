@@ -36,13 +36,17 @@ public class CliApp
     // Filled during CreatePlayerSlots(); read by the renderer at draw time.
     public Dictionary<PlayerID, Color> PlayerColors { get; } = new();
 
+    // #413 --all-ai on the lobby path: slot 0 is a bot too, so a game plays itself end to end.
+    private readonly bool _allAi;
+
     public CliApp(bool headless, int slowDelayMs = 0, int? diceSeed = null,
-        EAiProfile aiProfile = EAiProfile.SoloRules)
+        EAiProfile aiProfile = EAiProfile.SoloRules, bool allAi = false)
     {
         _headless = headless;
         _slowDelayMs = slowDelayMs;
         _diceSeed = diceSeed;
         _aiProfile = aiProfile;
+        _allAi = allAi;
     }
 
     /// <summary>
@@ -61,13 +65,20 @@ public class CliApp
     /// <param name="ArmyPoints">The lobby's points limit; a campaign army needs this lifted.</param>
     /// <param name="Army1">Slot 0's army file. Null prompts, as before.</param>
     /// <param name="Army2">Slot 1's army file. Null prompts, as before.</param>
+    /// <param name="Party">
+    /// Star Quest only: the 2-4 heroes slot 0 plays, as <c>.fdghero</c> paths, a folder of them, or
+    /// "auto" for a generated party (see <see cref="PartyLoader"/>). On a Quest game system an empty list
+    /// still means "generate one" - Star Quest's local side is never an army list, so there is no sane
+    /// army-shaped default to fall back to.
+    /// </param>
     public sealed record Setup(
         EGameSystem? GameSystem = null,
         EGameMode? GameMode = null,
         EPlayStyle? PlayStyle = null,
         int? ArmyPoints = null,
         string? Army1 = null,
-        string? Army2 = null);
+        string? Army2 = null,
+        IReadOnlyList<string>? Party = null);
 
     /// <summary>#413 - set before <see cref="RunAsync"/> to script what is played.</summary>
     public Setup? Scripted { get; set; }
@@ -96,28 +107,50 @@ public class CliApp
 
         var playerSlots = CreatePlayerSlots();
 
-        // Player 1 — human (CLI)
-        _localGame!.AddLocalPlayerID(playerSlots[0].PlayerID);
-
         ILogMessageUI logUI = Log != null
             ? new GuiLogMessageUI(Log)
             : new CliLogMessageUI();
 
-        IStageResolverRegistry resolverRegistry = BuildResolverRegistry();
-        if (_slowDelayMs > 0)
-            resolverRegistry = new SlowModeResolverRegistry(resolverRegistry, _slowDelayMs);
+        if (_allAi)
+        {
+            // #413 --all-ai: nobody is at the keyboard, so slot 0 is a bot like every other slot. The
+            // human game owns NO player, and AssignInterfaces would throw building its chat endpoint, so
+            // it is left unwired and the narrative arrives through slot 0's controller logSink - exactly
+            // what the scenario path already does (see ScenarioLauncher.BuildResume).
+            //
+            // This is what makes Star Quest testable rather than merely launchable. Answering every
+            // request with the EOF default means each hero takes the FIRST option it is offered, so the
+            // party stands where it deployed: no objectives seized, no mission ever completed, and so no
+            // reward, boss fight or exfiltration is ever reached. A bot at least walks the heroes
+            // towards their goal and shoots.
+            IStageResolverRegistry heroRegistry = AiProfileFactory.BuildRegistry(
+                _aiProfile, _localGame!.TableState, playerSlots[0].PlayerID, _diceSeed,
+                playerSlots[0].SlotID, null, false);
+            playerSlots[0].AssignPlayerController(new ScenarioAiPlayerController(
+                "Player 1 (AI)", playerSlots[0].PlayerID, _localGame, heroRegistry,
+                logSink: Console.WriteLine));
+        }
+        else
+        {
+            // Player 1 — human (CLI)
+            _localGame!.AddLocalPlayerID(playerSlots[0].PlayerID);
 
-        _localGame!.AssignInterfaces(
-            logMessageUI:          logUI,
-            playerMessageUI:       new CliPlayerMessageUI(),
-            stageResolverRegistry: resolverRegistry,
-            presentationSink:      null, // headless: beats emitted but not rendered
-            outstandingTaskDisplay: null);
+            IStageResolverRegistry resolverRegistry = BuildResolverRegistry();
+            if (_slowDelayMs > 0)
+                resolverRegistry = new SlowModeResolverRegistry(resolverRegistry, _slowDelayMs);
 
-        // Name the controllers explicitly: reading playerSlots[i].Name here returns the "[Empty]"
-        // placeholder, since the controller that supplies the real name isn't assigned yet.
-        var humanController = new LocalPlayerController("Player 1", playerSlots[0].PlayerID, _localGame);
-        playerSlots[0].AssignPlayerController(humanController);
+            _localGame!.AssignInterfaces(
+                logMessageUI:          logUI,
+                playerMessageUI:       new CliPlayerMessageUI(),
+                stageResolverRegistry: resolverRegistry,
+                presentationSink:      null, // headless: beats emitted but not rendered
+                outstandingTaskDisplay: null);
+
+            // Name the controllers explicitly: reading playerSlots[i].Name here returns the "[Empty]"
+            // placeholder, since the controller that supplies the real name isn't assigned yet.
+            var humanController = new LocalPlayerController("Player 1", playerSlots[0].PlayerID, _localGame);
+            playerSlots[0].AssignPlayerController(humanController);
+        }
 
         // Player 2 — computer (profile per --ai-profile; solo-rules by default)
         _aiGame = new FDGGame_AsLocal(_gameDataStore!, _messageBus!);
@@ -233,7 +266,13 @@ public class CliApp
         // #413: a scripted run names its armies, so nothing is read from stdin. A named file that
         // cannot be loaded is fatal rather than quietly falling back to the built-in test army - a
         // scripted run that silently plays the wrong army is worse than one that stops.
-        ArmyListFile army1 = LoadOrPrompt(Scripted?.Army1, "Player 1");
+        //
+        // Star Quest is the exception: slot 0 plays a PARTY of heroes, not an army list, and handing it
+        // one ends the mission in round 1 with "every hero is down" because nothing on the table is a
+        // quest hero. So on a Quest game the slot comes from PartyLoader instead.
+        ArmyListFile army1 = WantsParty()
+            ? PartyLoader.Build(Scripted!.Party ?? Array.Empty<string>())
+            : LoadOrPrompt(Scripted?.Army1, "Player 1");
         Console.WriteLine();
         ArmyListFile army2 = LoadOrPrompt(Scripted?.Army2, "Player 2");
         Console.WriteLine();
@@ -243,6 +282,19 @@ public class CliApp
             new PlayerSlot(slotID: 0, teamNumber: 0, playerID: player1ID, armyListFile: army1, gameDataStore: _gameDataStore!),
             new PlayerSlot(slotID: 1, teamNumber: 1, playerID: player2ID, armyListFile: army2, gameDataStore: _gameDataStore!),
         };
+    }
+
+    /// <summary>
+    /// #413 - whether slot 0 should be a Star Quest party rather than an army list. True when the run
+    /// named a party, and true for a Quest game system or a Star Quest game mode even when it did not,
+    /// since those cannot be played with an army list at all.
+    /// </summary>
+    public bool WantsParty()
+    {
+        if (Scripted is not { } setup) return false;
+        if (setup.Party != null) return true;
+        if (setup.GameSystem is { } system && GameSystemInfo.IsQuest(system)) return true;
+        return setup.GameMode is { } mode && GameSystemInfo.IsQuestMode(mode);
     }
 
     /// <summary>

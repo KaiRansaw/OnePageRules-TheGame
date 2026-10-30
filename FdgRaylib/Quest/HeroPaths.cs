@@ -31,11 +31,19 @@ public static class HeroPaths
 
     /// <summary>Every saved hero of a game type, by name.</summary>
     public static List<(string Path, QuestHero Hero)> LoadAll(string gameType)
+        => LoadAllIn(FolderFor(gameType));
+
+    /// <summary>
+    /// Every readable hero in one folder, by name. Split out from <see cref="LoadAll"/> for #413's
+    /// <c>--party</c>, which is handed a folder path directly rather than a game type - a headless run
+    /// may be pointed at any folder of hero files, not only the one this machine saves into.
+    /// </summary>
+    public static List<(string Path, QuestHero Hero)> LoadAllIn(string folder)
     {
         var list = new List<(string, QuestHero)>();
         try
         {
-            foreach (string file in Directory.EnumerateFiles(FolderFor(gameType), "*" + QuestHero.FileExtension))
+            foreach (string file in Directory.EnumerateFiles(folder, "*" + QuestHero.FileExtension))
             {
                 QuestHero? h = null;
                 try { h = QuestHero.FromJson(File.ReadAllText(file)); } catch { }

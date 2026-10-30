@@ -915,7 +915,10 @@ if (makeScenarioIdx >= 0 && makeScenarioIdx + 2 < args.Length)
 int scenarioIdx = Array.IndexOf(args, "--scenario");
 string? scenarioPath = scenarioIdx >= 0 && scenarioIdx + 1 < args.Length ? args[scenarioIdx + 1] : null;
 
-// --all-ai: scenario slot 0 is AI too (bot-vs-bot observation, GUI or headless).
+// --all-ai: slot 0 is AI too (bot-vs-bot observation). On the scenario path, GUI or headless; #413
+// extended it to the ordinary headless lobby path, where it is what makes Star Quest actually testable -
+// EOF defaults make each hero take the first option offered, so a human-slot party never leaves its
+// deployment and no mission is ever completed.
 // --log-decisions: interleave each planning AI's candidate-table narration into stdout (FdgLab's
 // flag on the scenario path; the AI resolvers have no other sink in an ordinary game - #264 note).
 bool scenarioAllAi = args.Contains("--all-ai");
@@ -937,6 +940,7 @@ if (headless && armyIdx >= 0 && armyIdx + 1 < args.Length)
 //   --game-mode    standard | horde | star-quest-horde | star-quest-mission
 //   --play-style   standard | game-master
 //   --army-points  <n>          --army1 <file.fdgarmy>   --army2 <file.fdgarmy>
+//   --party        auto | auto:<2-4> | <file.fdghero>... | <folder>   (Star Quest's local side)
 static string? ArgValue(string[] a, string name)
 {
     int i = Array.IndexOf(a, name);
@@ -978,12 +982,39 @@ EPlayStyle? cliStyle = ArgValue(args, "--play-style") is { } styleText
 
 int? cliPoints = int.TryParse(ArgValue(args, "--army-points"), out int cliPointsValue) ? cliPointsValue : null;
 
-var app = new CliApp(headless, slowDelayMs, diceSeed, aiProfile);
-if (cliSystem != null || cliMode != null || cliStyle != null || cliPoints != null
+// #413 --party: the 2-4 heroes slot 0 plays in GF: Star Quest. Star Quest's local side is a party, not
+// an army list, so without this a scripted Star Quest run put an ordinary army on the table, nothing on
+// it counted as a quest hero, and the first end-of-round check ended the mission with "every hero is
+// down" in round 1. Takes .fdghero paths, a folder of them, or "auto" (optionally "auto:4") for a party
+// generated from the shipped Army Forge data. Bare "--party" with nothing after it also generates one.
+//   --party auto            --party "heroes/GF Star Quest"      --party a.fdghero b.fdghero
+int partyIdx = Array.IndexOf(args, "--party");
+List<string>? cliParty = partyIdx >= 0 ? TrailingPaths(args, partyIdx + 1) : null;
+
+if (cliParty != null && ArgValue(args, "--army1") != null)
+    throw new ArgumentException("--party and --army1 both set slot 0: name one or the other. "
+        + "A Star Quest party and an army list cannot both be the local side.");
+
+// Star Quest's enemies follow the Star Quest AI flowchart, which is what the lobby gives them (it offers
+// "Add Star Quest AI" and nothing else on a Quest game). A scripted run would otherwise get the
+// solo-rules bot and quietly test the wrong opponent, so the Quest systems pick it themselves unless
+// --ai-profile said otherwise.
+if (profileIdx < 0 && (cliSystem is { } questCheck && GameSystemInfo.IsQuest(questCheck)
+        || cliMode is { } questModeCheck && GameSystemInfo.IsQuestMode(questModeCheck)))
+    aiProfile = FDG.Ai.EAiProfile.StarQuest;
+
+if (scenarioAllAi && !headless && scenarioPath == null)
+{
+    Console.Error.WriteLine("--all-ai requires --headless (the GUI needs a local player on slot 0).");
+    Environment.Exit(2);
+}
+
+var app = new CliApp(headless, slowDelayMs, diceSeed, aiProfile, scenarioAllAi && scenarioPath == null);
+if (cliSystem != null || cliMode != null || cliStyle != null || cliPoints != null || cliParty != null
     || ArgValue(args, "--army1") != null || ArgValue(args, "--army2") != null)
 {
     app.Scripted = new CliApp.Setup(cliSystem, cliMode, cliStyle, cliPoints,
-        ArgValue(args, "--army1"), ArgValue(args, "--army2"));
+        ArgValue(args, "--army1"), ArgValue(args, "--army2"), cliParty);
 }
 
 if (headless)
