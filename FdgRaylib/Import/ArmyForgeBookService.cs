@@ -222,11 +222,20 @@ public static class ArmyForgeBookService
 
     /// <summary>The two book-index URLs - the starting point for a cache run, since every book URL is
     /// derived from what they list.</summary>
-    public static IReadOnlyList<string> IndexUrls() => new[]
+    public static IReadOnlyList<string> IndexUrls() =>
+        AllSystems.Select(IndexUrl).ToList();
+
+    /// <summary>Every game system the game carries books for (#412: all four, not just the two that
+    /// happened to be downloaded first).</summary>
+    public static IReadOnlyList<string> AllSystems { get; } = new[]
     {
-        $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(GameSystems.GrimdarkFuture)}",
-        $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(GameSystems.AgeOfFantasy)}",
+        GameSystems.GrimdarkFuture, GameSystems.GFFirefight,
+        GameSystems.AgeOfFantasy, GameSystems.AoFSkirmish,
     };
+
+    /// <summary>The book-index URL for one game system.</summary>
+    public static string IndexUrl(string? gameSystem) =>
+        $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(GameSystems.Normalize(gameSystem))}";
 
     /// <summary>The URL one book's full JSON comes from, for a uid out of an index.</summary>
     public static string BookUrl(string uid, string? gameSystem) =>
@@ -236,9 +245,7 @@ public static class ArmyForgeBookService
     public static IReadOnlyDictionary<string, string>? IndexFromCache(string? gameSystem)
     {
         if (CacheFolder == null) return null;
-        string slug = GameSystems.Normalize(gameSystem);
-        string url = $"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Uri.EscapeDataString(slug)}";
-        string path = Path.Combine(CacheFolder, CacheFileName(url));
+        string path = Path.Combine(CacheFolder, CacheFileName(IndexUrl(gameSystem)));
         if (!File.Exists(path)) return null;
         var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));

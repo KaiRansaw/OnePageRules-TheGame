@@ -266,6 +266,139 @@ if (bookDiffIdx >= 0 && bookDiffIdx + 2 < args.Length)
     }
 }
 
+// --rebuild-books <cache-dir> <books-root> [--dry-run]  (#412): rebuild EVERY bundled book, for every
+// game system, from Army Forge responses saved in the cache folder. This is the full rebuild, not the
+// cost refresh: --import-book only transfers upgrade prices, so it leaves a unit's own points, quality,
+// defense, size, weapons, rules and any unit added or removed in a new OPR version untouched. Running
+// that alone makes the data LOOK current when it is not. --import-opr regenerates the whole book, and
+// the curated rule behaviour survives because it lives in the supplement files, which are re-embedded
+// here exactly as scripts/bake-aof-books.sh did it per book.
+//
+// Nothing is fetched: save the responses first with --book-urls and --book-cache (see
+// claude/army-forge-refresh.md). A book whose response is missing is REPORTED, never silently skipped.
+// An existing book of the same name keeps its file name, so --book-diff pairs old against new.
+int rebuildIdx = Array.IndexOf(args, "--rebuild-books");
+if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
+{
+    string cacheDir = args[rebuildIdx + 1];
+    string booksRoot = args[rebuildIdx + 2];
+    bool dryRun = args.Contains("--dry-run");
+    FdgRaylib.Import.ArmyForgeBookService.CacheFolder = cacheDir;
+    FdgRaylib.Import.ArmyForgeBookService.CacheOnly = true;
+
+    // slug -> the folder its books live in. Deliberately not DisplayName: "GF: Firefight" has a colon.
+    var systemFolders = new (string Slug, string Folder, string Prefix)[]
+    {
+        (FDG.ArmyBuilding.GameSystems.GrimdarkFuture, "Grimdark Future", ""),
+        (FDG.ArmyBuilding.GameSystems.GFFirefight, "GF Firefight", "GFF-"),
+        (FDG.ArmyBuilding.GameSystems.AgeOfFantasy, "Age of Fantasy", "AoF-"),
+        (FDG.ArmyBuilding.GameSystems.AoFSkirmish, "AoF Skirmish", "AoFS-"),
+    };
+
+    int built = 0, pending = 0, failed = 0, noIndex = 0;
+    var missing = new List<string>();
+
+    foreach ((string slug, string folder, string prefix) in systemFolders)
+    {
+        var index = FdgRaylib.Import.ArmyForgeBookService.IndexFromCache(slug);
+        string systemDir = Path.Combine(booksRoot, folder);
+        Console.WriteLine($"== {FDG.ArmyBuilding.GameSystems.DisplayName(slug)}  ({folder})");
+        if (!FdgRaylib.Import.ArmyForgeBookService.IdIsVerified(slug))
+            Console.WriteLine($"   note: Army Forge id {FdgRaylib.Import.ArmyForgeBookService.IdFor(slug)} is unverified "
+                + "- check one unit against the site, or override with --book-system-id.");
+        if (index == null)
+        {
+            string url = FdgRaylib.Import.ArmyForgeBookService.IndexUrl(slug);
+            Console.WriteLine($"   no index saved yet - save {FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}");
+            missing.Add($"{FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url)}\t{url}");
+            noIndex++;
+            continue;
+        }
+
+        // Existing books by their own Name, so a rebuild keeps each one's file name.
+        var existing = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (Directory.Exists(systemDir))
+            foreach (string path in Directory.EnumerateFiles(systemDir, "*" + BookFile.EXTENSION_WITH_PERIOD,
+                         SearchOption.AllDirectories))
+                try
+                {
+                    if (JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options) is { } b)
+                        existing[b.Name] = path;
+                }
+                catch (JsonException) { /* a malformed existing book just means no name to reuse */ }
+
+        foreach ((string bookName, string uid) in index.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            string url = FdgRaylib.Import.ArmyForgeBookService.BookUrl(uid, slug);
+            string cached = Path.Combine(cacheDir, FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url));
+            if (!File.Exists(cached))
+            {
+                Console.WriteLine($"   {bookName}: not saved yet");
+                missing.Add($"{Path.GetFileName(cached)}\t{url}\t# {bookName}");
+                pending++;
+                continue;
+            }
+
+            try
+            {
+                BookFile book = OprBookImporter.Import(File.ReadAllText(cached),
+                    source: "OnePageRules - Army Forge (army-forge.onepagerules.com)",
+                    license: "CC-BY-SA 4.0",
+                    warn: msg => Console.WriteLine($"      {msg}"));
+                book.GameSystem = slug == FDG.ArmyBuilding.GameSystems.GrimdarkFuture ? null : slug;
+
+                // The supplements, in the order scripts/bake-aof-books.sh established: the GDF set
+                // always, then AoF's for the fantasy systems, then the per-book override LAST so its
+                // redefinitions win (#375 C9).
+                var supplements = new List<string> { Path.Combine(booksRoot, "GdfRuleSupplement.json") };
+                bool fantasy = slug is FDG.ArmyBuilding.GameSystems.AgeOfFantasy or FDG.ArmyBuilding.GameSystems.AoFSkirmish;
+                if (fantasy) supplements.Add(Path.Combine(booksRoot, "AofRuleSupplement.json"));
+                string overridePath = Path.Combine(booksRoot, "AofBookOverrides", bookName + ".json");
+                if (fantasy && File.Exists(overridePath)) supplements.Add(overridePath);
+                supplements.RemoveAll(sp => !File.Exists(sp));
+                if (supplements.Count > 0)
+                {
+                    var merged = RuleSupplementSet.LoadMerged(supplements);
+                    BookRuleSupplement.Apply(book, merged, msg => Console.WriteLine($"      {msg}"));
+                }
+
+                string outPath = existing.TryGetValue(book.Name, out string? kept)
+                    ? kept
+                    : Path.Combine(systemDir, prefix
+                        + new string(book.Name.Where(char.IsLetterOrDigit).ToArray())
+                        + BookFile.EXTENSION_WITH_PERIOD);
+
+                if (!dryRun)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outPath))!);
+                    File.WriteAllText(outPath, JsonSerializer.Serialize(book, RuleJson.Options));
+                }
+                Console.WriteLine($"   {book.Name} {book.Version}: {book.Units.Count} units, {book.Spells.Count} spells"
+                    + $" -> {Path.GetFileName(outPath)}{(dryRun ? "  (dry run)" : "")}");
+                built++;
+            }
+            catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
+            {
+                Console.WriteLine($"   {bookName}: FAILED - {ex.Message}");
+                failed++;
+            }
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"{built} book(s) {(dryRun ? "would be rebuilt" : "rebuilt")}, {pending} waiting on a saved "
+        + $"response, {failed} failed, {noIndex} system(s) with no index saved.");
+    if (missing.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("# Save these, then run this again:");
+        foreach (string line in missing) Console.WriteLine(line);
+    }
+    if (!dryRun && built > 0)
+        Console.WriteLine($"{Environment.NewLine}Now compare: --book-diff <the old books> {booksRoot} report.md");
+    Environment.Exit(failed > 0 ? 1 : 0);
+}
+
 // --import-opr <in.json> <out.fdgbook> [supplement.json ...]  (#153 P0b): one-time OnePageRules Army
 // Forge JSON → .fdgbook snapshot, via the engine importer. Data is OPR's, used under CC-BY-SA (stamped
 // on the book). Optional supplements embed curated rule definitions the book references (see
