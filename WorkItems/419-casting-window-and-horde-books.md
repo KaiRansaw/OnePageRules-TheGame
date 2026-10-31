@@ -103,12 +103,15 @@ The engine uses the Campaign Builder's curve everywhere (corrected onto it on 20
 curve is the one it used to have). So **Horde levels heroes about a third slower than its own book
 says**, and hands out +1 Qua four levels later.
 
-Not changed, deliberately. Horde Mode is on v2.0.0 and the Campaign Builder on v2.1.0, so the most
-likely explanation is OPR not having updated the Horde PDF - and B12's lesson was exactly this: a
-difference between books of different ages is usually an age difference, not a rules difference. But
-levelling speed is something Kai feels in play, so it is his call rather than a silent pick: one table
-everywhere (as now), or the Horde book's faster curve in Horde only. Asked, and left alone until he
-answers.
+Horde Mode is on v2.0.0 and the Campaign Builder on v2.1.0, so the most likely explanation is OPR not
+having updated the Horde PDF - and B12's lesson was exactly this: a difference between books of
+different ages is usually an age difference, not a rules difference. But levelling speed is something
+Kai feels in play, so it was his call rather than a silent pick.
+
+**Decided (Kai, 2026-10-31): one table everywhere.** The Campaign Builder v2.1.0 curve stays in Horde
+too, so no code change. If OPR updates the Horde PDF and it still disagrees, this is the line to
+revisit - and `QuestProgression.XpForLevel` is one array, so a per-mode table would be a small change
+if it ever becomes real.
 
 ### 2026-10-31 - Blast's per-unit cap: not a bug, a reading Kai already picked
 
@@ -137,6 +140,8 @@ for him with those numbers.
 
 ## Outcome
 
-Casting window done and pushed. The Horde audit found no missing mechanics, which is the answer the item
-was raised to get. Two gameplay questions left with Kai (the Horde levelling table, Blast's cap); neither
-is a bug, and neither is being guessed at.
+Casting window done and pushed (build 0.29). The Horde audit found no missing mechanics, which is the
+answer the item was raised to get, and it independently confirmed #418's event names. Neither of the two
+things that looked like bugs was one: Blast's cap is Kai's earlier decision and still matches both of the
+2.1.0 worked examples' printed outcomes, and the Horde levelling table is settled - one table everywhere.
+Nothing left open here.
