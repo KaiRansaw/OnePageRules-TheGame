@@ -18,6 +18,78 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - casting: power before the roll, and no rescue after it
+
+v2.1.0 Caster(X), verbatim: *"Once per activation, before attacking, spend as many tokens as the spell's
+value to try casting one or more spells (only one try per spell). Pick a target and roll one die, and on
+4+ resolve the spell's effect. Heroes may spend any number of **tokens/Power** before rolling to get +1 to
+the roll per token/Power, or to give an enemy Caster within 18" -1 to their roll per token/Power."* The
+POWER REFERENCE repeats it: *"Heroes with Caster may spend X Power to get +X to casting rolls or give
+enemies -X to casting rolls."*
+
+v2.0.1 said tokens only before the roll, and then: *"Whenever a hero fails to cast a spell, it may spend
+X*2 power to count as having cast it instead."* So the reshaping is the same one the failed hero skill got
+in the note below - a retroactive rescue becomes a commitment made before the die is thrown.
+
+**The retroactive rescue was never implemented** (searched: no code path spends power on a failed cast,
+and no prompt follows the roll). So there was nothing to delete; what was missing is the Power half.
+`QuestCastPowerTests.NoRescueAfterTheRoll` pins the absence anyway, because the next person reading an old
+book would otherwise add it as a missing feature.
+
+**What was already there:** the pre-roll token boost (#244) and the 18" hinder (#103), both complete.
+This slice adds Power as a second currency to each.
+
+`CastPower` (new, beside `SpellPurse`) answers "what Power may this unit put into a cast", and is
+deliberately NOT another pool inside the purse: the purse pays the spell's **cost**, and the book never
+lets Power pay that - Power buys modifiers only. Tokens are also lendable (Spell Accumulator) and refresh
+every round, where Power is a mission-long budget refilled only by a Rest action.
+
+**Both currencies are carried separately end to end, and that is the design decision worth recording.**
+Summing them into one "sway points" number and spending tokens first would have been a third of the code:
+one spinner, no new reply shape, no resolver churn. It is wrong because the two are not interchangeable
+*to the player* - tokens are what a second spell this activation gets paid with, and Power is what revive,
+extra actions and failed stat tests come out of. A picker that chose for them would quietly cost them the
+other thing. So `ChooseSpellReply` gained `BoostPower` and `CastAssistRequest`'s reply became the
+`CastAssistReply(Tokens, Power)` record (it was a bare `int`), which is what rippled through six
+resolvers.
+
+Three smaller things fell out of it, each a real behaviour change:
+
+- **A caster holding no tokens is now asked to counter-spell.** `FindEligibleAssisters` skipped anything
+  with an empty pool, which was right when tokens were the only currency. A hero with 4 Power and no
+  tokens can counter under 2.1.0.
+- **An enemy hero's Power counts toward the picker's hinder estimate**, which is what greys out boost past
+  the point it can matter. Leaving it out would cap the player's boost early in exactly the situation
+  where boosting matters most - a hero duel.
+- **Overspend is clamped, never exhaustion.** `QuestActions.SpendPower` wounds a hero one per missing
+  Power, which is correct when a rule charges more than it has; reachable from a boost spinner it would
+  turn a fat finger or a misbehaving resolver into a dead hero. `CastPower.Clamp` is the guard and has its
+  own test. Diseased ("takes as many wounds as Power they spend/lose") still applies, because the spend
+  goes through `SpendPower` rather than decrementing the field.
+
+GUI (RENTAL, one pass): the assist dialog keeps its original one-tap button list for every caster with no
+Power, and becomes two steppers plus Confirm only when Power is available - a one-tap list cannot express
+"2 tokens and 1 power". The spell picker gained a second stepper.
+
+**The AI deliberately spends no Power.** For enemy casters that is the book (`Caster(X) [AI Units]` spends
+tokens), and for a bot playing the hero side under `--all-ai` it is the same conservative stance the AI
+already takes on token assists.
+
+Verified: engine **3,811 / 0** (8 new tests), UI 3,026 / 0, `dotnet build` clean, headless smoke exit 0,
+seeded all-AI Star Quest mission exit 0 over 103 rounds. The eight new tests were **sabotage-checked** -
+stubbing `CastPower.Available` to 0 fails five of them, which is the right five (the other three are the
+control, the non-hero guard and the no-rescue pin, all of which must pass either way).
+
+**Also fixed, unrelated:** `LobbyBotGreetingTests.MultipleBots_NeverPickTheSameLine` is a wall-clock race
+that intermittently saw 7 of 8 bot greetings in 5s on this 2-core box - it failed one run in five while
+this slice was being verified, and has nothing to do with casting. Timeout raised to 20s. It costs nothing
+on a healthy run, and a suite that fails one run in five trains everyone to re-run instead of reading.
+
+**Not done in this slice:** "once per activation, before attacking" is still the old "at any point before
+attacking" gate. Worth checking separately - `UnitActionContext` records spell attempts per spell name
+already, so the question is whether a second *different* spell in one activation is still allowed (2.1.0
+says one casting attempt sequence per activation, several spells inside it).
+
 ### 2026-10-30 - power costs on the v2.1.0 reference
 
 Verified against the **POWER REFERENCE** section of GFSQ Core Rules v2.1.0 before changing anything,

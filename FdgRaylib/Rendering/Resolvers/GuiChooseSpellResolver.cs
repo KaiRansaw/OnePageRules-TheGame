@@ -30,6 +30,9 @@ public class GuiChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseS
     // Draw-thread UI state, reset per request in Resolve: which row is highlighted and the boost count.
     private int _selectedIndex;
     private int _boost;
+    // #414 - power put into the same boost (Star Quest heroes, GFSQ v2.1.0). Its own stepper rather than a
+    // share of the token one: the player has to be able to say WHICH budget the cast comes out of.
+    private int _boostPower;
 
     public bool HasPendingRequest { get { lock (_lock) return _request != null; } }
 
@@ -47,6 +50,7 @@ public class GuiChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseS
             _request = request;
             _selectedIndex = firstCastable;
             _boost = 0;
+            _boostPower = 0;
         }
         return tcs.Task;
     }
@@ -123,7 +127,8 @@ public class GuiChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseS
         ImGui.PopStyleColor();
         ImGui.SetCursorPos(new Vector2(pad, pad + lineH + 2f));
         ImGui.PushStyleColor(ImGuiCol.Text, DimTextRgba);
-        ImGui.TextUnformatted($"{request.AvailableTokens} spell token{(request.AvailableTokens == 1 ? "" : "s")} available");
+        ImGui.TextUnformatted($"{request.AvailableTokens} spell token{(request.AvailableTokens == 1 ? "" : "s")}" +
+            (request.AvailablePower > 0 ? $", {request.AvailablePower} power" : "") + " available");
         ImGui.PopStyleColor();
 
         float y = pad + lineH * 2f + 10f;
@@ -240,18 +245,46 @@ public class GuiChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseS
                 pad, y, dw, descScale);
         }
 
-        int needed = System.Math.Max(2, request.BaseThreshold - _boost); // 2+ floor: a natural 1 always fails
+        // #414 - the power stepper, only for a hero that has power. Capped by what is left of the useful
+        // boost after the tokens, so the + stops where another point could no longer change the roll.
+        int powerCap = request.AvailablePower <= 0 ? 0
+            : System.Math.Min(request.AvailablePower, System.Math.Max(0, useful - _boost));
+        if (request.AvailablePower > 0)
+        {
+            _boostPower = System.Math.Clamp(_boostPower, 0, powerCap);
+            ImGui.SetCursorPos(new Vector2(pad, y));
+            ImGui.TextUnformatted("Spend power:");
+            ImGui.SameLine();
+            ImGui.BeginDisabled(_boostPower <= 0);
+            if (ImGui.Button("-##powerDown", new Vector2(stepBtn, stepBtn - 4f))) _boostPower--;
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            ImGui.TextUnformatted($" {_boostPower} of {request.AvailablePower} ");
+            ImGui.SameLine();
+            ImGui.BeginDisabled(_boostPower >= powerCap);
+            if (ImGui.Button("+##powerUp", new Vector2(stepBtn, stepBtn - 4f))) _boostPower++;
+            ImGui.EndDisabled();
+            y += stepBtn + 4f;
+        }
+
+        int totalBoost = _boost + _boostPower;
+        int needed = System.Math.Max(2, request.BaseThreshold - totalBoost); // 2+ floor: a natural 1 always fails
         ImGui.SetCursorPos(new Vector2(pad, y));
-        ImGui.TextUnformatted(_boost > 0
-            ? $"Roll needed: {needed}+ (base {request.BaseThreshold}+, self +{_boost})"
+        string bonusParts = _boostPower > 0
+            ? (_boost > 0 ? $", self +{_boost}, power +{_boostPower}" : $", power +{_boostPower}")
+            : $", self +{_boost}";
+        ImGui.TextUnformatted(totalBoost > 0
+            ? $"Roll needed: {needed}+ (base {request.BaseThreshold}+{bonusParts})"
             : $"Roll needed: {request.BaseThreshold}+");
         y += lineH + 4f;
 
         ImGui.SetCursorPos(new Vector2(pad, y));
         ImGui.PushStyleColor(ImGuiCol.Text, DimTextRgba);
-        ImGui.TextUnformatted(_boost > 0
-            ? $"Total spend: {chosen.Cost} cost + {_boost} boost = {chosen.Cost + _boost} of {request.AvailableTokens}"
-            : $"Total spend: {chosen.Cost} of {request.AvailableTokens}");
+        string spendLine = _boost > 0
+            ? $"Total spend: {chosen.Cost} cost + {_boost} boost = {chosen.Cost + _boost} of {request.AvailableTokens} tokens"
+            : $"Total spend: {chosen.Cost} of {request.AvailableTokens} tokens";
+        if (_boostPower > 0) spendLine += $", and {_boostPower} of {request.AvailablePower} power";
+        ImGui.TextUnformatted(spendLine);
         ImGui.PopStyleColor();
         y += lineH + 10f;
 
@@ -274,7 +307,7 @@ public class GuiChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseS
         ImGui.EndChild();
         ImGui.End();
 
-        if (castNow) Complete(tcs, new ChooseSpellReply(_selectedIndex, _boost));
+        if (castNow) Complete(tcs, new ChooseSpellReply(_selectedIndex, _boost, _boostPower));
         else if (cancelNow) Complete(tcs, ChooseSpellReply.Cancel);
     }
 

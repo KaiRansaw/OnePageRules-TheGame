@@ -50,7 +50,11 @@ public class ChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseSpel
         if (spellIndex < 0) return Task.FromResult(ChooseSpellReply.Cancel);
 
         int boost = PromptBoost(request, request.Spells[spellIndex].Cost);
-        return Task.FromResult(new ChooseSpellReply(spellIndex, boost));
+        // #414 - a Star Quest hero may add Power to the same boost (+1 each, v2.1.0). Asked separately
+        // because the two are not interchangeable: tokens are what a second spell this activation gets
+        // paid with, Power is what revive and extra actions come out of.
+        int boostPower = PromptPowerBoost(request, boost);
+        return Task.FromResult(new ChooseSpellReply(spellIndex, boost, boostPower));
     }
 
     // Returns the chosen request index, or -1 for Cancel. EOF defaults to the first castable spell.
@@ -99,6 +103,34 @@ public class ChooseSpellResolver : IStageResolver<ChooseSpellRequest, ChooseSpel
             if (input == null)
             {
                 Console.WriteLine("(EOF - no boost)");
+                return 0;
+            }
+            if (string.IsNullOrEmpty(input)) return 0;
+            if (int.TryParse(input, out int n) && n >= 0 && n <= cap)
+                return n;
+
+            Console.WriteLine($"Enter a number between 0 and {cap}.");
+        }
+    }
+
+    // #414 - the Power half of the boost, Star Quest heroes only. Capped by the hero's Power and by what
+    // can still matter after the tokens already committed, so a hero is never invited to burn Power on a
+    // roll it cannot move. EOF / blank spends nothing, which is what every piped run does.
+    private static int PromptPowerBoost(ChooseSpellRequest request, int tokenBoost)
+    {
+        if (request.AvailablePower <= 0) return 0;
+        int cap = Math.Min(request.AvailablePower, request.MaxUsefulBoost - tokenBoost);
+        if (cap <= 0) return 0;
+
+        Console.WriteLine($"Spend power on the roll as well? +1 per power ({request.AvailablePower} power left).");
+        while (true)
+        {
+            Console.Write($"Boost power [0-{cap}] (default 0): ");
+            string? input = Console.ReadLine()?.Trim();
+
+            if (input == null)
+            {
+                Console.WriteLine("(EOF - no power)");
                 return 0;
             }
             if (string.IsNullOrEmpty(input)) return 0;

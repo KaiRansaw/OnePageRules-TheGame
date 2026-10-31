@@ -13,8 +13,17 @@ namespace FdgRaylib.Rendering.Resolvers;
 /// for an enemy disruption (-1 per token) — and labels the assister's spell-token count. A compact picker
 /// (0..available) at the top of the screen returns how many tokens to spend. The dialog sits up top so the
 /// highlighted units and the line stay visible below it.
+///
+/// <para>
+/// #414 — a Star Quest Hero may also spend Power here (GFSQ v2.1.0), so there are two shapes of dialog.
+/// With no Power to spend (every army caster, every AI caster) it is the original one-tap button list,
+/// unchanged. With Power available it becomes two steppers and a Confirm, because the reply carries two
+/// numbers and a list of one-tap buttons cannot express "2 tokens and 1 power". RENTAL under the working
+/// agreement: plain, correct, and not to be refined - the layout dies with the Godot port, the decision
+/// does not.
+/// </para>
 /// </summary>
-public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGuiResolver, IGuiCanvasOverlay
+public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, CastAssistReply>, IGuiResolver, IGuiCanvasOverlay
 {
     private static readonly Vector4 FriendlyRgba = new(0.30f, 0.60f, 1.00f, 1.00f); // blue
     private static readonly Vector4 EnemyRgba    = new(1.00f, 0.60f, 0.15f, 1.00f); // orange
@@ -24,7 +33,10 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
 
     private readonly object _lock = new();
     private CastAssistRequest? _request;
-    private TaskCompletionSource<int>? _tcs;
+    private TaskCompletionSource<CastAssistReply>? _tcs;
+    // #414 - the two steppers' current values, only used by the power-capable dialog. Reset per request in
+    // Resolve, under the same lock as the request itself (the engine thread writes, the main thread reads).
+    private int _tokenSpend, _powerSpend;
 
     private float _scale = 10f;
     private float _tableH = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
@@ -40,17 +52,17 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
 
     public bool HasPendingRequest { get { lock (_lock) return _request != null; } }
 
-    public Task<int> Resolve(CastAssistRequest request)
+    public Task<CastAssistReply> Resolve(CastAssistRequest request)
     {
-        var tcs = new TaskCompletionSource<int>();
-        lock (_lock) { _tcs = tcs; _request = request; }
+        var tcs = new TaskCompletionSource<CastAssistReply>();
+        lock (_lock) { _tcs = tcs; _request = request; _tokenSpend = 0; _powerSpend = 0; }
         return tcs.Task;
     }
 
     public void Draw(int screenW, int screenH)
     {
         CastAssistRequest? request;
-        TaskCompletionSource<int>? tcs;
+        TaskCompletionSource<CastAssistReply>? tcs;
         lock (_lock) { request = _request; tcs = _tcs; }
         if (request == null || tcs == null) return;
 
@@ -87,7 +99,9 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
             DrawDashedLine(dl, aPix, cPix, color, 2.5f);
 
             string label = $"{assister.Name} - deciding ({request.AvailableTokens} token" +
-                           $"{(request.AvailableTokens == 1 ? "" : "s")} available)";
+                           $"{(request.AvailableTokens == 1 ? "" : "s")}" +
+                           (request.AvailablePower > 0 ? $", {request.AvailablePower} power" : "") +
+                           " available)";
             var size = ImGui.CalcTextSize(label);
             var pos = new Vector2(aPix.X - size.X * 0.5f, aPix.Y - size.Y - 14f);
             uint bg = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.6f));
@@ -97,7 +111,8 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
     }
 
     // ── Dialog: 0..available token picker ───────────────────────────────────────
-    private void DrawDialog(CastAssistRequest request, TaskCompletionSource<int> tcs, int screenW, int screenH)
+    private void DrawDialog(CastAssistRequest request, TaskCompletionSource<CastAssistReply> tcs,
+        int screenW, int screenH)
     {
         UnitData assister = request.AssistingUnit.GetValue();
         UnitData caster   = request.CastingUnit.GetValue();
@@ -116,10 +131,15 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
         // Header sized to its content, not a constant: the question line wraps (long unit/spell names,
         // narrow panels, any UI scale), and a fixed height let the first button overlap a second line.
         // Measured at the same wrap width the draw uses (text starts at x=pad, wrap pos dw-pad).
+        bool hasPower = request.AvailablePower > 0;
         string title    = $"{assister.Name}  ({request.AvailableTokens} spell token" +
-                          $"{(request.AvailableTokens == 1 ? "" : "s")})";
-        string question = $"Spend tokens to {verb} {caster.Name}'s cast of {request.SpellName}? " +
-                          $"({sign}1 each)";
+                          $"{(request.AvailableTokens == 1 ? "" : "s")}" +
+                          (hasPower ? $", {request.AvailablePower} power" : "") + ")";
+        string question = hasPower
+            ? $"Spend tokens or power to {verb} {caster.Name}'s cast of {request.SpellName}? " +
+              $"({sign}1 each)"
+            : $"Spend tokens to {verb} {caster.Name}'s cast of {request.SpellName}? " +
+              $"({sign}1 each)";
         // What the spell does, same subtext the caster's own picker shows - the name alone says nothing
         // about whether the cast is worth swaying. Measured like the picker: wrap width divided by the
         // font scale, height multiplied back.
@@ -168,15 +188,29 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
             ImGui.PopStyleColor();
         }
 
+        float btnW = dw - pad * 2;
+        float y = pad + headerH;
+        CastAssistReply? reply = hasPower
+            ? DrawSteppers(request, accent, pad, btnW, rowH, gap, ref y, sign)
+            : DrawTokenButtons(request, accent, pad, btnW, rowH, gap, ref y, sign);
+
+        ImGui.EndChild();
+        ImGui.End();
+
+        if (reply != null)
+            Complete(tcs, reply);
+    }
+
+    // The original one-tap list, for every caster with no Power: "Don't spend", then one button per token.
+    private static CastAssistReply? DrawTokenButtons(CastAssistRequest request, Vector4 accent, float pad,
+        float btnW, float rowH, float gap, ref float y, string sign)
+    {
         // #248: the digit IS the quantity here — 0 = don't spend, N = spend N (keys past the
         // affordable count ignored). Applied once after drawing (complete-once discipline).
         int digit = ResolverHotkeys.PressedDigit();
         int picked = digit == 0 ? 0
             : digit > 0 && digit <= request.AvailableTokens ? digit
             : -1;
-
-        float btnW = dw - pad * 2;
-        float y = pad + headerH;
 
         ImGui.SetCursorPos(new Vector2(pad, y));
         if (ImGui.Button("[0] Don't spend##assist0", new Vector2(btnW, rowH)) && picked < 0)
@@ -195,11 +229,53 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
         }
         ImGui.PopStyleColor(2);
 
-        ImGui.EndChild();
-        ImGui.End();
+        return picked >= 0 ? new CastAssistReply(picked) : null;
+    }
 
-        if (picked >= 0)
-            Complete(tcs, picked);
+    // #414 - a Star Quest hero: two currencies, so two steppers and an explicit Confirm. Nothing is spent
+    // until Confirm, and "Don't spend" answers zero of both however the steppers are set.
+    private CastAssistReply? DrawSteppers(CastAssistRequest request, Vector4 accent, float pad, float btnW,
+        float rowH, float gap, ref float y, string sign)
+    {
+        _tokenSpend = Math.Clamp(_tokenSpend, 0, request.AvailableTokens);
+        _powerSpend = Math.Clamp(_powerSpend, 0, request.AvailablePower);
+
+        Stepper("Tokens", ref _tokenSpend, request.AvailableTokens, pad, btnW, rowH, gap, ref y);
+        Stepper("Power", ref _powerSpend, request.AvailablePower, pad, btnW, rowH, gap, ref y);
+
+        int total = _tokenSpend + _powerSpend;
+        ImGui.SetCursorPos(new Vector2(pad, y));
+        ImGui.TextUnformatted(total == 0 ? "No effect on the roll." : $"Shifts the roll {sign}{total}.");
+        y += rowH * 0.8f + gap;
+
+        CastAssistReply? reply = null;
+        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(accent.X * 0.5f, accent.Y * 0.5f, accent.Z * 0.5f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, accent);
+        ImGui.SetCursorPos(new Vector2(pad, y));
+        if (ImGui.Button($"Confirm##assistConfirm", new Vector2(btnW, rowH)) && total > 0)
+            reply = new CastAssistReply(_tokenSpend, _powerSpend);
+        y += rowH + gap;
+        ImGui.PopStyleColor(2);
+
+        ImGui.SetCursorPos(new Vector2(pad, y));
+        if (ImGui.Button("Don't spend##assistNone", new Vector2(btnW, rowH)))
+            reply = CastAssistReply.None;
+        y += rowH + gap;
+
+        return reply;
+    }
+
+    // One "- n +" row. Plain on purpose (see the class remarks): a label, two square buttons and the value.
+    private static void Stepper(string label, ref int value, int max, float pad, float btnW, float rowH,
+        float gap, ref float y)
+    {
+        ImGui.SetCursorPos(new Vector2(pad, y));
+        ImGui.TextUnformatted($"{label}: {value} / {max}");
+        ImGui.SetCursorPos(new Vector2(pad + btnW - rowH * 2f - gap, y));
+        if (ImGui.Button($"-##{label}minus", new Vector2(rowH, rowH)) && value > 0) value--;
+        ImGui.SetCursorPos(new Vector2(pad + btnW - rowH, y));
+        if (ImGui.Button($"+##{label}plus", new Vector2(rowH, rowH)) && value < max) value++;
+        y += rowH + gap;
     }
 
     // #348: a dashed run between two points. Dash and gap are in pixels, so the pattern stays readable at
@@ -244,9 +320,9 @@ public class GuiCastAssistResolver : IStageResolver<CastAssistRequest, int>, IGu
         return (px, py);
     }
 
-    private void Complete(TaskCompletionSource<int> tcs, int count)
+    private void Complete(TaskCompletionSource<CastAssistReply> tcs, CastAssistReply reply)
     {
-        lock (_lock) { _request = null; _tcs = null; }
-        tcs.SetResult(count);
+        lock (_lock) { _request = null; _tcs = null; _tokenSpend = 0; _powerSpend = 0; }
+        tcs.SetResult(reply);
     }
 }
