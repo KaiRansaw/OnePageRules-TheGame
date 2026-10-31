@@ -81,6 +81,30 @@ AoF=4, Skirmish=5, Star Quest=10**. The slugs for the two Quest systems are
 id is **not yet known**. Only four systems exist in `GameSystems` today, so the two Quest systems have
 no books bundled at all — that is a known gap, tracked in `WorkItems/412`, not a licence to reuse GF's.
 
+### Core rules differ per system too, not just unit stats
+
+The same named special rule can **behave differently in different systems**, and `CoreRuleCatalog` is
+currently one shared set written to Grimdark Future's wording. Confirmed against the 3.6.0 / 2.1.0 core
+books — Star Quest alone rewords nine rules the engine implements:
+
+| Rule | Grimdark Future | Star Quest |
+|---|---|---|
+| **Scout** | set aside, deploy last, within 9" of the zone, **over 9" from non-Scout enemies**, players alternate | **just** "deploy anywhere fully within 9" of its deployment zone" |
+| **Fear(X)** | enemies count +X wounds for **who won the melee** | counts toward **whether they must take a Morale Test** |
+| **Limited** | once per **game** | once per **mission** |
+| **Blast(X)** | capped at models in the target unit | hits **split evenly between units within range** |
+| **Flying** / **Strider** | no jumping clause | auto-passes jumping / halves jumping dice |
+| **Ambush** | players alternate placing | AI units have their own clause |
+
+Firefight, Age of Fantasy and Skirmish each reword a similar handful (AoF and Skirmish also add Banner,
+Musician, Sergeant, Brace(X) and Parry(X), which GF does not have at all).
+
+**So "which rules apply" is a third thing the game system decides**, alongside which book and which
+mode. There is no per-system rule catalog yet — that is a known gap, not a licence to assume GF's
+wording is universal. When implementing or changing a core rule, check the other systems' books for
+that rule before assuming one definition covers them all; `WorkItems/409` has the 3.6.0 comparison and
+`claude/rules-3.6.0-delta.md` the written-up version.
+
 Star Quest additionally has a **second, separate dataset**: the player's heroes, in
 `FdgRaylib/Assets/StarQuest/`, built in the Hero Builder. Do not confuse the two. The hero roster is
 your side of the table; the Star Quest army books are the enemy and bot side.
