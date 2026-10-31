@@ -8397,5 +8397,103 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "For each unmodified result of 6 to hit, those hits get AP(+2)."
+  },
+  {
+    "name": "Smash",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "beyondHalfWeaponRange"
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 6
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "When attacking units over half of this weapon's range away, the target must re-roll unmodified Defense results of 6."
+  },
+  {
+    "name": "Demolish",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollModifier",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreCover"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "targetMostModelsWithinInchesOfTerrain",
+          "distanceInches": 1
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "Ignores Cover, and when attacking units with most models within 1 inch of terrain, this weapon gets AP(+1)."
+  },
+  {
+    "name": "Puncture",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "statLessOrEqualTo",
+          "stat": "Defense",
+          "statValue": 3
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "Ignores Regeneration, and when attacking units where most models have Defense 2+ to Defense 3+, this weapon gets AP(+2)."
   }
 ]
