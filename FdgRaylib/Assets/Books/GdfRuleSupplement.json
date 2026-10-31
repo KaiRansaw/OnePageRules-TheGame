@@ -8309,13 +8309,13 @@
         "condition": {
           "kind": "or",
           "left": {
-            "kind": "tokenPresent",
+            "kind": "targetTokenPresent",
             "tType": {
               "id": "Shaken"
             }
           },
           "right": {
-            "kind": "tokenPresent",
+            "kind": "targetTokenPresent",
             "tType": {
               "id": "Fatigued"
             }
@@ -8330,7 +8330,7 @@
           }
         },
         "lifetime": "ThisAttack",
-        "seat": "Subject"
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -8338,5 +8338,64 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "When attacking units that are Shaken or Fatigued, the target must re-roll successful unmodified Defense results of 5-6."
+  },
+  {
+    "name": "Purge",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "or",
+          "left": {
+            "kind": "targetTokenPresent",
+            "tType": {
+              "id": "Shaken"
+            }
+          },
+          "right": {
+            "kind": "targetTokenPresent",
+            "tType": {
+              "id": "Fatigued"
+            }
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "When attacking units that are Shaken or Fatigued, this weapon gets AP(+2)."
+  },
+  {
+    "name": "Fracture",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unmodifiedRollEquals",
+          "dieValue": 6
+        },
+        "effect": {
+          "kind": "perHitSaveModifier",
+          "onRollValue": 6,
+          "delta": -2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "For each unmodified result of 6 to hit, those hits get AP(+2)."
   }
 ]
