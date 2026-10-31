@@ -51,6 +51,40 @@ Long-running engineering tasks are tracked outside this file to keep the context
 
 This file-based system is for durable, cross-session tracking. The built-in Task tool is still the right place for in-session ad-hoc todos.
 
+## Game systems vs game modes — every mode has its own unit stats
+
+**This is integral to the game and the single easiest thing to get catastrophically wrong.**
+
+**Every game mode has its own army-builder stats.** GF, GF: Firefight and GF: Star Quest each have
+their own unit profiles; Age of Fantasy, AoF: Quest and AoF: Skirmish each have their own. OPR
+publishes *the same faction book once per mode*, and the versions differ in unit names, unit sizes,
+points and which units exist at all:
+
+| | Grimdark Future | GF: Firefight | GF: Star Quest |
+|---|---|---|---|
+| Alien Hives roster | 41 units | 22 units | 41 units |
+| Assault Grunt(s) | **"Assault Grunts"**, 10 models, 90pts | 3 models | **"Assault Grunt"**, 1 model |
+| Hive Lord | 330pts | not in the book | 980pts |
+
+Star Quest names units in the singular because it buys individual models, not squads, and its points
+are on a different scale entirely. **Serving one mode's book to another mode is not an approximation -
+it is wrong data**, and it is what makes the modes stop being distinct games. If a mode has no book of
+its own, that is a gap to report, never a reason to fall back to the parent system's book.
+
+**Horde Mode is a MODE, not a system.** Each mode's Horde shares that mode's army-builder stats.
+`GameSystems` (the slug on a `BookFile`) decides *which book*; `EGameMode` decides *how it is played*.
+Keep those two axes separate — a game is always one system plus one mode.
+
+Army Forge serves each as its own `gameSystem` id. Verified against the live API: **GF=2, Firefight=3,
+AoF=4, Skirmish=5, Star Quest=10**. The slugs for the two Quest systems are
+`grimdark-future-star-quest` (56 official books) and `age-of-fantasy-quest` (48); AoF: Quest's numeric
+id is **not yet known**. Only four systems exist in `GameSystems` today, so the two Quest systems have
+no books bundled at all — that is a known gap, tracked in `WorkItems/412`, not a licence to reuse GF's.
+
+Star Quest additionally has a **second, separate dataset**: the player's heroes, in
+`FdgRaylib/Assets/StarQuest/`, built in the Hero Builder. Do not confuse the two. The hero roster is
+your side of the table; the Star Quest army books are the enemy and bot side.
+
 ## Projects
 
 | Project | Type | Purpose |
