@@ -8636,5 +8636,37 @@
     "engineArgumentCount": 1,
     "valence": "Positive",
     "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+  },
+  {
+    "name": "Parry",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "isMelee"
+          }
+        },
+        "effect": {
+          "kind": "ignoreHitsOnRoll",
+          "dicePerModel": {
+            "kind": "arg",
+            "index": 0
+          },
+          "successThreshold": 6
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 1,
+    "valence": "Positive",
+    "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6+ one hit is ignored."
   }
 ]
