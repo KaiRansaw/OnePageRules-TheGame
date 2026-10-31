@@ -1,3 +1,4 @@
+using FDG;
 using System.Numerics;
 using FDG.Quest;
 using FdgRaylib.Quest;
@@ -20,7 +21,13 @@ public sealed class CampaignScreen : IAppScreen
     /// <summary>Opens the game setup (Play) for the next mission.</summary>
     public Action? OnPlay;
 
-    private const string GameType = HeroBuilderScreen.GameType;
+    /// <summary>#418 - which Quest system's campaigns this screen manages (its heroes live in the same
+    /// per-system folder).</summary>
+    public EGameSystem System { get; }
+
+    private string GameType => QuestGameTypes.For(System);
+
+    public CampaignScreen(EGameSystem system = EGameSystem.GFStarQuest) => System = system;
 
     private enum EView { List, New, Shop }
     private EView _view = EView.List;

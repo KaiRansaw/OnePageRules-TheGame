@@ -1,3 +1,4 @@
+using FDG;
 using System.Numerics;
 using FDG.Quest;
 using FdgRaylib.Quest;
@@ -20,7 +21,21 @@ public sealed class HeroBuilderScreen : IAppScreen
 {
     public Action? OnBack;
 
-    public const string GameType = "GF Star Quest";
+    /// <summary>
+    /// #418 - which Quest system's heroes this screen is editing. It used to be a <c>const</c> reading
+    /// "GF Star Quest" that five other files reached into, which is precisely why AoF: Quest heroes
+    /// could not exist: the screen, the save folder, the party picker and the headless party loader all
+    /// agreed on one system by definition.
+    /// </summary>
+    public EGameSystem System { get; }
+
+    /// <summary>This system's hero roster and rules.</summary>
+    private QuestDataSet Data => QuestDataSet.For(System);
+
+    /// <summary>The folder name this system's heroes are filed under.</summary>
+    public string GameType => QuestGameTypes.For(System);
+
+    public HeroBuilderScreen(EGameSystem system = EGameSystem.GFStarQuest) => System = system;
 
     private enum EView { List, Edit, Shop }
     private EView _view = EView.List;
@@ -89,14 +104,14 @@ public sealed class HeroBuilderScreen : IAppScreen
         wdl.AddText(headFont, titlePx, new Vector2(margin, screenH * 0.035f), U(TextBright),
             _view == EView.Shop ? "SHOP" :
             _view == EView.List ? "STAR QUEST HEROES" : _editingPath == null ? "NEW HERO" : "EDIT HERO");
-        string sub = StarQuestData.LoadError ?? (_view switch
+        string sub = Data.LoadError ?? (_view switch
         {
             EView.Shop => "Buy, sell and hand things between your heroes. Selling pays full price.",
             EView.List => $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}  -  {HeroPaths.FolderFor(GameType)}",
             _ => "Pick a hero, give it a name and a class, then choose its starter skills and gear.",
         });
         wdl.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(margin, screenH * 0.035f + titlePx + 6f),
-            U(StarQuestData.LoadError != null ? Bad : TextDim), sub);
+            U(Data.LoadError != null ? Bad : TextDim), sub);
 
         float top = screenH * 0.14f;
         float bottomBarH = screenH * 0.09f;
@@ -388,9 +403,9 @@ public sealed class HeroBuilderScreen : IAppScreen
         var (path, hero) = _saved[index];
         _editingPath = path;
         _name = hero.Name;
-        _faction = StarQuestData.Factions.FirstOrDefault(f => f.Uid == hero.FactionUid);
+        _faction = Data.Factions.FirstOrDefault(f => f.Uid == hero.FactionUid);
         _base = _faction?.Heroes.FirstOrDefault(h => h.Id == hero.BaseHeroId);
-        _class = StarQuestData.ClassById(hero.ClassId);
+        _class = Data.ClassById(hero.ClassId);
         bool played = hero.Xp > 0 || hero.Level > 1 || hero.Missions > 0;
         if (played || _faction == null || _base == null || _class == null)
         {
@@ -433,10 +448,10 @@ public sealed class HeroBuilderScreen : IAppScreen
             return h;
         }
         if (_faction == null || _base == null) return null;
-        QuestHero hero = StarQuestData.NewHero(_faction, _base);
+        QuestHero hero = Data.NewHero(_faction, _base);
         hero.Name = _name.Trim();
-        if (_class != null) StarQuestData.ApplyClass(hero, _class);
-        StarQuestData.ApplyUpgrades(hero, _faction, _base, ValidPicks());
+        if (_class != null) Data.ApplyClass(hero, _class);
+        Data.ApplyUpgrades(hero, _faction, _base, ValidPicks());
         QuestProgression.SetToughRule(hero);
         hero.Skills = _skills.ToList();
         return hero;
@@ -451,8 +466,8 @@ public sealed class HeroBuilderScreen : IAppScreen
         foreach (var (key, section) in Sections())
         {
             if (!_picks.TryGetValue(key, out var chosen) || chosen.Count == 0) continue;
-            var (w, r, _) = StarQuestData.Loadout(_base, picks);
-            if (!StarQuestData.HasTargets(section, w, r)) continue;
+            var (w, r, _) = QuestDataSet.Loadout(_base, picks);
+            if (!QuestDataSet.HasTargets(section, w, r)) continue;
             foreach (int o in chosen.OrderBy(i => i))
                 if (o >= 0 && o < section.Opts.Count) picks.Add((section, section.Opts[o]));
         }
@@ -557,10 +572,10 @@ public sealed class HeroBuilderScreen : IAppScreen
         // 53 factions in one flat list is a scroll with no landmarks, so they fold into Humanity, Chaos
         // and Xenos first. A search opens everything that matches; otherwise only the group holding the
         // faction already picked is open.
-        foreach (string group in StarQuestData.FactionGroups)
+        foreach (string group in Data.FactionGroups)
         {
-            var factions = StarQuestData.Factions
-                .Where(fc => StarQuestData.GroupOf(fc) == group)
+            var factions = Data.Factions
+                .Where(fc => Data.GroupOf(fc) == group)
                 .OrderBy(fc => fc.Faction, StringComparer.OrdinalIgnoreCase)
                 .Select(fc => (Faction: fc, Heroes: Matching(fc, f)))
                 .Where(x => x.Heroes.Count > 0)
@@ -568,7 +583,7 @@ public sealed class HeroBuilderScreen : IAppScreen
             if (factions.Count == 0) continue;
 
             ImGuiTreeNodeFlags groupFlags = ImGuiTreeNodeFlags.SpanAvailWidth;
-            if (f.Length > 0 || (_faction != null && StarQuestData.GroupOf(_faction) == group))
+            if (f.Length > 0 || (_faction != null && Data.GroupOf(_faction) == group))
                 groupFlags |= ImGuiTreeNodeFlags.DefaultOpen;
             int heroCount = factions.Sum(x => x.Heroes.Count);
             if (!ImGui.TreeNodeEx($"{group.ToUpperInvariant()}  ({factions.Count} factions, {heroCount} heroes)##grp{group}", groupFlags))
@@ -623,7 +638,7 @@ public sealed class HeroBuilderScreen : IAppScreen
         float cardW = (avail - 8f) / 2f;
         float lh = ImGui.GetTextLineHeight();
         int i = 0;
-        foreach (SqClass cls in StarQuestData.Classes)
+        foreach (SqClass cls in Data.Classes)
         {
             if (i % 2 == 1) ImGui.SameLine(0f, 8f);
             DrawClassCard(cls, cardW, lh * 3.4f + 12f);
@@ -633,7 +648,7 @@ public sealed class HeroBuilderScreen : IAppScreen
         if (_class != null)
         {
             Header($"4. STARTER SKILLS  (pick {_class.Skills})");
-            SqSkill? feat = StarQuestData.ClassFeat(_class);
+            SqSkill? feat = Data.ClassFeat(_class);
             if (feat != null)
             {
                 ImGui.PushTextWrapPos(0f);
@@ -642,12 +657,12 @@ public sealed class HeroBuilderScreen : IAppScreen
                 ImGui.PopTextWrapPos();
                 ImGui.Spacing();
             }
-            foreach (SqSkill s in StarQuestData.ClassSkills(_class, 0))
+            foreach (SqSkill s in Data.ClassSkills(_class, 0))
             {
                 bool on = _skills.Contains(s.Name);
                 bool full = !on && _skills.Count >= _class.Skills;
                 ImGui.BeginDisabled(full);
-                if (ImGui.Checkbox($"{s.Name} ({StarQuestData.SkillStat(s)})##sk{s.Id}", ref on))
+                if (ImGui.Checkbox($"{s.Name} ({QuestDataSet.SkillStat(s)})##sk{s.Id}", ref on))
                 {
                     if (on) _skills.Add(s.Name); else _skills.Remove(s.Name);
                 }
@@ -668,9 +683,9 @@ public sealed class HeroBuilderScreen : IAppScreen
             foreach (var (key, section) in Sections())
             {
                 any = true;
-                bool multi = StarQuestData.IsMultiPick(section);
-                var (lw, lr, _) = StarQuestData.Loadout(_base, sofar);
-                if (!StarQuestData.HasTargets(section, lw, lr))
+                bool multi = QuestDataSet.IsMultiPick(section);
+                var (lw, lr, _) = QuestDataSet.Loadout(_base, sofar);
+                if (!QuestDataSet.HasTargets(section, lw, lr))
                 {
                     UiText.Disabled($"{section.Label}  (needs {string.Join(" and ", section.Targets ?? new List<string>())} first)");
                     ImGui.Spacing();
@@ -712,24 +727,24 @@ public sealed class HeroBuilderScreen : IAppScreen
 
     /// <summary>A hero that levelled up with "+1 Skill" picks its new skills here: its class's skills and the
     /// skills every class may learn, up to the tier its level has unlocked.</summary>
-    private static void DrawNewSkillPicks(QuestHero hero)
+    private void DrawNewSkillPicks(QuestHero hero)
     {
         int free = hero.SkillSlots - hero.Skills.Count;
-        SqClass? cls = StarQuestData.ClassById(hero.ClassId);
+        SqClass? cls = Data.ClassById(hero.ClassId);
         if (free <= 0 || cls == null) return;
         int tierCap = QuestProgression.TierUnlocked(hero.Level);
         Header($"NEW SKILLS  (pick {free})");
         UiText.Disabled($"Level {hero.Level} unlocks tier {tierCap} skills.");
         for (int tier = 0; tier <= tierCap; tier++)
         {
-            var options = StarQuestData.ClassSkills(cls, tier).Concat(StarQuestData.DefaultSkills(tier))
+            var options = Data.ClassSkills(cls, tier).Concat(Data.DefaultSkills(tier))
                 .Where(s => !hero.Skills.Contains(s.Name)).ToList();
             if (options.Count == 0) continue;
             UiText.Colored(TextBright, tier == 0 ? "Starter skills" : $"Tier {tier}");
             foreach (SqSkill s in options)
             {
                 bool on = false;
-                if (ImGui.Checkbox($"{s.Name} ({StarQuestData.SkillStat(s)})##new{s.Id}", ref on) && on && hero.Skills.Count < hero.SkillSlots)
+                if (ImGui.Checkbox($"{s.Name} ({QuestDataSet.SkillStat(s)})##new{s.Id}", ref on) && on && hero.Skills.Count < hero.SkillSlots)
                     hero.Skills.Add(s.Name);
                 ImGui.Indent(26f);
                 ImGui.PushTextWrapPos(0f);
@@ -767,7 +782,7 @@ public sealed class HeroBuilderScreen : IAppScreen
             ImGui.BeginTooltip();
             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 26f);
             ImGui.TextUnformatted(cls.Description);
-            SqSkill? feat = StarQuestData.ClassFeat(cls);
+            SqSkill? feat = Data.ClassFeat(cls);
             if (feat != null) UiText.Colored(Accent, $"{feat.Name}: {feat.Rule}");
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
@@ -854,12 +869,12 @@ public sealed class HeroBuilderScreen : IAppScreen
 
         Header("SKILLS");
         ImGui.PushTextWrapPos(0f);
-        var feat = hero.ClassFeat.Length > 0 ? StarQuestData.SkillByName(hero.ClassFeat) : null;
+        var feat = hero.ClassFeat.Length > 0 ? Data.SkillByName(hero.ClassFeat) : null;
         if (feat != null) { UiText.Colored(Accent, $"{feat.Name} (feature)"); UiText.Disabled(feat.Rule); }
         foreach (string name in hero.Skills)
         {
-            SqSkill? s = StarQuestData.SkillByName(name);
-            UiText.Colored(Accent, s != null ? $"{s.Name} ({StarQuestData.SkillStat(s)})" : name);
+            SqSkill? s = Data.SkillByName(name);
+            UiText.Colored(Accent, s != null ? $"{s.Name} ({QuestDataSet.SkillStat(s)})" : name);
             if (s != null) UiText.Disabled(s.Rule);
         }
         if (feat == null && hero.Skills.Count == 0) UiText.Disabled("Pick a class to get skills.");

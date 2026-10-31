@@ -271,7 +271,9 @@ public class CliApp
         // one ends the mission in round 1 with "every hero is down" because nothing on the table is a
         // quest hero. So on a Quest game the slot comes from PartyLoader instead.
         ArmyListFile army1 = WantsParty()
-            ? PartyLoader.Build(Scripted!.Party ?? Array.Empty<string>())
+            // #418: and from THIS run's Quest system, so "--game-system aof-quest --party generate"
+            // builds an AoF: Quest party out of the AoF roster rather than a Star Quest one.
+            ? PartyLoader.Build(Scripted!.Party ?? Array.Empty<string>(), PartySystem())
             : LoadOrPrompt(Scripted?.Army1, "Player 1");
         Console.WriteLine();
         ArmyListFile army2 = LoadOrPrompt(Scripted?.Army2, "Player 2");
@@ -289,6 +291,13 @@ public class CliApp
     /// named a party, and true for a Quest game system or a Star Quest game mode even when it did not,
     /// since those cannot be played with an army list at all.
     /// </summary>
+    /// <summary>Which Quest system's heroes a scripted party is built from: the run's own system when
+    /// it named one, else Star Quest (#418).</summary>
+    public EGameSystem PartySystem() =>
+        Scripted?.GameSystem is { } system && system == EGameSystem.AoFQuest
+            ? EGameSystem.AoFQuest
+            : EGameSystem.GFStarQuest;
+
     public bool WantsParty()
     {
         if (Scripted is not { } setup) return false;

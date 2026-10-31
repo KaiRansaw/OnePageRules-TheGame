@@ -259,7 +259,7 @@ public class QuestHeroSyncTests
     private const string TestCampaign = "zz-QuestHeroSyncTests-temp";
 
     /// <summary>The hero folder Star Quest heroes and campaigns live under, as the screens name it.</summary>
-    private const string HeroGameType = FdgRaylib.Rendering.HeroBuilderScreen.GameType;
+    private const string HeroGameType = FdgRaylib.Quest.QuestGameTypes.StarQuest;
 
     [TearDown]
     public void TearDownCampaign()

@@ -1,3 +1,4 @@
+using FDG;
 using FDG.ArmyBuilding;
 using FDG.Quest;
 using FDG.SaveLoad;
@@ -65,12 +66,14 @@ public static class PartyLoader
     /// caster) its spells folded in, exactly as the lobby's party picker builds it.
     /// </summary>
     /// <param name="paths">What <c>--party</c> named. Empty, or the single word "auto", generates one.</param>
-    public static ArmyListFile Build(IReadOnlyList<string> paths)
+    public static ArmyListFile Build(IReadOnlyList<string> paths,
+        EGameSystem system = EGameSystem.GFStarQuest)
     {
-        List<QuestHero> heroes = Resolve(paths);
+        List<QuestHero> heroes = Resolve(paths, system);
         List<BookFile> books = BookLibrary.Load();
         // #414: the faction's Star Quest edition, not whichever edition the library scan reached first.
-        BuiltArmyFile party = QuestArmy.Build(heroes, faction => QuestArmy.BookForHeroFaction(books, faction));
+        BuiltArmyFile party = QuestArmy.Build(heroes,
+            faction => QuestArmy.BookForHeroFaction(books, faction, system), system);
 
         Console.WriteLine($"Party: {heroes.Count} heroes, {party.TotalPoints} pts - "
             + string.Join(", ", heroes.Select(h => $"{h.Name} (Lvl {h.Level} {h.Class}, {h.Faction}, {h.Points} pts)")));
@@ -82,11 +85,16 @@ public static class PartyLoader
     /// caller did not ask for: #413 settled that a scripted run which silently plays something else is
     /// worse than one that stops, because every result it prints afterwards is meaningless.
     /// </summary>
-    public static List<QuestHero> Resolve(IReadOnlyList<string> paths)
+    public static List<QuestHero> Resolve(IReadOnlyList<string> paths,
+        EGameSystem system = EGameSystem.GFStarQuest)
     {
         IReadOnlyList<string> tokens = Split(paths);
-        if (tokens.Count == 0) return Generate(DefaultGeneratedHeroes);
-        if (tokens.Count == 1 && IsGeneratedKeyword(tokens[0], out int count)) return Generate(count);
+        // #418: a generated party comes from the run's own Quest system's roster. Without the system
+        // here, "--game-system aof-quest --party auto" quietly built a party of Star Quest heroes -
+        // which then fails the AoF: Quest lobby's own army filter, the same way the party stamp did
+        // before #414.
+        if (tokens.Count == 0) return Generate(DefaultGeneratedHeroes, system);
+        if (tokens.Count == 1 && IsGeneratedKeyword(tokens[0], out int count)) return Generate(count, system);
 
         var party = new List<QuestHero>();
         foreach (string token in tokens)
@@ -164,18 +172,19 @@ public static class PartyLoader
     /// Deterministic - the same checkout always produces the same party, which is what makes a scripted
     /// run worth comparing against the last one.
     /// </summary>
-    public static List<QuestHero> Generate(int count)
+    public static List<QuestHero> Generate(int count,
+        EGameSystem system = EGameSystem.GFStarQuest)
     {
         count = Math.Clamp(count, MinHeroes, MaxHeroes);
 
-        SqFaction? faction = PickFaction();
-        List<SqClass> classes = PickClasses(count);
+        SqFaction? faction = PickFaction(system);
+        List<SqClass> classes = PickClasses(count, system);
         if (faction == null || classes.Count < count)
         {
             Console.WriteLine("Star Quest data unavailable ("
-                + (StarQuestData.LoadError ?? "no factions or classes in Assets/StarQuest")
+                + (QuestDataSet.For(system).LoadError ?? $"no factions or classes in {QuestDataSet.For(system).Folder}")
                 + ") - generating a plain stat-only party instead.");
-            return Fallback(count);
+            return Fallback(count, system);
         }
 
         var party = new List<QuestHero>();
@@ -184,13 +193,13 @@ public static class PartyLoader
             SqHero baseHero = faction.Heroes[i % faction.Heroes.Count];
             SqClass cls = classes[i];
 
-            QuestHero hero = StarQuestData.NewHero(faction, baseHero);
-            StarQuestData.ApplyClass(hero, cls);
+            QuestHero hero = QuestDataSet.For(system).NewHero(faction, baseHero);
+            QuestDataSet.For(system).ApplyClass(hero, cls);
             hero.Name = $"Test {cls.Name}";
-            hero.GameType = HeroBuilderScreen.GameType;
+            hero.GameType = QuestGameTypes.For(system);
 
             // Level 1 unlocks tier 0, so these are the skills the Hero Builder would offer on creation.
-            foreach (SqSkill skill in StarQuestData.ClassSkills(cls, tier: 0).Take(Math.Max(0, hero.SkillSlots)))
+            foreach (SqSkill skill in QuestDataSet.For(system).ClassSkills(cls, tier: 0).Take(Math.Max(0, hero.SkillSlots)))
                 hero.Skills.Add(skill.Name);
 
             QuestProgression.SetToughRule(hero);
@@ -199,9 +208,9 @@ public static class PartyLoader
         return party;
     }
 
-    private static SqFaction? PickFaction()
+    private static SqFaction? PickFaction(EGameSystem system)
     {
-        IReadOnlyList<SqFaction> factions = StarQuestData.Factions;
+        IReadOnlyList<SqFaction> factions = QuestDataSet.For(system).Factions;
         foreach (string name in PreferredFactions)
             if (factions.FirstOrDefault(f => string.Equals(f.Faction, name, StringComparison.OrdinalIgnoreCase)
                     && f.Heroes.Count > 0) is { } preferred)
@@ -211,18 +220,18 @@ public static class PartyLoader
             .FirstOrDefault();
     }
 
-    private static List<SqClass> PickClasses(int count)
+    private static List<SqClass> PickClasses(int count, EGameSystem system)
     {
         var classes = new List<SqClass>();
         foreach (string name in GeneratedClasses)
         {
             if (classes.Count == count) break;
-            if (StarQuestData.Classes.FirstOrDefault(c =>
+            if (QuestDataSet.For(system).Classes.FirstOrDefault(c =>
                     string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)) is { } cls)
                 classes.Add(cls);
         }
         // A renamed or missing class must not shrink the party below what was asked for.
-        foreach (SqClass cls in StarQuestData.Classes)
+        foreach (SqClass cls in QuestDataSet.For(system).Classes)
         {
             if (classes.Count == count) break;
             if (!classes.Contains(cls)) classes.Add(cls);
@@ -235,7 +244,7 @@ public static class PartyLoader
     /// hand-written stats and no class, so Star Quest is still playable headlessly. Mirrors the engine's
     /// own Star Quest fixtures rather than inventing a third shape.
     /// </summary>
-    private static List<QuestHero> Fallback(int count)
+    private static List<QuestHero> Fallback(int count, EGameSystem system)
     {
         var party = new List<QuestHero>();
         for (int i = 0; i < count; i++)
@@ -243,7 +252,7 @@ public static class PartyLoader
             var hero = new QuestHero
             {
                 Name = $"Test Hero {i + 1}",
-                GameType = HeroBuilderScreen.GameType,
+                GameType = QuestGameTypes.For(system),
                 Faction = "Test",
                 BaseHeroName = "Leader",
                 BaseCost = 60,

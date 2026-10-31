@@ -867,12 +867,17 @@ public class LobbyScreen : IAppScreen
     private List<(string Path, FDG.Quest.QuestHero Hero)>? _savedHeroes;
     private double _savedHeroesAt = -10;
 
-    /// <summary>Star Quest: the human row picks 2-4 saved heroes (from Star Quest Heroes) as its party.</summary>
+    /// <summary>
+    /// A Quest game: the human row picks 2-4 saved heroes as its party. #418 - the heroes come from the
+    /// folder of the system THIS LOBBY is set to, not from a const: it used to always read Star Quest's,
+    /// so an AoF: Quest lobby would have offered Star Quest heroes and then refused the party it built
+    /// from them.
+    /// </summary>
     private void DrawPartyPicker(int row, LobbyPlayerInfoSummary info)
     {
         if (_savedHeroes == null || ImGui.GetTime() - _savedHeroesAt > 3.0)
         {
-            _savedHeroes = FdgRaylib.Quest.HeroPaths.LoadAll(HeroBuilderScreen.GameType);
+            _savedHeroes = FdgRaylib.Quest.HeroPaths.LoadAll(FdgRaylib.Quest.QuestGameTypes.For(_viewModel.GameSystem));
             _savedHeroesAt = ImGui.GetTime();
         }
         if (!_partyPicks.TryGetValue(info.PlayerID.ID, out List<string>? picks))
@@ -944,7 +949,8 @@ public class LobbyScreen : IAppScreen
         var books = BookLibrary.Load();
         // #414: the faction's Star Quest edition, not whichever edition the library scan reached first.
         FDG.ArmyBuilding.BuiltArmyFile party = FDG.Quest.QuestArmy.Build(heroes,
-            faction => FDG.Quest.QuestArmy.BookForHeroFaction(books, faction));
+            faction => FDG.Quest.QuestArmy.BookForHeroFaction(books, faction, _viewModel.GameSystem),
+            _viewModel.GameSystem);
         _viewModel!.UpdateArmyListFile(playerID, party);
     }
 

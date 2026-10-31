@@ -56,8 +56,14 @@ public class RaylibRenderer
     public LobbyScreen       LobbyScreen  { get; } = new();
     public ArmyPickerScreen  ArmyPicker   { get; } = new();
     public LoadGameScreen    LoadGame     { get; } = new();
-    public HeroBuilderScreen HeroBuilder  { get; } = new();
-    public CampaignScreen Campaigns       { get; } = new();
+    public HeroBuilderScreen HeroBuilder  { get; } = new(FDG.EGameSystem.GFStarQuest);
+    public CampaignScreen Campaigns       { get; } = new(FDG.EGameSystem.GFStarQuest);
+
+    // #418: AoF: Quest's heroes and campaigns are a separate dataset and a separate save folder, so
+    // they get their own screens rather than a mode switch on the Star Quest ones. Same classes, one
+    // constructor argument apart.
+    public HeroBuilderScreen AoFHeroBuilder { get; } = new(FDG.EGameSystem.AoFQuest);
+    public CampaignScreen AoFCampaigns      { get; } = new(FDG.EGameSystem.AoFQuest);
     public StrikeTeamScreen StrikeTeams   { get; } = new();
 
     private IAppScreen _currentScreen;

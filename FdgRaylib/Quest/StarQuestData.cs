@@ -3,36 +3,39 @@ using System.Text.Json.Serialization;
 using FDG.Quest;
 
 namespace FdgRaylib.Quest;
-
 /// <summary>
-/// The Star Quest data pulled from Army Forge (game system 9), shipped in Assets/StarQuest:
-/// <list type="bullet">
-/// <item><c>StarQuestHeroes.json</c> - every official faction's heroes, their weapons and upgrade options.</item>
-/// <item><c>StarQuestRules.json</c> - the classes (stat bonuses), skills, shop items, conditions, injuries.</item>
-/// </list>
-/// Loaded once, on first use. If a file is missing or broken, <see cref="LoadError"/> says why and the lists
-/// are empty.
+/// The GF: Star Quest view of <see cref="QuestDataSet"/>, kept because this is what the Hero Builder,
+/// the party loader and three fixtures have always called.
+///
+/// <para>
+/// #418 moved the actual dataset into <see cref="QuestDataSet"/>, one instance per Quest system, so
+/// that AoF: Quest could have a roster of its own. Everything here now forwards to
+/// <c>QuestDataSet.For(EGameSystem.GFStarQuest)</c>. <b>New code should take a
+/// <see cref="QuestDataSet"/> (or the system it is drawing) rather than call this</b>, or it silently
+/// means "Star Quest" in a screen the player opened for AoF: Quest - which is exactly the bug class
+/// #417 and #418 exist to close.
+/// </para>
 /// </summary>
 public static class StarQuestData
 {
-    private static bool _loaded;
-    private static List<SqFaction> _factions = new();
-    private static SqRules _rules = new();
+    /// <summary>The dataset this view forwards to.</summary>
+    public static QuestDataSet Set => QuestDataSet.For(FDG.EGameSystem.GFStarQuest);
 
-    public static string? LoadError { get; private set; }
+    public static string? LoadError => Set.LoadError;
 
-    public static IReadOnlyList<SqFaction> Factions { get { Load(); return _factions; } }
-    public static SqRules Rules { get { Load(); return _rules; } }
+    public static IReadOnlyList<SqFaction> Factions => Set.Factions;
+
+    public static SqRules Rules => Set.Rules;
 
     /// <summary>The 12 playable classes (not the "Default Skills" bucket).</summary>
-    public static IEnumerable<SqClass> Classes => Rules.Classes.Where(c => c.Name != "Default Skills");
+    public static IEnumerable<SqClass> Classes => Set.Classes;
 
     /// <summary>The three groups the faction list is folded into, in the order they are shown.</summary>
     public static readonly string[] FactionGroups = { "Humanity", "Chaos", "Xenos", "Other" };
 
     // Which group each Star Quest faction belongs to. Anything not listed (a new faction, a
     // renamed one) falls into "Other" rather than disappearing from the picker.
-    private static readonly Dictionary<string, string> GroupByFaction = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly Dictionary<string, string> GroupByFaction = new(StringComparer.OrdinalIgnoreCase)
     {
         // Humanity: the Empire's armies, its brotherhood chapters, and the human underworld.
         ["Badland Nomads"] = "Humanity",
@@ -103,179 +106,57 @@ public static class StarQuestData
     };
 
     /// <summary>Which of <see cref="FactionGroups"/> a faction belongs to.</summary>
-    public static string GroupOf(SqFaction faction) =>
-        GroupByFaction.TryGetValue(faction.Faction, out string? group) ? group : "Other";
+    public static string GroupOf(SqFaction faction) => Set.GroupOf(faction);
 
-    public static string Folder => Path.Combine(AppContext.BaseDirectory, "Assets", "StarQuest");
+    public static string Folder => Set.Folder;
 
-    private static readonly JsonSerializerOptions Json = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        NumberHandling = JsonNumberHandling.AllowReadingFromString,
-    };
-
-    private static void Load()
-    {
-        if (_loaded) return;
-        _loaded = true;
-        try
-        {
-            var heroes = JsonSerializer.Deserialize<SqHeroFile>(File.ReadAllText(Path.Combine(Folder, "StarQuestHeroes.json")), Json);
-            _factions = heroes?.Factions?.Where(f => f.Heroes.Count > 0).OrderBy(f => f.Faction).ToList() ?? new();
-            _rules = JsonSerializer.Deserialize<SqRules>(File.ReadAllText(Path.Combine(Folder, "StarQuestRules.json")), Json) ?? new();
-        }
-        catch (Exception ex)
-        {
-            LoadError = $"Couldn't read the Star Quest data in {Folder}: {ex.Message}";
-            _factions = new();
-            _rules = new();
-        }
-    }
-
-    public static SqClass? ClassById(string id) => Rules.Classes.FirstOrDefault(c => c.Id == id);
+    public static SqClass? ClassById(string id) => Set.ClassById(id);
 
     /// <summary>The class's feature: its one "no test" skill at tier 0.</summary>
-    public static SqSkill? ClassFeat(SqClass cls) =>
-        Rules.Skills.FirstOrDefault(s => s.ClassId == cls.Id && s.Type == 3);
+    public static SqSkill? ClassFeat(SqClass cls) => Set.ClassFeat(cls);
 
     /// <summary>The class's skills of one tier (feature excluded).</summary>
-    public static IEnumerable<SqSkill> ClassSkills(SqClass cls, int tier) =>
-        Rules.Skills.Where(s => s.ClassId == cls.Id && s.Type != 3 && s.Tier == tier);
+    public static IEnumerable<SqSkill> ClassSkills(SqClass cls, int tier) => Set.ClassSkills(cls, tier);
 
     /// <summary>Skills every class may learn, of one tier.</summary>
-    public static IEnumerable<SqSkill> DefaultSkills(int tier) =>
-        Rules.Skills.Where(s => (s.ClassId == null || s.ClassId == "core") && s.Tier == tier);
+    public static IEnumerable<SqSkill> DefaultSkills(int tier) => Set.DefaultSkills(tier);
 
-    public static SqSkill? SkillByName(string name) => Rules.Skills.FirstOrDefault(s => s.Name == name);
+    public static SqSkill? SkillByName(string name) => Set.SkillByName(name);
 
     /// <summary>"Str", "Dex", "Wil", or "" for a class feature.</summary>
-    public static string SkillStat(SqSkill s) => s.Type switch { 0 => "Str", 1 => "Dex", 2 => "Wil", _ => "" };
+    public static string SkillStat(SqSkill s) => QuestDataSet.SkillStat(s);
 
-    /// <summary>A fresh level-1 hero: the army-book hero with the Star Quest base stats, no class yet.</summary>
-    public static QuestHero NewHero(SqFaction faction, SqHero hero)
-    {
-        var h = new QuestHero
-        {
-            Faction = faction.Faction,
-            FactionUid = faction.Uid,
-            BaseHeroId = hero.Id,
-            BaseHeroName = hero.Name,
-            BaseCost = hero.Cost,
-            Quality = Rules.BaseHero.Qua,
-            Defense = Rules.BaseHero.Def,
-            Power = Rules.BaseHero.Pow,
-            Strength = Rules.BaseHero.Str,
-            Dexterity = Rules.BaseHero.Dex,
-            Willpower = Rules.BaseHero.Wil,
-            Credits = Rules.BaseHero.Credits,
-            Tough = Math.Max(1, hero.T),
-            Rules = hero.Rules.Where(r => r != "Hero").ToList(),
-            Gear = hero.Gear.ToList(),
-            Weapons = hero.Weapons.Select(w => w.ToQuest()).ToList(),
-        };
-        return h;
-    }
+    /// <summary>A fresh level-1 hero: the army-book hero with the Star Quest base stats, no class
+    /// yet.</summary>
+    public static QuestHero NewHero(SqFaction faction, SqHero hero) => Set.NewHero(faction, hero);
 
-    /// <summary>Gives the hero a class: the base stats, then the class bonuses, its feature, and no skills
-    /// picked yet. Keeps the weapons and upgrades already chosen.</summary>
-    public static void ApplyClass(QuestHero h, SqClass cls)
-    {
-        h.Class = cls.Name;
-        h.ClassId = cls.Id;
-        h.Quality = Math.Max(2, Rules.BaseHero.Qua - cls.Qua);
-        h.Power = Rules.BaseHero.Pow + cls.Pow;
-        h.Strength = Math.Max(2, Rules.BaseHero.Str - cls.Str);
-        h.Dexterity = Math.Max(2, Rules.BaseHero.Dex - cls.Dex);
-        h.Willpower = Math.Max(2, Rules.BaseHero.Wil - cls.Wil);
-        h.Caster = cls.Caster;
-        h.SkillSlots = cls.Skills;
-        h.ClassFeat = ClassFeat(cls)?.Name ?? "";
-        h.Skills.Clear();
-        h.Rules.RemoveAll(r => r.StartsWith("Caster(", StringComparison.OrdinalIgnoreCase));
-        if (h.Caster > 0) h.Rules.Add($"Caster({h.Caster})");
-    }
+    /// <summary>Gives the hero a class: the base stats, then the class bonuses, its feature, and no
+    /// skills picked yet. Keeps the weapons and upgrades already chosen.</summary>
+    public static void ApplyClass(QuestHero h, SqClass cls) => Set.ApplyClass(h, cls);
 
-    /// <summary>
-    /// Rebuilds the hero's weapons and rules from its base hero plus the chosen upgrade options (by label),
-    /// in order. "Replace X" swaps the named weapon out; "Upgrade with..." adds; "Take ... attachment" adds.
-    /// </summary>
-    public static void ApplyUpgrades(QuestHero h, SqFaction faction, SqHero baseHero, IReadOnlyList<(SqSection Section, SqOption Option)> picks)
-    {
-        var (weapons, rules, cost) = Loadout(baseHero, picks);
-        h.Weapons = weapons;
-        h.Rules = rules.Where(r => !IsGear(r)).ToList();
-        h.Gear = rules.Where(IsGear).ToList();
-        if (h.Caster > 0) h.Rules.Add($"Caster({h.Caster})");
-        h.Upgrades = picks.Select(p => p.Option.Label).ToList();
-        h.UpgradeCost = cost;
-    }
+    /// <summary>Rebuilds the hero's weapons and rules from its base hero plus the chosen upgrade
+    /// options (by label), in order.</summary>
+    public static void ApplyUpgrades(QuestHero h, SqFaction faction, SqHero baseHero,
+        IReadOnlyList<(SqSection Section, SqOption Option)> picks) =>
+        Set.ApplyUpgrades(h, faction, baseHero, picks);
 
-    /// <summary>The weapons, rules/gear and upgrade points the base hero ends up with after these picks.</summary>
+    /// <summary>The weapons, rules/gear and upgrade points the base hero ends up with after these
+    /// picks.</summary>
     public static (List<QuestWeapon> Weapons, List<string> Rules, int Cost) Loadout(SqHero baseHero,
-        IReadOnlyList<(SqSection Section, SqOption Option)> picks)
-    {
-        var weapons = baseHero.Weapons.Select(w => w.ToQuest()).ToList();
-        var rules = baseHero.Rules.Where(r => r != "Hero").Concat(baseHero.Gear).ToList();
-        int cost = 0;
-        foreach (var (section, option) in picks)
-        {
-            cost += option.Cost ?? 0;
-            if (section.Variant == "replace")
-                foreach (string target in section.Targets ?? new List<string>())
-                {
-                    int i = weapons.FindIndex(w => SameName(w.Name, target));
-                    if (i >= 0) { weapons.RemoveAt(i); continue; }
-                    int r = rules.FindIndex(x => SameName(RuleName(x), target));
-                    if (r >= 0) rules.RemoveAt(r);
-                }
-            foreach (SqGain g in option.Gains)
-            {
-                if (g.W != null) weapons.Add(g.W.ToQuest());
-                else if (!string.IsNullOrEmpty(g.Rule)) rules.Add(g.Rule);
-            }
-        }
-        return (weapons, rules, cost);
-    }
+        IReadOnlyList<(SqSection Section, SqOption Option)> picks) =>
+        QuestDataSet.Loadout(baseHero, picks);
 
-    /// <summary>A "Replace X" or "Take one X attachment" section only applies once the hero has every X
-    /// (a weapon or piece of gear it started with or took in an earlier upgrade).</summary>
-    public static bool HasTargets(SqSection section, List<QuestWeapon> weapons, List<string> rules)
-    {
-        if (section.Variant != "replace" && section.Variant != "attachment") return true;
-        var ws = weapons.Select(w => w.Name).ToList();
-        var rs = rules.Select(RuleName).ToList();
-        foreach (string target in section.Targets ?? new List<string>())
-        {
-            int i = ws.FindIndex(w => SameName(w, target));
-            if (i >= 0) { ws.RemoveAt(i); continue; }
-            int r = rs.FindIndex(x => SameName(x, target));
-            if (r >= 0) { rs.RemoveAt(r); continue; }
-            return false;
-        }
-        return true;
-    }
+    /// <summary>A "Replace X" or "Take one X attachment" section only applies once the hero has every
+    /// X (a weapon or piece of gear it started with or took in an earlier upgrade).</summary>
+    public static bool HasTargets(SqSection section, List<QuestWeapon> weapons, List<string> rules) =>
+        QuestDataSet.HasTargets(section, weapons, rules);
 
-    /// <summary>"Combat Shield (Shielded)" (a name, a space, then its rules) is gear; "Tough(9)" is a rule.</summary>
-    public static bool IsGear(string s) => s.Contains(" (", StringComparison.Ordinal);
-
-    // "Combat Shield (Shielded)" -> "Combat Shield".
-    private static string RuleName(string rule)
-    {
-        int p = rule.IndexOf(" (", StringComparison.Ordinal);
-        return p > 0 ? rule[..p] : rule;
-    }
-
-    // "Razor Claw" (an upgrade target) matches the weapon "Razor Claws"; "2x Pistols" too.
-    private static bool SameName(string have, string target)
-    {
-        static string N(string s) => s.Trim().TrimEnd('s').ToLowerInvariant();
-        string t = target.Length > 3 && char.IsDigit(target[0]) && target[1] == 'x' && target[2] == ' ' ? target[3..] : target;
-        return N(have) == N(t);
-    }
+    /// <summary>"Combat Shield (Shielded)" (a name, a space, then its rules) is gear; "Tough(9)" is a
+    /// rule.</summary>
+    public static bool IsGear(string s) => QuestDataSet.IsGear(s);
 
     /// <summary>True when a section lets you take several of its options ("Upgrade with any").</summary>
-    public static bool IsMultiPick(SqSection s) =>
-        s.Label.Contains(" any", StringComparison.OrdinalIgnoreCase);
+    public static bool IsMultiPick(SqSection s) => QuestDataSet.IsMultiPick(s);
 }
 
 // ── File shapes (keys as written by the Army Forge pull) ──────────────────────────────────────────────

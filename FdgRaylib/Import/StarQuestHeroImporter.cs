@@ -38,8 +38,39 @@ namespace FdgRaylib.Import;
 public static class StarQuestHeroImporter
 {
     private const string BaseUrl = "https://army-forge.onepagerules.com";
-    private const string Slug = "grimdark-future-star-quest";
-    private const int GameSystem = 9;
+
+    /// <summary>
+    /// #418 - which Quest system's HERO roster to import. There are two, and they are the player-side
+    /// halves of the two Quest systems whose enemy books live in <c>Assets/Books</c>:
+    /// <list type="bullet">
+    /// <item>GF: Star Quest - Army Forge id <b>9</b>, 54 factions, 205 heroes.</item>
+    /// <item>AoF: Quest - Army Forge id <b>7</b>, 46 factions, 161 heroes.</item>
+    /// </list>
+    /// <para>
+    /// The id is the whole safety mechanism here. Both ids answer to the same index slug as their
+    /// "-ai" enemy twin (ids 10 and 8), the payloads are shaped identically, and nothing in a response
+    /// says which one you asked for - so an importer pointed at the wrong id writes a hero roster full
+    /// of enemy profiles that loads, builds and plays. Verified live on 2026-10-31: Beastmen's
+    /// Ndoli Beast Lord is 45pts Q6 D6 as a playable hero (id 7) while the enemy book's Ndoli Warrior
+    /// is 35pts Q4 D4 (id 8), over rosters of 5 units and 20.
+    /// </para>
+    /// </summary>
+    public sealed record QuestSystem(string Slug, int Id, string Label, string Qualifier,
+        string[] Aliases)
+    {
+        /// <summary>GF: Star Quest's playable heroes (Army Forge id 9).</summary>
+        public static readonly QuestSystem StarQuest =
+            new("grimdark-future-star-quest", 9, "Star Quest", "Grimdark Future: Star Quest",
+                new[] { "star-quest", "starquest", "gfsq", "sq" });
+
+        /// <summary>AoF: Quest's playable heroes (Army Forge id 7).</summary>
+        public static readonly QuestSystem AoFQuest =
+            new("age-of-fantasy-quest", 7, "AoF: Quest", "Age of Fantasy: Quest",
+                new[] { "aof-quest", "aofquest", "aofq", "quest" });
+
+        /// <summary>Every roster this importer can build, for a CLI switch to match a name against.</summary>
+        public static readonly QuestSystem[] All = { StarQuest, AoFQuest };
+    }
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
@@ -67,10 +98,12 @@ public static class StarQuestHeroImporter
 
     /// <summary>The official Star Quest book index. Books with no hero units (OPR's empty parent
     /// placeholders, e.g. "Wormhole Daemons") are returned too and dropped later by the build.</summary>
-    public static async Task<IReadOnlyList<IndexEntry>> FetchIndexAsync(CancellationToken ct = default)
+    public static async Task<IReadOnlyList<IndexEntry>> FetchIndexAsync(
+        QuestSystem? system = null, CancellationToken ct = default)
     {
-        string json = await GetAsync($"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={Slug}",
-            "the Star Quest book index", ct);
+        QuestSystem sys = system ?? QuestSystem.StarQuest;
+        string json = await GetAsync($"{BaseUrl}/api/army-books?filters=official&gameSystemSlug={sys.Slug}",
+            $"the {sys.Label} book index", ct);
         var list = new List<IndexEntry>();
         using JsonDocument doc = JsonDocument.Parse(json);
         foreach (JsonElement e in doc.RootElement.EnumerateArray())
@@ -82,18 +115,23 @@ public static class StarQuestHeroImporter
         return list.OrderBy(b => b.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    public static Task<string> FetchBookAsync(string uid, CancellationToken ct = default) =>
-        GetAsync($"{BaseUrl}/api/army-books/{Uri.EscapeDataString(uid)}?gameSystem={GameSystem}",
-            $"Star Quest book '{uid}'", ct);
+    public static Task<string> FetchBookAsync(
+        string uid, QuestSystem? system = null, CancellationToken ct = default)
+    {
+        QuestSystem sys = system ?? QuestSystem.StarQuest;
+        return GetAsync($"{BaseUrl}/api/army-books/{Uri.EscapeDataString(uid)}?gameSystem={sys.Id}",
+            $"{sys.Label} book '{uid}'", ct);
+    }
 
     /// <summary>The 39 rules every Star Quest book assumes but none of them define (Tough, Strider, Scout,
     /// Fearless...), in Star Quest's own wording - its Tough reads "once a model has taken as many wounds
     /// as its Tough value, it is killed", which is the skirmish reading, not Grimdark Future's.</summary>
     public static async Task<IReadOnlyDictionary<string, string>> FetchCommonRulesAsync(
-        CancellationToken ct = default)
+        QuestSystem? system = null, CancellationToken ct = default)
     {
+        QuestSystem sys = system ?? QuestSystem.StarQuest;
         string json = OprBookImporter.AsciiFoldJsonValues(
-            await GetAsync($"{BaseUrl}/api/rules/common/{GameSystem}", "the Star Quest common rules", ct));
+            await GetAsync($"{BaseUrl}/api/rules/common/{sys.Id}", $"the {sys.Label} common rules", ct));
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         using JsonDocument doc = JsonDocument.Parse(json);
         if (!doc.RootElement.TryGetProperty("rules", out JsonElement rules)) return map;
@@ -403,15 +441,17 @@ public static class StarQuestHeroImporter
     /// <summary>Fetches every official Star Quest book (or reads them from <paramref name="cacheDir"/>,
     /// one "&lt;uid&gt;.json" per book) and writes the Hero Builder's data file.</summary>
     public static async Task<RunReport> RunAsync(string outPath, string? cacheDir, Action<string> log,
-        CancellationToken ct = default)
+        QuestSystem? system = null, CancellationToken ct = default)
     {
-        IReadOnlyList<IndexEntry> index = await FetchIndexAsync(ct);
-        IReadOnlyDictionary<string, string> common = await FetchCommonRulesAsync(ct);
-        log($"{index.Count} official Star Quest book(s) in the index, {common.Count} common rule(s).");
+        QuestSystem sys = system ?? QuestSystem.StarQuest;
+        IReadOnlyList<IndexEntry> index = await FetchIndexAsync(sys, ct);
+        IReadOnlyDictionary<string, string> common = await FetchCommonRulesAsync(sys, ct);
+        log($"{index.Count} official {sys.Label} book(s) in the index, {common.Count} common rule(s).");
+        log($"Army Forge game system {sys.Id} ({sys.Slug}) - the HERO roster, not the enemy books.");
 
         var file = new SqHeroFile
         {
-            Source = $"Army Forge, Grimdark Future: Star Quest (gameSystem {GameSystem}), " +
+            Source = $"Army Forge, {sys.Qualifier} (gameSystem {sys.Id}), " +
                      $"fetched {DateTime.UtcNow:yyyy-MM-dd}",
         };
         var skipped = new List<string>();
@@ -425,7 +465,7 @@ public static class StarQuestHeroImporter
                 raw = await File.ReadAllTextAsync(cachePath, ct);
             else
             {
-                raw = await FetchBookAsync(entry.Uid, ct);
+                raw = await FetchBookAsync(entry.Uid, sys, ct);
                 if (cachePath is not null)
                 {
                     Directory.CreateDirectory(cacheDir!);

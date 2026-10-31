@@ -752,10 +752,14 @@ if (spellsIdx >= 0 && spellsIdx + 2 < args.Length)
     return;
 }
 
-// --import-starquest <out.json> [--cache <dir>] [--diff <report.md>]  (#415): rebuild the Hero Builder's
-// Star Quest roster from Army Forge's game-system-9 endpoint - every official faction's hero units, their
-// Star Quest points, weapons, gear and upgrade packages. Writes the file whole (there is nothing
+// --import-starquest <out.json> [--quest-system <name>] [--cache <dir>] [--diff <report.md>]  (#415,
+// #418): rebuild a Hero Builder roster from Army Forge - every official faction's hero units, their
+// Quest points, weapons, gear and upgrade packages. Writes the file whole (there is nothing
 // hand-curated in it), then reports what moved against the copy that was there before.
+//
+// --quest-system picks WHICH roster: "star-quest" (Army Forge id 9, the default) or "aof-quest" (id 7).
+// The id is the safety mechanism - see StarQuestHeroImporter.QuestSystem for why pointing this at an
+// "-ai" id would write a roster of enemy profiles that loads and plays.
 int sqHeroesIdx = Array.IndexOf(args, "--import-starquest");
 if (sqHeroesIdx >= 0 && sqHeroesIdx + 1 < args.Length)
 {
@@ -767,9 +771,23 @@ if (sqHeroesIdx >= 0 && sqHeroesIdx + 1 < args.Length)
         int diffIdx = Array.IndexOf(args, "--diff");
         string? diffPath = diffIdx >= 0 && diffIdx + 1 < args.Length ? args[diffIdx + 1] : null;
 
+        int sysIdx = Array.IndexOf(args, "--quest-system");
+        string sysName = sysIdx >= 0 && sysIdx + 1 < args.Length ? args[sysIdx + 1] : "star-quest";
+        StarQuestHeroImporter.QuestSystem? questSystem = StarQuestHeroImporter.QuestSystem.All
+            .FirstOrDefault(q => string.Equals(q.Slug, sysName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(q.Label, sysName, StringComparison.OrdinalIgnoreCase)
+                || q.Aliases.Contains(sysName, StringComparer.OrdinalIgnoreCase));
+        if (questSystem is null)
+        {
+            Console.WriteLine($"Unknown --quest-system '{sysName}'. Known: "
+                + string.Join(", ", StarQuestHeroImporter.QuestSystem.All
+                    .Select(q => $"{q.Slug} (or {string.Join("/", q.Aliases)})")));
+            Environment.Exit(1);
+        }
+
         SqHeroFile? before = StarQuestHeroImporter.ReadFile(outPath);
-        StarQuestHeroImporter.RunReport report =
-            StarQuestHeroImporter.RunAsync(outPath, cacheDir, Console.WriteLine).GetAwaiter().GetResult();
+        StarQuestHeroImporter.RunReport report = StarQuestHeroImporter
+            .RunAsync(outPath, cacheDir, Console.WriteLine, questSystem).GetAwaiter().GetResult();
 
         Console.WriteLine($"Wrote {outPath}: {report.Factions}/{report.Books} faction(s), " +
             $"{report.Heroes} hero(es), {report.Packages} package(s), {report.Options} upgrade option(s).");
@@ -788,7 +806,7 @@ if (sqHeroesIdx >= 0 && sqHeroesIdx + 1 < args.Length)
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Star Quest hero import failed: {ex.Message}");
+        Console.WriteLine($"Quest hero import failed: {ex.Message}");
         Environment.Exit(1);
     }
     return;
@@ -1320,22 +1338,35 @@ else
     renderer.MainMenu.OnCombatCalculatorClicked = () =>
         renderer.NavigateTo(renderer.CombatCalculator);
 
-    renderer.MainMenu.OnHeroesClicked = () =>
-        renderer.NavigateTo(renderer.HeroBuilder);
+    // #418: one Hero Builder and one campaign screen per Quest system, picked by the menu button.
+    renderer.MainMenu.OnHeroesClicked = system =>
+        renderer.NavigateTo(system == FDG.EGameSystem.AoFQuest
+            ? renderer.AoFHeroBuilder : renderer.HeroBuilder);
     renderer.HeroBuilder.OnBack = () =>
         renderer.NavigateTo(renderer.MainMenu);
+    renderer.AoFHeroBuilder.OnBack = () =>
+        renderer.NavigateTo(renderer.MainMenu);
 
-    renderer.MainMenu.OnCampaignsClicked = () =>
-        renderer.NavigateTo(renderer.Campaigns);
+    renderer.MainMenu.OnCampaignsClicked = system =>
+        renderer.NavigateTo(system == FDG.EGameSystem.AoFQuest
+            ? renderer.AoFCampaigns : renderer.Campaigns);
     renderer.Campaigns.OnBack = () =>
         renderer.NavigateTo(renderer.MainMenu);
+    renderer.AoFCampaigns.OnBack = () =>
+        renderer.NavigateTo(renderer.MainMenu);
+
+    // #414: a Quest campaign mission is a game of THAT Quest system. This passed null, so the lobby
+    // opened on whatever game type was last used; the party picker only draws for a Quest system, so
+    // the party the campaign screen had just readied (LobbyScreen.PendingParty) was dropped without a
+    // word. #418 makes the system the screen's own rather than a constant.
     renderer.Campaigns.OnPlay = () =>
     {
-        // #414: a Star Quest campaign mission is a Star Quest game. This passed null, so the lobby opened
-        // on whatever game type was last used; the party picker only draws for a Quest system, so the
-        // party the campaign screen had just readied (LobbyScreen.PendingParty) was dropped without a
-        // word. Compare StrikeTeams.OnPlay below, which has always passed its system through.
-        pendingGameSystem = FDG.EGameSystem.GFStarQuest;
+        pendingGameSystem = renderer.Campaigns.System;
+        renderer.NavigateTo(renderer.HostModal);
+    };
+    renderer.AoFCampaigns.OnPlay = () =>
+    {
+        pendingGameSystem = renderer.AoFCampaigns.System;
         renderer.NavigateTo(renderer.HostModal);
     };
 

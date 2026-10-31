@@ -30,8 +30,11 @@ public class MainMenuScreen : IAppScreen
     public Action? OnArmyForgeClicked;
     public Action? OnCombatCalculatorClicked;
     public Action? OnLoadGameClicked;
-    public Action? OnHeroesClicked;
-    public Action? OnCampaignsClicked;
+    /// <summary>Opens a Quest system's Hero Builder (#418 - the argument says which).</summary>
+    public Action<EGameSystem>? OnHeroesClicked;
+
+    /// <summary>Opens a Quest system's campaign list.</summary>
+    public Action<EGameSystem>? OnCampaignsClicked;
     public Action? OnStrikeTeamsClicked;
     public Action? OnQuitClicked;
 
@@ -163,11 +166,15 @@ public class MainMenuScreen : IAppScreen
 
         Tool("Load Game",           OnLoadGameClicked,         0);
         Tool("Army Forge",          OnArmyForgeClicked,        1);
-        Tool("Star Quest Heroes",   OnHeroesClicked,           2);
-        Tool("Star Quest Campaign", OnCampaignsClicked,        3);
-        Tool("Firefight Campaign",  OnStrikeTeamsClicked,      4);
-        Tool("Combat Calculator",   OnCombatCalculatorClicked, 5);
-        Tool("Quit",                OnQuitClicked,             6, back: true);
+        Tool("Star Quest Heroes",   () => OnHeroesClicked?.Invoke(EGameSystem.GFStarQuest),    2);
+        Tool("Star Quest Campaign", () => OnCampaignsClicked?.Invoke(EGameSystem.GFStarQuest), 3);
+        // #418: AoF: Quest's own pair. Its heroes are a different roster with different classes, so
+        // they cannot share Star Quest's screen state - a button each is the plain way to say so.
+        Tool("AoF Quest Heroes",    () => OnHeroesClicked?.Invoke(EGameSystem.AoFQuest),       4);
+        Tool("AoF Quest Campaign",  () => OnCampaignsClicked?.Invoke(EGameSystem.AoFQuest),    5);
+        Tool("Firefight Campaign",  OnStrikeTeamsClicked,      6);
+        Tool("Combat Calculator",   OnCombatCalculatorClicked, 7);
+        Tool("Quit",                OnQuitClicked,             8, back: true);
 
         ImGui.EndDisabled();
 
