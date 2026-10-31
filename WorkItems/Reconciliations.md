@@ -764,3 +764,13 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > archive max **404**, and no `41x` branch on either remote. **415 = Star Quest hero roster on 3.6.0.**
 > The lesson is the one already written above twice: fetch and read the index from the branch you will
 > actually push to, not the branch you happened to clone.
+
+> **2026-10-31 - number 416 filed clean, after a false alarm worth recording.** `git fetch origin`
+> before filing, read from `origin/campaign-360` (the branch being pushed to, per the lesson above):
+> index items **412-415**, detail files max **415**, archive real items max **411**. **416 = Horde Mode
+> read against all four of its books.** No collision.
+>
+> The false alarm: a first pass grepped the archive for `\b4[0-9]{2}\b` and found "416", "424", "440",
+> "466"... and concluded 416 was taken. Those are **test-suite tallies** in prose ("Suite 416/0"), not
+> item numbers, and the index's "810" is a Star Quest high score. Grep the item SYNTAX (`- [x] NNN —`),
+> not bare three-digit numbers, or the archive's own narrative will look like a numbering collision.
