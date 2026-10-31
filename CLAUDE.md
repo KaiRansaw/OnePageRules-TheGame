@@ -19,6 +19,11 @@ A Raylib-based client for **Future of Dark Grimness** — a tabletop wargame rul
   (The submodule needs its own link - its hooks live under `.git/modules/FutureOfDarkGrimness/`.)
 - **Submodule-first commit cadence.** When engine changes are authorized (the `FutureOfDarkGrimness` submodule), commit the submodule first, then bump the superproject submodule pointer together with any app-side changes in a second commit.
 - **Verify before committing — never commit red.** Run `dotnet test FutureOfDarkGrimness/FutureOfDarkGrimness.csproj` green, and for app-side changes a full `dotnet build`. When a change touches a playable path, also run a headless smoke (`printf "2\n2\n" | dotnet run --project FdgRaylib/FdgRaylib.csproj -- --headless`) and confirm it exits 0 with the expected log line.
+- **A green build proves nothing about an unstaged NEW file — read `git status` before every commit.** A build and the full suite compile what is on disk, tracked or not, so a commit that adds a mechanic's call sites but forgets the file that defines it passes every local check and still breaks the branch (this happened: engine `4ebd782`, Parry, shipped without `IHitIgnoreSink`/`HitIgnoreSink`; fixed in `4b51298`). `scripts/hooks/pre-commit` now refuses a commit while an untracked `.cs`/`.json`/`.fdgbook` sits in the tree. Per-clone, so install it alongside `commit-msg`:
+  ```bash
+  ln -sf ../../scripts/hooks/pre-commit .git/hooks/pre-commit
+  ln -sf ../../../../scripts/hooks/pre-commit .git/modules/FutureOfDarkGrimness/hooks/pre-commit
+  ```
 - **Re-verify assumptions before shared/irreversible operations.** Inspect git state before merging to or pushing a shared branch; if a stated premise turns out false (e.g. "master is synced"), surface it before proceeding rather than pressing on.
 
 ## Versioning & Releases

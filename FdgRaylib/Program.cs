@@ -284,6 +284,21 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
     string cacheDir = args[rebuildIdx + 1];
     string booksRoot = args[rebuildIdx + 2];
     bool dryRun = args.Contains("--dry-run");
+
+    // #412: curation inputs (the rule supplements, the per-book AoF overrides, BookRenames.json) are
+    // SOURCE, and the books root is OUTPUT. Reading them out of the output folder - which is what this
+    // used to do - means a rebuild into a scratch directory silently bakes whatever stale copy of the
+    // supplement happens to be sitting there, and the rebuilt books then disagree with the repo's
+    // curation with nothing to show it went wrong. So they come from the shipped Assets/Books by
+    // default; --curation <dir> overrides, and the books root is the last resort for a standalone
+    // bundle that carries its own copies.
+    int curationIdx = Array.IndexOf(args, "--curation");
+    string shippedBooks = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
+    string curationRoot =
+        curationIdx >= 0 && curationIdx + 1 < args.Length ? args[curationIdx + 1]
+        : File.Exists(Path.Combine(shippedBooks, "GdfRuleSupplement.json")) ? shippedBooks
+        : booksRoot;
+    Console.WriteLine($"Curation from: {curationRoot}");
     FdgRaylib.Import.ArmyForgeBookService.CacheFolder = cacheDir;
     FdgRaylib.Import.ArmyForgeBookService.CacheOnly = true;
 
@@ -306,7 +321,7 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
     // old name in previousNames so saved armies and share links still resolve.
     var renames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     var skipNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    string renamePath = Path.Combine(booksRoot, "BookRenames.json");
+    string renamePath = Path.Combine(curationRoot, "BookRenames.json");
     if (File.Exists(renamePath))
         try
         {
@@ -409,14 +424,14 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                 // The supplements, in the order scripts/bake-aof-books.sh established: the GDF set
                 // always, then AoF's for the fantasy systems, then the per-book override LAST so its
                 // redefinitions win (#375 C9).
-                var supplements = new List<string> { Path.Combine(booksRoot, "GdfRuleSupplement.json") };
+                var supplements = new List<string> { Path.Combine(curationRoot, "GdfRuleSupplement.json") };
                 bool fantasy = slug is FDG.ArmyBuilding.GameSystems.AgeOfFantasy or FDG.ArmyBuilding.GameSystems.AoFSkirmish;
-                if (fantasy) supplements.Add(Path.Combine(booksRoot, "AofRuleSupplement.json"));
+                if (fantasy) supplements.Add(Path.Combine(curationRoot, "AofRuleSupplement.json"));
                 // #412: the override files are named for the book as it was called when they were
                 // written, so fall back through the names this faction has gone by.
                 foreach (string candidate in new[] { book.Name }.Concat(OldNamesFor(book.Name)))
                 {
-                    string overridePath = Path.Combine(booksRoot, "AofBookOverrides", candidate + ".json");
+                    string overridePath = Path.Combine(curationRoot, "AofBookOverrides", candidate + ".json");
                     if (fantasy && File.Exists(overridePath)) { supplements.Add(overridePath); break; }
                 }
                 supplements.RemoveAll(sp => !File.Exists(sp));

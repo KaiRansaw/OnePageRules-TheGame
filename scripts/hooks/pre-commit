@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Refuse a commit that leaves a new source file behind.
+#
+# Why this exists: commit 4ebd782 (work item 412, Parry) staged the call sites of a new mechanic but
+# not the three files that defined it. Every local check was green - the files were sitting on disk,
+# just untracked - so `dotnet build` and the full suite passed while the committed tree did not
+# compile at all. The branch went red on push and nothing noticed, because nothing had looked at
+# `git status`. A reviewer cannot catch this either: the diff of a broken commit reads fine.
+#
+# So: if an untracked .cs / .json / .fdgbook file sits in the tree at commit time, stop and make the
+# author say what it is. Nearly always it should have been staged. When it genuinely should not be,
+# it belongs in .gitignore, or `--no-verify` is there for the one-off.
+#
+# Per-clone, like every hook here. Install (from the repo root):
+#   ln -sf ../../scripts/hooks/pre-commit .git/hooks/pre-commit
+#   ln -sf ../../../../scripts/hooks/pre-commit .git/modules/FutureOfDarkGrimness/hooks/pre-commit
+
+set -uo pipefail
+
+untracked=$(git ls-files --others --exclude-standard -- '*.cs' '*.json' '*.fdgbook')
+
+if [ -n "$untracked" ]; then
+    echo "pre-commit: untracked source file(s) in the tree:" >&2
+    echo "$untracked" | sed 's/^/  /' >&2
+    cat >&2 <<'EOF'
+
+A build and a green test run prove nothing about these: they are on disk, so they
+compile locally whether or not they are in the commit. If they are part of this
+change, `git add` them. If they are not, .gitignore them. If this is genuinely a
+one-off, re-run with --no-verify.
+EOF
+    exit 1
+fi
+
+exit 0
