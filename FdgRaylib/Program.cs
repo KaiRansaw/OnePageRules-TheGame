@@ -3,6 +3,7 @@ using FdgRaylib.Cli;
 using FdgRaylib.Config;
 using FdgRaylib.Import;
 using FdgRaylib.ListServer;
+using FdgRaylib.Quest;
 using FdgRaylib.Rendering;
 using FDG;
 using FDG.ArmyBuilding;
@@ -694,6 +695,48 @@ if (spellsIdx >= 0 && spellsIdx + 2 < args.Length)
     catch (Exception ex)
     {
         Console.WriteLine($"Spell re-stamp failed: {ex.Message}");
+        Environment.Exit(1);
+    }
+    return;
+}
+
+// --import-starquest <out.json> [--cache <dir>] [--diff <report.md>]  (#415): rebuild the Hero Builder's
+// Star Quest roster from Army Forge's game-system-9 endpoint - every official faction's hero units, their
+// Star Quest points, weapons, gear and upgrade packages. Writes the file whole (there is nothing
+// hand-curated in it), then reports what moved against the copy that was there before.
+int sqHeroesIdx = Array.IndexOf(args, "--import-starquest");
+if (sqHeroesIdx >= 0 && sqHeroesIdx + 1 < args.Length)
+{
+    try
+    {
+        string outPath = args[sqHeroesIdx + 1];
+        int cacheIdx = Array.IndexOf(args, "--cache");
+        string? cacheDir = cacheIdx >= 0 && cacheIdx + 1 < args.Length ? args[cacheIdx + 1] : null;
+        int diffIdx = Array.IndexOf(args, "--diff");
+        string? diffPath = diffIdx >= 0 && diffIdx + 1 < args.Length ? args[diffIdx + 1] : null;
+
+        SqHeroFile? before = StarQuestHeroImporter.ReadFile(outPath);
+        StarQuestHeroImporter.RunReport report =
+            StarQuestHeroImporter.RunAsync(outPath, cacheDir, Console.WriteLine).GetAwaiter().GetResult();
+
+        Console.WriteLine($"Wrote {outPath}: {report.Factions}/{report.Books} faction(s), " +
+            $"{report.Heroes} hero(es), {report.Packages} package(s), {report.Options} upgrade option(s).");
+        if (report.Skipped.Count > 0)
+            Console.WriteLine($"  No heroes (skipped): {string.Join(", ", report.Skipped)}");
+
+        if (diffPath is not null)
+        {
+            SqHeroFile? after = StarQuestHeroImporter.ReadFile(outPath);
+            if (after is not null)
+            {
+                File.WriteAllText(diffPath, StarQuestHeroDiff.Report(before, after));
+                Console.WriteLine($"Comparison written to {diffPath}.");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Star Quest hero import failed: {ex.Message}");
         Environment.Exit(1);
     }
     return;

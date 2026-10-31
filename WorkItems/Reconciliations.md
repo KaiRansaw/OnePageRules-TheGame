@@ -754,3 +754,13 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > high-water **408**, archive max **404**, detail files max **413** (409-413 unmerged on this clone's
 > `campaign-360`), and no `41x` branch on any remote (`campaign-360`, `main`, `rules-360` only).
 > **414 = Star Quest rebased onto GFSQ v2.1.0.** No collision.
+
+> **2026-10-30 - number 412 COLLIDED; the local item yielded and became 415.** A session working from a
+> clone of `origin/main` (high-water **408**, since 409-414 were unmerged on `campaign-360`) filed the
+> Star Quest hero roster refresh as **412**. On rebasing onto `campaign-360` for the push, `origin`'s
+> index already had **412 = book refresh and audit**, plus 413 and 414. Per the rule in CLAUDE.md the
+> unmerged local item yields: renumbered to **415** across its detail file, index line, three source
+> file headers and the CLI help comment before anything was pushed. Detail files max was **414**,
+> archive max **404**, and no `41x` branch on either remote. **415 = Star Quest hero roster on 3.6.0.**
+> The lesson is the one already written above twice: fetch and read the index from the branch you will
+> actually push to, not the branch you happened to clone.

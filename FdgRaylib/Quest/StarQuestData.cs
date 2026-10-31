@@ -30,7 +30,7 @@ public static class StarQuestData
     /// <summary>The three groups the faction list is folded into, in the order they are shown.</summary>
     public static readonly string[] FactionGroups = { "Humanity", "Chaos", "Xenos", "Other" };
 
-    // Which group each of the 53 Star Quest factions belongs to. Anything not listed (a new faction, a
+    // Which group each Star Quest faction belongs to. Anything not listed (a new faction, a
     // renamed one) falls into "Other" rather than disappearing from the picker.
     private static readonly Dictionary<string, string> GroupByFaction = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -72,6 +72,12 @@ public static class StarQuestData
         ["Lust Disciples"] = "Chaos",
         ["Plague Disciples"] = "Chaos",
         ["War Disciples"] = "Chaos",
+        // OPR 3.6.0 dropped the "Wormhole" prefix; the old names stay so a hero saved under one still
+        // lands in Chaos rather than Other.
+        ["Daemons of Change"] = "Chaos",
+        ["Daemons of Lust"] = "Chaos",
+        ["Daemons of Plague"] = "Chaos",
+        ["Daemons of War"] = "Chaos",
         ["Wormhole Daemons of Change"] = "Chaos",
         ["Wormhole Daemons of Lust"] = "Chaos",
         ["Wormhole Daemons of Plague"] = "Chaos",
@@ -89,9 +95,11 @@ public static class StarQuestData
         ["Orc Marauders"] = "Xenos",
         ["Ratmen Clans"] = "Xenos",
         ["Robot Legions"] = "Xenos",
-        ["Saurian Starhost"] = "Xenos",
+        ["Saurian Starhost"] = "Xenos",       // 3.5.x name
+        ["Saurian Starhosts"] = "Xenos",      // 3.6.0 renamed it
         ["Shortling Federations"] = "Xenos",
         ["Soul-Snatcher Cults"] = "Xenos",
+        ["Voidspace Stalkers"] = "Xenos",     // new faction in 3.6.0
     };
 
     /// <summary>Which of <see cref="FactionGroups"/> a faction belongs to.</summary>
@@ -282,6 +290,9 @@ public sealed class SqFaction
 {
     public string Uid { get; set; } = "";
     public string Faction { get; set; } = "";
+    /// <summary>OPR's raceGroup for the faction ("Aliens", "Humans"...). Informational; the picker groups
+    /// by <see cref="StarQuestData.GroupOf"/>, not by this.</summary>
+    public string? Race { get; set; }
     public string? Version { get; set; }
     public List<SqHero> Heroes { get; set; } = new();
     public List<SqPackage> Packages { get; set; } = new();

@@ -75,10 +75,27 @@ its own, that is a gap to report, never a reason to fall back to the parent syst
 `GameSystems` (the slug on a `BookFile`) decides *which book*; `EGameMode` decides *how it is played*.
 Keep those two axes separate — a game is always one system plus one mode.
 
-Army Forge serves each as its own `gameSystem` id. Verified against the live API: **GF=2, Firefight=3,
-AoF=4, Skirmish=5, Star Quest=10**. The slugs for the two Quest systems are
-`grimdark-future-star-quest` (56 official books) and `age-of-fantasy-quest` (48); AoF: Quest's numeric
-id is **not yet known**. Only four systems exist in `GameSystems` today, so the two Quest systems have
+Army Forge serves each as its own `gameSystem` id. The full map, every one verified against the live
+API on 2026-10-30 (#415):
+
+| id | slug | what it serves |
+|---:|---|---|
+| 2 | `grimdark-future` | GF army books |
+| 3 | `grimdark-future-firefight` | Firefight army books |
+| 4 | `age-of-fantasy` | AoF army books |
+| 5 | `age-of-fantasy-skirmish` | Skirmish army books |
+| 6 | `age-of-fantasy-regiments` | Regiments army books |
+| 7 | `age-of-fantasy-quest` | AoF: Quest **player heroes** |
+| 8 | `age-of-fantasy-quest-ai` | AoF: Quest **enemy/AI** army books |
+| 9 | `grimdark-future-star-quest` | Star Quest **player heroes** |
+| 10 | `grimdark-future-star-quest-ai` | Star Quest **enemy/AI** army books |
+
+**Each Quest system is TWO ids, and that is the trap.** The two datasets named below are not one book
+filtered two ways - they are separate ids with different stats for the same unit. Alien Hives' Grunt
+Veteran is **55pts, Q6 D6** as a playable hero (id 9) and **100pts, Q5 D5** as an enemy (id 10); the
+roster is 8 units against 41. Pulling the hero roster from id 10 would silently give every hero the
+enemy's profile. The official index is keyed by the *slug without* the `-ai` suffix either way
+(`grimdark-future-star-quest` = 56 books, `age-of-fantasy-quest` = 48). Only four systems exist in `GameSystems` today, so the two Quest systems have
 no books bundled at all — that is a known gap, tracked in `WorkItems/412`, not a licence to reuse GF's.
 
 ### Core rules differ per system too, not just unit stats
