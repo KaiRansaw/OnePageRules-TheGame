@@ -18,6 +18,49 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-31 - Scout, Fear and Blast per system: the books, read word for word
+
+Research for the next slice, recorded before building anything, because **two of the three are not what
+the summary table in `CLAUDE.md` says and one is not what `claude/campaign-rules-delta.md` says**. Every
+cell below was read out of the PDF in the project today, not inferred.
+
+| | GF 3.6.0 | AoF 3.6.0 | GFF 3.6.0 | AoFS 3.6.0 | GFSQ 2.1.0 |
+|---|---|---|---|---|---|
+| **Blast(X)** | cap at target's models, **no split** | same as GF | **splits** + per-unit cap | **splits** + per-unit cap | **splits** + per-unit cap |
+| **Scout** | set aside, deploy last, 9", over 9" from non-Scout enemies, alternate | same | same | *not yet read* | **"may be deployed anywhere fully within 9" of its deployment zone"** and nothing else |
+| **Fear(X)** | +X wounds for **who won** | same | same | same | +X wounds for **whether they must take a Morale Test**, and **"must deal at least one wound"** |
+
+So the shape is not "Star Quest rewords nine rules":
+
+- **Blast splits in the three skirmish-scale games** (Firefight, Skirmish, Star Quest) and does not in the
+  two big ones. That makes it a **three-system** gap, not a Star Quest one - the engine currently plays
+  GF's non-splitting version in Firefight and Skirmish too.
+- **Scout's simple form is Star Quest only.** `claude/campaign-rules-delta.md` records this as "Scout 9in"
+  under "special rules synced to 3.6", which is half right and misleading: the *distance* synced, the
+  three clauses around it did not. Star Quest has no set-aside, no alternation and no enemy-distance
+  restriction.
+- **Fear's trigger is Star Quest only**, and it has to be: Star Quest's Morale section has **no
+  melee-results step at all** - no "compare wounds, the loser tests" - so "+X wounds when checking who
+  won" would attach to nothing. Its only morale trigger is the half-strength one, which is what 2.1.0
+  points Fear at.
+
+**Also settled, free:** **Limited** ("once per game" vs "once per mission") is equivalent in practice
+because one Star Quest mission *is* one game; **Flying** and **Strider** differ only in jumping clauses,
+and there are no jumping rolls in this engine. So the nine-rule table reduces to the three above, of
+which Fear is small (the `MeleeWoundTally` machinery built for Scourge already counts extra wounds
+toward the half-strength test), Scout is moderate (deployment code), and Blast is the large one
+(distributing hits to units that were never the target).
+
+**Approach, decided and not a per-system rule catalog.** A whole parallel `CoreRuleCatalog` per system
+would be a lot of architecture for three rules, and the project already has the right idiom:
+`ForceOrgProfile.For(gameSystem)`. A `CoreRulesProfile` keyed on `EGameSystem` carrying three flags,
+read at the three sites that already own the behaviour. If a fourth and fifth divergence turn up, that
+is the moment to reconsider, not now.
+
+**Still to verify before building:** AoF: Skirmish's Scout wording (its PDF excerpt stopped before the
+S entries). It mirrors Firefight everywhere else, so the profile will default it to the full version and
+say so.
+
 ### 2026-10-31 - Villain was dead code, and "Unique Hero" is the half that catches the named bosses
 
 The aura went 12" -> 6" and mandatory, which is what this item was for. The bigger find was that the

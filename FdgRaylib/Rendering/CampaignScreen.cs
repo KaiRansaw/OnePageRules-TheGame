@@ -325,21 +325,22 @@ public sealed class CampaignScreen : IAppScreen
         ImGui.SetCursorPos(new Vector2(x, y + lh * 1.8f));
         ImGui.BeginChild("##buy", new Vector2(w * 0.62f, h - lh * 1.8f), ImGuiChildFlags.Borders);
         UiText.Colored(TextDim, $"FOR SALE (tier {tier} and below - higher tiers unlock at levels 2 / 5 / 9)");
-        foreach (QuestItemInfo item in QuestItems.All.OrderBy(i => i.Tier).ThenBy(i => i.Name))
+        // #414: the arithmetic is QuestShop's, shared with the Hero Builder's shop and tested once. This
+        // screen decides WHERE a shop may open (between chapters, never between a chapter's missions) and
+        // what it looks like; it no longer carries its own copy of what a hero may buy and afford.
+        foreach ((QuestItemInfo item, string? whyNot) in QuestShop.Stock(hero))
         {
-            bool locked = item.Tier > tier;
-            bool afford = item.Cost <= hero.Credits;
-            ImGui.BeginDisabled(locked || !afford);
-            if (UiButton.NavigateSmall($"Buy {item.Cost}c##b{item.Name}"))
+            ImGui.BeginDisabled(whyNot != null);
+            if (UiButton.NavigateSmall($"Buy {item.Cost}c##b{item.Name}")
+                && QuestShop.Buy(hero, item))
             {
-                hero.Credits -= item.Cost;
-                hero.Items.Add(item.Name);
                 CampaignPaths.SaveHero(file, hero);
             }
             ImGui.EndDisabled();
             ImGui.SameLine();
-            UiText.Colored(locked ? TextDim : TextBright, $"{item.Name}  (tier {item.Tier})");
-            if (ImGui.IsItemHovered()) UiText.Tooltip(Wrap(item.Description));
+            UiText.Colored(whyNot != null ? TextDim : TextBright, $"{item.Name}  (tier {item.Tier})");
+            if (ImGui.IsItemHovered())
+                UiText.Tooltip(Wrap(whyNot == null ? item.Description : whyNot + "\n\n" + item.Description));
         }
         ImGui.EndChild();
 
@@ -351,10 +352,9 @@ public sealed class CampaignScreen : IAppScreen
         {
             QuestItemInfo? info = QuestItems.Find(g.Key);
             ImGui.BeginDisabled(info == null);
-            if (UiButton.NavigateSmall($"Sell +{info?.SellValue ?? 0}c##s{g.Key}"))
+            if (UiButton.NavigateSmall($"Sell +{info?.SellValue ?? 0}c##s{g.Key}")
+                && QuestShop.Sell(hero, g.Key))
             {
-                hero.Items.Remove(g.Key);
-                hero.Credits += info!.SellValue;
                 CampaignPaths.SaveHero(file, hero);
             }
             ImGui.EndDisabled();
@@ -364,10 +364,9 @@ public sealed class CampaignScreen : IAppScreen
             foreach (var (otherFile, other) in party.Where(p => p.File != file))
             {
                 ImGui.SameLine();
-                if (ImGui.SmallButton($"> {other!.Name}##g{g.Key}{otherFile}"))
+                if (ImGui.SmallButton($"> {other!.Name}##g{g.Key}{otherFile}")
+                    && QuestShop.Give(hero, other, g.Key))
                 {
-                    hero.Items.Remove(g.Key);
-                    other.Items.Add(g.Key);
                     CampaignPaths.SaveHero(file, hero);
                     CampaignPaths.SaveHero(otherFile, other);
                 }

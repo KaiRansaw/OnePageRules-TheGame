@@ -22,8 +22,14 @@ public sealed class HeroBuilderScreen : IAppScreen
 
     public const string GameType = "GF Star Quest";
 
-    private enum EView { List, Edit }
+    private enum EView { List, Edit, Shop }
     private EView _view = EView.List;
+
+    // Shop (#414). Kai's call: the books only open a shop between waves and between chapters, so a
+    // one-off party could earn credits with nowhere to spend them until its next game's first wave
+    // ended. This is a convenience beyond the books rather than a rule, which is why it lives here on
+    // the hero sheet and changes nothing about the two in-game shops.
+    private int _shopHero = -1;
 
     // My Heroes
     private List<(string Path, QuestHero Hero)> _saved = new();
@@ -81,10 +87,14 @@ public sealed class HeroBuilderScreen : IAppScreen
         float titlePx = screenH * 0.05f;
         ImDrawListPtr wdl = ImGui.GetWindowDrawList();
         wdl.AddText(headFont, titlePx, new Vector2(margin, screenH * 0.035f), U(TextBright),
+            _view == EView.Shop ? "SHOP" :
             _view == EView.List ? "STAR QUEST HEROES" : _editingPath == null ? "NEW HERO" : "EDIT HERO");
-        string sub = StarQuestData.LoadError ?? (_view == EView.List
-            ? $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}  -  {HeroPaths.FolderFor(GameType)}"
-            : "Pick a hero, give it a name and a class, then choose its starter skills and gear.");
+        string sub = StarQuestData.LoadError ?? (_view switch
+        {
+            EView.Shop => "Buy, sell and hand things between your heroes. Selling pays full price.",
+            EView.List => $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}  -  {HeroPaths.FolderFor(GameType)}",
+            _ => "Pick a hero, give it a name and a class, then choose its starter skills and gear.",
+        });
         wdl.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(margin, screenH * 0.035f + titlePx + 6f),
             U(StarQuestData.LoadError != null ? Bad : TextDim), sub);
 
@@ -93,6 +103,7 @@ public sealed class HeroBuilderScreen : IAppScreen
         float bodyH = screenH - top - bottomBarH;
 
         if (_view == EView.List) DrawList(margin, top, screenW - margin * 2f, bodyH);
+        else if (_view == EView.Shop) DrawShop(margin, top, screenW - margin * 2f, bodyH);
         else DrawEditor(margin, top, screenW - margin * 2f, bodyH);
 
         DrawBottomBar(screenW, screenH, margin, bottomBarH);
@@ -159,6 +170,133 @@ public sealed class HeroBuilderScreen : IAppScreen
         return s + "...";
     }
 
+    // ── Shop (#414) ───────────────────────────────────────────────────────────────────────────────────
+    //
+    // Kai's call, and a convenience rather than a rule: the books open a shop between Horde waves and
+    // between campaign chapters, so a hero that finished a one-off game with credits had nowhere to spend
+    // them until its next game's first wave ended. Nothing about the two in-game shops changes.
+    //
+    // All the arithmetic is QuestShop's, shared with the campaign screen's shop and tested once - this
+    // draws buttons and writes the sheet back to disk.
+
+    private void DrawShop(float x, float y, float w, float h)
+    {
+        if (_saved.Count == 0) { _view = EView.List; return; }
+        _shopHero = Math.Clamp(_shopHero, 0, _saved.Count - 1);
+
+        // Hero tabs, each showing what it can spend.
+        ImGui.SetCursorPos(new Vector2(x, y));
+        for (int i = 0; i < _saved.Count; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            bool sel = i == _shopHero;
+            if (sel) ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.25f, 0.4f, 0.65f, 1f));
+            if (ImGui.Button($"{_saved[i].Hero.Name}  ({_saved[i].Hero.Credits}c)##shop{i}")) _shopHero = i;
+            if (sel) ImGui.PopStyleColor();
+        }
+
+        (string path, QuestHero hero) = _saved[_shopHero];
+        float lh = ImGui.GetTextLineHeightWithSpacing();
+        float top = y + lh * 1.8f;
+
+        ImGui.SetCursorPos(new Vector2(x, top));
+        ImGui.BeginChild("##sqbuy", new Vector2(w * 0.62f, h - lh * 1.8f), ImGuiChildFlags.Borders);
+        UiText.Colored(TextDim,
+            $"FOR SALE - LEVEL {hero.Level}, TIER {QuestProgression.TierUnlocked(hero.Level)} "
+            + "(higher tiers unlock at levels 2 / 5 / 9)");
+        foreach ((QuestItemInfo item, string? whyNot) in QuestShop.Stock(hero))
+        {
+            ImGui.BeginDisabled(whyNot != null);
+            if (UiButton.NavigateSmall($"Buy {item.Cost}c##sqb{item.Name}") && QuestShop.Buy(hero, item))
+                SaveSheet(path, hero);
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            UiText.Colored(whyNot != null ? TextDim : TextBright, $"{item.Name}  (tier {item.Tier})");
+            if (ImGui.IsItemHovered())
+                UiText.Tooltip(WrapText(whyNot == null ? item.Description : whyNot + "\n\n" + item.Description));
+        }
+        ImGui.EndChild();
+
+        ImGui.SetCursorPos(new Vector2(x + w * 0.62f + 12f, top));
+        ImGui.BeginChild("##sqcarry", new Vector2(w * 0.38f - 12f, h - lh * 1.8f), ImGuiChildFlags.Borders);
+        UiText.Colored(TextDim, $"{hero.Name.ToUpperInvariant()} CARRIES ({hero.Credits}c)");
+        if (hero.Items.Count == 0) UiText.Disabled("Nothing.");
+        // Grouped so three Med Kits are one row; ToList because the buttons below mutate the list.
+        foreach (IGrouping<string, string> group in hero.Items.GroupBy(i => i).ToList())
+        {
+            QuestItemInfo? info = QuestItems.Find(group.Key);
+            // An item this build doesn't know has no price, so it can be handed over but not sold -
+            // guessing a price would invent credits, and calling it 0 would destroy the item.
+            ImGui.BeginDisabled(info == null);
+            if (UiButton.NavigateSmall($"Sell +{info?.SellValue ?? 0}c##sqs{group.Key}")
+                && QuestShop.Sell(hero, group.Key))
+            {
+                SaveSheet(path, hero);
+            }
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            ImGui.TextUnformatted(group.Count() > 1 ? $"{group.Key} x{group.Count()}" : group.Key);
+            if (info != null && ImGui.IsItemHovered()) UiText.Tooltip(WrapText(info.Description));
+
+            foreach ((string otherPath, QuestHero other) in _saved.Where(e => e.Path != path).ToList())
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton($"> {other.Name}##sqg{group.Key}{otherPath}")
+                    && QuestShop.Give(hero, other, group.Key))
+                {
+                    SaveSheet(path, hero);
+                    SaveSheet(otherPath, other);
+                }
+            }
+        }
+
+        // Credits follow the same "hand it to someone else" shape as items.
+        if (_saved.Count > 1 && hero.Credits > 0)
+        {
+            ImGui.Dummy(new Vector2(0f, lh * 0.4f));
+            UiText.Colored(TextDim, "HAND OVER CREDITS");
+            foreach ((string otherPath, QuestHero other) in _saved.Where(e => e.Path != path).ToList())
+            {
+                foreach (int amount in new[] { 5, 10 })
+                {
+                    ImGui.BeginDisabled(hero.Credits < amount);
+                    if (UiButton.NavigateSmall($"{amount}c > {other.Name}##sqc{amount}{otherPath}")
+                        && QuestShop.GiveCredits(hero, other, amount) > 0)
+                    {
+                        SaveSheet(path, hero);
+                        SaveSheet(otherPath, other);
+                    }
+                    ImGui.EndDisabled();
+                    ImGui.SameLine();
+                }
+                ImGui.NewLine();
+            }
+        }
+        ImGui.EndChild();
+    }
+
+    /// <summary>Writes one hero sheet back to its file, reporting a failure rather than losing it quietly.</summary>
+    private void SaveSheet(string path, QuestHero hero)
+    {
+        if (CampaignPaths.SaveHero(path, hero)) return;
+        _message = $"Could not save {hero.Name} - is the file read-only?";
+        _messageIsError = true;
+    }
+
+    /// <summary>Hard-wraps a tooltip, which ImGui will otherwise draw as one very long line.</summary>
+    private static string WrapText(string text)
+    {
+        var lines = new List<string>();
+        string line = "";
+        foreach (string word in text.Split(' '))
+        {
+            if (line.Length + word.Length > 60) { lines.Add(line); line = ""; }
+            line = line.Length == 0 ? word : line + " " + word;
+        }
+        if (line.Length > 0) lines.Add(line);
+        return string.Join("\n", lines);
+    }
+
     // ── Bottom bar ────────────────────────────────────────────────────────────────────────────────────
 
     private void DrawBottomBar(int screenW, int screenH, float margin, float barH)
@@ -171,6 +309,16 @@ public sealed class HeroBuilderScreen : IAppScreen
         if (_view == EView.List)
         {
             if (UiButton.Back("Back", btn) || esc) OnBack?.Invoke();
+            // #414: the shop. Disabled with no heroes, because there is nobody to shop for.
+            ImGui.BeginDisabled(_saved.Count == 0);
+            ImGui.SetCursorPos(new Vector2(margin + btn.X + 10f, by));
+            if (UiButton.Navigate("Shop", btn))
+            {
+                if (_shopHero < 0) _shopHero = Math.Max(0, _selected);
+                _view = EView.Shop;
+                _message = "";
+            }
+            ImGui.EndDisabled();
             float rx = screenW - margin - btn.X;
             ImGui.SetCursorPos(new Vector2(rx, by));
             if (UiButton.Confirm("New Hero", btn)) StartNew();
@@ -185,6 +333,16 @@ public sealed class HeroBuilderScreen : IAppScreen
                 else _confirmDelete = true;
             }
             ImGui.EndDisabled();
+        }
+        else if (_view == EView.Shop)
+        {
+            if (UiButton.Back("Back", btn) || esc) { _view = EView.List; _message = ""; }
+            if (_message.Length > 0)
+            {
+                Vector2 ts = ImGui.CalcTextSize(_message);
+                ImGui.SetCursorPos(new Vector2(screenW - margin - ts.X, by + (btn.Y - ts.Y) / 2f));
+                UiText.Colored(_messageIsError ? Bad : Good, _message);
+            }
         }
         else
         {
