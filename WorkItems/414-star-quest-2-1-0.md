@@ -18,6 +18,39 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-31 - Scout done, and it was dead too
+
+Star Quest's whole Scout is one line: *"May be deployed anywhere fully within 9" of its deployment
+zone."* The other four books say *"May be set aside before deployment. After all other units are
+deployed, may be deployed anywhere fully within 9" of their deployment zone, over 9" away from non-Scout
+enemy units. Players alternate in placing Scout units..."* - four clauses Star Quest does not have. What
+is left is "this unit's deployment area is 9" bigger".
+
+**And it did nothing.** The rule's one hook defers the unit to the Scout placement pass, and a Star Quest
+enemy never goes through normal deployment at all: it waits in the collection and arrives with a wave,
+placed within 6" of a table corner. **158 units across the Star Quest books carry Scout, plus 10 player
+heroes**, and for every one of them the hook fired and nothing happened - the deferred pass does not run
+for a reserved unit, and the wave placed it like anything else. Confirmed by running a Horde game with
+`--trace-rules`: the hook fires, and no "deployed via Scout" line appears anywhere in the log.
+
+So the widening is applied at the PLACEMENT site (`HordePlacement.PlaceUnitNear`) rather than the
+deployment site, because that is where a Star Quest unit actually reaches the table. The wave corner *is*
+the unit's deployment zone in Horde (*"Waves are deployed within 6" of a random table corner"*), so
+"within 9" of its deployment zone" is that corner's radius plus 9": 6/9/12/15 becomes 15/18/21/24. The
+crowding escalation still applies on top, so a Scout in a packed corner keeps its advantage over its
+non-Scout neighbours. A live Horde run now logs the line once.
+
+Two things pinned that would each have made the fix a no-op: the match is by rule NAME, because Star
+Quest's books carry their own "Scout" entry rather than resolving against the core catalog (a reference
+comparison would have missed all 158); and the widening copies the array, because `WaveCornerRadii` is a
+shared static and widening it in place would make every later wave 9" wider, Scout or not, compounding
+each time.
+
+**Not done, and not claimed:** the normal-deployment half. In the other four systems Scout still sets
+aside and places forward with the enemy keep-out, which is `PlaceDeferredUnitsStage`'s job and correct
+there. In Star Quest that path is unreachable, so suppressing the defer would be a change with no
+observable effect; it is left alone rather than tidied blind.
+
 ### 2026-10-31 - Fear done, and the bigger thing behind it: Star Quest has no Melee Results step
 
 Started on Fear and found the reason its wording differs, which turned out to be the actual bug.
