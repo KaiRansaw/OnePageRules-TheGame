@@ -116,6 +116,39 @@ public class VillainCarrierShippedDataTests
     }
 
     [Test]
+    public void TheNamedBosses_CarryUniqueHeroInsteadOfHero()
+    {
+        // 3.6.0's "Unique Hero" is "Counts as having Hero, and this model may only be taken once per
+        // army". Across the WHOLE bundled corpus its carriers have it instead of plain "Hero", never
+        // alongside - so a Villain check that knew only "Hero" would light up the generic bosses and
+        // leave every named enemy character out. Asserted as the exclusivity, because that is the
+        // surprising part and the reason the alias is needed at all.
+        var both = new List<string>();
+        int uniqueHeroes = 0;
+
+        foreach (string path in StarQuestBooks())
+        {
+            BookFile book = Load(path);
+            foreach (RosterUnit unit in book.Units)
+            {
+                var names = unit.Rules.Select(RuleName)
+                    .Concat(unit.Items.SelectMany(i => i.Rules.Select(RuleName))).ToHashSet();
+                if (!names.Contains("Unique Hero")) continue;
+                uniqueHeroes++;
+                if (names.Contains("Hero")) both.Add($"{Path.GetFileName(path)}: {unit.Name}");
+            }
+        }
+
+        Assert.That(uniqueHeroes, Is.GreaterThan(20),
+            "Star Quest's named enemy characters carry Unique Hero - 30 when this was written");
+        Assert.That(both, Is.Empty,
+            "no unit carries both Hero and Unique Hero, which is exactly why Unique Hero has to be "
+            + "read as a Villain name in its own right rather than assumed redundant");
+        Assert.That(FDG.Stages.QuestChallenges.VillainRuleNames, Does.Contain("Unique Hero"),
+            "and the engine must know that name, or the named bosses lend nothing");
+    }
+
+    [Test]
     public void NoStarQuestBook_CarriesARuleLiterallyNamedVillain()
     {
         // The finding, recorded as an assertion so it stays true or stops being a surprise. If OPR ever

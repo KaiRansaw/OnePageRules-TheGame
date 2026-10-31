@@ -18,6 +18,38 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-31 - Villain was dead code, and "Unique Hero" is the half that catches the named bosses
+
+The aura went 12" -> 6" and mandatory, which is what this item was for. The bigger find was that the
+mechanic could never fire at all: the engine matched a rule named **"Villain"** and **no book defines
+one**. Star Quest's enemy books ship Villain's text verbatim under the name **"Hero"**.
+
+Then the fix for that was still only half the mechanic. Measured across the whole 242-book bundled
+corpus:
+
+| | count |
+|---|---:|
+| Units carrying `Unique Hero` | **147** |
+| ...of those, in Star Quest books | **30** |
+| ...of those, also carrying plain `Hero` | **0** |
+
+3.6.0 defines Unique Hero as *"Counts as having Hero, and this model may only be taken once per army"*,
+and every carrier has it **instead of** Hero, never alongside. So matching only "Hero" would have lit up
+the generic bosses and left **every named enemy character** in the game lending nothing - High Elf
+Fleets' Trasara Ioncrinius, the Jackals' three, and 27 more. `VillainRuleNames` is now
+`{ "Villain", "Hero", "Unique Hero" }`.
+
+Pinned on both sides, because an engine-only test passed throughout while the mechanic did nothing:
+`VillainAuraTests` (engine: radius, the name aliases, Shaken, better-Quality-only, own-side-only, quest
+heroes exempt, reserve, dead, two auras) and `VillainCarrierShippedDataTests` (data: the names the
+engine matches must be names the shipped books actually carry, read live off `VillainRuleNames`).
+
+**Deferred, not dropped.** Unique Hero's *"counts as having Hero"* clause is wider than morale - it
+should also reach **force org validation, the Hero unit-join, and base-size estimation**, none of which
+know the name yet. Those are army-building paths with their own fixtures (`WorkItems/003`,
+`WorkItems/006`), so they are their own slice rather than a drive-by here. The *"only once per army"*
+half is army-building too and is likewise not enforced yet.
+
 ### 2026-10-30 - dangerous terrain onto its 3.6.0 wording (Q8)
 
 Kai picked the terrain cluster (dangerous terrain / falling / jumping). **Reading the books first changed
