@@ -34,6 +34,12 @@ public static class UnitStatBlockRenderer
         // #287/#288: wounds, matching the model hover tooltip - a unit placed after taking damage
         // (disembark, reposition) is the case where this matters, and it costs one line otherwise.
         ImGui.TextDisabled($"Wounds {WoundFormat.Fraction(unit.RemainingWounds, unit.MaxWounds)}");
+        // #414: and WHICH model is carrying the damage. The line above is the unit's total, which cannot
+        // distinguish "three fresh models" from "two fresh and one on its last wound" - and since OPR fills
+        // one model at a time, that distinction is the unit's actual staying power. Amber, because it is a
+        // warning rather than a stat, and absent entirely when no model is part-wounded.
+        if (WoundedModelReadout.CardLine(unit) is { } woundedLine)
+            UiText.Colored(new Vector4(1f, 0.72f, 0.35f, 1f), woundedLine);
         DrawMobility(unit, quest);
 
         DrawWeaponsAndRules(unit, includeRuleDescriptions, descriptionWrapWidth);

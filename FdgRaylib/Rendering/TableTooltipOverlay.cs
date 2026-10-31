@@ -506,6 +506,7 @@ public class TableTooltipOverlay
         uint white  = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1));
         uint cyan   = ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.85f, 0.95f, 1)); // #096 occupancy badge
         uint red    = ImGui.ColorConvertFloat4ToU32(new Vector4(0.85f, 0.14f, 0.14f, 1)); // "activated" marker
+        uint amber  = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.72f, 0.35f, 1));    // #414 wound counter
 
         foreach (var unit in _tableState!.Units.Objects)
         {
@@ -543,14 +544,37 @@ public class TableTooltipOverlay
                 count++;
 
                 // Model-scoped tokens sit just above each model (usually none).
+                float modelStackTopY = my - mr - 3f;
                 var modelChips = TokenChipRenderer.ResolveVisible(model.Tokens, _ruleResolver, true, ViewSettings.ShowAllTokens, unit);
                 if (modelChips.Count > 0)
                 {
                     float mcW = TokenChipRenderer.RowWidth(modelChips);
                     float mcH = TokenChipRenderer.RowHeight(modelChips);
-                    float mcY = my - mr - 3f - mcH;
+                    float mcY = modelStackTopY - mcH;
                     if (!Occluded(mx - mcW * 0.5f, mcY, mcW, mcH))
                         TokenChipRenderer.DrawChipRow(drawList, modelChips, mx, mcY);
+                    // The column keeps its place whether or not the chips drew, so the counter above does not
+                    // drop onto them the frame a chip yields to the roll stack (same rule as the unit name).
+                    modelStackTopY = mcY - 2f;
+                }
+
+                // #414: the damaged model's own wound counter, drawn ON the model. The health bar above the
+                // unit is an aggregate and says so itself - no tick on it can name a body - and until now
+                // the only way to see which model was hurt was to hover that exact base. Since OPR fills one
+                // model at a time, there is normally exactly ONE of these per damaged unit, and a model at
+                // full health draws nothing, so this stays quiet: a squad of 1-wound troopers never shows a
+                // counter at all, because such a model has no state between whole and dead.
+                if (WoundedModelReadout.IsPartWounded(model))
+                {
+                    string counter = WoundedModelReadout.Counter(model);
+                    Vector2 wSize = ImGui.CalcTextSize(counter);
+                    float wx = mx - wSize.X * 0.5f;
+                    float wy = modelStackTopY - wSize.Y;
+                    if (!Occluded(wx, wy, wSize.X, wSize.Y))
+                    {
+                        drawList.AddText(new Vector2(wx + 1, wy + 1), shadow, counter);
+                        drawList.AddText(new Vector2(wx,     wy),     amber,  counter);
+                    }
                 }
             }
 
@@ -708,6 +732,11 @@ public class TableTooltipOverlay
         int live = unit.Models.Count(m => m.GetIsAlive());
         ImGui.TextUnformatted($"Quality {unit.Quality}+   Defense {unit.Defense}+");
         ImGui.TextDisabled($"{live} model{(live == 1 ? "" : "s")}   Wounds {WoundFormat.Fraction(unit.RemainingWounds, unit.MaxWounds)}");
+        // #414: which model holds the damage, same line the unit card shows. Kept above the aim label so a
+        // shooting pop-up still shows it - "can I finish that model this volley" is the question being asked
+        // at exactly that moment.
+        if (WoundedModelReadout.CardLine(unit) is { } woundedLine)
+            ImGui.TextColored(new Vector4(1f, 0.72f, 0.35f, 1f), woundedLine);
 
         // While a tool is aiming at it (shooting, charging, picking), keep the card short so it doesn't
         // bury the pop-up: just what the tool says. The rules are a right-click away.

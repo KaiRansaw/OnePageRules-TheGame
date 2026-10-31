@@ -18,6 +18,73 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - naming the damaged model (Q7)
+
+**Kai's ask, in his own words:** *"I still want something to track how many wound each model has in a
+unit... If the case is a single model gets all wounds until that model is dead, I want there to be
+something that shows how many wounds that model/unit has left."* He had worked the rule out himself and
+asked whether he had it right. He did, and the book backs him twice over:
+
+> **Tough(X):** *"This model must take X wounds before being killed. If a model with Tough joins a unit
+> without it, then it is removed last when the unit takes wounds. You must continue to put wounds on the
+> Tough model with most wounds in the unit until it is killed, before starting to put them on the next
+> Tough model (Heroes must be assigned wounds last, even if already wounded)."* - GF/AoF Core Rules
+> v3.6.0, identical in both.
+
+So wounds cannot be spread: a unit is some dead models, some untouched models, and **normally exactly one
+part-wounded model**. The engine already enforces this (`AssignWoundsResults` refuses to start a fresh
+model while another is mid-fill, #024; already-wounded first, #023; hero last, #006) - nothing to fix in
+the rules. **The gap was purely that nothing on screen named that model.**
+
+**What existed before this.** An audit of every wound display turned up:
+
+| Surface | Showed |
+|---|---|
+| Unit card, unit hover, army list, GM panel (6 sites) | the unit's **aggregate** `7/9` |
+| Health bar over the unit on the table (#152/#347) | aggregate fill + model-loss ticks - and its own doc comment admits *"no tick can name a particular model"* |
+| Model hover tooltip, joined-hero line | a per-model fraction, **only if you hover that exact base**, Tough models only |
+| Assign Wounds panel (`GuiAssignWoundsResolver`) | **real per-model pips, already working** - then gone the moment the prompt closes |
+
+So the information existed and was even drawn properly once; it just never persisted.
+
+**Kai's two calls** (asked because they are information design, which is his): show it on **the unit card
+AND on the table**, and only for **the damaged model** - full models show nothing.
+
+**Built.**
+- **`IModel.RemainingWounds`** (engine, default interface member): `max(0, TotalWounds - WoundsDealt)`.
+  Eight UI sites were each doing that subtraction by hand. Floored because overkill is routine and a
+  negative would read as a bug and subtract from a sibling in any sum.
+  - **Deliberately not swapped into the existing eight call sites, nor into the engine's capacity
+    arithmetic.** That arithmetic reads `RemainingWoundsBinding`, the stored truth; this is its
+    double-rounded round-trip and the two can differ by an ULP (#199, where exactly that mismatch made a
+    legal fill look like an overfill and faulted the game). `UnitData.RemainingWounds` also does **not**
+    floor per model, on purpose. Migrating the display sites is a separate, safe tidy-up - **recorded here
+    as deferred, not dropped.**
+- **`WoundedModelReadout`** (app): `IsPartWounded`, `Wounded` (ordered **fewest remaining first** - by the
+  Tough rule that is the model the next hit lands on), `Counter`, `CardLine`.
+- **The card line**, amber, on both card surfaces (`UnitStatBlockRenderer` and the hover card in
+  `TableTooltipOverlay`), absent entirely when nothing is part-wounded: `Wounded model: 1/3 wounds left`.
+  Pluralises and lists when the engine's #023 pre-assignment gap leaves two mid-fill, truncating past
+  three with `(+N more)` - a long list there is a rules anomaly, not a readout to scroll.
+- **A counter over the damaged model's own base** on the table, stacked above that model's token chips,
+  occlusion-aware like everything else in that overlay.
+
+**Why this stays quiet.** A 1-wound model has no state between whole and dead, so `IsPartWounded` can
+never be true for one: a 10-man rifle squad never shows a counter however hard it is shot. Counters appear
+on Tough models under fire and nowhere else - which is why "only the damaged model" was the right call
+over "every multi-wound model".
+
+**Verification.** 12 new tests in `WoundedModelReadoutTests` on real `UnitData`/`ModelData` (the
+`HealthBarRendererTests` harness). **Sabotage-checked:** dropping the wounds test from `IsPartWounded` and
+the `OrderBy` from `Wounded` failed 9 of the 12, leaving exactly the three that test other things
+(the floor, the float formatting, ASCII). Engine **3,816 / 0** (3 skipped), UI **3,038 / 0**, build clean,
+headless smoke exit 0.
+
+**Not done, and worth knowing before anyone "fixes" it:** the per-model counter shares a vertical stack
+with the unit's name, chips and health bar, so on the topmost model of a tight formation they can crowd
+each other. That is ImGui layout - rental - and gets one pass only if Kai says it actually bothers him in
+play.
+
 ### 2026-10-30 - Firefight onto 3.6.0: the wound-marker system is deleted
 
 **Kai's decision, 2026-10-30, and it is a standing one:** *"let's keep the game rules to as close to 'as
