@@ -33,6 +33,12 @@ public static class QuestHeroSync
         foreach (var group in heroes.Where(h => mission && h.CampaignName.Length > 0 && h.CampaignDifficulty > 0 && h.LastOutcome.Length > 0)
                      .GroupBy(h => h.CampaignName))
         {
+            // #414: belt-and-braces, and known to be so. The per-hero guard above has already claimed
+            // every SourceFile in this game, so a second WriteBack for the same table finds no heroes and
+            // never reaches this loop - deleting this line changes no behaviour today. It is kept because
+            // it is the only thing that would hold if the per-hero guard ever moves, and removing it
+            // would leave the double-record protection resting on a guard that is about something else.
+            // The GroupBy, not either guard, is what makes a party of four heroes record one mission.
             if (!WrittenThisGame.Add("campaign:" + group.Key)) continue;
             if (CampaignPaths.Find(group.First().GameType, group.Key) is not { } found) continue;
             QuestCampaign campaign = found.Campaign;
