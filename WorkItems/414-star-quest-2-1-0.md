@@ -18,6 +18,86 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - melee reach and fatigue: both turned out to be 3.6.0-wide, not Star Quest
+
+**Read the books before scoping an item off this list.** Two entries were filed here as Star Quest
+2.1.0 changes. Both are **OPR 3.6.0 corrections that apply to every game system**, and R1 missed them
+because they live in the core rules' prose rather than in the special-rules list that R1 worked through.
+
+Checked word for word in **GF Core Rules v3.6.0**, **GFF Core Rules v3.6.0** and **GFSQ Core Rules
+v2.1.0** - identical sentences in all three:
+
+> Charging models must move into base contact with targets, or as close as possible, and then defenders
+> must do the same by moving up to 3". **Models within 3" of enemies must strike with all melee
+> weapons**, which works like shooting.
+>
+> Fatigue: After a melee where they attacked, units hit on unmodified rolls of 6 in melee until the end
+> of that round, **and those hits don't count as rolls of 6 for special rules**.
+
+The engine's 2" horizontal / 4" vertical is the **3.5.1** wording ("All models that are within 2"
+horizontally and 4" vertically ... may attack it"), which survives only in the Advanced Rules and the
+pre-3.6 Firefight book. So reach is now one constant, `MELEE_RANGE_INCHES = 3`, for both axes and every
+system - **deliberately not per-system**, and `MeleeReach_IsNotPerGameSystem` pins that, because the
+first cut of this change did make it per-system on the assumption the flat 3" was a Quest special.
+
+It cuts both ways in play: an inch more reach on the flat, an inch less vertically, so a model on a 4"
+ledge can no longer fight what is beneath it.
+
+**The fatigue clause is the one with teeth.** A fatigued unit hits ONLY on 6s, so while the clause was
+missing, every 6-triggered rule it owned fired on *every hit it scored*: Rending promoting all of them
+to AP(+4), Furious and Surge doubling all of them, Relentless doubling them at range. Fatigue was
+quietly a buff to exactly the units it exists to blunt.
+
+Implemented as `FatigueUtilities.HideSixesFromRules`, which hands the RULES a histogram with the 6s
+**relabelled to 5s rather than deleted** - the dice total stays right, and face 5 is safe because on
+`Shooting_OnHitRollComplete` the whole catalog reads only face 6 (every face-1 reader is a Shred
+variant, which fires on the save hook). The real roll is untouched: the dice beat, the log and the hit
+count still show the 6s that were rolled, because a player who rolled a 6 has to see a 6. Applied in
+`RollToHitStage` and mirrored in the Tactician's `CombatMath`, or the bot would price a fatigued swing
+as if its 6s still triggered Rending.
+
+**Two Tactician tests are PARKED, not dropped** (`[Ignore]` with the reason, and recorded here):
+`Score_CoveredSideWithinChargeReach_LosesToOpenSideOutOfIt` and
+`Score_DistantMeleeBlob_DoesNotDiluteTheReachablePenalty`. Their corridor scene is calibrated to a
+knife edge - the open endpoint at (30,24) is 16.97" from the swordsmen, which sat just OUTSIDE the
+charge band (12" + reach + base radii) at 2" reach and falls just INSIDE it at 3". Both endpoints
+threatened scores *identically* to neither threatened, because the melee term becomes a constant and
+cancels in the comparison, which is case 16's own point. So the cases lost their contrast.
+
+Three fixes were tried and all failed; they are written into the `CorridorScene` doc comment so nobody
+repeats them. Moving the swordsmen ((16,10), (14,12), (8,24)) puts BOTH endpoints out of reach - the
+endpoints are only 10" apart and the band is ~18" wide at squad spread, so no position reaches one and
+not the other with any margin. Widening the corridor to (36,24) restores the reach contrast but costs
+the open endpoint enough objective progress that it loses anyway. **This is not evidence the bot
+regressed** - declining to distinguish two equally-charged endpoints is what the neighbouring case
+demands. It needs the scene re-derived around the new band, or the cover habit's weight re-calibrated:
+a Tactician tuning job, and the next thing to do on this item.
+
+**Also fixed, unrelated, both in `LobbyBotGreetingTests`:** the 20s timeout from the Q4 note exposed a
+real race - `BotGreetingsIn` enumerated `hostVm.ChatMessages` while bot threads appended to it, throwing
+`IndexOutOfRangeException` out of LINQ. Guarded as a torn read (poll again). **The same race exists in
+the running game**, where the UI thread draws that list while the lobby appends to it, so a lobby with
+several bots could throw while drawing. The engine-side fix (a lock or an immutable snapshot on the view
+model) is a lobby thread-safety job and is **not done** - filed here so a test does not make a
+production race look handled.
+
+One more trap recorded: `GameWideConstants.ConfigureTable` writes global statics, so a test that loops
+over `EGameSystem` must restore it in a `finally`. Writing `MeleeReach_IsNotPerGameSystem` without that
+left every later fixture on a 48"x48" Quest table and broke an unrelated reinforcement test two files
+away.
+
+Verified: engine **3,819 / 0** (9 new tests, 3 skipped: 2 parked above + the pre-existing spell-corpus
+one), UI 3,026 / 0, `dotnet build` clean, headless smoke exit 0, and a seeded all-AI Star Quest mission
+exit 0 - 97 rounds (was 103 before the reach change, which is the melee reach doing something) with 135
+fatigue lines in the log, so the new path is exercised in a played game and not only in fixtures. The
+fatigue tests were sabotage-checked: stubbing the mask out of `RollToHitStage` fails exactly the three
+that should.
+
+**Still open on 2.1.0 after this:** casting's "once per activation" gate, dangerous terrain per unit
+(**also 3.6.0-wide, and the 3.6.0 wording "or that activate in it" settles the open design fork about
+holding in dangerous terrain**), falling, jumping's extra die and Strider, the AI steps, the Villain
+aura and AI group coherency.
+
 ### 2026-10-30 - casting: power before the roll, and no rescue after it
 
 v2.1.0 Caster(X), verbatim: *"Once per activation, before attacking, spend as many tokens as the spell's
