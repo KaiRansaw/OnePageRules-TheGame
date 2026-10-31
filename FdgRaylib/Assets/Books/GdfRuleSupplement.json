@@ -8233,5 +8233,110 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "If most models in this unit have this rule, as long as they aren't Fatigued, enemy units get -1 to hit rolls in melee against them."
+  },
+  {
+    "name": "Fragment",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "statGreaterOrEqualTo",
+          "stat": "Defense",
+          "statValue": 5
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "When attacking units where most models have Defense 5+ to Defense 6+, the target must re-roll successful unmodified Defense results of 5-6."
+  },
+  {
+    "name": "Obliterate",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "targetMajorityHasTough",
+          "minToughValue": 3
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "Ignores Regeneration, and when attacking units where most models have Tough(3) or higher, the target must re-roll successful unmodified Defense results of 5-6."
+  },
+  {
+    "name": "Reap",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "or",
+          "left": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "Shaken"
+            }
+          },
+          "right": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "Fatigued"
+            }
+          }
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "When attacking units that are Shaken or Fatigued, the target must re-roll successful unmodified Defense results of 5-6."
   }
 ]
