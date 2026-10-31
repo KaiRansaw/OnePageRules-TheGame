@@ -8596,5 +8596,45 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "This model gets AP(+1) on its weapons when charging."
+  },
+  {
+    "name": "Brace",
+    "passive": [
+      {
+        "hookID": "Melee_OnChargeContact",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Fatigued"
+              }
+            }
+          }
+        },
+        "effect": {
+          "kind": "chargeImpactHits",
+          "diceCount": {
+            "kind": "negate",
+            "inner": {
+              "kind": "arg",
+              "index": 0
+            }
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 1,
+    "valence": "Positive",
+    "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
   }
 ]

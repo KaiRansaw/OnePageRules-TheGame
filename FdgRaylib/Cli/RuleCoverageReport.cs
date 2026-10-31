@@ -52,7 +52,13 @@ public static class RuleCoverageReport
 
                 bool weaponRuleAtUnitLevel = reference.AttachesAt == ERuleScope.Unit
                     && resolved.Definition.Scope == ERuleScope.Weapon;
-                bool mismatch = resolved.Definition.Scope != reference.AttachesAt && !weaponRuleAtUnitLevel;
+                // #412: and the mirror - a unit-scoped rule named on a weapon is a legal attach too.
+                // UnitData promotes it onto the carrier at army load (wargear whose effect is about the
+                // model: Spell Amplifier on a staff, Brace(X) on a spear), so it is not a mismatch.
+                bool unitRuleOnWargear = reference.AttachesAt == ERuleScope.Weapon
+                    && resolved.Definition.Scope == ERuleScope.Unit;
+                bool mismatch = resolved.Definition.Scope != reference.AttachesAt
+                    && !weaponRuleAtUnitLevel && !unitRuleOnWargear;
 
                 if (mismatch)
                 {
