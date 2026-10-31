@@ -855,6 +855,62 @@ if (b2aIdx >= 0 && b2aIdx + 2 < args.Length)
     return;
 }
 
+// --make-collections <booksDir> <outDir>  (#414): write one Star Quest ENEMY COLLECTION .fdgarmy per book.
+//
+// Star Quest's enemy side is not an army in the ordinary sense. StarQuestHorde.DeployWave treats it as a
+// POOL: each wave draws from the units still in reserve or already destroyed (they come back) until the
+// wave's points budget is spent, so the collection's job is to be a varied pool, not a legal list. The
+// budget reaches wave * partyPoints / 4, doubled for a boss fight - about 1500 pts against a 300 pt party
+// at wave 10 - and a collection smaller than that runs dry and logs "nobody arrives". So each collection
+// is the WHOLE roster at base model count, which is both the richest pool and the strongest proof the
+// book compiles.
+//
+// A dev tool, not something the app calls: the output is checked in under armies/, the way every other
+// game system's lists are. Re-run it after a book re-import.
+int collIdx = Array.IndexOf(args, "--make-collections");
+if (collIdx >= 0 && collIdx + 2 < args.Length)
+{
+    string booksDir = args[collIdx + 1];
+    string outDir = args[collIdx + 2];
+    Directory.CreateDirectory(outDir);
+
+    int written = 0, failed = 0;
+    foreach (string bookPath in Directory.GetFiles(booksDir, "*.fdgbook").OrderBy(p => p))
+    {
+        BookFile book;
+        try { book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(bookPath), RuleJson.Options)!; }
+        catch (Exception e) when (e is JsonException or IOException)
+        {
+            Console.WriteLine($"  SKIP {Path.GetFileName(bookPath)}: {e.Message}");
+            failed++;
+            continue;
+        }
+
+        var list = new BuilderList { Name = book.Name, BookName = book.Name, PointsLimit = 100000 };
+        foreach (RosterUnit unit in book.Units)
+            list.Units.Add(new BuilderUnit { RosterUnitId = unit.Id, ModelCount = unit.BaseModelCount });
+
+        BuiltArmyFile collection = ListCompiler.Compile(book, list);
+        collection.Name = $"{book.Faction ?? book.Name} - enemy collection";
+        // Drop the editable session. ListCompiler attaches the picks plus a FULL SNAPSHOT of the source
+        // book (decision 6, so a Forge re-open can never be re-pointed at a newer catalog), and that
+        // snapshot is 175KB of the 210KB file - 54 of them would put 17MB of duplicated book data in the
+        // repo beside the books themselves. BuiltArmyFile documents both fields as null on an army that
+        // was not authored by the Forge, and such a file still plays; what the engine reads at play time
+        // is Units, RuleDefinitions and Spells, which stay. The cost is that a collection cannot be
+        // reopened in the Army Forge - it is generated FROM a book, so re-run this instead.
+        collection.Selections = null;
+        collection.Book = null;
+        string outPath = Path.Combine(outDir, $"{book.Faction ?? book.Name} - enemy collection.fdgarmy");
+        File.WriteAllText(outPath, JsonSerializer.Serialize(collection, RuleJson.Options));
+        Console.WriteLine($"  {collection.Units.Count,3} units, {collection.TotalPoints,5} pts -> {Path.GetFileName(outPath)}");
+        written++;
+    }
+    Console.WriteLine($"--make-collections: wrote {written} collection(s) to {outDir}"
+        + (failed > 0 ? $", {failed} book(s) skipped" : ""));
+    return;
+}
+
 // --retrofit-editable <fileOrDir> [more...]  (#357): make already-saved armies re-editable in the Forge.
 // A plain .fdgarmy stores the RESULT of its upgrade picks, never the picks, so the Forge cannot reopen it
 // (#307). This solves the picks back out against the bundled book (SelectionSolver) and attaches them as an
@@ -1264,7 +1320,11 @@ else
         renderer.NavigateTo(renderer.MainMenu);
     renderer.Campaigns.OnPlay = () =>
     {
-        pendingGameSystem = null;
+        // #414: a Star Quest campaign mission is a Star Quest game. This passed null, so the lobby opened
+        // on whatever game type was last used; the party picker only draws for a Quest system, so the
+        // party the campaign screen had just readied (LobbyScreen.PendingParty) was dropped without a
+        // word. Compare StrikeTeams.OnPlay below, which has always passed its system through.
+        pendingGameSystem = FDG.EGameSystem.GFStarQuest;
         renderer.NavigateTo(renderer.HostModal);
     };
 

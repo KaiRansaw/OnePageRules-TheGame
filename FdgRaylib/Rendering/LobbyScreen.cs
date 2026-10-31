@@ -713,9 +713,11 @@ public class LobbyScreen : IAppScreen
         EGameSystem system = _viewModel!.GameSystem;
         if (_gameTypeArmies == null || _pickerSystem != system)
         {
-            // Star Quest: the enemies are ordinary Grimdark Future armies (the heroes come from the party picker).
-            _gameTypeArmies = ArmyPaths.EntriesFor(GameSystemInfo.IsQuest(system) ? EGameSystem.GrimdarkFuture : system,
-                    SharedArmyCatalog.Value.Entries)
+            // #414: Star Quest's enemies come from its OWN folder. This used to redirect every Quest
+            // system to armies/GDF, from before Star Quest had books of its own - so the dropdown listed
+            // Grimdark Future armies that the launch gate then refused, while armies/GF Star Quest went
+            // unread. The heroes still come from the party picker, not from here.
+            _gameTypeArmies = ArmyPaths.EntriesFor(system, SharedArmyCatalog.Value.Entries)
                 // Grouped by 1000-point bracket (0-1000, 1001-2000, ...), then A-Z inside each bracket.
                 .OrderBy(e => e.Points <= 0 ? 0 : (e.Points - 1) / 1000)
                 .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -940,8 +942,9 @@ public class LobbyScreen : IAppScreen
         if (heroes.Count == 0) return;
         _autoArmiedSlots.Add(playerID.ID);
         var books = BookLibrary.Load();
+        // #414: the faction's Star Quest edition, not whichever edition the library scan reached first.
         FDG.ArmyBuilding.BuiltArmyFile party = FDG.Quest.QuestArmy.Build(heroes,
-            faction => books.FirstOrDefault(b => b.MatchesFactionName(faction)));   // #412: renames included
+            faction => FDG.Quest.QuestArmy.BookForHeroFaction(books, faction));
         _viewModel!.UpdateArmyListFile(playerID, party);
     }
 

@@ -69,8 +69,8 @@ public static class PartyLoader
     {
         List<QuestHero> heroes = Resolve(paths);
         List<BookFile> books = BookLibrary.Load();
-        BuiltArmyFile party = QuestArmy.Build(heroes, faction =>
-            books.FirstOrDefault(b => b.MatchesFactionName(faction)));   // #412: renames included
+        // #414: the faction's Star Quest edition, not whichever edition the library scan reached first.
+        BuiltArmyFile party = QuestArmy.Build(heroes, faction => QuestArmy.BookForHeroFaction(books, faction));
 
         Console.WriteLine($"Party: {heroes.Count} heroes, {party.TotalPoints} pts - "
             + string.Join(", ", heroes.Select(h => $"{h.Name} (Lvl {h.Level} {h.Class}, {h.Faction}, {h.Points} pts)")));
