@@ -2848,5 +2848,520 @@
     "engineArgumentCount": 1,
     "valence": "Positive",
     "description": "Once per round, when this unit ends its move within 3\" of enemy units after being in melee, pick one of them and roll X dice for each model with this rule, or X dice in total for single-model units. For each 6+ the target takes one wound. Cannot be used while Shaken."
+  },
+  {
+    "name": "Enhanced Angelic Blessing",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Angelic Blessing"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 6
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Angelic Blessing"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "isSpell"
+            },
+            "right": {
+              "kind": "allModelsHaveThisRule"
+            }
+          }
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 4
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Angelic Blessing, they always ignore shooting/charging wounds on rolls of 6+ from Angelic Blessing (instead of only when shot/charged from over 9 inches/6 inches away)."
+  },
+  {
+    "name": "Enhanced Bestial",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Bestial"
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Bestial, enemies taking hits from it must re-roll successful unmodified Defense results of 5-6 from Bestial (instead of only results of 6)."
+  },
+  {
+    "name": "Enhanced Buccaneer",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Buccaneer"
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Buccaneer, it always gets +1 to hit rolls from Buccaneer (instead of only when shooting over 9 inches away)."
+  },
+  {
+    "name": "Enhanced Cursed Undead",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Cursed Undead"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 5
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Cursed Undead, they ignore wounds on rolls of 5-6 from Cursed Undead (instead of only on 6+)."
+  },
+  {
+    "name": "Enhanced Destroyer",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Destroyer"
+        },
+        "effect": {
+          "kind": "addExtraWound",
+          "onRollValue": 1,
+          "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Destroyer, enemies always take wounds on unmodified results of 1 to block from Destroyer (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+  },
+  {
+    "name": "Enhanced Empyrean Spirit",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Empyrean Spirit"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": -1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Empyrean Spirit, enemies attacking them always get -1 to hit rolls from Empyrean Spirit (instead of only when shooting/charging from over 9 inches/6 inches away)."
+  },
+  {
+    "name": "Enhanced Lucky",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Lucky"
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
+        },
+        "effect": {
+          "kind": "addExtraHit",
+          "onRollValue": 6,
+          "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Lucky, the target always takes hits on unmodified hit results of 6 from Lucky (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+  },
+  {
+    "name": "Enhanced Ossified",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Ossified"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "attackedFromOverInches",
+              "distanceInches": 9
+            },
+            "right": {
+              "kind": "allModelsHaveThisRule"
+            }
+          }
+        },
+        "effect": {
+          "kind": "reduceArmorPenetration",
+          "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Ossified, hits they take count as having AP(-2) from Ossified (instead of only AP(-1))."
+  },
+  {
+    "name": "Enhanced Royal Legion",
+    "passive": [
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Royal Legion"
+        },
+        "effect": {
+          "kind": "rangeModifier",
+          "delta": 8,
+          "minResultInches": 0
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Movement_OnMoveActionDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Royal Legion"
+          },
+          "right": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          }
+        },
+        "effect": {
+          "kind": "movementBonus",
+          "actionType": "Charge",
+          "distanceInches": 4,
+          "minResultInches": 0
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Royal Legion, it gets +8 inches/+4 inches range when shooting/charging from Royal Legion (instead of only +4 inches/+2 inches)."
+  },
+  {
+    "name": "Enhanced Royal Warrior",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Royal Warrior"
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 5
+          }
+        },
+        "effect": {
+          "kind": "addExtraHit",
+          "onRollValue": 5,
+          "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Royal Warrior"
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
+        },
+        "effect": {
+          "kind": "addExtraHit",
+          "onRollValue": 6,
+          "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Royal Warrior, it gets extra attacks on successful unmodified hit results of 5-6 from Royal Warrior (instead of only on 6)."
+  },
+  {
+    "name": "Enhanced Vale Oath",
+    "passive": [
+      {
+        "hookID": "Round_OnRoundStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Vale Oath"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Shaken"
+              },
+              "minCount": 1
+            },
+            "right": {
+              "kind": "allModelsHaveThisRule"
+            }
+          }
+        },
+        "effect": {
+          "kind": "clearTokenOnRoll",
+          "tType": {
+            "id": "Shaken"
+          },
+          "minRoll": 3
+        },
+        "lifetime": "ThisRound",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Vale Oath, they stops being Shaken on rolls of 3+ from Vale Oath (instead of only on 4+)."
+  },
+  {
+    "name": "Enhanced Warden",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Warden"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "attackedFromOverInches",
+              "distanceInches": 9
+            },
+            "right": {
+              "kind": "allModelsHaveThisRule"
+            }
+          }
+        },
+        "effect": {
+          "kind": "reduceArmorPenetration",
+          "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Warden, hits they take count as having AP(-2) from Warden (instead of only AP(-1))."
+  },
+  {
+    "name": "Enhanced Wave-Step",
+    "passive": [
+      {
+        "hookID": "Activation_OnActivationStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wave-Step"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "repositionAtActivation",
+          "distance": {
+            "kind": "d3",
+            "count": 2
+          },
+          "plusInches": 0
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If this model has Wave-Step, it may move by up to 2D3 inches from Wave-Step (instead of only D3 inches)."
+  },
+  {
+    "name": "Enhanced Wild Veil",
+    "passive": [
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wild Veil"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "rangeModifier",
+          "delta": -8,
+          "minResultInches": 6
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Movement_OnChargeDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wild Veil"
+          },
+          "right": {
+            "kind": "allModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "movementBonus",
+          "actionType": "Charge",
+          "distanceInches": -4,
+          "minResultInches": 6
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have Wild Veil, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Wild Veil (instead of only -4 inches/-2 inches)."
   }
 ]
