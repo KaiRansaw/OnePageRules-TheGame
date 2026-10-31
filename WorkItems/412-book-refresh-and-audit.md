@@ -25,6 +25,71 @@ So this is two jobs, and the second one is the bigger surprise:
    records (Alien Hives Assault Grunts: 105 pts for 10 in GF, 30 pts for 3 in Firefight; the Hive Lord
    is not in the Firefight book at all).
 
+## 2026-10-31 - Star Quest: its own books, the 2.1.0 AI, and a rule that could never fire
+
+**Star Quest now plays on Star Quest's books.** 54 enemy books imported under
+`FdgRaylib/Assets/Books/GF Star Quest/`, `GameSystems.GFStarQuest` added, and
+`GameSettings.ArmySource` moved off Grimdark Future's. #406 left "does Star Quest publish its own
+enemy book?" open and defaulted to GF's; it does, and the points are on a different scale -
+Alien Hives' Grunt Veteran is 40pts in GF against 100pts here, so every wave and mission was buying
+roughly 2.5x the enemy its budget was meant to pay for. Pinned by
+`Tests/GameSystemArmySourceTests.cs`, including the negative (a GF army must fail a Star Quest
+lobby's filter) and the AoF: Quest gap (falls back to AoF, and must stay unselectable while it does).
+
+**The index lists 56 books, not 54, and that is correct.** `Gangs of New Eden` and
+`Wormhole Daemons` return HTTP 200 with **0 units and 0 rules** from Army Forge (checked
+2026-10-31). Nothing was dropped on import - those two have no Star Quest data upstream yet. Worth
+re-checking on the next refresh rather than treating 54 as the final number.
+
+**AI step 1 on the 2.1.0 wording.** "In line of sight **or within 12" but not in line of sight**."
+Under 2.0.1 breaking line of sight made the whole enemy force lose interest and walk to its
+objective, which is the single biggest reason Star Quest played as hide-and-seek. An unseen enemy
+still cannot be *shot* (the shoot target is still drawn from the visible list, deliberately) but can
+be charged, so the usual answer for a hero behind a wall is now to come round the corner after it.
+`Tests/StarQuestAiPlanTests.cs` covers both halves - inside 12" unseen is engaged, past 12" unseen is
+still ignored - plus "line of sight has no distance limit", so widening step 1 cannot quietly narrow
+it.
+
+**AI step 2's "or Hold and shoot if in range" was already the behaviour.** The action resolver picks
+SHOOT over MOVEMENT when the target is already within range, which is a Hold. Left where it is and
+documented there rather than given a new plan kind: `EQuestAiMove.Hold` routes to the solo bot and is
+excluded from the shoot-anyway fallback, so a `HoldAndShoot` member would have been a refactor with a
+regression risk and no behaviour change. Recorded as a deliberate non-change, not as done-by-accident.
+
+**The Villain aura has never been able to fire, in any game, ever.** This is the find of the pass.
+The engine looked for a rule named `"Villain"`. **No book has one.** Every Star Quest enemy book
+instead defines a rule *named* `"Hero"` whose description is Villain's text verbatim - "AI units
+within 6" use the Villain's Qua for Morale Tests if it's better than their own, as long as the
+Villain isn't Shaken" - and puts it on its boss profiles (Alien Hives: Grunt Veteran, Snatcher Lord,
+Prime Warrior, Hive Lord; 4 of 41 units). Verified against live Army Forge data for Alien Hives, Orc
+Marauders, Human Defense Force and Robot Legions. So the rule had a radius, a Shaken check, a
+better-Quality check and a log line, and its first condition was unsatisfiable.
+
+`QuestChallenges.VillainRuleNames` now holds both spellings and `IsVillain` is the one lookup. It is
+read as Villain only inside `VillainMorale`, whose single caller is gated on
+`QuestActions.IsQuestGame`, so Grimdark Future's own Heroes - same marker rule, used for unit-joining
+and force org - are untouched. `Tests/VillainAuraTests.cs` (14 tests) pins the radius, the name
+mapping, Shaken, better-Quality-only, own-side-only, party heroes (which carry `Hero` too), reserve,
+dead and two-Villain cases. `FdgRaylib.Tests/VillainCarrierShippedDataTests.cs` pins the *link*: a
+name the engine matches must be a name the shipped books carry. **That link is the assertion that was
+missing** - "Villain is implemented" and "the books parse" were both true the whole time.
+
+**A lesson worth the space:** a rule that is fully implemented and entirely unreachable looks exactly
+like a rule that works. Nothing in play, and nothing in the engine suite, could tell the difference.
+Any rule whose trigger is a *name* needs one test that the name exists in the data.
+
+**The radius was edited back to 12f twice while this was being written** - once with a `// SABOTAGE`
+marker, once bare, both times leaving the doc comment above it reading 6". Restored to 6f with the
+2.1.0 text quoted in the file. 12f is not a harmless default: it is 2.0.1's radius under 2.1.0's
+documentation, and no one watching a morale test can tell which radius produced it.
+
+**Still open from this pass:** the Star Quest books stamp `"version": "OPR v3.6.0"` in their
+metadata, but Star Quest's ruleset is 2.1.0 - cosmetic, and only visible if a book's version is ever
+shown. AoF: Quest's own books (Army Forge id 7 heroes / id 8 enemies, 48 of them) are still not
+imported.
+
+Engine 3,886 / 0 (3 skipped). Villain carrier fixture 5 / 0.
+
 ## 2026-10-30 - the audit tool
 
 Engine 3,740 / 0. UI 2,997 / 0. Smoke exits 0. Pushed to `campaign-360`.

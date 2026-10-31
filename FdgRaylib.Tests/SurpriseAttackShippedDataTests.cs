@@ -135,14 +135,22 @@ public class SurpriseAttackShippedDataTests
         // Firefight Inquisition assassin and two Skirmish infiltrators joined. Still small enough to pin
         // by name, which is worth doing here - the X values are a per-unit balance figure, so a silent
         // change to one is exactly the kind of drift this census is for.
-        Assert.That(sites.Count, Is.EqualTo(5),
+        Assert.That(sites.Count, Is.EqualTo(7),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
+        // Worth reading rather than skimming: the Star Quest editions carry DIFFERENT X values for the
+        // same unit - the Hive Burrower is Surprise Attack(5) in Grimdark Future and (15) in Star Quest,
+        // and the Espionage Ministry Assassin (3) against (9). That is the per-system balance difference
+        // this census exists to notice, and it is the same reason Star Quest needed its own books at all
+        // (its points are on a different scale entirely). Pinning the ratings per book is what keeps a
+        // future re-import from quietly moving one of them.
         Assert.That(sites.Select(s => (s.Book, s.Unit, s.Rating)), Is.EquivalentTo(new[]
         {
             ("AlienHives", "Hive Burrower", 5),
             ("AoFS-Goblins", "Nasty Assassin", 2),
             ("AoFS-Halflings", "Thief", 2),
             ("GFF-HumanInquisition", "Espionage Ministry Assassin", 6),
+            ("GFSQ-AlienHives", "Hive Burrower", 15),
+            ("GFSQ-HumanInquisition", "Espionage Ministry Assassin", 9),
             ("HumanInquisition", "Espionage Ministry Assassin", 3),
         }));
 

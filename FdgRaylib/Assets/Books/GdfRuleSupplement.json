@@ -15373,5 +15373,31 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "If most models in this unit have Wild Veil, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Wild Veil (instead of only -4 inches/-2 inches)."
+  },
+  {
+    "name": "Defense",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "allModelsHaveThisRule"
+        },
+        "effect": {
+          "kind": "ratedRollModifier",
+          "rollKind": "Save",
+          "delta": {
+            "kind": "arg",
+            "index": 0
+          }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 1,
+    "valence": "Positive",
+    "description": "This model gets +X to Defense rolls."
   }
 ]

@@ -103,7 +103,9 @@ public class InquisitorialAgentShippedDataTests
         // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 20 references became 39 as
         // the Firefight edition of the Human Inquisition arrived. The per-book resolve loop below is what
         // this test is really for and it now covers both books automatically.
-        Assert.That(sites.Count, Is.EqualTo(39),
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 39 -> 60, as the
+        // Star Quest edition of the Human Inquisition joined. The per-book resolve loop covers it too.
+        Assert.That(sites.Count, Is.EqualTo(60),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (string bookName in sites.Select(s => s.Book).Distinct())

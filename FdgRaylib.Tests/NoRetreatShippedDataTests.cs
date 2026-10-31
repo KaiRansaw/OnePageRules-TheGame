@@ -120,9 +120,13 @@ public class NoRetreatShippedDataTests
         // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 9 No Retreat references
         // became 36 as the Firefight and Skirmish books arrived. The resolve-and-follow-the-grant loop
         // below is the real test and it now walks every one of them.
-        Assert.That(sites.Count(s => s.Rule == AuraName), Is.EqualTo(27));
-        Assert.That(sites.Count(s => s.Rule == RuleName), Is.EqualTo(7));
-        Assert.That(sites.Count(s => s.Rule == BuffName), Is.EqualTo(2),
+        //
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): the aura 27 -> 33,
+        // the rule 7 -> 11, the buff 2 -> 3, i.e. 47 sites in all. Star Quest editions of books already
+        // counted; see ShippedBooks for why every total in this family moved at once.
+        Assert.That(sites.Count(s => s.Rule == AuraName), Is.EqualTo(33));
+        Assert.That(sites.Count(s => s.Rule == RuleName), Is.EqualTo(11));
+        Assert.That(sites.Count(s => s.Rule == BuffName), Is.EqualTo(3),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var problems = new List<string>();

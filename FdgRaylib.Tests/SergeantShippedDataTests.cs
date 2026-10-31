@@ -97,7 +97,8 @@ public class SergeantShippedDataTests
         // Skirmish rather than a Wormhole Daemons speciality. (The book-set assertion that used to sit
         // here compared the census against the hardcoded list it was derived from, so it can no longer
         // fail; the per-book embedded-copy check below is what actually covers the spread.)
-        Assert.That(sites.Count, Is.EqualTo(223),
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 223 -> 235.
+        Assert.That(sites.Count, Is.EqualTo(235),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)

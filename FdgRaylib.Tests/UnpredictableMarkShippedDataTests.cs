@@ -108,13 +108,15 @@ public class UnpredictableMarkShippedDataTests
         // Skirmish Crazed Zealots carry it too. Still worth pinning which books hold which mark: the two
         // marks grant different rules, so a book drifting from one to the other would play a rule its own
         // page does not describe, and both resolve cleanly so nothing else would catch it.
-        Assert.That(sites.Count, Is.EqualTo(10),
+        Assert.That(sites.Count, Is.EqualTo(19),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Where(s => s.Mark == FighterMark).Select(s => s.Book).Distinct(),
-            Is.EquivalentTo(new[] { "AlienHives", "AoFS-CrazedZealots", "VoidspaceStalkers" }),
+            Is.EquivalentTo(new[]
+                { "AlienHives", "AoFS-CrazedZealots", "GFSQ-AlienHives", "GFSQ-VoidspaceStalkers",
+                  "VoidspaceStalkers" }),
             "Fighter Mark is Battle Pheromones and its kin");
         Assert.That(sites.Where(s => s.Mark == ShooterMark).Select(s => s.Book).Distinct(),
-            Is.EquivalentTo(new[] { "GoblinReclaimers" }), "Shooter Mark is Targeted Frenzy");
+            Is.EquivalentTo(new[] { "GFSQ-GoblinReclaimers", "GoblinReclaimers" }), "Shooter Mark is Targeted Frenzy");
     }
 
     [Test]

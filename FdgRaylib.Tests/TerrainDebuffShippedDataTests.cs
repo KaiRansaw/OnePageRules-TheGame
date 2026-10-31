@@ -196,7 +196,10 @@ public class TerrainDebuffShippedDataTests
         // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 14 references became 16
         // (11 Dangerous deferred + 2 Dangerous immediate + 3 Difficult) as AoFS Trade Federations and
         // GFF Goblin Reclaimers picked up the deferred variant.
-        Assert.That(sites.Count, Is.EqualTo(16),
+        //
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 16 -> 30, all of
+        // them Star Quest editions of armies already in the census.
+        Assert.That(sites.Count, Is.EqualTo(30),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var unresolved = new List<string>();
@@ -236,16 +239,23 @@ public class TerrainDebuffShippedDataTests
         List<DebuffSite> immediate = DebuffSites().Where(s => s.Rule == DangerousImmediate).ToList();
         List<DebuffSite> deferred = DebuffSites().Where(s => s.Rule == DangerousDeferred).ToList();
 
-        Assert.That(immediate.Select(s => s.Book).Distinct().OrderBy(b => b),
+        // Compared as ARMIES, not as book file names. The test's name and its claim are both about which
+        // ARMIES print the immediate wording, and OPR publishes each army once per game system - so the
+        // Star Quest import added "GFSQ-LustDisciples" and "GFSQ-WarDisciples" and nothing else. Keeping
+        // the raw file names here would have read as two new immediate carriers appearing, when in fact
+        // the premise is untouched: it is still exactly these two armies, in every edition they have.
+        Assert.That(immediate.Select(s => ShippedBooks.ArmyName(s.Book)).Distinct().OrderBy(b => b),
             Is.EqualTo(immediateArmies.OrderBy(b => b)).AsCollection);
-        // Re-checked for the 3.6.0 import: the premise survives unchanged - still exactly two immediate
-        // carriers, still exactly Lust Disciples and War Disciples, so the routing decision this test
-        // guards is intact. Only the deferred side grew (9 -> 11: AoFS Trade Federations' Federation
-        // Snake Master and GFF Goblin Reclaimers' Waskatsin).
-        Assert.That(immediate.Count, Is.EqualTo(2));
-        Assert.That(deferred.Count, Is.EqualTo(11));
-        Assert.That(deferred.Select(s => s.Book), Has.No.AnyOf(immediateArmies),
-            "a book gets one variant or the other, never both");
+        // Re-checked for the 3.6.0 import and again for Star Quest: the premise survives unchanged -
+        // still exactly two immediate ARMIES, still exactly Lust Disciples and War Disciples, so the
+        // routing decision this test guards is intact. The counts are per SITE, so both sides grew as the
+        // Star Quest editions arrived: immediate 2 -> 4 (the two armies, twice over) and deferred
+        // 11 -> 20 - not a clean doubling, because the Star Quest editions of the deferred carriers do
+        // not all publish the same number of units holding the rule.
+        Assert.That(immediate.Count, Is.EqualTo(4));
+        Assert.That(deferred.Count, Is.EqualTo(20));
+        Assert.That(deferred.Select(s => ShippedBooks.ArmyName(s.Book)), Has.No.AnyOf(immediateArmies),
+            "an army gets one variant or the other, never both");
     }
 
     // (The importer half of that routing - what keeps it true across a re-import, since the bundled books

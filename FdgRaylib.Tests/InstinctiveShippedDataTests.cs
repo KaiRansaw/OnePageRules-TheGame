@@ -165,7 +165,8 @@ public class InstinctiveShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(19),
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 19 -> 26.
+        Assert.That(sites.Count, Is.EqualTo(26),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)

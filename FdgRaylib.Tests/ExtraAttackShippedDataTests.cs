@@ -150,8 +150,11 @@ public class ExtraAttackShippedDataTests
     // Re-taken 2026-10-31 for the 3.6.0 import: 5 -> 21 and 2 -> 7, as Firefight and Skirmish arrived
     // with their own copies of the same heroes. Every carrier is still a 1-model unit, which is the only
     // reason unit scope reads correctly - that is what the loop below actually guards.
-    [TestCase(Strike, 21)]
-    [TestCase(Shot, 7)]
+    // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 21 -> 27 and 7 -> 11.
+    // The new carriers are the Star Quest editions of heroes already counted, and all of them are still
+    // 1-model units - which is the assertion below, and the only reason unit scope reads correctly here.
+    [TestCase(Strike, 27)]
+    [TestCase(Shot, 11)]
     public void EveryCarrier_IsASingleModelUnit(string ruleName, int expectedRefs)
     {
         List<Site> sites = Sites(ruleName).ToList();
@@ -191,15 +194,21 @@ public class ExtraAttackShippedDataTests
     // true, the individual-model pick starts appearing in ordinary close combat and the ruling needs
     // revisiting."
     //
-    // #412: it stopped being true. OPR 3.6.0 added exactly one - High Elf Fleets' Stingers may trade a
-    // Shard Pistol and Stinger Blade for "Stinger Dagger (A2, AP(1), Bane, Takedown)", a range-0 weapon.
-    // Revisited, and the lift stands: 3.6.0's Takedown text ("this model may pick any model in the target
-    // unit as its individual target for this weapon's attacks ... Takedown attacks must be resolved
-    // before other weapons") names no combat kind, so a melee Takedown picking a model is the rule
-    // working, not leaking. The gate the lift removed would now be suppressing an intended behaviour.
+    // #412: it stopped being true. OPR 3.6.0 added exactly one weapon - High Elf Fleets' Stingers may
+    // trade a Shard Pistol and Stinger Blade for "Stinger Dagger (A2, AP(1), Bane, Takedown)", a range-0
+    // weapon. Revisited, and the lift stands: 3.6.0's Takedown text ("this model may pick any model in
+    // the target unit as its individual target for this weapon's attacks ... Takedown attacks must be
+    // resolved before other weapons") names no combat kind, so a melee Takedown picking a model is the
+    // rule working, not leaking. The gate the lift removed would now be suppressing an intended behaviour.
     //
-    // So this becomes a census rather than a prohibition: the melee carriers are a known population of
-    // one, and a NEW one still fails here so the ruling gets revisited rather than assumed.
+    // So this becomes a census rather than a prohibition: a NEW melee Takedown still fails here, so the
+    // ruling gets revisited rather than assumed.
+    //
+    // It is ONE weapon in TWO entries: the Star Quest edition of High Elf Fleets carries the same Stinger
+    // Dagger on its own "Stinger" unit. That is the shape to expect from a per-system corpus - the same
+    // weapon in each system's edition of a faction - and it is why the entries are listed rather than
+    // counted, so a genuinely new carrier is distinguishable from a familiar one arriving in another
+    // system's book.
     [Test]
     public void TheOnlyMeleeTakedownCarriers_AreTheKnownPopulation()
     {
@@ -227,7 +236,11 @@ public class ExtraAttackShippedDataTests
             }
         }
 
-        Assert.That(offenders, Is.EqualTo(new[] { "HighElfFleets/Stingers/Stinger Dagger" }),
+        Assert.That(offenders, Is.EquivalentTo(new[]
+            {
+                "GFSQ-HighElfFleets/Stinger/Stinger Dagger",
+                "HighElfFleets/Stingers/Stinger Dagger",
+            }),
             "a melee weapon carrying Takedown gets the individual-model pick in close combat - intended "
             + "for this one, so a new entry here needs the same deliberate look this one got");
     }

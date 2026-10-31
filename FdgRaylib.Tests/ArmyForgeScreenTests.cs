@@ -84,6 +84,47 @@ public class ArmyForgeScreenTests
         new BookFile { Name = "Wood Elves", Faction = "Wood Elves", GameSystem = GameSystems.AgeOfFantasy },
     };
 
+    /// <summary>
+    /// The screen's system-filter index for a slug, looked up rather than written as a literal.
+    /// #412: these tests used to say "index 1 is Age of Fantasy", which was true while the filter named
+    /// two systems by hand and silently wrong the moment it grew to five - the assertions then failed
+    /// on an ordering change that broke nothing.
+    /// </summary>
+    private static int SystemIndexOf(string slug) =>
+        FdgRaylib.Import.ArmyForgeBookService.AllSystems
+            .ToList()
+            .FindIndex(s => GameSystems.SameSystem(s, slug));
+
+    // #412: a book nobody can select is a book that is not in the game.
+    //
+    // The filter's system list was written by hand with two rows in it, which was correct while only
+    // Grimdark Future and Age of Fantasy books were bundled. Then 156 Firefight, Skirmish and Star Quest
+    // books arrived and were unreachable in the army builder - every file present, the screen looking
+    // perfectly normal, and the only way to notice being to go looking for a faction and not find it.
+    //
+    // So the list is derived now, and this is the assertion that keeps it derived: every game system the
+    // game carries books for must be selectable. It reads the SHIPPED library rather than a fixture,
+    // because the failure it guards against is a mismatch between what was bundled and what the screen
+    // offers - and a fixture cannot see that.
+    [Test]
+    public void EverySystemWithShippedBooks_IsSelectableInTheFilter()
+    {
+        var shipped = BookLibrary.Load()
+            .Select(b => GameSystems.Normalize(b.GameSystem))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Assert.That(shipped, Is.Not.Empty, "the shipped library must have books to check");
+
+        foreach (string slug in shipped)
+        {
+            Assert.That(ArmyForgeScreen.SelectableSystems,
+                Has.Some.Matches<string>(s => GameSystems.SameSystem(s, slug)),
+                $"books for '{GameSystems.DisplayName(slug)}' are bundled but the Army Forge filter "
+                + "cannot select that system, so none of them can be used to build an army");
+        }
+    }
+
     [Test]
     public void SystemFilter_DefaultsToGdf_AndSwitchShowsOnlyThatSystem()
     {
@@ -93,7 +134,7 @@ public class ArmyForgeScreenTests
         Assert.That(screen.VisibleBookNames, Is.EqualTo(new[] { "Change Disciples" }));
         Assert.That(screen.CurrentBook.GameSystem, Is.Null);
 
-        screen.SwitchSystem(1);
+        screen.SwitchSystem(SystemIndexOf(GameSystems.AgeOfFantasy));
         Assert.That(screen.VisibleBookNames, Is.EqualTo(new[] { "Change Disciples", "Wood Elves" }));
         Assert.That(GameSystems.SameSystem(screen.CurrentBook.GameSystem, GameSystems.AgeOfFantasy), Is.True,
             "switching systems adopts the first book of the new system");
@@ -109,7 +150,7 @@ public class ArmyForgeScreenTests
         BuiltArmyFile loaded = ListCompiler.Compile(library[1], new BuilderList { BookName = "Change Disciples" });
 
         Assert.That(screen.AdoptLoaded(loaded), Is.True);
-        Assert.That(screen.SystemIndex, Is.EqualTo(1));
+        Assert.That(screen.SystemIndex, Is.EqualTo(SystemIndexOf(GameSystems.AgeOfFantasy)));
         Assert.That(GameSystems.SameSystem(screen.CurrentBook.GameSystem, GameSystems.AgeOfFantasy), Is.True);
         Assert.That(screen.VisibleBookNames, Does.Contain("Wood Elves"), "the dropdown now shows the AoF list");
     }

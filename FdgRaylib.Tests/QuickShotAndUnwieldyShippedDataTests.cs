@@ -192,9 +192,13 @@ public class QuickShotAndUnwieldyShippedDataTests
         // as the Firefight and Skirmish books arrived. "Unwieldy in melee" itself still has no direct
         // corpus reference and is not meant to - it is reached through the Unwieldy Debuff wrapper and
         // through spell grants, both of which this fixture follows.
-        Assert.That(sites.Count(s => s.Rule == QuickShotAura), Is.EqualTo(23));
-        Assert.That(sites.Count(s => s.Rule == QuickShotMark), Is.EqualTo(5));
-        Assert.That(sites.Count(s => s.Rule == UnwieldyDebuff), Is.EqualTo(5),
+        //
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): the aura 23 -> 33,
+        // the mark 5 -> 9, the Unwieldy Debuff 5 -> 10. "Unwieldy in melee" still has no direct
+        // reference, which is still the intended shape.
+        Assert.That(sites.Count(s => s.Rule == QuickShotAura), Is.EqualTo(33));
+        Assert.That(sites.Count(s => s.Rule == QuickShotMark), Is.EqualTo(9));
+        Assert.That(sites.Count(s => s.Rule == UnwieldyDebuff), Is.EqualTo(10),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var problems = new List<string>();

@@ -210,7 +210,7 @@ public class ForgeCrossSectionReplaceShippedDataTests
     // `disabledSections` is empty - so OPR has not marked it dead and nothing on our side dropped it.
     //
     // Allowlisted by TARGET rather than by (book, unit): it is one upstream quirk repeated across
-    // package members, and listing 21 sites would turn every OPR roster tweak into a test edit. The
+    // package members, and listing all 24 sites would turn every OPR roster tweak into a test edit. The
     // count below is the canary - a NEW unreachable target still fails outright.
     private static readonly HashSet<string> UpstreamUnreachableTargets = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -258,7 +258,11 @@ public class ForgeCrossSectionReplaceShippedDataTests
 
         // The canary: if OPR cleans these up, the allowlist is stale and should shrink; if the count
         // grows, a new unreachable target slipped in under an already-allowlisted name.
-        Assert.That(upstream, Has.Count.EqualTo(21),
+        // Re-taken for Star Quest's 54 enemy books (242 books): 21 -> 24. The three new ones are the
+        // Star Quest editions of units already here - Jackals' Charger Beast and Scavenger Beast, and
+        // Machine Cults' Raider Cavalry - so the allowlist needed no new target names, which is itself
+        // the useful signal: the quirk travels with the shared upgrade package, not with the system.
+        Assert.That(upstream, Has.Count.EqualTo(24),
             "the 2026-10-31 census of OPR's own unreachable shared-package targets:\n  "
             + string.Join("\n  ", upstream));
     }
@@ -302,7 +306,8 @@ public class ForgeCrossSectionReplaceShippedDataTests
             }
         }
 
-        Assert.That(fedFromBelow, Has.Count.EqualTo(91),
+        // Re-taken again for Star Quest's 54 enemy books (242 books): 91 -> 132.
+        Assert.That(fedFromBelow, Has.Count.EqualTo(132),
             "census drift - re-run the audit and re-check the fix covers the new shape:\n  "
             + string.Join("\n  ", fedFromBelow));
         // Anchored by SHAPE rather than by two unit names. The 3.5.1 anchors were the War Errant

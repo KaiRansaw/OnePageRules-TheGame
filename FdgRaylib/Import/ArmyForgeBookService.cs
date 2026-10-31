@@ -29,14 +29,24 @@ public static class ArmyForgeBookService
     {
         [GameSystems.GrimdarkFuture] = 2,
         [GameSystems.AgeOfFantasy] = 4,
-        // #412: the skirmish systems. GDF=2 and AoF=4 were verified against the live API; these two are
-        // OPR's documented ordering and are NOT yet verified, because the site is refused at Claude's
-        // network gateway. They are overridable with --book-system-id for exactly that reason, and the
-        // importer prints the id it used so a wrong one is visible rather than silent. Verify by
-        // importing one Firefight book and checking a unit Kai already knows differs: Alien Hives
-        // Assault Grunts are 105 pts for 10 in Grimdark Future and 30 pts for 3 in Firefight.
+        // #412: the skirmish systems. All four of these are now VERIFIED against the live API
+        // (2026-10-30) rather than taken from OPR's documented ordering - the check that settles it is
+        // a unit whose profile differs between systems: Alien Hives Assault Grunts are 105pts for 10
+        // models in Grimdark Future and 30pts for 3 in Firefight.
         [GameSystems.GFFirefight] = 3,
         [GameSystems.AoFSkirmish] = 5,
+        // #412: Star Quest's ARMY BOOKS are id 10, not 9. Both ids answer to the same index slug and
+        // hold the same faction names, which is exactly what makes this dangerous:
+        //   id  9  grimdark-future-star-quest      the player's HEROES   (8 Alien Hives units, Grunt
+        //                                                                 Veteran 55pts Q6 D6)
+        //   id 10  grimdark-future-star-quest-ai   the ENEMY army books  (41 units, Grunt Veteran
+        //                                                                 100pts Q5 D5)
+        // A Star Quest game's opposition is built from the army books, so this slug maps to 10. The
+        // hero roster is not a GameSystems book at all - it is its own dataset under
+        // FdgRaylib/Assets/StarQuest/, built in the Hero Builder. Pulling the hero roster from id 10
+        // would give every hero the enemy's profile, and pulling the enemy books from id 9 would leave
+        // 33 of 41 enemy units missing.
+        [GameSystems.GFStarQuest] = 10,
     };
 
     /// <summary>#412 - override a game system's Army Forge id, for when a guessed one turns out wrong.</summary>
@@ -48,7 +58,8 @@ public static class ArmyForgeBookService
     /// <summary>Whether a slug's id was verified against the live API, or is still OPR's documented
     /// ordering taken on trust (#412).</summary>
     public static bool IdIsVerified(string? gameSystem) =>
-        GameSystems.Normalize(gameSystem) is GameSystems.GrimdarkFuture or GameSystems.AgeOfFantasy;
+        GameSystems.Normalize(gameSystem) is GameSystems.GrimdarkFuture or GameSystems.AgeOfFantasy
+            or GameSystems.GFFirefight or GameSystems.AoFSkirmish or GameSystems.GFStarQuest;
 
     private static int GameSystemId(string? gameSystem)
     {
@@ -227,9 +238,13 @@ public static class ArmyForgeBookService
 
     /// <summary>Every game system the game carries books for (#412: all four, not just the two that
     /// happened to be downloaded first).</summary>
+    // Ordered to match the lobby's own system list (GameSystemInfo.DisplayOrder): the Grimdark Future
+    // family, then the Age of Fantasy family. The Army Forge screen's system filter is built straight
+    // from this (#412), so the two screens list the systems in the same order rather than each in its
+    // own - and nothing else here depends on the order.
     public static IReadOnlyList<string> AllSystems { get; } = new[]
     {
-        GameSystems.GrimdarkFuture, GameSystems.GFFirefight,
+        GameSystems.GrimdarkFuture, GameSystems.GFFirefight, GameSystems.GFStarQuest,
         GameSystems.AgeOfFantasy, GameSystems.AoFSkirmish,
     };
 

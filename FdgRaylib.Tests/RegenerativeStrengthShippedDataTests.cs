@@ -149,11 +149,18 @@ public class RegenerativeStrengthShippedDataTests
         // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): still two carriers, but
         // Alien Hives' Psycho-Rex is gone and Carnivo-Rex carries the rule now. Both are still one-model
         // units, which is what the simplification above rests on.
-        Assert.That(sites.Count, Is.EqualTo(2),
+        //
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 2 sites became 4.
+        // The fixture's name survives, because what doubled is BOOKS and not CARRIERS - it is the same
+        // two units, each now published in a Grimdark Future edition and a Star Quest one. So the
+        // assertions below compare DISTINCT units and ARMIES rather than raw book file names: a claim
+        // about which units carry a rule should not read as a new carrier appearing every time a game
+        // system is imported.
+        Assert.That(sites.Count, Is.EqualTo(4),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
-        Assert.That(sites.Select(s => s.Unit),
+        Assert.That(sites.Select(s => s.Unit).Distinct(),
             Is.EquivalentTo(new[] { "Engine of Suffering", "Carnivo-Rex" }));
-        Assert.That(sites.Select(s => s.Book),
+        Assert.That(sites.Select(s => ShippedBooks.ArmyName(s.Book)).Distinct(),
             Is.EquivalentTo(new[] { "DarkElfRaiders", "AlienHives" }));
 
         foreach (Site site in sites)

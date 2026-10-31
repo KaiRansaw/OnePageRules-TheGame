@@ -94,11 +94,20 @@ public class ArmyForgeScreen : IAppScreen
     // GDF); the dropdown lists only the selected system's books, which also keeps the four colliding
     // Disciples names from ever appearing together. The combo is hidden when the library is
     // single-system (the DemoBook fallback, the test seam).
+    //
+    // #412: DERIVED from the one list of systems the game carries books for, not hand-written here. It
+    // used to name Grimdark Future and Age of Fantasy only, which was true while those were the only
+    // books bundled - and then 156 Firefight, Skirmish and Star Quest books arrived and were
+    // UNREACHABLE in the army builder, because a system with no row here has no way to be selected.
+    // Shipping books nobody can pick is a silent failure: the Forge looked complete, the files were all
+    // present, and the only way to notice was to go looking for a faction and not find it.
+    //
+    // InitSystems still hides a system that has no books in the library, so a row here costs nothing
+    // until its books exist - which is the right way round. A row missing costs a whole game mode.
     private static readonly (string Label, string Slug)[] Systems =
-    {
-        ("Grimdark Future", GameSystems.GrimdarkFuture),
-        ("Age of Fantasy", GameSystems.AgeOfFantasy),
-    };
+        ArmyForgeBookService.AllSystems
+            .Select(slug => (GameSystems.DisplayName(slug), slug))
+            .ToArray();
     private int _systemIndex;
     private int[] _visibleBooks = Array.Empty<int>();   // library indices, dropdown order
     private string[] _visibleNames = Array.Empty<string>();
@@ -215,6 +224,10 @@ public class ArmyForgeScreen : IAppScreen
     // #378 test accessors (the combo state itself only exists inside Draw).
     internal int SystemIndex => _systemIndex;
     internal IReadOnlyList<string> VisibleBookNames => _visibleNames;
+
+    /// <summary>Test seam (#412): the system slugs the filter can select, in dropdown order.</summary>
+    internal static IReadOnlyList<string> SelectableSystems =>
+        Systems.Select(s => s.Slug).ToArray();
     internal BookFile CurrentBook => _book;
 
     /// <summary>Adopt a book as the one being edited against, rebuilding the rule glossary the #259 hover

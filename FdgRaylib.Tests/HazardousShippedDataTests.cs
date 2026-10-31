@@ -155,11 +155,14 @@ public class HazardousShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(61),
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 61 -> 91, all of
+        // them the Star Quest editions of books already counted. Still every reference on a weapon.
+        Assert.That(sites.Count, Is.EqualTo(91),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[]
         {
             "AoFS-Goblins", "AoFS-Ratmen", "GFF-GoblinReclaimers", "GFF-RatmenClans",
+            "GFSQ-GoblinReclaimers", "GFSQ-RatmenClans",
             "GoblinReclaimers", "RatmenClans",
         }));
     }

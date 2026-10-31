@@ -147,7 +147,10 @@ public class StrafingShippedDataTests
     {
         List<StrafeSite> sites = CrossingStrikeSites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(24),
+        // Re-taken for Star Quest's 54 enemy books (242 books): 24 -> 41. Crossing Strike travelled to
+        // the Star Quest editions of the same bombers, and every new carrier still has Aircraft or
+        // Flying - which the fly-over assertion below is what actually checks.
+        Assert.That(sites.Count, Is.EqualTo(41),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         RuleResolver resolver = CoreRuleCatalog.CreateResolver();

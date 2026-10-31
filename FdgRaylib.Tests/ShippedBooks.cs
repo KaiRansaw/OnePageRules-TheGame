@@ -14,11 +14,29 @@ namespace FdgRaylib.Tests;
 /// are filename-prefixed "AoF-" by scripts/bake-aof-books.sh - the filename convention IS the
 /// contract here, and the census fixtures verify the books' GameSystem field independently.
 /// <para>
-/// #412: the books now live in a folder per game system ("Grimdark Future", "Age of Fantasy", and
-/// the still-empty "GF Firefight" and "AoF Skirmish"), because OPR publishes a separate book per
-/// system and roughly another 87 are about to arrive. Every lookup here is therefore recursive, and
-/// <see cref="Path"/> finds a book by file name wherever it sits - so a fixture never has to know
-/// which system folder a book is in.
+/// #412: the books now live in a folder per game system - "Grimdark Future", "Age of Fantasy",
+/// "GF Firefight", "AoF Skirmish" and "GF Star Quest" - because OPR publishes a separate book per
+/// system. Every lookup here is therefore recursive, and <see cref="Path"/> finds a book by file name
+/// wherever it sits, so a fixture never has to know which system folder a book is in.
+/// </para>
+/// <para>
+/// <b>A warning for whoever hits this next.</b> <see cref="GdfPaths"/> means "every bundled book
+/// except the AoF ones", which today is four game systems: Grimdark Future, GF Firefight, AoF
+/// Skirmish and GF Star Quest. So every hand-typed total in the ShippedData census fixtures counts
+/// across all four, and <b>importing a new game system moves every single one of them.</b> That
+/// happened twice on 2026-10-31 alone - the corpus went 88 books to 188 (Firefight and Skirmish) and
+/// then to 242 (Star Quest), and each expansion invalidated the same ~20 totals and cost a full pass
+/// of re-taking them. Neither pass caught a defect; the counts only ever reported the growth we had
+/// just caused.
+/// </para>
+/// <para>
+/// The counts are still worth keeping - a census that moves when nobody imported anything is a real
+/// signal - but they are the weakest assertion in each of those fixtures, and the cheap way to
+/// survive the next OPR expansion is to lead with the STRUCTURAL invariant (every carrier is a
+/// single-model unit; every referencing book embeds the definition; the variant routing is
+/// unchanged) and let the total be informational beside it. Several fixtures already do exactly
+/// that. Converting the rest is a tidy-up nobody has needed badly enough yet; if you are reading
+/// this because you are re-taking twenty numbers again, that has changed.
 /// </para>
 /// </summary>
 internal static class ShippedBooks
@@ -36,6 +54,31 @@ internal static class ShippedBooks
     public static IEnumerable<string> GdfPaths() =>
         AllPaths().Where(p => !System.IO.Path.GetFileName(p)
             .StartsWith("AoF-", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The ARMY a book file belongs to, with its game-system prefix removed: both
+    /// "GFSQ-LustDisciples" and "LustDisciples" are "LustDisciples".
+    /// <para>
+    /// #412: OPR publishes the same faction once per system, so a fixture whose claim is about an
+    /// ARMY ("only Lust Disciples and War Disciples print the immediate variant") must compare armies
+    /// and not file names, or it reads as a new carrier appearing every time a system is imported.
+    /// The prefixes are the filename convention the bake scripts apply, which is the same contract
+    /// <see cref="GdfPaths"/> already leans on.
+    /// </para>
+    /// </summary>
+    public static string ArmyName(string bookPathOrFileName)
+    {
+        string name = System.IO.Path.GetFileNameWithoutExtension(bookPathOrFileName);
+        foreach (string prefix in SystemPrefixes)
+        {
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return name[prefix.Length..];
+        }
+
+        return name;
+    }
+
+    /// <summary>Longest first, so "AoFS-" is never mistaken for "AoF-".</summary>
+    private static readonly string[] SystemPrefixes = { "AoFS-", "GFSQ-", "GFF-", "AoF-" };
 
     /// <summary>
     /// A bundled book by file name, wherever its game-system folder puts it. Throws rather than

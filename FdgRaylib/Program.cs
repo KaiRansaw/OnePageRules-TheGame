@@ -309,6 +309,10 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
         (FDG.ArmyBuilding.GameSystems.GFFirefight, "GF Firefight", "GFF-"),
         (FDG.ArmyBuilding.GameSystems.AgeOfFantasy, "Age of Fantasy", "AoF-"),
         (FDG.ArmyBuilding.GameSystems.AoFSkirmish, "AoF Skirmish", "AoFS-"),
+        // #412: Star Quest's ENEMY books (Army Forge id 10). Its index slug is the un-suffixed one,
+        // which is why this reads like the others; see ArmyForgeBookService's id map for the hero-side
+        // dataset this is NOT.
+        (FDG.ArmyBuilding.GameSystems.GFStarQuest, "GF Star Quest", "GFSQ-"),
     };
 
     int built = 0, pending = 0, failed = 0, noIndex = 0, skipped = 0;

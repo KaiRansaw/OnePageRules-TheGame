@@ -41,7 +41,10 @@ public class PerModelSectionShippedDataTests
         // 188) rather than a shape change. The split is 16 on 3-model squads and 16 on single-model
         // heroes, and 3.6.0 renamed the idiom from "Any model may REPLACE one X" to "Any model may TAKE
         // one X attachment" - the stamp and the per-model arithmetic are unchanged.
-        Assert.That(anyModel, Has.Count.EqualTo(32), "the 2026-10-31 census of the 3.6.0 corpus");
+        //
+        // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 32 -> 48. Still the
+        // same idiom; see ShippedBooks for why every total in this family moved at once.
+        Assert.That(anyModel, Has.Count.EqualTo(48), "the 2026-10-31 census of the 3.6.0 corpus");
         foreach ((string bookName, RosterUnit unit, UpgradeSection section) in anyModel)
         {
             Assert.That(section.PerModelBudget, Is.True, $"{bookName} / {unit.Name} / {section.Label}");
