@@ -8192,5 +8192,46 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2+, and any other wound on a 6+."
+  },
+  {
+    "name": "Dodge",
+    "passive": [
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Fatigued"
+              }
+            }
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": -1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "If most models in this unit have this rule, as long as they aren't Fatigued, enemy units get -1 to hit rolls in melee against them."
   }
 ]
