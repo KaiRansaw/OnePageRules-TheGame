@@ -50,6 +50,54 @@ know the name yet. Those are army-building paths with their own fixtures (`WorkI
 `WorkItems/006`), so they are their own slice rather than a drive-by here. The *"only once per army"*
 half is army-building too and is likewise not enforced yet.
 
+**Closed the same day, below.**
+
+### 2026-10-31 - the rest of Unique Hero, and a rule that was enforced in dead code
+
+Kai picked this as the next slice. All four deferred facets are done, plus one nobody had noticed.
+
+`CoreRuleCatalog.HeroRuleNames = { "Hero", "Unique Hero" }` is now the single answer to "is this a
+Hero?", and four sites read it instead of matching `"Hero"` by hand:
+
+| site | what was wrong |
+|---|---|
+| `ForceOrgValidator.IsHero` | named characters didn't count toward the Hero cap, so an army could field more Heroes than the book allows and the validator said nothing |
+| `HeroJoinResolver` | *"Heroes with up to Tough(6) may deploy as part of one multi-model unit"* - a named character couldn't attach to a squad at all |
+| `DefaultBaseEstimator` | a Hero gets a 40/50/60mm round base by bulk; named characters got infantry sizing |
+| `CampaignRules.IsHero` / `FirefightCampaign` | a named character read as an ordinary unit, and killing one scored 1 XP instead of 2 |
+
+**The one nobody had noticed.** OPR 3.5 called the limit **Unique**; 3.6 folded it into **Unique Hero**.
+`ListValidator` has raised a *blocking* Error for a second copy of a Unique unit since the Army Forge
+existed, and it matched `"Unique"`. Measured across the 242 bundled books:
+
+| spelling | references |
+|---|---:|
+| `"Unique Hero"` | **213** |
+| `"Unique"` | **0** |
+
+So for every book in the game that Error could not fire. Code, comment and test all agreed with each
+other, and none of them agreed with the data - the second time today that shape has turned up (Villain
+was the first). `CoreRuleCatalog.UniqueRuleNames` holds both spellings; `"Unique"` stays so a book
+imported before the rename still works, because dropping it would just move the dead spot.
+
+Two layers enforce it, deliberately: `ListValidator` raises an **Error** while a list is being built
+against its book (the Forge, and the launch gate via the editable session), and
+`ForceOrgValidator` raises a **warning** for an already-compiled `.fdgarmy` loaded in the lobby or Army
+Builder, which never passes through `ListValidator` because it no longer has a book or its picks.
+
+**A trap recorded in code and in a test.** The tidy-looking move is to add a `UniqueHero` marker
+definition to `CoreRuleCatalog` next to `Hero` and `Transport`. That would **shadow the supplement's
+definition and silently delete its `addRule` grant of "Hero"** - the entire in-game half of the rule -
+leaving something that resolves, validates and does nothing. The catalog therefore carries only
+`UniqueHeroRuleName`, and `UniqueHeroTests.TheCatalog_DoesNotDefineUniqueHero_BecauseTheSupplementDoes`
+fails if anyone tries.
+
+Pinned on both sides: `UniqueHeroTests` (13 cases - the predicate, the Hero cap, once-per-army in the
+Forge under both spellings, base sizing, the shared name lists) and `UniqueHeroShippedDataTests` (4 -
+the corpus count, that every `*Unique*` spelling the books use is one the engine knows, that every
+once-per-army unit is also a Hero, and that the supplement still carries the counts-as-Hero grant).
+That second fixture is the one that would have caught this on the day the 3.6 books landed.
+
 ### 2026-10-30 - dangerous terrain onto its 3.6.0 wording (Q8)
 
 Kai picked the terrain cluster (dangerous terrain / falling / jumping). **Reading the books first changed
