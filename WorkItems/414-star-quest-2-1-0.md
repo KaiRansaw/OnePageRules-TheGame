@@ -18,6 +18,44 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-31 - Fear done, and the bigger thing behind it: Star Quest has no Melee Results step
+
+Started on Fear and found the reason its wording differs, which turned out to be the actual bug.
+
+Every other book's Morale section has **two** triggers: wounds leaving a unit at half strength, and
+losing a melee (*"compare the number of wounds each unit took, the highest total loses, and must take a
+Morale Test"*). **GFSQ Core Rules v2.1.0 has only the first.** There is no melee-results paragraph
+anywhere in it. The engine ran the who-won rule in every melee regardless of system, so a Star Quest
+melee applied a rule Star Quest does not have - and one with teeth, because the loser of an even
+exchange gets Shaken at full health.
+
+That is also the whole explanation for Fear's two wordings:
+
+| | Fear(X) |
+|---|---|
+| GF / AoF / GFF / AoFS | "+X wounds when checking **who won**" |
+| GFSQ 2.1.0 | "+X wounds when checking **if they must take a Morale Test** (must deal at least one wound)" |
+
+Not a reworded rule so much as the same rule pointed at the only morale trigger that exists. So the fix
+is one branch, not two: in Star Quest `DetermineMeleeWinnerStage` runs the ordinary half-strength test
+for **both** units instead of the who-won chain, and each unit's check counts its **opponent's** Fear
+(the rule reads "enemies count as having taken +X wounds", so a bearer inflates the enemy's total, not
+its own). `Effect.ExtraMeleeWoundCount` is untouched - both readings want the same number off the same
+hook, so no system needs a Fear definition of its own.
+
+Three consequences worth knowing, all pinned:
+
+- The *"must deal at least one wound"* clause needed **no code**: `WoundsLeftUnitAtHalfStrength` already
+  returns false for a unit that took no real wounds, whatever the counted extras.
+- **Both** units can now be Shaken by one melee. The who-won rule could only ever test one, because only
+  one side can lose.
+- The unit that dealt **more** wounds can be the one that tests, if it was the one hurt past half. Under
+  who-won it would have been the winner and tested nothing.
+
+`CoreRulesProfile` is the seam, following `ForceOrgProfile`'s shape rather than building a parallel rule
+catalog. `StarQuestMeleeMoraleTests` has 13 cases, including Grimdark Future keeping the who-won rule
+unchanged and Fear not working as a defensive rule on its own carrier.
+
 ### 2026-10-31 - Scout, Fear and Blast per system: the books, read word for word
 
 Research for the next slice, recorded before building anything, because **two of the three are not what
