@@ -295,8 +295,35 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
         (FDG.ArmyBuilding.GameSystems.AoFSkirmish, "AoF Skirmish", "AoFS-"),
     };
 
-    int built = 0, pending = 0, failed = 0, noIndex = 0;
+    int built = 0, pending = 0, failed = 0, noIndex = 0, skipped = 0;
     var missing = new List<string>();
+
+    // #412: OPR renames factions between ruleset versions, and the index is keyed by name - so a
+    // renamed book stops matching the file we already have, gets written out a second time under its
+    // new name, and leaves the old file behind as a stale duplicate of the same faction. The map says
+    // which of our names OPR now publishes under; the rebuild keeps the original file and records the
+    // old name in previousNames so saved armies and share links still resolve.
+    var renames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    var skipNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    string renamePath = Path.Combine(booksRoot, "BookRenames.json");
+    if (File.Exists(renamePath))
+        try
+        {
+            using JsonDocument renameDoc = JsonDocument.Parse(File.ReadAllText(renamePath));
+            if (renameDoc.RootElement.TryGetProperty("renames", out JsonElement renameList))
+                foreach (JsonElement e in renameList.EnumerateArray())
+                    if (e.TryGetProperty("from", out JsonElement f) && e.TryGetProperty("to", out JsonElement t)
+                        && f.GetString() is { Length: > 0 } fromName && t.GetString() is { Length: > 0 } toName)
+                        renames[fromName] = toName;
+            if (renameDoc.RootElement.TryGetProperty("skip", out JsonElement skipList))
+                foreach (JsonElement e in skipList.EnumerateArray())
+                    if (e.TryGetProperty("name", out JsonElement n) && n.GetString() is { Length: > 0 } skipName)
+                        skipNames.Add(skipName);
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"BookRenames.json is malformed, continuing without it: {ex.Message}");
+        }
 
     foreach ((string slug, string folder, string prefix) in systemFolders)
     {
@@ -327,8 +354,22 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                 }
                 catch (JsonException) { /* a malformed existing book just means no name to reuse */ }
 
+        // #412: our old names for a book OPR now publishes under a different one, so the rebuild can
+        // find the file we already have. The same new name can come from two old ones (Grimdark
+        // Future's "Wormhole Daemons of Change" and Age of Fantasy's "Rift Daemons of Change" are both
+        // "Daemons of Change" now), but only one of them exists in any one system's folder.
+        List<string> OldNamesFor(string currentName) =>
+            renames.Where(kv => string.Equals(kv.Value, currentName, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => kv.Key).ToList();
+
         foreach ((string bookName, string uid) in index.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
         {
+            if (skipNames.Contains(bookName))
+            {
+                Console.WriteLine($"   {bookName}: skipped - listed in {Path.GetFileName(renamePath)}");
+                skipped++;
+                continue;
+            }
             string url = FdgRaylib.Import.ArmyForgeBookService.BookUrl(uid, slug);
             string cached = Path.Combine(cacheDir, FdgRaylib.Import.ArmyForgeBookService.CacheFileName(url));
             if (!File.Exists(cached))
@@ -347,14 +388,36 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                     warn: msg => Console.WriteLine($"      {msg}"));
                 book.GameSystem = slug == FDG.ArmyBuilding.GameSystems.GrimdarkFuture ? null : slug;
 
+                // #412: an index entry with no units is not a book - OPR 3.6.0 split the daemon books
+                // into four per-god books each and left the parent entry behind with an empty roster.
+                // Writing it out would put an unplayable faction in the Army Forge screen.
+                if (book.Units.Count == 0)
+                {
+                    Console.WriteLine($"   {bookName}: skipped - the live book has no units");
+                    skipped++;
+                    continue;
+                }
+
+                // #412: the file we already have for this faction, under whatever name it went by then.
+                string? priorName = existing.ContainsKey(book.Name)
+                    ? book.Name
+                    : OldNamesFor(book.Name).FirstOrDefault(existing.ContainsKey);
+                if (priorName != null && !string.Equals(priorName, book.Name, StringComparison.OrdinalIgnoreCase))
+                    book.PreviousNames = new List<string> { priorName };
+
                 // The supplements, in the order scripts/bake-aof-books.sh established: the GDF set
                 // always, then AoF's for the fantasy systems, then the per-book override LAST so its
                 // redefinitions win (#375 C9).
                 var supplements = new List<string> { Path.Combine(booksRoot, "GdfRuleSupplement.json") };
                 bool fantasy = slug is FDG.ArmyBuilding.GameSystems.AgeOfFantasy or FDG.ArmyBuilding.GameSystems.AoFSkirmish;
                 if (fantasy) supplements.Add(Path.Combine(booksRoot, "AofRuleSupplement.json"));
-                string overridePath = Path.Combine(booksRoot, "AofBookOverrides", bookName + ".json");
-                if (fantasy && File.Exists(overridePath)) supplements.Add(overridePath);
+                // #412: the override files are named for the book as it was called when they were
+                // written, so fall back through the names this faction has gone by.
+                foreach (string candidate in new[] { book.Name }.Concat(OldNamesFor(book.Name)))
+                {
+                    string overridePath = Path.Combine(booksRoot, "AofBookOverrides", candidate + ".json");
+                    if (fantasy && File.Exists(overridePath)) { supplements.Add(overridePath); break; }
+                }
                 supplements.RemoveAll(sp => !File.Exists(sp));
                 if (supplements.Count > 0)
                 {
@@ -362,7 +425,16 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                     BookRuleSupplement.Apply(book, merged, msg => Console.WriteLine($"      {msg}"));
                 }
 
-                string outPath = existing.TryGetValue(book.Name, out string? kept)
+                // #412: the other two curation passes the original bake applied. Both are deterministic
+                // functions of the book, which is why a wholesale rebuild is safe - but they are not
+                // optional. Without the first, every rebuilt book loses the faction default effect sets
+                // #239 stamped; without the second, every rectangular base goes back to OPR's
+                // length-first spec and faces across its short axis (#225).
+                WeaponEffectAssigner.ApplyToBook(book);
+                var baseEstimates = new List<string>();
+                BaseOrientationRetrofit.ApplyToBook(book, baseEstimates);
+
+                string outPath = priorName != null && existing.TryGetValue(priorName, out string? kept)
                     ? kept
                     : Path.Combine(systemDir, prefix
                         + new string(book.Name.Where(char.IsLetterOrDigit).ToArray())
@@ -374,7 +446,9 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                     File.WriteAllText(outPath, JsonSerializer.Serialize(book, RuleJson.Options));
                 }
                 Console.WriteLine($"   {book.Name} {book.Version}: {book.Units.Count} units, {book.Spells.Count} spells"
-                    + $" -> {Path.GetFileName(outPath)}{(dryRun ? "  (dry run)" : "")}");
+                    + $" -> {Path.GetFileName(outPath)}{(dryRun ? "  (dry run)" : "")}"
+                    + (book.PreviousNames is { Count: > 0 } pn ? $"   [OPR renamed '{pn[0]}']" : string.Empty)
+                    + (baseEstimates.Count > 0 ? $"   ({baseEstimates.Count} base(s) estimated)" : string.Empty));
                 built++;
             }
             catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
@@ -387,7 +461,7 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
 
     Console.WriteLine();
     Console.WriteLine($"{built} book(s) {(dryRun ? "would be rebuilt" : "rebuilt")}, {pending} waiting on a saved "
-        + $"response, {failed} failed, {noIndex} system(s) with no index saved.");
+        + $"response, {skipped} skipped, {failed} failed, {noIndex} system(s) with no index saved.");
     if (missing.Count > 0)
     {
         Console.WriteLine();

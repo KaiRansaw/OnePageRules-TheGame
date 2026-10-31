@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "#412 - names OnePageRules has changed, and index entries that are not real books.",
+    "Army Forge's official-book index is keyed by NAME, and --rebuild-books reuses an existing",
+    "book's file by matching that name. When OPR renames a faction the match fails, so the rebuild",
+    "writes a second file under the new name and leaves the old one behind as a stale duplicate.",
+    "",
+    "'renames' maps the name WE bundled the book under to the name OPR publishes today. The rebuild",
+    "keeps the original file, adopts OPR's current name inside it, and records the old one in the",
+    "book's previousNames so already-saved armies and Army Forge share links still resolve",
+    "(BookFile.MatchesFactionName). 'system' is the slug the rename applies to; a rename with no",
+    "system applies to every system, which is what the 3.6.0 daemon renames needed - the same",
+    "faction was renamed in Grimdark Future, Firefight, Age of Fantasy and Skirmish at once.",
+    "",
+    "'skip' lists index entries that are not books: OPR 3.6.0 split the daemon books into four",
+    "per-god books each and left the parent entry in the index with zero units. --rebuild-books also",
+    "skips any zero-unit book on its own, so this list is for naming them rather than for the skip."
+  ],
+  "renames": [
+    { "from": "Wormhole Daemons of Change", "to": "Daemons of Change", "since": "OPR 3.6.0" },
+    { "from": "Wormhole Daemons of Lust", "to": "Daemons of Lust", "since": "OPR 3.6.0" },
+    { "from": "Wormhole Daemons of Plague", "to": "Daemons of Plague", "since": "OPR 3.6.0" },
+    { "from": "Wormhole Daemons of War", "to": "Daemons of War", "since": "OPR 3.6.0" },
+    { "from": "Rift Daemons of Change", "to": "Daemons of Change", "since": "OPR 3.6.0" },
+    { "from": "Rift Daemons of Lust", "to": "Daemons of Lust", "since": "OPR 3.6.0" },
+    { "from": "Rift Daemons of Plague", "to": "Daemons of Plague", "since": "OPR 3.6.0" },
+    { "from": "Rift Daemons of War", "to": "Daemons of War", "since": "OPR 3.6.0" },
+    { "from": "Saurian Starhost", "to": "Saurian Starhosts", "since": "OPR 3.6.0" }
+  ],
+  "skip": [
+    { "name": "Wormhole Daemons", "why": "empty parent entry since OPR 3.6.0 - split into the four Daemons of X books" },
+    { "name": "Rift Daemons", "why": "empty parent entry since OPR 3.6.0 - split into the four Daemons of X books" },
+    { "name": "Gangs of New Eden", "why": "listed in the Firefight index with zero units" },
+    { "name": "Guilds of the Nexus", "why": "listed in the Skirmish index with zero units" }
+  ]
+}
