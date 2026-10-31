@@ -18,6 +18,47 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-31 - Blast: the rules decided and tested, the delivery NOT built
+
+**Open, and deliberately stopped half way.** `BlastSpreadRules` holds the whole distribution with 14
+tests; nothing calls it yet, so Blast still plays the full-scale games' way in all five systems.
+
+**The fork Kai settled.** The 3.6.0 skirmish wording is *"each hit is multiplied by X. Hits must be split
+evenly between the target and all enemy units within 3" of any model from the target (defender picks
+how), but each unit may only take up to as many hits as models in it."* Read absolutely literally, that
+final clause makes Blast **worse than no Blast**: 3 hits x Blast(3) = 9, capped at a 2-model squad's 2,
+delivers 2 where the plain volley delivered 3. The older wording of the same rule (GFSQ 2.0.1) caps the
+MULTIPLIER by the cluster's models instead and ships worked examples that match - an A2 Blast(3) gives a
+2-model unit 4 hits, and a 1-model unit takes 2. Shown both sets of numbers, Kai picked the
+cluster-capped reading ("spread it wide"), so that is what is implemented:
+
+| | hits delivered |
+|---|---|
+| 3-shot Blast(3), 3 hits, lone 2-model squad | **6** - identical to today, and to GF/AoF |
+| same, squad flanked by two lone enemies | **9**, split 3 / 3 / 3 |
+
+Also decided: **"defender picks how" is not offered as a prompt.** An even split with the remainder to
+the target is deterministic, and a prompt per blast in a game that fires dozens of shots would cost more
+than it adds. A deviation, written down rather than taken quietly.
+
+**What the remaining slice needs** (also in the class comment, because that is where the next person
+will be standing):
+
+- a looping resolver inside `FireStage`, on `ResolveSpellDamageStage`'s shape - a `ParentStage` that pops
+  one share per pass, builds a fresh `CombatMetadata`, and runs
+  `DetermineSaveRollsNeeded -> RollToSave -> AssignWounds -> ApplyWounds` - plus a loop-decision sibling
+  like `DetermineMoreSpellTargetsStage`;
+- the spilled hits must **not** go through `SyntheticHitResolution`, which is the obvious choice and the
+  wrong one: it runs the whole hit-complete fold, so Blast would multiply a second time. They are
+  already-multiplied hits needing the weapon's AP and the **receiving** unit's defensive rules;
+- each receiving unit needs its own cover check seeded (Blast ignores Cover, so zero) and its own morale
+  consequence, since a bystander taken to half strength tests like any other.
+
+Three ways to get a half-built version subtly wrong, so the arithmetic shipped first and the delivery is
+its own slice. **Half-applying it would be worse than not touching it**: capping the multiplier by the
+cluster while still landing every hit on the target would concentrate 9 hits on one squad where the book
+spreads 3/3/3.
+
 ### 2026-10-31 - Scout done, and it was dead too
 
 Star Quest's whole Scout is one line: *"May be deployed anywhere fully within 9" of its deployment
