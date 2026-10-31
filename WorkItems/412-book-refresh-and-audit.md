@@ -83,9 +83,50 @@ marker, once bare, both times leaving the doc comment above it reading 6". Resto
 2.1.0 text quoted in the file. 12f is not a harmless default: it is 2.0.1's radius under 2.1.0's
 documentation, and no one watching a morale test can tell which radius produced it.
 
-**Still open from this pass:** the Star Quest books stamp `"version": "OPR v3.6.0"` in their
-metadata, but Star Quest's ruleset is 2.1.0 - cosmetic, and only visible if a book's version is ever
-shown. AoF: Quest's own books (Army Forge id 7 heroes / id 8 enemies, 48 of them) are still not
+### The same root cause again, and this one is bigger: "Unique Hero"
+
+Looking for other engine code that matches a rule by NAME turned up three sites
+(`HasRule(..., "...")`): `"Hero"` in `DefaultBaseEstimator`, `"Ambush"` in `QuestChallenges`, and
+`"Unique"` in `ListValidator`. Measured against the bundled corpus:
+
+| name matched | refs in books | books |
+|---|---:|---:|
+| `Hero` | 780 | 232 |
+| `Ambush` | 86 | 63 |
+| **`Unique`** | **0** | **0** |
+| `Unique Hero` | 147 | 66 |
+
+**`ListValidator`'s once-per-army check is dead for the entire 3.6.0 corpus.** 3.6.0 renamed the rule
+to **Unique Hero** - "Counts as having Hero, and this model may only be taken once per army" - and
+**all 147 carriers have it INSTEAD of plain `Hero`, never alongside.** So today you can field two of
+the same named character, and five further things are wrong because those units do not count as
+Heroes at all:
+
+1. **Once-per-army is not enforced** (`ListValidator`, the dead `"Unique"` match).
+2. **Force org** - "1 Hero per 500pts" does not count them.
+3. **Hero unit-joining** (`HeroJoinResolver`) - a named character cannot join a unit.
+4. **Base-size estimation** (`DefaultBaseEstimator.isHero`) - wrong default base for 147 units.
+5. **The Villain aura** - 30 of Star Quest's named enemy characters.
+
+Only #5 is fixed, because it is inside the slice this pass was already doing:
+`VillainRuleNames` lists `Unique Hero` and the two fixtures above assert both that the engine knows
+the name and that no unit carries both names (the exclusivity is the whole reason the entry is
+needed). **#1-#4 are deliberately deferred, not dropped** - they are army-building paths with their
+own fixtures, and they want one shared "counts as a Hero" helper rather than four more string
+matches. That helper plus the Unique cap is the next slice.
+
+The old `"Unique"` definition stays in the supplement: it is harmless, and a pre-3.6.0 saved list can
+still carry it.
+
+**The general lesson, now twice over:** any engine check whose trigger is a *rule name* needs one
+test that the name exists in the shipped data. `RuleFireLint` proves a rule CAN fire; nothing proved
+anything CARRIES it. Villain and Unique were both fully implemented, fully unreachable and completely
+silent, and the two together had been that way across an entire ruleset migration.
+
+**Still open from this pass:** the four Hero-equivalence items above. The Star Quest books stamp
+`"version": "OPR v3.6.0"` in their metadata, but Star Quest's ruleset is 2.1.0 - cosmetic, visible
+only in the `--audit` printout, and not worth rewriting 54 files for until the importer stamps it
+correctly. AoF: Quest's own books (Army Forge id 7 heroes / id 8 enemies, 48 of them) are still not
 imported.
 
 Engine 3,886 / 0 (3 skipped). Villain carrier fixture 5 / 0.
