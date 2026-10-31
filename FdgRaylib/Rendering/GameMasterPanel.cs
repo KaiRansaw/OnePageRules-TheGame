@@ -212,10 +212,40 @@ public sealed class GameMasterPanel
         QuestChallenges.BossFights, QuestChallenges.HeroInjuries, QuestChallenges.IncreasedAlertness,
         QuestChallenges.TimeOfDayName, QuestChallenges.WeatherName, QuestChallenges.RandomEvents,
     };
-    private static readonly List<KeyValuePair<int, string>> EventList = QuestChallenges.EventNames.OrderBy(e => e.Key).ToList();
-    private static readonly string[] EventLabels =
-        new[] { "Roll two dice" }.Concat(EventList.Select(e => $"{e.Key} - {e.Value}")).ToArray();
-    private static readonly string[] ItemLabels = QuestItems.All.Select(i => $"{i.Name} ({i.Cost}c)").ToArray();
+    // #418: the event names differ between the two Quest systems (Psychic Fog / Mystic Fog), so the
+    // Game Master's list is built for the game being played rather than once at class load. Cached per
+    // system, because this is read every frame the panel is open.
+    private static readonly Dictionary<FDG.EGameSystem, List<KeyValuePair<int, string>>> EventListCache = new();
+    private static readonly Dictionary<FDG.EGameSystem, string[]> EventLabelCache = new();
+
+    private static List<KeyValuePair<int, string>> EventsFor(FDG.EGameSystem system)
+    {
+        if (EventListCache.TryGetValue(system, out List<KeyValuePair<int, string>>? cached)) return cached;
+        var built = QuestChallenges.EventsFor(system).ToList();
+        EventListCache[system] = built;
+        return built;
+    }
+
+    private static string[] EventLabelsFor(FDG.EGameSystem system)
+    {
+        if (EventLabelCache.TryGetValue(system, out string[]? cached)) return cached;
+        string[] built = new[] { "Roll two dice" }
+            .Concat(EventsFor(system).Select(e => $"{e.Key} - {e.Value}")).ToArray();
+        EventLabelCache[system] = built;
+        return built;
+    }
+    // #418: an item's name and the coin it costs are both per Quest system.
+    private static readonly Dictionary<FDG.EGameSystem, string[]> ItemLabelCache = new();
+
+    private static string[] ItemLabelsFor(FDG.EGameSystem system)
+    {
+        if (ItemLabelCache.TryGetValue(system, out string[]? cached)) return cached;
+        string coin = FDG.Quest.QuestItemSkin.CurrencySuffix(system);
+        string[] built = QuestItems.All
+            .Select(i => $"{FDG.Quest.QuestItemSkin.Name(system, i.Name)} ({i.Cost}{coin})").ToArray();
+        ItemLabelCache[system] = built;
+        return built;
+    }
     private static readonly string[] SkillNames =
         QuestSkill.All.Where(s => !s.Common && !s.Feat).Select(s => s.Name).OrderBy(n => n).ToArray();
 
@@ -502,7 +532,8 @@ public sealed class GameMasterPanel
             float total = hero.Models.Sum(m => m.TotalWounds);
             float left = hero.Models.Sum(m => m.TotalWounds - m.WoundsDealt);
             string state = hero.GetIsAlive() ? $"{WoundFormat.Format(left)}/{WoundFormat.Format(total)} wounds" : "UNCONSCIOUS";
-            UiText.Bullet($"{sheet.Name} (level {sheet.Level}, {sheet.Xp} XP): {state}, power {hero.QuestPower}/{sheet.Power}, {sheet.Credits}c");
+            string money = FDG.Quest.QuestItemSkin.CurrencySuffix(hub.GameSystem);
+            UiText.Bullet($"{sheet.Name} (level {sheet.Level}, {sheet.Xp} XP): {state}, power {hero.QuestPower}/{sheet.Power}, {sheet.Credits}{money}");
             var extra = new List<string>();
             if (sheet.Conditions.Count > 0) extra.Add("conditions: " + string.Join(", ", sheet.Conditions));
             if (sheet.Injuries.Count > 0) extra.Add("injuries: " + string.Join(", ", sheet.Injuries));
@@ -616,12 +647,13 @@ public sealed class GameMasterPanel
 
         SubHeading("Random events");
         UiText.Disabled($"In play: {OrNone(q.Event)}");
-        _eventChoice = Math.Clamp(_eventChoice, 0, EventLabels.Length - 1);
+        string[] eventLabels = EventLabelsFor(hub.GameSystem);
+        _eventChoice = Math.Clamp(_eventChoice, 0, eventLabels.Length - 1);
         ImGui.SetNextItemWidth(230);
-        ImGui.Combo("##event", ref _eventChoice, EventLabels, EventLabels.Length);
+        ImGui.Combo("##event", ref _eventChoice, eventLabels, eventLabels.Length);
         if (Button("Trigger event", "Resolves the chosen event now (or rolls one), even with Random Events off. " +
                                     "Hero events pick a random hero; it lasts until the next event."))
-            hub.QuestRollEvent(_eventChoice == 0 ? null : EventList[_eventChoice - 1].Key);
+            hub.QuestRollEvent(_eventChoice == 0 ? null : EventsFor(hub.GameSystem)[_eventChoice - 1].Key);
         if (q.Event != "" && Button("End the event", "Clears the event in play (its stat bonuses and penalties stop).", first: true))
             hub.QuestClearEvent();
     }
@@ -716,7 +748,7 @@ public sealed class GameMasterPanel
             {
                 ("Level", $"{sheet.Level} ({sheet.Xp} XP)"),
                 ("Power", $"{hero.QuestPower}/{sheet.Power}"),
-                ("Credits", $"{sheet.Credits}c"),
+                ("Credits", $"{sheet.Credits}{FDG.Quest.QuestItemSkin.CurrencySuffix(hub.GameSystem)}"),
                 ("Class feature", sheet.ClassFeat == "" ? "none" : sheet.ClassFeat + (hero.QuestFeatsUsed.Count > 0 ? " (used)" : " (ready)")),
                 ("State", hero.GetIsAlive() ? "conscious" : "unconscious"),
             });
@@ -725,9 +757,10 @@ public sealed class GameMasterPanel
             if (SmallButton("Full power", "Back to the hero's full power.")) hub.HeroFullPower(hero.ID);
             if (SmallButton("+1 XP")) hub.HeroXp(hero.ID, 1);
             if (SmallButton("+5 XP", "Each level reached asks for an improvement.")) hub.HeroXp(hero.ID, 5);
-            if (SmallButton("+10c")) hub.HeroCredits(hero.ID, 10);
-            if (SmallButton("+50c")) hub.HeroCredits(hero.ID, 50);
-            if (SmallButton("-10c")) hub.HeroCredits(hero.ID, -10);
+            string coin = FDG.Quest.QuestItemSkin.CurrencySuffix(hub.GameSystem);
+            if (SmallButton($"+10{coin}")) hub.HeroCredits(hero.ID, 10);
+            if (SmallButton($"+50{coin}")) hub.HeroCredits(hero.ID, 50);
+            if (SmallButton($"-10{coin}")) hub.HeroCredits(hero.ID, -10);
             if (sheet.Caster > 0 && SmallButton("+1 spell token")) hub.HeroSpellTokens(hero.ID, 1);
             if (hero.QuestFeatsUsed.Count > 0 && SmallButton("Feature ready again", "Lets the hero use its class feature again this game."))
                 hub.HeroResetFeat(hero.ID);
@@ -751,7 +784,8 @@ public sealed class GameMasterPanel
             StatRow(hub, hero, "Max power", "Power", sheet.Power, suffix: "");
             StatRow(hub, hero, "Level", "Level", sheet.Level, suffix: "");
             StatRow(hub, hero, "XP", "Xp", sheet.Xp, suffix: "", step: 5);
-            StatRow(hub, hero, "Credits", "Credits", sheet.Credits, suffix: "c", step: 10);
+            StatRow(hub, hero, "Credits", "Credits", sheet.Credits,
+                suffix: FDG.Quest.QuestItemSkin.CurrencySuffix(hub.GameSystem), step: 10);
 
             ImGui.Spacing();
             UiText.Disabled("Next Str / Dex / Wil test:");
@@ -766,11 +800,15 @@ public sealed class GameMasterPanel
 
         if (ImGui.TreeNode($"Items ({sheet.Items.Count})"))
         {
-            _itemChoice = Math.Clamp(_itemChoice, 0, ItemLabels.Length - 1);
+            string[] itemLabels = ItemLabelsFor(hub.GameSystem);
+            _itemChoice = Math.Clamp(_itemChoice, 0, itemLabels.Length - 1);
             ImGui.SetNextItemWidth(220);
-            ImGui.Combo("##giveItem", ref _itemChoice, ItemLabels, ItemLabels.Length);
+            ImGui.Combo("##giveItem", ref _itemChoice, itemLabels, itemLabels.Length);
             if (Button("Give", "Puts the chosen item in the hero's pack (free). Use it with the Skill action."))
-                hub.HeroGiveItem(hero.ID, QuestItems.All[_itemChoice].Name);
+                // #418: hand over the name this system uses, so the pack reads the way the book does;
+                // QuestItems.Find resolves either vocabulary back to the one definition.
+                hub.HeroGiveItem(hero.ID,
+                    FDG.Quest.QuestItemSkin.Name(hub.GameSystem, QuestItems.All[_itemChoice].Name));
             if (sheet.Items.Count == 0) UiText.Disabled("The pack is empty.");
             int i = 0;
             foreach (string item in sheet.Items)

@@ -35,6 +35,12 @@ public sealed class HeroBuilderScreen : IAppScreen
     /// <summary>The folder name this system's heroes are filed under.</summary>
     public string GameType => QuestGameTypes.For(System);
 
+    /// <summary>"c" for Star Quest's credits, "g" for AoF: Quest's gold (#418).</summary>
+    private string Money => FDG.Quest.QuestItemSkin.CurrencySuffix(System);
+
+    /// <summary>"credits" or "gold", for a sentence rather than a value.</summary>
+    private string MoneyWord => FDG.Quest.QuestItemSkin.CurrencyWord(System);
+
     public HeroBuilderScreen(EGameSystem system = EGameSystem.GFStarQuest) => System = system;
 
     private enum EView { List, Edit, Shop }
@@ -171,7 +177,7 @@ public sealed class HeroBuilderScreen : IAppScreen
         dl.AddText(new Vector2(tx, ty + lh), U(Gold), $"Level {hero.Level}  {hero.Class}");
         dl.AddText(new Vector2(tx, ty + lh * 2), U(TextDim), Fit($"{hero.Faction} - {hero.BaseHeroName}", w - 24f));
         int next = hero.Level < QuestProgression.MaxLevel ? QuestProgression.XpForLevel[hero.Level + 1] : hero.Xp;
-        dl.AddText(new Vector2(tx, ty + lh * 3), U(TextDim), $"XP {hero.Xp}/{next}    {hero.Credits}c    {hero.Points}pts");
+        dl.AddText(new Vector2(tx, ty + lh * 3), U(TextDim), $"XP {hero.Xp}/{next}    {hero.Credits}{Money}    {hero.Points}pts");
         dl.AddText(new Vector2(tx, ty + lh * 4), U(TextDim),
             $"Q{hero.Quality}+ D{hero.Defense}+ Pow{hero.Power} Str{hero.Strength}+ Dex{hero.Dexterity}+ Wil{hero.Willpower}+");
         if (hero.Injuries.Count > 0)
@@ -206,7 +212,7 @@ public sealed class HeroBuilderScreen : IAppScreen
             if (i > 0) ImGui.SameLine();
             bool sel = i == _shopHero;
             if (sel) ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.25f, 0.4f, 0.65f, 1f));
-            if (ImGui.Button($"{_saved[i].Hero.Name}  ({_saved[i].Hero.Credits}c)##shop{i}")) _shopHero = i;
+            if (ImGui.Button($"{_saved[i].Hero.Name}  ({_saved[i].Hero.Credits}{Money})##shop{i}")) _shopHero = i;
             if (sel) ImGui.PopStyleColor();
         }
 
@@ -234,7 +240,7 @@ public sealed class HeroBuilderScreen : IAppScreen
 
         ImGui.SetCursorPos(new Vector2(x + w * 0.62f + 12f, top));
         ImGui.BeginChild("##sqcarry", new Vector2(w * 0.38f - 12f, h - lh * 1.8f), ImGuiChildFlags.Borders);
-        UiText.Colored(TextDim, $"{hero.Name.ToUpperInvariant()} CARRIES ({hero.Credits}c)");
+        UiText.Colored(TextDim, $"{hero.Name.ToUpperInvariant()} CARRIES ({hero.Credits}{Money})");
         if (hero.Items.Count == 0) UiText.Disabled("Nothing.");
         // Grouped so three Med Kits are one row; ToList because the buttons below mutate the list.
         foreach (IGrouping<string, string> group in hero.Items.GroupBy(i => i).ToList())
@@ -840,7 +846,7 @@ public sealed class HeroBuilderScreen : IAppScreen
             dl.AddText(new Vector2(b0.X + (box - vs.X) / 2f, b0.Y + lh + 5f), U(TextBright), stats[i].Item2);
         }
         ImGui.Dummy(new Vector2(avail, lh * 2.4f + 4f));
-        UiText.Disabled($"{hero.Points} pts   -   {hero.Credits}c credits   -   XP {hero.Xp}");
+        UiText.Disabled($"{hero.Points} pts   -   {hero.Credits}{Money} {MoneyWord}   -   XP {hero.Xp}");
 
         Header("SPECIAL RULES");
         ImGui.PushTextWrapPos(0f);

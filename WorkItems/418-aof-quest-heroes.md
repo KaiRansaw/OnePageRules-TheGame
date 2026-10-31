@@ -11,6 +11,32 @@ whole game mode with nothing playable in it.
 
 ## Notes
 
+### 2026-10-31 - the flavour pass, and the coverage hole it exposed (B14)
+
+The last of the vocabulary: the **36 random events**. Same two-dice table in both Campaign Builders -
+same codes, same order, same effects - with **21 of 36 renamed** and 15 word for word identical.
+`QuestEventNames` holds 17 of the renames; the other four (61 Elixir Pouch, 63 Bomb Bag, 64 Gold Stash,
+65 Potion Box) are treasure-table entries, so `QuestItemSkin` owns those names and this skin defers to
+it - one owner per string. The four events that hand something over now carry `{item:...}` / `{money:N}`
+placeholders in their effect text, filled per game, so the sentence a player reads is the item that
+lands in the pack. `QuestChallenges` gained `EventName` / `EventsFor` / `EventTextFor` taking an
+`EGameSystem`, and all 10 player-facing reads pass `context.Settings.GameSystem`.
+
+App side: `GameMasterHub.GameSystem` exposes the running game's system so `GameMasterPanel` can cache
+per-system event, label and item lists, and the Hero Builder reads "g"/"gold" from `QuestItemSkin`.
+
+**The lesson, which is worth more than the slice:** these names were wrong since B12 and no test could
+have caught it, because **AoF: Quest Horde had no played-game coverage at all** - the whole suite ran
+Quest as Star Quest. Everything that makes an AoF: Quest game an AoF: Quest game travels on one field,
+`Settings.GameSystem`, and nothing was checking a real game carried it. Added
+`AoFQuestHordeIntegrationTests`: three seeds, every optional challenge forced on, 19-31 rounds each,
+mirroring `StarQuestHordeIntegrationTests` down to the seeds so a failure in one and not the other
+isolates the system. It also reads the party's items back and refuses Star Quest names - vacuous today
+(the bots never walk onto a search token) and written up as such in the file, but a real guard the day
+the AI collects.
+
+Engine 4,043 -> **4,055** (+9 event-name pins, +3 played games), app 8,750 unchanged. Build **0.28**.
+
 ### 2026-10-31 - the roster: 46 factions, 161 heroes, from id 7
 
 Army Forge serves AoF: Quest as **two ids under one index slug**, exactly as it serves Star Quest, and
