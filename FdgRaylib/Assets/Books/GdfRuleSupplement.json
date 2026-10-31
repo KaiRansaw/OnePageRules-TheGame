@@ -6670,22 +6670,43 @@
     "passive": [
       {
         "hookID": "Movement_OnMoveActionDeclared",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "movementBonus", "actionType": "Advance", "distanceInches": 2, "minResultInches": 0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "movementBonus",
+          "actionType": "Advance",
+          "distanceInches": 2,
+          "minResultInches": 0
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       },
       {
         "hookID": "Movement_OnMoveActionDeclared",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "movementBonus", "actionType": "Rush", "distanceInches": 4, "minResultInches": 0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "movementBonus",
+          "actionType": "Rush",
+          "distanceInches": 4,
+          "minResultInches": 0
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       },
       {
         "hookID": "Movement_OnMoveActionDeclared",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "movementBonus", "actionType": "Charge", "distanceInches": 4, "minResultInches": 0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "movementBonus",
+          "actionType": "Charge",
+          "distanceInches": 4,
+          "minResultInches": 0
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       }
@@ -6702,7 +6723,9 @@
     "activated": [
       {
         "triggerHook": "Activation_OnActivationStart",
-        "cost": { "kind": "oncePerGame" },
+        "cost": {
+          "kind": "oncePerGame"
+        },
         "targetSelector": {
           "rangeInches": 0,
           "minCount": 1,
@@ -6713,8 +6736,14 @@
           "singleModel": false,
           "requiredRule": null
         },
-        "effect": { "kind": "addRule", "ruleName": "Speed Feat Boost", "scope": "ThisActivation" },
-        "availableWhen": { "kind": "allModelsHaveThisRule" },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "Speed Feat Boost",
+          "scope": "ThisActivation"
+        },
+        "availableWhen": {
+          "kind": "allModelsHaveThisRule"
+        },
         "label": "Speed Feat"
       }
     ],
@@ -6728,8 +6757,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Speed Feat" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Speed Feat"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6745,8 +6779,13 @@
     "passive": [
       {
         "hookID": "Shooting_OnSaveRollComplete",
-        "condition": { "kind": "allModelsHaveThisRule" },
-        "effect": { "kind": "ignoreWoundOnRoll", "minRoll": 5 },
+        "condition": {
+          "kind": "allModelsHaveThisRule"
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 5
+        },
         "lifetime": "ThisAttack",
         "seat": "Subject"
       }
@@ -6763,7 +6802,9 @@
     "activated": [
       {
         "triggerHook": "Activation_OnActivationStart",
-        "cost": { "kind": "oncePerGame" },
+        "cost": {
+          "kind": "oncePerGame"
+        },
         "targetSelector": {
           "rangeInches": 0,
           "minCount": 1,
@@ -6774,8 +6815,14 @@
           "singleModel": false,
           "requiredRule": null
         },
-        "effect": { "kind": "addRule", "ruleName": "Protection Feat Guard", "scope": "UntilNextActivation" },
-        "availableWhen": { "kind": "allModelsHaveThisRule" },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "Protection Feat Guard",
+          "scope": "UntilNextActivation"
+        },
+        "availableWhen": {
+          "kind": "allModelsHaveThisRule"
+        },
         "label": "Protection Feat"
       }
     ],
@@ -6789,8 +6836,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Protection Feat" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Protection Feat"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6806,8 +6858,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnCapabilityQuery",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "repelAmbushers", "distanceInches": 12.0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "repelAmbushers",
+          "distanceInches": 12.0
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6823,8 +6880,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnCapabilityQuery",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "ambushBeacon", "rangeInches": 6.0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ambushBeacon",
+          "rangeInches": 6.0
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6840,8 +6902,15 @@
     "passive": [
       {
         "hookID": "Deployment_OnPreDeploymentSelect",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "deferDeployment", "timing": "LaterRound", "placementRangeInches": 9.0, "minArrivalRound": 1 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "deferDeployment",
+          "timing": "LaterRound",
+          "placementRangeInches": 9.0,
+          "minArrivalRound": 1
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6858,7 +6927,9 @@
     "activated": [
       {
         "triggerHook": "Activation_OnActivationStart",
-        "cost": { "kind": "oncePerGame" },
+        "cost": {
+          "kind": "oncePerGame"
+        },
         "targetSelector": {
           "rangeInches": 0,
           "minCount": 1,
@@ -6869,8 +6940,13 @@
           "singleModel": false,
           "requiredRule": null
         },
-        "effect": { "kind": "spawnUnit", "radiusInches": 6.0 },
-        "availableWhen": { "kind": "always" },
+        "effect": {
+          "kind": "spawnUnit",
+          "radiusInches": 6.0
+        },
+        "availableWhen": {
+          "kind": "always"
+        },
         "label": "Spawn"
       }
     ],
@@ -6884,8 +6960,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnSelfDestroyed",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "spawnUnit", "radiusInches": 6.0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "spawnUnit",
+          "radiusInches": 6.0
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6901,8 +6982,13 @@
     "passive": [
       {
         "hookID": "Activation_OnActivationStart",
-        "condition": { "kind": "allModelsHaveThisRule" },
-        "effect": { "kind": "restoreWounds", "minRoll": 5 },
+        "condition": {
+          "kind": "allModelsHaveThisRule"
+        },
+        "effect": {
+          "kind": "restoreWounds",
+          "minRoll": 5
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6918,8 +7004,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Reanimation" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Reanimation"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6937,10 +7028,23 @@
         "hookID": "Lifecycle_OnSelfDestroyed",
         "condition": {
           "kind": "and",
-          "left": { "kind": "allModelsHaveThisRule" },
-          "right": { "kind": "not", "inner": { "kind": "tokenPresent", "tType": { "id": "ReinforcementSpent" }, "minCount": 1 } }
+          "left": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "ReinforcementSpent"
+              },
+              "minCount": 1
+            }
+          }
         },
-        "effect": { "kind": "reinforceUnit" },
+        "effect": {
+          "kind": "reinforceUnit"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       },
@@ -6948,10 +7052,23 @@
         "hookID": "Morale_OnShakenApplied",
         "condition": {
           "kind": "and",
-          "left": { "kind": "allModelsHaveThisRule" },
-          "right": { "kind": "not", "inner": { "kind": "tokenPresent", "tType": { "id": "ReinforcementSpent" }, "minCount": 1 } }
+          "left": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "ReinforcementSpent"
+              },
+              "minCount": 1
+            }
+          }
         },
-        "effect": { "kind": "reinforceUnit" },
+        "effect": {
+          "kind": "reinforceUnit"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6967,8 +7084,19 @@
     "passive": [
       {
         "hookID": "Deployment_OnPreDeploymentSelect",
-        "condition": { "kind": "tokenPresent", "tType": { "id": "PendingAmbushArrival" }, "minCount": 1 },
-        "effect": { "kind": "deferDeployment", "timing": "LaterRound", "placementRangeInches": 9.0, "mandatoryArrival": true },
+        "condition": {
+          "kind": "tokenPresent",
+          "tType": {
+            "id": "PendingAmbushArrival"
+          },
+          "minCount": 1
+        },
+        "effect": {
+          "kind": "deferDeployment",
+          "timing": "LaterRound",
+          "placementRangeInches": 9.0,
+          "mandatoryArrival": true
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -6976,7 +7104,9 @@
     "activated": [
       {
         "triggerHook": "Activation_OnEndOfActivation",
-        "cost": { "kind": "oncePerGame" },
+        "cost": {
+          "kind": "oncePerGame"
+        },
         "targetSelector": {
           "rangeInches": 0,
           "minCount": 1,
@@ -6987,8 +7117,12 @@
           "singleModel": false,
           "requiredRule": null
         },
-        "effect": { "kind": "ambushRedeploy" },
-        "availableWhen": { "kind": "allModelsHaveThisRule" },
+        "effect": {
+          "kind": "ambushRedeploy"
+        },
+        "availableWhen": {
+          "kind": "allModelsHaveThisRule"
+        },
         "label": "Ambush Re-Deployment"
       }
     ],
@@ -7002,8 +7136,14 @@
     "passive": [
       {
         "hookID": "Deployment_OnPreDeploymentSelect",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "deferDeployment", "timing": "LaterRound", "placementRangeInches": 9.0 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "deferDeployment",
+          "timing": "LaterRound",
+          "placementRangeInches": 9.0
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       },
@@ -7011,10 +7151,25 @@
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
           "kind": "and",
-          "left": { "kind": "not", "inner": { "kind": "isMelee" } },
-          "right": { "kind": "tokenPresent", "tType": { "id": "ArrivedFromReserve" }, "minCount": 1 }
+          "left": {
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
+          },
+          "right": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "ArrivedFromReserve"
+            },
+            "minCount": 1
+          }
         },
-        "effect": { "kind": "rollModifier", "rollKind": "Save", "delta": -1 },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -1
+        },
         "lifetime": "ThisAttack",
         "seat": "Actor"
       }
@@ -7031,10 +7186,29 @@
     "activated": [
       {
         "triggerHook": "Activation_OnEndOfActivation",
-        "cost": { "kind": "oncePerRound" },
-        "targetSelector": { "rangeInches": 0, "minCount": 1, "maxCount": 1, "targetAffinity": "Self", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "repositionAtActivation", "distance": { "kind": "d3" }, "plusInches": 1 },
-        "availableWhen": { "kind": "allModelsHaveThisRule" },
+        "cost": {
+          "kind": "oncePerRound"
+        },
+        "targetSelector": {
+          "rangeInches": 0,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Self",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "repositionAtActivation",
+          "distance": {
+            "kind": "d3"
+          },
+          "plusInches": 1
+        },
+        "availableWhen": {
+          "kind": "allModelsHaveThisRule"
+        },
         "label": "Dash"
       }
     ],
@@ -7048,8 +7222,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Dash" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Dash"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7065,8 +7244,18 @@
     "passive": [
       {
         "hookID": "Shooting_OnSaveRollComplete",
-        "condition": { "kind": "attackedFromOverInches", "distanceInches": 9 },
-        "effect": { "kind": "reroll", "roll": "Save", "condition": { "kind": "onUnmodifiedValue", "minValue": 5 } },
+        "condition": {
+          "kind": "attackedFromOverInches",
+          "distanceInches": 9
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
         "lifetime": "ThisAttack",
         "seat": "Actor"
       }
@@ -7082,8 +7271,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Mischievous Boost" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Mischievous Boost"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7099,8 +7293,18 @@
     "passive": [
       {
         "hookID": "Shooting_OnSaveRollComplete",
-        "condition": { "kind": "attackedFromOverInches", "distanceInches": 9 },
-        "effect": { "kind": "reroll", "roll": "Save", "condition": { "kind": "onUnmodifiedValue", "minValue": 5 } },
+        "condition": {
+          "kind": "attackedFromOverInches",
+          "distanceInches": 9
+        },
+        "effect": {
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 5
+          }
+        },
         "lifetime": "ThisAttack",
         "seat": "Actor"
       }
@@ -7116,8 +7320,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Scrapper Boost" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Scrapper Boost"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7134,10 +7343,30 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "moraleTestThen", "onFailure": { "kind": "triggeredMove", "maxInches": 6, "isOptional": true } },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "moraleTestThen",
+          "onFailure": {
+            "kind": "triggeredMove",
+            "maxInches": 6,
+            "isOptional": true
+          }
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7151,10 +7380,28 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "moraleTestThen", "onFailure": { "kind": "applyFatigue" } },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "moraleTestThen",
+          "onFailure": {
+            "kind": "applyFatigue"
+          }
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7167,8 +7414,13 @@
     "passive": [
       {
         "hookID": "Movement_OnMoveThroughTerrain",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "countAsInTerrain", "terrain": "Dangerous" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "countAsInTerrain",
+          "terrain": "Dangerous"
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       }
@@ -7185,10 +7437,27 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "addRule", "ruleName": "Dangerous Terrain Debuff Effect", "scope": "NextTrigger" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "Dangerous Terrain Debuff Effect",
+          "scope": "NextTrigger"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7202,10 +7471,25 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "dangerousTerrainTest" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "dangerousTerrainTest"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7218,8 +7502,13 @@
     "passive": [
       {
         "hookID": "Movement_OnMoveThroughTerrain",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "countAsInTerrain", "terrain": "Difficult" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "countAsInTerrain",
+          "terrain": "Difficult"
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       }
@@ -7236,10 +7525,27 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "addRule", "ruleName": "Difficult Terrain Debuff Effect", "scope": "NextTrigger" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "Difficult Terrain Debuff Effect",
+          "scope": "NextTrigger"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7252,8 +7558,12 @@
     "passive": [
       {
         "hookID": "Activation_OnActionChoice",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "shootAfterRush" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "shootAfterRush"
+        },
         "lifetime": "ThisActivation",
         "seat": "Actor"
       }
@@ -7269,8 +7579,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "Quick Shot" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Quick Shot"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7287,10 +7602,26 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "markTarget", "ruleName": "Quick Shot" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "markTarget",
+          "ruleName": "Quick Shot"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7303,8 +7634,12 @@
     "passive": [
       {
         "hookID": "Melee_OnCounterTrigger",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "strikeLast" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "strikeLast"
+        },
         "lifetime": "ThisAttack",
         "seat": "Actor"
       }
@@ -7321,10 +7656,27 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 18, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "addRule", "ruleName": "Unwieldy in melee", "scope": "NextTrigger" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 18,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "Unwieldy in melee",
+          "scope": "NextTrigger"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7337,8 +7689,13 @@
     "passive": [
       {
         "hookID": "Morale_OnMoraleTestComplete",
-        "condition": { "kind": "mostModelsHaveThisRule" },
-        "effect": { "kind": "passFailedMoraleTest", "selfWoundOnRollAtMost": 3 },
+        "condition": {
+          "kind": "mostModelsHaveThisRule"
+        },
+        "effect": {
+          "kind": "passFailedMoraleTest",
+          "selfWoundOnRollAtMost": 3
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7354,8 +7711,13 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnUnitCreated",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "aura", "ruleName": "No Retreat" },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "No Retreat"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7372,10 +7734,27 @@
     "activated": [
       {
         "triggerHook": "Activation_OnBeforeAttackAction",
-        "cost": { "kind": "oncePerActivation" },
-        "targetSelector": { "rangeInches": 12, "minCount": 1, "maxCount": 1, "targetAffinity": "Friend", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "addRule", "ruleName": "No Retreat", "scope": "NextTrigger" },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerActivation"
+        },
+        "targetSelector": {
+          "rangeInches": 12,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Friend",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "addRule",
+          "ruleName": "No Retreat",
+          "scope": "NextTrigger"
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7389,10 +7768,27 @@
     "activated": [
       {
         "triggerHook": "Activation_OnNextActivatorRequested",
-        "cost": { "kind": "oncePerGame" },
-        "targetSelector": { "rangeInches": 0, "minCount": 1, "maxCount": 1, "targetAffinity": "Self", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "reactivate", "clearsFatigue": true, "armyRoundQuotaDivisor": 3 },
-        "availableWhen": { "kind": "allModelsHaveThisRule" }
+        "cost": {
+          "kind": "oncePerGame"
+        },
+        "targetSelector": {
+          "rangeInches": 0,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Self",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "reactivate",
+          "clearsFatigue": true,
+          "armyRoundQuotaDivisor": 3
+        },
+        "availableWhen": {
+          "kind": "allModelsHaveThisRule"
+        }
       }
     ],
     "scope": "Unit",
@@ -7406,10 +7802,33 @@
     "activated": [
       {
         "triggerHook": "Combat_OnAttackWindow",
-        "cost": { "kind": "oncePerGame" },
-        "targetSelector": { "rangeInches": 0, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "extraAttack", "weaponName": "Takedown Strike", "attacks": 1, "armorPenetration": 2, "withRules": [ "Reliable", "Deadly(3)", "Takedown" ] },
-        "availableWhen": { "kind": "isMelee" }
+        "cost": {
+          "kind": "oncePerGame"
+        },
+        "targetSelector": {
+          "rangeInches": 0,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "extraAttack",
+          "weaponName": "Takedown Strike",
+          "attacks": 1,
+          "armorPenetration": 2,
+          "withRules": [
+            "Reliable",
+            "Deadly(3)",
+            "Takedown"
+          ]
+        },
+        "availableWhen": {
+          "kind": "isMelee"
+        }
       }
     ],
     "scope": "Unit",
@@ -7423,10 +7842,36 @@
     "activated": [
       {
         "triggerHook": "Combat_OnAttackWindow",
-        "cost": { "kind": "oncePerGame" },
-        "targetSelector": { "rangeInches": 0, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "extraAttack", "weaponName": "Takedown Shot", "attacks": 1, "armorPenetration": 2, "withRules": [ "Reliable", "Deadly(3)", "Takedown" ] },
-        "availableWhen": { "kind": "not", "inner": { "kind": "isMelee" } }
+        "cost": {
+          "kind": "oncePerGame"
+        },
+        "targetSelector": {
+          "rangeInches": 0,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "extraAttack",
+          "weaponName": "Takedown Shot",
+          "attacks": 1,
+          "armorPenetration": 2,
+          "withRules": [
+            "Reliable",
+            "Deadly(3)",
+            "Takedown"
+          ]
+        },
+        "availableWhen": {
+          "kind": "not",
+          "inner": {
+            "kind": "isMelee"
+          }
+        }
       }
     ],
     "scope": "Unit",
@@ -7440,10 +7885,32 @@
     "activated": [
       {
         "triggerHook": "Activation_OnEndOfActivation",
-        "cost": { "kind": "free" },
-        "targetSelector": { "rangeInches": 12, "minCount": 1, "maxCount": 1, "targetAffinity": "Friend", "requireLineOfSight": false, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "activateUnitNext" },
-        "availableWhen": { "kind": "not", "inner": { "kind": "tokenPresent", "tType": { "id": "ActivatedOutOfOrder" }, "minCount": 1 } }
+        "cost": {
+          "kind": "free"
+        },
+        "targetSelector": {
+          "rangeInches": 12,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Friend",
+          "requireLineOfSight": false,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "activateUnitNext"
+        },
+        "availableWhen": {
+          "kind": "not",
+          "inner": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "ActivatedOutOfOrder"
+            },
+            "minCount": 1
+          }
+        }
       }
     ],
     "scope": "Unit",
@@ -7456,8 +7923,14 @@
     "passive": [
       {
         "hookID": "Deployment_OnPreDeploymentSelect",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "deferDeployment", "timing": "LaterRound", "placementRangeInches": 3 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "deferDeployment",
+          "timing": "LaterRound",
+          "placementRangeInches": 3
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7465,10 +7938,31 @@
     "activated": [
       {
         "triggerHook": "Activation_OnActivationStart",
-        "cost": { "kind": "oncePerGame" },
-        "targetSelector": { "rangeInches": 6, "minCount": 1, "maxCount": 1, "targetAffinity": "Foe", "requireLineOfSight": true, "requiredToken": null, "singleModel": false, "requiredRule": null },
-        "effect": { "kind": "dealPooledHits", "diceCount": { "kind": "arg", "index": 0 }, "successThreshold": 2, "armorPenetration": 1 },
-        "availableWhen": { "kind": "always" }
+        "cost": {
+          "kind": "oncePerGame"
+        },
+        "targetSelector": {
+          "rangeInches": 6,
+          "minCount": 1,
+          "maxCount": 1,
+          "targetAffinity": "Foe",
+          "requireLineOfSight": true,
+          "requiredToken": null,
+          "singleModel": false,
+          "requiredRule": null
+        },
+        "effect": {
+          "kind": "dealPooledHits",
+          "diceCount": {
+            "kind": "arg",
+            "index": 0
+          },
+          "successThreshold": 2,
+          "armorPenetration": 1
+        },
+        "availableWhen": {
+          "kind": "always"
+        }
       }
     ],
     "scope": "Unit",
@@ -7481,22 +7975,67 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnCapabilityQuery",
-        "condition": { "kind": "allModelsHaveThisRule" },
-        "effect": { "kind": "compelClosestTarget" },
+        "condition": {
+          "kind": "allModelsHaveThisRule"
+        },
+        "effect": {
+          "kind": "compelClosestTarget"
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       },
       {
         "hookID": "Shooting_OnHitRollModifier",
-        "condition": { "kind": "and", "left": { "kind": "tokenPresent", "tType": { "id": "CompelledToAttack" }, "minCount": 1 }, "right": { "kind": "not", "inner": { "kind": "isMelee" } } },
-        "effect": { "kind": "rollModifier", "rollKind": "Hit", "delta": 1 },
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "CompelledToAttack"
+            },
+            "minCount": 1
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": 1
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       },
       {
         "hookID": "Shooting_OnHitRollModifier",
-        "condition": { "kind": "and", "left": { "kind": "tokenPresent", "tType": { "id": "CompelledToAttack" }, "minCount": 1 }, "right": { "kind": "and", "left": { "kind": "isMelee" }, "right": { "kind": "isCharging" } } },
-        "effect": { "kind": "rollModifier", "rollKind": "Hit", "delta": 1 },
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "CompelledToAttack"
+            },
+            "minCount": 1
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "isMelee"
+            },
+            "right": {
+              "kind": "isCharging"
+            }
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": 1
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
       }
@@ -7512,8 +8051,22 @@
     "passive": [
       {
         "hookID": "Shooting_OnUnitDestroyed",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "grantTokenToKiller", "tType": { "id": "PersistentHitBonusMarker" }, "count": { "kind": "literal", "value": 1 }, "clear": { "kind": "manualOnly" } },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "grantTokenToKiller",
+          "tType": {
+            "id": "PersistentHitBonusMarker"
+          },
+          "count": {
+            "kind": "literal",
+            "value": 1
+          },
+          "clear": {
+            "kind": "manualOnly"
+          }
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Subject"
       }
@@ -7529,8 +8082,18 @@
     "passive": [
       {
         "hookID": "Lifecycle_OnWoundIgnored",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "grantIgnoredWoundMarker", "tType": { "id": "RegenerativeStrengthMarker" }, "clear": { "kind": "manualOnly" } },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "grantIgnoredWoundMarker",
+          "tType": {
+            "id": "RegenerativeStrengthMarker"
+          },
+          "clear": {
+            "kind": "manualOnly"
+          }
+        },
         "lifetime": "UntilEndOfGame",
         "seat": "Subject"
       }
@@ -7540,5 +8103,94 @@
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "Place one marker on this model when it ignores a wound. When in melee, pick one of its weapons to get +X attacks, where X is the number of markers on it."
+  },
+  {
+    "name": "Anti-Cover",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollModifier",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreCover"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "This weapon ignores Cover."
+  },
+  {
+    "name": "Anti-Regen",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Weapon",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "This weapon ignores Regeneration."
+  },
+  {
+    "name": "Spell Resistance",
+    "passive": [
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "isSpell"
+          }
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "isNotSpell"
+          }
+        },
+        "effect": {
+          "kind": "ignoreWoundOnRoll",
+          "minRoll": 6
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2+, and any other wound on a 6+."
   }
 ]
