@@ -47,6 +47,16 @@ public static class ArmyForgeBookService
         // would give every hero the enemy's profile, and pulling the enemy books from id 9 would leave
         // 33 of 41 enemy units missing.
         [GameSystems.GFStarQuest] = 10,
+        // #417: AoF: Quest's ARMY BOOKS are id 8, not 7 - the same two-id split as Star Quest, verified
+        // live on 2026-10-31 against Beastmen (uid TciwNI3AOMXAM-dr):
+        //   id 7  age-of-fantasy-quest       the player's HEROES   (5 units, Ndoli Beast Lord 45pts
+        //                                                           Q6 D6)
+        //   id 8  age-of-fantasy-quest-ai    the ENEMY army books  (20 units, Ndoli Warrior 35pts
+        //                                                           Q4 D4)
+        // The index slug is the same for both ("age-of-fantasy-quest", 48 official books) and the
+        // payloads are indistinguishable, so only the id keeps them apart. The hero roster is not a
+        // GameSystems book - it is its own dataset, and it is NOT imported yet.
+        [GameSystems.AoFQuest] = 8,
     };
 
     /// <summary>#412 - override a game system's Army Forge id, for when a guessed one turns out wrong.</summary>
@@ -59,7 +69,8 @@ public static class ArmyForgeBookService
     /// ordering taken on trust (#412).</summary>
     public static bool IdIsVerified(string? gameSystem) =>
         GameSystems.Normalize(gameSystem) is GameSystems.GrimdarkFuture or GameSystems.AgeOfFantasy
-            or GameSystems.GFFirefight or GameSystems.AoFSkirmish or GameSystems.GFStarQuest;
+            or GameSystems.GFFirefight or GameSystems.AoFSkirmish or GameSystems.GFStarQuest
+            or GameSystems.AoFQuest;
 
     private static int GameSystemId(string? gameSystem)
     {
@@ -245,7 +256,7 @@ public static class ArmyForgeBookService
     public static IReadOnlyList<string> AllSystems { get; } = new[]
     {
         GameSystems.GrimdarkFuture, GameSystems.GFFirefight, GameSystems.GFStarQuest,
-        GameSystems.AgeOfFantasy, GameSystems.AoFSkirmish,
+        GameSystems.AgeOfFantasy, GameSystems.AoFSkirmish, GameSystems.AoFQuest,
     };
 
     /// <summary>The book-index URL for one game system.</summary>

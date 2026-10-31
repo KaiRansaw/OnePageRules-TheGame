@@ -1,0 +1,5784 @@
+{
+  "name": "Goblins",
+  "faction": "Goblins",
+  "version": "OPR v3.6.0",
+  "source": "OnePageRules - Army Forge (army-forge.onepagerules.com)",
+  "license": "CC-BY-SA 4.0",
+  "gameSystem": "age-of-fantasy-quest",
+  "units": [
+    {
+      "id": "NfGAfXW",
+      "name": "Warrior",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 25,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "4nngJMY",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "0yDh4IX",
+              "label": "Banner",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "8zTgfkb",
+              "label": "Sergeant",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xH7ucVK",
+              "label": "Musician",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "8SL1lZR",
+          "label": "Replace Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "sFXkrrM",
+              "label": "Spear (A3, Counter, Brace(1))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Ke_fk6T",
+              "label": "Halberd (A3, Rending)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "ZY1m4l6",
+          "label": "Replace Spider Clan",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Spider Clan"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "pLJ4nPzm",
+              "label": "Wolf Clan (Fearless)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "anHMfbGZ",
+              "label": "Bat Clan (Furious)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Bat Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "TDTq7tm",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "9WWodJ33",
+              "label": "Mob Madness (Instinctive)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Mob Madness",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Instinctive"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "u8VLOLK",
+      "name": "Shroom-Sniffer",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 35,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Harvest Sickle",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Unpredictable Fighter"
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Bat Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "tqcSnBG",
+          "label": "Replace Harvest Sickle",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Harvest Sickle"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "YakyucKNfB",
+              "label": "Sharp Teeth (A3, Rending)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "jPpjdFc",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "a3OGQWuRVD",
+              "label": "Power Shrooms (Precision Fighter Buff)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Power Shrooms",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Precision Fighter Buff"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HypLKLk",
+      "name": "Cave-Beast",
+      "quality": 5,
+      "defense": 5,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 45,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Voracious Jaws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Bounding"
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Bat Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "PhCMnyl",
+          "label": "Replace Voracious Jaw",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Voracious Jaw"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "4pKS_AfSaH",
+              "label": "Sharp Teeth (A3, Rending)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "qsgKYg-",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "Xf0j0Gj",
+              "label": "Goblin Herder (Unpredictable Fighter)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Goblin Herder",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Unpredictable Fighter"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "6z-hbTL",
+      "name": "Beast Rider",
+      "quality": 5,
+      "defense": 5,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 45,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Mounts",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Scout"
+            },
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "4nngJMY",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "0yDh4IX",
+              "label": "Banner",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "8zTgfkb",
+              "label": "Sergeant",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xH7ucVK",
+              "label": "Musician",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "1bN8Ljv",
+          "label": "Replace Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "1M3AN_w",
+              "label": "Lance (A3, Thrust)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "DV9EgYzs1D",
+              "label": "Shortbow (18\u0022, A6)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "6tdUxNR",
+          "label": "Replace Spider Mount",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Spider Mount"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "NwSp8mQ0dE",
+              "label": "Wolf Mount (Heavy Bites (A3, AP(1)), Fast, Fearless)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf Mount",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fast"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "gh1xU-S2YE",
+              "label": "Cave-Beast Mount (Sharp Teeth (A3, Rending), Bounding, Furious)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Cave-Beast Mount",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Bounding"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "TDTq7tm",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "9WWodJ33",
+              "label": "Mob Madness (Instinctive)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Mob Madness",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Instinctive"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "voUEnj5",
+      "name": "Shooter",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 50,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Shortbow",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "4nngJMY",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "0yDh4IX",
+              "label": "Banner",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "8zTgfkb",
+              "label": "Sergeant",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xH7ucVK",
+              "label": "Musician",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "5ykVJec",
+          "label": "Replace Shortbow",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Shortbow"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "cwQA62M",
+              "label": "Crossbow (18\u0022, A3, Rending)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "6ClKtGbX3x",
+              "label": "Skewer-Bolt Crossbow (18\u0022, A3, Deadly(3), Hazardous)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Skewer-Bolt Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Hazardous"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "JRyhgQhEjY",
+              "label": "Hand-Held Bolt Thrower (18\u0022, A3, AP(3), Deadly(3))",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand-Held Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 3,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "F3wsWQP",
+          "label": "Replace Spider Clan",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Spider Clan"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "A4vZCGJ4",
+              "label": "Bat Clan (Furious)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Bat Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "mKVvFxYn",
+              "label": "Wolf Clan (Fearless)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "TDTq7tm",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "9WWodJ33",
+              "label": "Mob Madness (Instinctive)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Mob Madness",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Instinctive"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3CdeUMf",
+      "name": "Shaman",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 50,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Shaman Wand",
+          "quantity": 1,
+          "rangeInches": 9,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            },
+            {
+              "kind": "core",
+              "name": "Unstoppable"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Caster Group",
+          "numericValue": 1
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": []
+    },
+    {
+      "id": "ahILLgo",
+      "name": "Nasty Assassin",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 75,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Poison Daggers",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Stealth"
+        },
+        {
+          "kind": "core",
+          "name": "Good Fighter"
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "z2QjxBV",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "jNJfA",
+              "label": "Nasty Ambush (Surprise Attack(3))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Nasty Ambush",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Surprise Attack",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "id3_J",
+              "label": "Headhunter (Takedown Strike(3))",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Headhunter",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Takedown Strike",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MhIwX30",
+      "name": "Goblin Leader",
+      "quality": 5,
+      "defense": 5,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 95,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "P3x5sdl",
+          "label": "Replace Dual Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "WKU8eRg6Zk",
+              "label": "Master Hand Weapon (A9, AP(1), Parry(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "DVSrOHM4Ya",
+              "label": "Master Spear (A9, AP(1), Counter, Brace(1))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "UQAuZmce5F",
+              "label": "Master Lance (A9, AP(1), Thrust)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "F7UDpNJa0r",
+              "label": "Master Great Weapon (A9, AP(4))",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "WKQGIwLAhc",
+              "label": "Master Halberd (A9, AP(1), Rending)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "zZUzTAh",
+          "label": "Replace Dual Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "ws0HbEAVfa",
+              "label": "Shaman Staff (A6, Spell Amplifier)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Shaman Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "XC4RHdsvUI",
+              "label": "Rapid Shortbow (18\u0022, A12), Strike (A3)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Rapid Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ToiVjxF1X2",
+              "label": "Sling (12\u0022, A3, Assault), Spear (A9, Counter, Brace(1))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sling",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "AxVwJzD",
+          "label": "Replace Spear",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Spear"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "zc09xBI",
+              "label": "Hand Weapon (A9, Parry(3))",
+              "cost": -10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "f0zZB1_",
+              "label": "Lance (A9, Thrust)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "l0MoSok",
+              "label": "Great Weapon (A9, AP(2))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "IFRbU6u0Ju",
+              "label": "Halberd (A9, Rending)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "sHDsruP",
+          "label": "Replace Sling",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Sling"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "BXYqC6VWn2",
+              "label": "Barbed Net (9\u0022, A3, Rending, Assault)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Barbed Net",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "VcoSM_j",
+          "label": "Replace Rapid Shortbow",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Rapid Shortbow"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "lvu4F1LAbQ",
+              "label": "Hunting Harpoons (9\u0022, A3, AP(2), Deadly(3), Assault)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hunting Harpoons",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "iK-HQOua2i",
+              "label": "Rapid Crossbow (18\u0022, A9, Rending)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Rapid Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "1MmDNlA",
+          "label": "Replace Spider Clan",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Spider Clan"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "X1m1IZbnqr",
+              "label": "Bat Clan (Furious)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Bat Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "K7XD5n0B",
+              "label": "Wolf Clan (Fearless)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf Clan",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "xcJOVrY",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "_P3KvzrlRJ",
+              "label": "Pet Cave-Beast (Repel Ambushers)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Pet Cave-Beast",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Repel Ambushers"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "Mb5Uim-",
+              "label": "Spider (Poison Fangs (A3, Shred), Scout)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Poison Fangs",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Shred"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Spider",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Scout"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "qMF4uTW",
+              "label": "Cave-Beast (Sharp Teeth (A3, Rending), Bounding)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Cave-Beast",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Bounding"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "MXDuSU-",
+              "label": "Wolf (Heavy Bites (A3, AP(1)), Fast)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fast"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "4KFznM7",
+              "label": "Great Spider (Poison Fangs (A9, Shred), Scout, Tough(9))",
+              "cost": 135,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Poison Fangs",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Shred"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Spider",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Scout"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 9
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "6ShJKux",
+              "label": "Great Cave-Beast (Sharp Teeth (A9, Rending), Bounding, Tough(9))",
+              "cost": 150,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Cave-Beast",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Bounding"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 9
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "2zscMW316-",
+              "label": "Great Wolf (Heavy Bites (A9, AP(1)), Fast, Tough(9))",
+              "cost": 155,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Wolf",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fast"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 9
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "jtWAnQGmbD",
+              "label": "Wolf Chariot (Heavy Bites (A6, AP(1)), Defense(1), Fast, Impact(12), Tough(18))",
+              "cost": 330,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Wolf Chariot",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Defense",
+                      "numericValue": 1
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Fast"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Impact",
+                      "numericValue": 12
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 18
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "V-uIXejb4d",
+              "label": "Giant Cave-Beast (Giant Sharp Teeth (A24, Rending), Stomp (A12, AP(1)), Bounding, Defense(1), Fear(6), Tough(36))",
+              "cost": 695,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Sharp Teeth",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 24,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                },
+                {
+                  "name": "Stomp",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 12,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Giant Cave-Beast",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Bounding"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Defense",
+                      "numericValue": 1
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Fear",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 36
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "qEJstgM",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "uvMbaHYSAM",
+              "label": "Skirmisher (Quick Shot Aura)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Skirmisher",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Quick Shot Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "xfmjADLN",
+              "label": "Trailmaster (Rapid Charge Aura)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Trailmaster",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Rapid Charge Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "TdU840pH",
+              "label": "Shaman (Caster(2))",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Shaman",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Caster",
+                      "numericValue": 2
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "RtZUZOW1",
+              "label": "Big Boss (Thrust in Melee Aura)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Big Boss",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust in Melee Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "lnv05g_N",
+              "label": "Brewer (Melee Evasion Aura)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Brewer",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Melee Evasion Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "DmCdK7Di",
+              "label": "Army Standard Bearer (Fear(6))",
+              "cost": 60,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Army Standard Bearer",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Fear",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wWfmdi2",
+      "name": "Fanatic",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 95,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Wrecking Shroom",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Bounding"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Crossing Attack",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "core",
+          "name": "Traversal"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "items": [
+        {
+          "name": "Bat Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "v-lbzoc",
+          "label": "Replace Wrecking Shroom",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Wrecking Shroom"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "E4K5VNi9sp",
+              "label": "Wrecking Ball (A3, AP(4), Deadly(3))",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Wrecking Ball",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FmscopG",
+      "name": "Pester Swarm",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 100,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Jagged Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unpredictable Fighter"
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "zDLsbXU",
+          "label": "Replace Jagged Fang",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Jagged Fang"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "MQpzPmwvD4",
+              "label": "Poison Bombs (9\u0022, A3, Blast(3), Assault, Bane)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Poison Bombs",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dBNP3MI",
+      "name": "Great Wolf Rider",
+      "quality": 5,
+      "defense": 5,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 115,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.8110236,
+        "heightInches": 2.952756
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        },
+        {
+          "name": "Heavy Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        }
+      ],
+      "items": [],
+      "sections": [
+        {
+          "id": "TDTq7tm",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "9WWodJ33",
+              "label": "Mob Madness (Instinctive)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Mob Madness",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Instinctive"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "NaInAx4",
+          "label": "Replace Hand Weapons and Heavy Bite",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapons",
+            "Heavy Bite"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "_YfxhtfEi7",
+              "label": "Heavy Bites (A6, AP(1)), Lance (A3, Thrust)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                },
+                {
+                  "name": "Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xoyCEWPQ9q",
+              "label": "Rapid Shortbow (18\u0022, A12), Heavy Bites (A3, AP(1))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Rapid Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Heavy Bites",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "QF59XD5",
+      "name": "Troll",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 150,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.968504,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Throw Rocks",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Cave Tribe",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "Xu2BhAx",
+          "label": "Replace Throw Rocks and Strike",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Throw Rocks",
+            "Strike"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "YxuKj6_Xs8",
+              "label": "Hand Weapon (A9, Parry(3))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Vw2mqOF",
+              "label": "Great Weapon (A9, AP(2))",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "nbk6j8C",
+          "label": "Replace Cave Tribe",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Cave Tribe"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "syouRanX",
+              "label": "Forest Tribe (Strider)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Forest Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Strider"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "txH6S-R6",
+              "label": "Stone Tribe (Fearless)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Stone Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hGp-X7M",
+      "name": "Goblin Artillery",
+      "quality": 5,
+      "defense": 5,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 240,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.968504,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Scrap-Shooter",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 18,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Anti-Cover"
+            },
+            {
+              "kind": "core",
+              "name": "Surge"
+            }
+          ]
+        },
+        {
+          "name": "Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Artillery"
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "core",
+          "name": "Cumbersome"
+        }
+      ],
+      "items": [
+        {
+          "name": "Wolf Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fearless"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "qN-iUjQ",
+          "label": "Replace Scrap-Shooter",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Scrap-Shooter"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "76l89d-",
+              "label": "Bolt Thrower (36\u0022, A3, AP(4), Deadly(6))",
+              "cost": 85,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 36,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "DdSuLQL",
+              "label": "Goblin Slingshot (24\u0022, A6, AP(1), Deadly(3), Indirect, Takedown)",
+              "cost": 85,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Goblin Slingshot",
+                  "quantity": 1,
+                  "rangeInches": 24,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Indirect"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Takedown"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "3L1Tgj-",
+              "label": "Stone Thrower (36\u0022, A6, AP(1), Blast(3), Indirect)",
+              "cost": 140,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Stone Thrower",
+                  "quantity": 1,
+                  "rangeInches": 36,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Indirect"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DQ5jgGa",
+      "name": "Troll Boss",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 315,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Throw Rocks",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Cave Tribe",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "vxKsDlI",
+          "label": "Replace Throw Rocks and Strike",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Throw Rocks",
+            "Strike"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "7s_kZajC3H",
+              "label": "Master Hand Weapon (A18, AP(1), Parry(3))",
+              "cost": 50,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Gji6Wq8OGX",
+              "label": "Master Great Hammer (A6, AP(4), Deadly(3), Anti-Regen)",
+              "cost": 125,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Anti-Regen"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ohr3XzSm0J",
+              "label": "Master Great Weapon (A18, AP(4))",
+              "cost": 160,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "bcYwiR-",
+          "label": "Replace Throw Rocks and Strike",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Throw Rocks",
+            "Strike"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "esa35vWSeS",
+              "label": "Troll Shaman Staff (A12, Spell Amplifier)",
+              "cost": -5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Troll Shaman Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "PCjdAf_N1Z",
+              "label": "Dual Hand Weapons (A24)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Dual Hand Weapons",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 24,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "uB3Tq-FPCW",
+              "label": "Troll Spears (9\u0022, A3, AP(2), Deadly(3), Assault), Hand Weapon (A18, Parry(3))",
+              "cost": 130,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Troll Spears",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "rI8zhO5UuT",
+              "label": "Barbed Net (9\u0022, A9, Rending, Assault), Hand Weapon (A18, Parry(3))",
+              "cost": 165,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Barbed Net",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "eAXQy7k",
+          "label": "Replace Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "xNbQockFmx",
+              "label": "Great Weapon (A18, AP(2))",
+              "cost": 85,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "u9QVPT_hFf",
+              "label": "Giant Hammer (A6, AP(4), Deadly(3))",
+              "cost": 120,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "MD8Oe5P",
+          "label": "Replace Cave Tribe",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Cave Tribe"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "Vk2GITzB",
+              "label": "Forest Tribe (Strider)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Forest Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Strider"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "qoqUA1RQ",
+              "label": "Stone Tribe (Fearless)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Stone Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "4MB9gqr",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "FGnXOW_U",
+              "label": "Trailmaster (Rapid Charge Aura)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Trailmaster",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Rapid Charge Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "cUTKTkh-",
+              "label": "Shaman (Caster(2))",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Shaman",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Caster",
+                      "numericValue": 2
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "pmK1-SLo",
+              "label": "Big Boss (Thrust in Melee Aura)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Big Boss",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust in Melee Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "azVeni6N",
+              "label": "Instigator (Enhanced Mischievous Aura)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Instigator",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Mischievous Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "nfMJFHVE",
+              "label": "Brewer (Melee Evasion Aura)",
+              "cost": 55,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Brewer",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Melee Evasion Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Q4emtC6",
+      "name": "Wolf Chariot",
+      "quality": 5,
+      "defense": 3,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 355,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.7559056,
+        "heightInches": 4.133858
+      },
+      "weapons": [
+        {
+          "name": "Shortbow Crew",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Heavy Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Wolf Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fearless"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "nQLItv0",
+          "label": "Replace Shortbow Crew",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Shortbow Crew"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "OTT7Rufi4N",
+              "label": "Spear Crew (A9, Thrust), Chariot Shock (Impact(12))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spear Crew",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Chariot Shock",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Impact",
+                      "numericValue": 12
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "4z_vNeUZ89",
+              "label": "Crossbow Crew (18\u0022, A18, Rending)",
+              "cost": 70,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Crossbow Crew",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zdR7M6l",
+      "name": "Pump Plane",
+      "quality": 5,
+      "defense": 3,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 390,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.7559056,
+        "heightInches": 4.133858
+      },
+      "weapons": [
+        {
+          "name": "Crazed Pilot",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Wolf Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fearless"
+            }
+          ]
+        },
+        {
+          "name": "Bomber Plane",
+          "quantity": 1,
+          "rules": []
+        }
+      ],
+      "sections": [
+        {
+          "id": "EfQ3p06",
+          "label": "Replace Bomber Plane",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Bomber Plane"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "Z3e6BLO6EE",
+              "label": "Fighter Plane (Volley Gun (18\u0022, A18, Anti-Cover, Surge))",
+              "cost": 50,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Volley Gun",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Fighter Plane",
+                  "quantity": 1,
+                  "rules": []
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WWAhxDC",
+      "name": "Pump Wagon",
+      "quality": 5,
+      "defense": 3,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 390,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.7559056,
+        "heightInches": 4.133858
+      },
+      "weapons": [
+        {
+          "name": "Pester Bomb Crew",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Assault"
+            }
+          ]
+        },
+        {
+          "name": "Great Roller",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Bounding"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        }
+      ],
+      "items": [
+        {
+          "name": "Wolf Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fearless"
+            }
+          ]
+        },
+        {
+          "name": "Pester Charge",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Impact",
+              "numericValue": 12
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "R01R7fC",
+          "label": "Replace Pester Bomb Crew and Pester Charge",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Pester Bomb Crew",
+            "Pester Charge"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "Ycpfwb36pz",
+              "label": "Pester Crew (A9, Shred), Roller Shock (Heavy Impact(12))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Pester Crew",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Shred"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Roller Shock",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Heavy Impact",
+                      "numericValue": 12
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4OMUbC2",
+      "name": "Giant Spider",
+      "quality": 4,
+      "defense": 3,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 770,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "weapons": [
+        {
+          "name": "Great Spider Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Spider Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        },
+        {
+          "name": "Spider Shrine",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Caster",
+              "numericValue": 2
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "dUAVFI_",
+          "label": "Replace Great Spider Fangs and Spider Shrine",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Great Spider Fangs",
+            "Spider Shrine"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "erYOVeU",
+              "label": "Shortbow Crew (18\u0022, A48)",
+              "cost": 105,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Shortbow Crew",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 48,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "hlPqq",
+              "label": "Web Catapult (24\u0022, A6, AP(1), Blast(6), Indirect)",
+              "cost": 130,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Web Catapult",
+                  "quantity": 1,
+                  "rangeInches": 24,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Indirect"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "yiwp6mAkhK",
+              "label": "Skewer-Bolt Thrower (30\u0022, A12, Deadly(3), Hazardous)",
+              "cost": 160,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Skewer-Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 30,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Hazardous"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "1cFftxrWA_",
+              "label": "Light Bolt Thrower (18\u0022, A6, AP(4), Deadly(6))",
+              "cost": 180,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Light Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 6,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "Tv9Orfq",
+          "label": "Replace Great Spider Fang",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Great Spider Fang"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "q-Kk3N9hp_",
+              "label": "Giant Stinger (A3, AP(4), Deadly(3)), Spider Fangs (A18, Shred)",
+              "cost": 50,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Stinger",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                },
+                {
+                  "name": "Spider Fangs",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Shred"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "mElwb9M",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "BQ3CZZ1D",
+              "label": "Sniff Out Threats (Piercing Fighting Mark)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Sniff Out Threats",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Piercing Fighting Mark"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "_-4Y87q",
+      "name": "Troll Giant",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 845,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "weapons": [
+        {
+          "name": "Giant Club",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 2,
+          "specialRules": []
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Forest Tribe",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Strider"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "9PX9TmU",
+          "label": "Replace Giant Club",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Giant Club"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "LZd7m3v",
+              "label": "Throw Skewer-Spear (18\u0022, A12, Deadly(3), Hazardous)",
+              "cost": 55,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Throw Skewer-Spear",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Hazardous"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "K8CHctUOEP",
+              "label": "Giant Hammer (A9, AP(4), Deadly(3))",
+              "cost": 60,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "hPBeriQj1q",
+              "label": "Throw Giant Boulders (18\u0022, A6, AP(2), Blast(6), Indirect)",
+              "cost": 120,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Throw Giant Boulders",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 6,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Indirect"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ONF7r8uETX",
+              "label": "Giant Hand-Held Bolt Thrower (18\u0022, A6, AP(4), Deadly(6))",
+              "cost": 155,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Hand-Held Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 6,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "hVqsUWZ",
+          "label": "Replace Forest Tribe",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Forest Tribe"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "TSHxzIPd",
+              "label": "Cave Tribe (Furious)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Cave Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "z6qyNpvu",
+              "label": "Stone Tribe (Fearless)",
+              "cost": 50,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Stone Tribe",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "mElwb9M",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "BQ3CZZ1D",
+              "label": "Sniff Out Threats (Piercing Fighting Mark)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Sniff Out Threats",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Piercing Fighting Mark"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "YrYb72R",
+      "name": "Giant Cave-Beast",
+      "quality": 4,
+      "defense": 3,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 940,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "weapons": [
+        {
+          "name": "Giant Sharp Teeth",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Bounding"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Mischievous"
+        }
+      ],
+      "items": [
+        {
+          "name": "Bat Clan",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Furious"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "WN1S6Vv",
+          "label": "Replace Giant Sharp Teeth",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Giant Sharp Teeth"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "j994_HpoWw",
+              "label": "Skewer-Bolt Thrower (30\u0022, A12, Deadly(3), Hazardous)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Skewer-Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 30,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Hazardous"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "i3ySGEiQHP",
+              "label": "Heavy Bolt Thrower (36\u0022, A6, AP(4), Deadly(6))",
+              "cost": 240,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Bolt Thrower",
+                  "quantity": 1,
+                  "rangeInches": 36,
+                  "attacks": 6,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "mElwb9M",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "BQ3CZZ1D",
+              "label": "Sniff Out Threats (Piercing Fighting Mark)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Sniff Out Threats",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Piercing Fighting Mark"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "ruleDefinitions": [
+    {
+      "name": "Caster Group",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "enableCasting"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Round_OnRoundStart",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "grantToken",
+            "tType": {
+              "id": "SpellTokens"
+            },
+            "count": {
+              "kind": "ruleCarrierCount"
+            },
+            "clear": {
+              "kind": "roundEnd"
+            },
+            "maxTotal": 0
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "One model in this unit casts spells with as many spell tokens per round as there are models with this rule in the unit. Unspent tokens are lost at the end of the round."
+    },
+    {
+      "name": "Mischievous",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 6
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The defender must re-roll unmodified Defense 6s."
+    },
+    {
+      "name": "Piercing Fighter",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "AP(\u002B1) in melee."
+    },
+    {
+      "name": "Thrust in Melee Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Thrust"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit gain Thrust."
+    },
+    {
+      "name": "Precision Fighter Buff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 12,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Friend",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Precision Fighter",
+            "scope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Precision Fighter for its next relevant roll."
+    },
+    {
+      "name": "Bounding",
+      "passive": [
+        {
+          "hookID": "Activation_OnActivationStart",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "repositionAtActivation",
+            "distance": {
+              "kind": "d3",
+              "count": 1
+            },
+            "plusInches": 1
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+    },
+    {
+      "name": "Banner",
+      "passive": [
+        {
+          "hookID": "Morale_OnPreMoraleTest",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Morale",
+            "delta": 1
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit gets \u002B1 to morale test rolls."
+    },
+    {
+      "name": "Musician",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+    },
+    {
+      "name": "Sergeant",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          },
+          "effect": {
+            "kind": "addExtraHit",
+            "onRollValue": 6,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model attacks, unmodified results of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
+    },
+    {
+      "name": "Heavy Impact",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "arg",
+              "index": 0
+            },
+            "armorPenetration": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+    },
+    {
+      "name": "Hazardous",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -4
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 1
+          },
+          "effect": {
+            "kind": "selfWoundOnUnmodifiedRoll",
+            "onRollValue": 1,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Attacks with this weapon get AP(4), but this weapon\u0027s unit takes one wound on unmodified rolls of 1 to hit."
+    },
+    {
+      "name": "Repel Ambushers",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "repelAmbushers",
+            "distanceInches": 12
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Enemy units using Ambush must be set up over 12\u0022 away from this model\u0027s unit."
+    },
+    {
+      "name": "Quick Shot Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Quick Shot"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Quick Shot."
+    },
+    {
+      "name": "Takedown Strike",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Combat_OnAttackWindow",
+          "cost": {
+            "kind": "oncePerGame"
+          },
+          "targetSelector": {
+            "rangeInches": 0,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "extraAttack",
+            "weaponName": "Takedown Strike",
+            "attacks": {
+              "kind": "arg",
+              "index": 0
+            },
+            "armorPenetration": 2,
+            "withRules": [
+              "Reliable",
+              "Deadly(3)",
+              "Takedown"
+            ]
+          },
+          "availableWhen": {
+            "kind": "isMelee"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Once per game, when it\u0027s this model\u0027s turn to strike in melee, it may make X attacks at Quality 2\u002B with AP(2), Deadly(3), and Takedown."
+    },
+    {
+      "name": "Surprise Attack",
+      "passive": [
+        {
+          "hookID": "Deployment_OnPreDeploymentSelect",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "deferDeployment",
+            "timing": "LaterRound",
+            "placementRangeInches": 3,
+            "minArrivalRound": 2,
+            "mandatoryArrival": false
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnActivationStart",
+          "cost": {
+            "kind": "oncePerGame"
+          },
+          "targetSelector": {
+            "rangeInches": 6,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "dealPooledHits",
+            "diceCount": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 2,
+            "armorPenetration": 1
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight and roll X dice; for each 2\u002B it takes one hit with AP(1)."
+    },
+    {
+      "name": "Instinctive",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "compelClosestTarget"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "CompelledToAttack"
+              },
+              "minCount": 1
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "isMelee"
+              }
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "CompelledToAttack"
+              },
+              "minCount": 1
+            },
+            "right": {
+              "kind": "and",
+              "left": {
+                "kind": "isMelee"
+              },
+              "right": {
+                "kind": "isCharging"
+              }
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
+    },
+    {
+      "name": "Anti-Cover",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Cover."
+    },
+    {
+      "name": "Anti-Regen",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Regeneration."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Enhanced Mischievous",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Mischievous"
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 5
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If this model has Mischievous, enemies taking hits from it must re-roll successful unmodified Defense results of 5-6 from Mischievous (instead of only results of 6)."
+    },
+    {
+      "name": "Enhanced Mischievous Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Mischievous"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Mischievous."
+    },
+    {
+      "name": "Piercing Fighting Mark",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 18,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "markTarget",
+            "ruleName": "Piercing Fighter"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets AP(\u002B1) in melee."
+    },
+    {
+      "name": "Defense",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "ratedRollModifier",
+            "rollKind": "Save",
+            "delta": {
+              "kind": "arg",
+              "index": 0
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "This model gets \u002BX to Defense rolls."
+    },
+    {
+      "name": "Traversal",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveThroughEnemy",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreEnemyMovementBlock"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This unit\u0027s models may pass through other units, friendly or enemy, while moving."
+    },
+    {
+      "name": "Good Fighter",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "\u002B1 to hit rolls in melee."
+    },
+    {
+      "name": "Precision Fighter",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "\u002B1 to hit rolls in melee."
+    },
+    {
+      "name": "Quick Shot",
+      "passive": [
+        {
+          "hookID": "Activation_OnActionChoice",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "shootAfterRush"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model may shoot after using Rush actions."
+    }
+  ],
+  "spells": [
+    {
+      "name": "Wolf Resiliance",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 12,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "statModifier",
+        "roll": "Save",
+        "delta": 1,
+        "lifetimeScope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Biting Bat",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 6,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 1,
+        "withRules": [
+          "Deadly(3)",
+          "Hazardous"
+        ],
+        "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Bat Thirst",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 2,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "markTarget",
+        "ruleName": "Piercing Fighter"
+      }
+    },
+    {
+      "name": "Stinging Spider",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 6,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 6,
+        "withRules": [
+          "Bane"
+        ],
+        "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Spider Might",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Mischievous",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Pouncing Wolf",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 6,
+        "withRules": [],
+        "armorPenetration": 2
+      }
+    }
+  ]
+}

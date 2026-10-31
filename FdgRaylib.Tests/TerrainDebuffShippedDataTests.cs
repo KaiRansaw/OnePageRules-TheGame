@@ -199,7 +199,7 @@ public class TerrainDebuffShippedDataTests
         //
         // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 16 -> 30, all of
         // them Star Quest editions of armies already in the census.
-        Assert.That(sites.Count, Is.EqualTo(30),
+        Assert.That(sites.Count, Is.EqualTo(49),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var unresolved = new List<string>();
@@ -252,8 +252,8 @@ public class TerrainDebuffShippedDataTests
         // Star Quest editions arrived: immediate 2 -> 4 (the two armies, twice over) and deferred
         // 11 -> 20 - not a clean doubling, because the Star Quest editions of the deferred carriers do
         // not all publish the same number of units holding the rule.
-        Assert.That(immediate.Count, Is.EqualTo(4));
-        Assert.That(deferred.Count, Is.EqualTo(20));
+        Assert.That(immediate.Count, Is.EqualTo(8));
+        Assert.That(deferred.Count, Is.EqualTo(30));
         Assert.That(deferred.Select(s => ShippedBooks.ArmyName(s.Book)), Has.No.AnyOf(immediateArmies),
             "an army gets one variant or the other, never both");
     }

@@ -313,6 +313,8 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
         // which is why this reads like the others; see ArmyForgeBookService's id map for the hero-side
         // dataset this is NOT.
         (FDG.ArmyBuilding.GameSystems.GFStarQuest, "GF Star Quest", "GFSQ-"),
+        // #417: AoF: Quest's ENEMY books (Army Forge id 8), the fantasy twin of the line above.
+        (FDG.ArmyBuilding.GameSystems.AoFQuest, "AoF Quest", "AoFQ-"),
     };
 
     int built = 0, pending = 0, failed = 0, noIndex = 0, skipped = 0;
@@ -444,7 +446,16 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                 // always, then AoF's for the fantasy systems, then the per-book override LAST so its
                 // redefinitions win (#375 C9).
                 var supplements = new List<string> { Path.Combine(curationRoot, "GdfRuleSupplement.json") };
-                bool fantasy = slug is FDG.ArmyBuilding.GameSystems.AgeOfFantasy or FDG.ArmyBuilding.GameSystems.AoFSkirmish;
+                // #417: AoF: Quest counts as fantasy here, and finding out that it does cost a whole
+                // bake. Its books reference the same fantasy rules every other AoF system does -
+                // Ethereal, Vinci Tech, Drakesworn, the Grounded family, Retreating Strike - and those
+                // live in AofRuleSupplement.json, not in the GDF set. Baked without it, 46 books
+                // compiled and shipped with 19 rule names resolving to nothing: a Goblin Fanatic with
+                // Traversal that could not traverse, and an Ethereal unit that was simply not ethereal.
+                // The books still loaded and played, which is why only EveryRuleReferenceResolves
+                // caught it. A new fantasy system added to this line's right-hand side is not optional.
+                bool fantasy = slug is FDG.ArmyBuilding.GameSystems.AgeOfFantasy
+                    or FDG.ArmyBuilding.GameSystems.AoFSkirmish or FDG.ArmyBuilding.GameSystems.AoFQuest;
                 if (fantasy) supplements.Add(Path.Combine(curationRoot, "AofRuleSupplement.json"));
                 // #412: the override files are named for the book as it was called when they were
                 // written, so fall back through the names this faction has gone by.

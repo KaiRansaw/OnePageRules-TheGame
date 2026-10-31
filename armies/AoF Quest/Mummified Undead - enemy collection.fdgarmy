@@ -1,0 +1,2255 @@
+{
+  "selections": null,
+  "book": null,
+  "name": "Mummified Undead - enemy collection",
+  "faction": "Mummified Undead",
+  "pointsLimit": 100000,
+  "gameSystem": "age-of-fantasy-quest",
+  "units": [
+    {
+      "name": "Skeleton Warrior",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "pointCost": 25
+    },
+    {
+      "name": "Mummy",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 30
+    },
+    {
+      "name": "Skeleton Archer",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Bow",
+          "quantity": 1,
+          "rangeInches": 24,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 35
+    },
+    {
+      "name": "Skeleton Horseman",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Bow",
+          "quantity": 1,
+          "rangeInches": 24,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Royal Guard",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Hunting Beast",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 50
+    },
+    {
+      "name": "Beast Rider",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        },
+        {
+          "name": "Heavy Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 1,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 70
+    },
+    {
+      "name": "Skeleton Leader",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 80
+    },
+    {
+      "name": "Scarab Swarm",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Jaws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 90
+    },
+    {
+      "name": "Vulture",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Jagged Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "pointCost": 125
+    },
+    {
+      "name": "Great Snake",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.047244,
+        "heightInches": 3.543307
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Snake Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 135
+    },
+    {
+      "name": "Snake Rider",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.047244,
+        "heightInches": 3.543307
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 6
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Daggers Skeleton Rider",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "blade-standard",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 135
+    },
+    {
+      "name": "Guardian Statue",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 140
+    },
+    {
+      "name": "Royal Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 145
+    },
+    {
+      "name": "Snakeman",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.8110236,
+        "heightInches": 2.952756
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Halberd",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 195
+    },
+    {
+      "name": "Rammit Den Geddul",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Unpredictable Fighter"
+        },
+        {
+          "kind": "core",
+          "name": "Fortified"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Crescent Blades",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 2,
+          "effectSet": "blade-standard",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 240
+    },
+    {
+      "name": "Death Casket",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.8110236,
+        "heightInches": 2.952756
+      },
+      "quality": 3,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Release Spirits",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Casket Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 335
+    },
+    {
+      "name": "Skull Catapult",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Artillery"
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "core",
+          "name": "Cumbersome"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Skull Barrage",
+          "quantity": 1,
+          "rangeInches": 36,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 360
+    },
+    {
+      "name": "Skeleton Chariot",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 12
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hooves",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        },
+        {
+          "name": "Spear Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
+            }
+          ]
+        }
+      ],
+      "pointCost": 360
+    },
+    {
+      "name": "Great Scorpion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Ambush"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Pincers",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Infected Stinger",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 365
+    },
+    {
+      "name": "Skeleton Giant",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Giant Sword",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "blade-standard",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 710
+    },
+    {
+      "name": "Giant God-Statue",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Caster",
+          "numericValue": 2
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Royal Axe",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 815
+    },
+    {
+      "name": "War Sphinx",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Skeleton Spear Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 880
+    },
+    {
+      "name": "Sphinx Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 3,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Sphinx Sickles",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 990
+    },
+    {
+      "name": "Desert Titan",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 4.92126,
+        "heightInches": 6.889764
+      },
+      "quality": 3,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 12
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 72
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Caster",
+          "numericValue": 4
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        },
+        {
+          "name": "Titanic Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 48,
+          "armorPenetration": 0,
+          "effectSet": "titan-impact",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 2480
+    },
+    {
+      "name": "God-Titan",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 4.92126,
+        "heightInches": 6.889764
+      },
+      "quality": 2,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 12
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 72
+        },
+        {
+          "kind": "core",
+          "name": "Royal Legion"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Godly Battle-Axe",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 2,
+          "effectSet": "crude-melee",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 6
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 2970
+    }
+  ],
+  "ruleDefinitions": [
+    {
+      "name": "Desert Storm Effect",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveThroughTerrain",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "countAsInTerrain",
+            "terrain": "Difficult"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Negative",
+      "description": "This unit counts as being in Difficult Terrain on its next move - its move is capped at 6\u0022 (from Desert Storm)."
+    },
+    {
+      "name": "Indirect when Shooting Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Indirect when shooting"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit gain Indirect when shooting."
+    },
+    {
+      "name": "Banner",
+      "passive": [
+        {
+          "hookID": "Morale_OnPreMoraleTest",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Morale",
+            "delta": 1
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit gets \u002B1 to morale test rolls."
+    },
+    {
+      "name": "Musician",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+    },
+    {
+      "name": "Sergeant",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          },
+          "effect": {
+            "kind": "addExtraHit",
+            "onRollValue": 6,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model attacks, unmodified results of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
+    },
+    {
+      "name": "Piercing Spotter",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 30,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "grantTokenOnRoll",
+            "tType": {
+              "id": "SpendableApBonusMarker"
+            },
+            "count": {
+              "kind": "literal",
+              "value": 1
+            },
+            "clear": {
+              "kind": "manualOnly"
+            },
+            "minRoll": 4,
+            "onFailure": null
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation: pick one enemy within 30 inches in line of sight and roll one die; on a 4\u002B place a marker on it. Attackers may remove markers from it before it rolls to block, gaining AP(\u002B1) per removed marker."
+    },
+    {
+      "name": "Difficult Terrain Debuff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 18,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Difficult Terrain Debuff Effect",
+            "scope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight, which counts as being in Difficult Terrain once (next time the effect would apply)."
+    },
+    {
+      "name": "No Retreat Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "No Retreat"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get No Retreat."
+    },
+    {
+      "name": "Surprise Attack",
+      "passive": [
+        {
+          "hookID": "Deployment_OnPreDeploymentSelect",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "deferDeployment",
+            "timing": "LaterRound",
+            "placementRangeInches": 3,
+            "minArrivalRound": 2,
+            "mandatoryArrival": false
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnActivationStart",
+          "cost": {
+            "kind": "oncePerGame"
+          },
+          "targetSelector": {
+            "rangeInches": 6,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "dealPooledHits",
+            "diceCount": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 2,
+            "armorPenetration": 1
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight and roll X dice; for each 2\u002B it takes one hit with AP(1)."
+    },
+    {
+      "name": "Anti-Regen",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Regeneration."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Pierce",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignorePositiveDefenseModifiers"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "beyondHalfWeaponRange"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Ignores all positive Defense modifiers on the target, and when attacking units over half of this weapon\u0027s range away, this weapon gets AP(\u002B1)."
+    },
+    {
+      "name": "Unique Hero",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Hero",
+            "scope": "UntilEndOfGame"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Counts as having Hero, and this model may only be taken once per army."
+    },
+    {
+      "name": "Spell Resistance Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Spell Resistance"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Spell Resistance."
+    },
+    {
+      "name": "Shred on its weapons when shooting",
+      "passive": [
+        {
+          "hookID": "Activation_OnActivationStart",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Shred",
+            "scope": "ThisActivation"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model gets Shred on its weapons when shooting."
+    },
+    {
+      "name": "Enhanced Royal Legion Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Royal Legion"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Royal Legion."
+    },
+    {
+      "name": "Royal Legion",
+      "passive": [
+        {
+          "hookID": "Shooting_OnRangeCheck",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rangeModifier",
+            "delta": 4,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 2,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Gets \u002B4 inches range when shooting, and moves \u002B2 inches on Charge actions."
+    },
+    {
+      "name": "Enhanced Royal Legion",
+      "passive": [
+        {
+          "hookID": "Shooting_OnRangeCheck",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Royal Legion"
+          },
+          "effect": {
+            "kind": "rangeModifier",
+            "delta": 8,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Royal Legion"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Charge"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 4,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If this model has Royal Legion, it gets \u002B8 inches/\u002B4 inches range when shooting/charging from Royal Legion (instead of only \u002B4 inches/\u002B2 inches)."
+    },
+    {
+      "name": "Defense",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "ratedRollModifier",
+            "rollKind": "Save",
+            "delta": {
+              "kind": "arg",
+              "index": 0
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "This model gets \u002BX to Defense rolls."
+    },
+    {
+      "name": "Indirect when shooting",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "isMelee"
+              }
+            },
+            "right": {
+              "kind": "afterMoving"
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreLineOfSight"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Fires at targets out of line of sight and ignores cover when shooting; -1 to hit if the unit moved this activation."
+    },
+    {
+      "name": "Difficult Terrain Debuff Effect",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveThroughTerrain",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "countAsInTerrain",
+            "terrain": "Difficult"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Negative",
+      "description": "This unit counts as being in Difficult Terrain on its next move - that move is capped at 6\u0022."
+    },
+    {
+      "name": "No Retreat",
+      "passive": [
+        {
+          "hookID": "Morale_OnMoraleTestComplete",
+          "condition": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "passFailedMoraleTest",
+            "selfWoundOnRollAtMost": 3
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+    },
+    {
+      "name": "Spell Resistance",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isNotSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+    }
+  ],
+  "spells": [
+    {
+      "name": "Desert Storm",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Desert Storm Effect",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Storm of Skulls",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 1,
+        "withRules": [
+          "Blast(3)"
+        ],
+        "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Tomb Queen\u0027s Guidance",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 12,
+        "minCount": 1,
+        "maxCount": 2,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Royal Legion",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Tomb Queen\u0027s Vengeance",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 12,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 4,
+        "withRules": [
+          "Pierce"
+        ],
+        "armorPenetration": 1
+      }
+    },
+    {
+      "name": "Cursed Arrows",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Shred on its weapons when shooting",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Rapid Desiccation",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 24,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": true,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 3,
+        "withRules": [],
+        "armorPenetration": 4
+      }
+    }
+  ],
+  "unattributedPoints": 0
+}

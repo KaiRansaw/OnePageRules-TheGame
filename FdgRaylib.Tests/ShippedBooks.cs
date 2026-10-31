@@ -77,8 +77,8 @@ internal static class ShippedBooks
         return name;
     }
 
-    /// <summary>Longest first, so "AoFS-" is never mistaken for "AoF-".</summary>
-    private static readonly string[] SystemPrefixes = { "AoFS-", "GFSQ-", "GFF-", "AoF-" };
+    /// <summary>Longest first, so "AoFS-" and "AoFQ-" are never mistaken for "AoF-".</summary>
+    private static readonly string[] SystemPrefixes = { "AoFS-", "AoFQ-", "GFSQ-", "GFF-", "AoF-" };
 
     /// <summary>
     /// A bundled book by file name, wherever its game-system folder puts it. Throws rather than

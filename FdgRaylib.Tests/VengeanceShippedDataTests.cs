@@ -135,7 +135,7 @@ public class VengeanceShippedDataTests
         // gone - at that spread they pin nothing a reader can check - but the three structural assertions
         // below are the ones that were load-bearing, and they now hold across all six books instead of one.
         // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 22 -> 28.
-        Assert.That(sites.Count, Is.EqualTo(28),
+        Assert.That(sites.Count, Is.EqualTo(41),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)

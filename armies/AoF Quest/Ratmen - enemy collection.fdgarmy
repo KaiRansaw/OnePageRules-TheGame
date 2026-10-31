@@ -1,0 +1,2282 @@
+{
+  "selections": null,
+  "book": null,
+  "name": "Ratmen - enemy collection",
+  "faction": "Ratmen",
+  "pointsLimit": 100000,
+  "gameSystem": "age-of-fantasy-quest",
+  "units": [
+    {
+      "name": "Militia",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "pointCost": 25
+    },
+    {
+      "name": "Warrior",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "pointCost": 25
+    },
+    {
+      "name": "Monk",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Censer Flail",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 35
+    },
+    {
+      "name": "Grenadier",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Quick Throw"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Bombs",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "mortar-artillery",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Indirect"
+            },
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Giant Rat",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Vicious Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Storm Veteran",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Halberd",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 50
+    },
+    {
+      "name": "Night Scout",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scout"
+        },
+        {
+          "kind": "core",
+          "name": "Stealth"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Daggers",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "blade-standard",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 60
+    },
+    {
+      "name": "Sniper",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Overtuned Sniper Rifle",
+          "quantity": 1,
+          "rangeInches": 30,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Reliable"
+            },
+            {
+              "kind": "core",
+              "name": "Hazardous"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 70
+    },
+    {
+      "name": "Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 85
+    },
+    {
+      "name": "Rat Swarm",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Overwhelming Swarm",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 85
+    },
+    {
+      "name": "Weapon Team",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        },
+        {
+          "name": "Death Roller",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
+            }
+          ]
+        }
+      ],
+      "pointCost": 100
+    },
+    {
+      "name": "Getrie Veikasip",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Quick Throw"
+        },
+        {
+          "kind": "core",
+          "name": "Increased Shooting Range"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Artificer Bombs",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "mortar-artillery",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            },
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        },
+        {
+          "name": "Overtuned Halberd",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Hazardous"
+            }
+          ]
+        }
+      ],
+      "pointCost": 115
+    },
+    {
+      "name": "Battle Master",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 140
+    },
+    {
+      "name": "Brother Hepalit",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Bane in Melee Aura"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Blight Staff",
+          "quantity": 1,
+          "rangeInches": 9,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            },
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Relic Dagger",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "energy-blade",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 160
+    },
+    {
+      "name": "Rat Ogre",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Sharp Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 170
+    },
+    {
+      "name": "Ratmen Artillery",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Artillery"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "core",
+          "name": "Cumbersome"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Overtuned Gatling Gun",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 18,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Hazardous"
+            }
+          ]
+        },
+        {
+          "name": "Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 190
+    },
+    {
+      "name": "Storm Ogre",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.968504,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Flame-Fists",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "flame-jet",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Reliable"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 190
+    },
+    {
+      "name": "Captain Kedseit",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "core",
+          "name": "Counter in Melee"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Havocfall",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 220
+    },
+    {
+      "name": "Great Death Roller",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 5,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Great Death Roller",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 27,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
+            }
+          ]
+        }
+      ],
+      "pointCost": 390
+    },
+    {
+      "name": "Blessed Platform",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 27
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Crew Attacks",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        },
+        {
+          "name": "Giant Censer",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 540
+    },
+    {
+      "name": "Giant Beast",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Sharp Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 875
+    },
+    {
+      "name": "Giant Blessed Beast",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 3,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Caster",
+          "numericValue": 2
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 9
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 54
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        },
+        {
+          "kind": "core",
+          "name": "Scout"
+        },
+        {
+          "kind": "core",
+          "name": "Spell Conduit"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Sharp Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 36,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 2095
+    },
+    {
+      "name": "God-Titan",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 2,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Caster",
+          "numericValue": 4
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 54
+        },
+        {
+          "kind": "core",
+          "name": "Scurry"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        },
+        {
+          "name": "Sweeping Titan Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 6
+            }
+          ]
+        }
+      ],
+      "pointCost": 2100
+    }
+  ],
+  "ruleDefinitions": [
+    {
+      "name": "Spell Conduit",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Shaken"
+              },
+              "minCount": 1
+            }
+          },
+          "effect": {
+            "kind": "enableSpellRelay",
+            "rangeInches": 12,
+            "castRollBonus": 1
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this unit\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+    },
+    {
+      "name": "Melee Slayer",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "isCharging"
+            },
+            "right": {
+              "kind": "targetMajorityHasTough",
+              "minToughValue": 3
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+    },
+    {
+      "name": "Scurry",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 2,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 2,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 2,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Moves \u002B2 inches on Advance and \u002B2 inches on Rush/Charge."
+    },
+    {
+      "name": "Precision Fighter Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Precision Fighter"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit gain Precision Fighter."
+    },
+    {
+      "name": "Precision Fighter Buff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 12,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Friend",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Precision Fighter",
+            "scope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Precision Fighter for its next relevant roll."
+    },
+    {
+      "name": "Banner",
+      "passive": [
+        {
+          "hookID": "Morale_OnPreMoraleTest",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Morale",
+            "delta": 1
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit gets \u002B1 to morale test rolls."
+    },
+    {
+      "name": "Musician",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+    },
+    {
+      "name": "Sergeant",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          },
+          "effect": {
+            "kind": "addExtraHit",
+            "onRollValue": 6,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model attacks, unmodified results of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
+    },
+    {
+      "name": "Defense Debuff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 18,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "statModifier",
+            "roll": "Save",
+            "delta": -1,
+            "lifetimeScope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to defense rolls once (next time the effect would apply)."
+    },
+    {
+      "name": "Heavy Impact",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "arg",
+              "index": 0
+            },
+            "armorPenetration": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+    },
+    {
+      "name": "Hazardous",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -4
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 1
+          },
+          "effect": {
+            "kind": "selfWoundOnUnmodifiedRoll",
+            "onRollValue": 1,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Attacks with this weapon get AP(4), but this weapon\u0027s unit takes one wound on unmodified rolls of 1 to hit."
+    },
+    {
+      "name": "Repel Ambushers",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "repelAmbushers",
+            "distanceInches": 12
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Enemy units using Ambush must be set up over 12\u0022 away from this model\u0027s unit."
+    },
+    {
+      "name": "Reinforcement",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnSelfDestroyed",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "ReinforcementSpent"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "reinforceUnit"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Morale_OnShakenApplied",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "ReinforcementSpent"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "reinforceUnit"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where all models have this rule is Shaken or fully destroyed, you may remove it from the table as destroyed and place a new copy of it fully within 12\u0022 of any table edge at the beginning of the next round after Ambushers have been deployed. Units that deploy via Reinforcement can\u0027t seize or contest objectives on the round they deploy, and this rule doesn\u0027t apply to the new copy of the unit."
+    },
+    {
+      "name": "Takedown Strike",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Combat_OnAttackWindow",
+          "cost": {
+            "kind": "oncePerGame"
+          },
+          "targetSelector": {
+            "rangeInches": 0,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "extraAttack",
+            "weaponName": "Takedown Strike",
+            "attacks": {
+              "kind": "arg",
+              "index": 0
+            },
+            "armorPenetration": 2,
+            "withRules": [
+              "Reliable",
+              "Deadly(3)",
+              "Takedown"
+            ]
+          },
+          "availableWhen": {
+            "kind": "isMelee"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Once per game, when it\u0027s this model\u0027s turn to strike in melee, it may make X attacks at Quality 2\u002B with AP(2), Deadly(3), and Takedown."
+    },
+    {
+      "name": "Anti-Cover",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Cover."
+    },
+    {
+      "name": "Anti-Regen",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Regeneration."
+    },
+    {
+      "name": "Spell Resistance",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isNotSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Counter in Melee",
+      "passive": [
+        {
+          "hookID": "Melee_OnCounterTrigger",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "strikeFirst"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "reduceImpactDicePerModel"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+    },
+    {
+      "name": "Enhanced Scurry",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Scurry"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Advance"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 2,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Scurry"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Rush"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 4,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Scurry"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Charge"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 4,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If this model has Scurry, it moves \u002B2 inches on Advance and \u002B4 inches on Rush/Charge from Scurry (instead of only \u002B1 inches and \u002B2 inches)."
+    },
+    {
+      "name": "Unique Hero",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Hero",
+            "scope": "UntilEndOfGame"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Counts as having Hero, and this model may only be taken once per army."
+    },
+    {
+      "name": "Quick Throw",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "weaponHasRule",
+            "ruleName": "Indirect"
+          },
+          "effect": {
+            "kind": "ignoreLineOfSight"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model may always target enemies that are not in line of sight when shooting with Indirect weapons (instead of only when using Hold actions)."
+    },
+    {
+      "name": "Counter in Melee Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Counter in Melee"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Counter in Melee."
+    },
+    {
+      "name": "Enhanced Scurry Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Scurry"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Scurry."
+    },
+    {
+      "name": "Defense",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "ratedRollModifier",
+            "rollKind": "Save",
+            "delta": {
+              "kind": "arg",
+              "index": 0
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "This model gets \u002BX to Defense rolls."
+    },
+    {
+      "name": "Precision Fighter",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "\u002B1 to hit rolls in melee."
+    }
+  ],
+  "spells": [
+    {
+      "name": "God-Mother\u0027s Frenzy",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 12,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Melee Slayer",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Lightning Blast",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": true,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 2,
+        "withRules": [
+          "Hazardous"
+        ],
+        "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Cracking Bell-Chime",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 2,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "statModifier",
+        "roll": "Save",
+        "delta": -1,
+        "lifetimeScope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Heavenly Strike",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 6,
+        "minCount": 1,
+        "maxCount": 2,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 4,
+        "withRules": [],
+        "armorPenetration": 2
+      }
+    },
+    {
+      "name": "Magic Skitter-Step",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Scurry",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Choking Censer-Fog",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 9,
+        "withRules": [],
+        "armorPenetration": 0
+      }
+    }
+  ],
+  "unattributedPoints": 0
+}

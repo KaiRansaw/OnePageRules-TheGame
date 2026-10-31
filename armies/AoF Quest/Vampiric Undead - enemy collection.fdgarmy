@@ -1,0 +1,2822 @@
+{
+  "selections": null,
+  "book": null,
+  "name": "Vampiric Undead - enemy collection",
+  "faction": "Vampiric Undead",
+  "pointsLimit": 100000,
+  "gameSystem": "age-of-fantasy-quest",
+  "units": [
+    {
+      "name": "Drained Soldier",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "pointCost": 30
+    },
+    {
+      "name": "Stitched Zombie",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 35
+    },
+    {
+      "name": "Drained Archer",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Bow",
+          "quantity": 1,
+          "rangeInches": 24,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Skeleton Guard",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 40
+    },
+    {
+      "name": "Ghoul",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 50
+    },
+    {
+      "name": "Zombie Wolf",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Wolf Bites",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 50
+    },
+    {
+      "name": "Skeleton Watch",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Crossbow",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "arcane-psychic",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 60
+    },
+    {
+      "name": "Vampire Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 60
+    },
+    {
+      "name": "Skeleton Knight",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 60
+    },
+    {
+      "name": "Vampire Knight",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.3779528,
+        "heightInches": 2.3622048
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 80
+    },
+    {
+      "name": "Drained Leader",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 105
+    },
+    {
+      "name": "Skeleton Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 135
+    },
+    {
+      "name": "Bat Swarm",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 135
+    },
+    {
+      "name": "Stitched Butcher",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Ravage",
+          "numericValue": 6
+        },
+        {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 155
+    },
+    {
+      "name": "Ghoul Horror",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 160
+    },
+    {
+      "name": "Ghoul Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 165
+    },
+    {
+      "name": "Giant Bat",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 165
+    },
+    {
+      "name": "Latmyir The Mad",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Grasping Skeletons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        },
+        {
+          "name": "Pet Experiment",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Limited"
+            },
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "pointCost": 180
+    },
+    {
+      "name": "Ghoul Beast Rider",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 1.8110236,
+        "heightInches": 2.952756
+      },
+      "quality": 4,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 180
+    },
+    {
+      "name": "Vampire Master",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 200
+    },
+    {
+      "name": "Bat Horror",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 205
+    },
+    {
+      "name": "Werewolf",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Scout"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Sharp Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        }
+      ],
+      "pointCost": 225
+    },
+    {
+      "name": "Captain Blackfang",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Gravedust Pistols",
+          "quantity": 1,
+          "rangeInches": 9,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            }
+          ]
+        },
+        {
+          "name": "Cursed Cutlass",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        }
+      ],
+      "pointCost": 285
+    },
+    {
+      "name": "Vampiric Artillery",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Artillery"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Cumbersome"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Stone Thrower",
+          "quantity": 1,
+          "rangeInches": 36,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "crude-melee",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 350
+    },
+    {
+      "name": "Maiden Chariot",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Ravage",
+          "numericValue": 12
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Mind Control"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hooves",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        },
+        {
+          "name": "Toxin Dagger Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 365
+    },
+    {
+      "name": "Corpse Wagon",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 5,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Enhanced Cursed Undead Buff"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Zombies",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 0,
+          "effectSet": "toxic-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 380
+    },
+    {
+      "name": "Werewolf Champion",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.968504,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Scout"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Hand Weapons",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 440
+    },
+    {
+      "name": "Bat Beast",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 445
+    },
+    {
+      "name": "Funeral Coach",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 12
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Morale Debuff"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        },
+        {
+          "name": "Hooves",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        }
+      ],
+      "pointCost": 460
+    },
+    {
+      "name": "Deathly Chariot",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 12
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Hooves",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
+        },
+        {
+          "name": "Spear Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
+            }
+          ]
+        }
+      ],
+      "pointCost": 470
+    },
+    {
+      "name": "Lady Navleva",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 2.7559056,
+        "heightInches": 4.133858
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Instinctive"
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Forlorn Falchion",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Surge"
+            }
+          ]
+        }
+      ],
+      "pointCost": 585
+    },
+    {
+      "name": "Gremyir \u0026 Milyazha",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.968504,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 3,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Repel Ambushers"
+        },
+        {
+          "kind": "core",
+          "name": "Ambush"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Telen Hunting Dagger",
+          "quantity": 1,
+          "rangeInches": 9,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            },
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Scythes of Zhenye",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 2,
+          "effectSet": "spear-pierce",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 615
+    },
+    {
+      "name": "Zombie Dragon",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Sharp Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Rending"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 950
+    },
+    {
+      "name": "Bat Dragon",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 6
+        },
+        {
+          "kind": "core",
+          "name": "Furious"
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 36
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 1,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        },
+        {
+          "name": "Toxin Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 1070
+    },
+    {
+      "name": "Butcher Titan",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 4.92126,
+        "heightInches": 6.889764
+      },
+      "quality": 3,
+      "defense": 2,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 54
+        },
+        {
+          "kind": "core",
+          "name": "Fearless"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Infected Zombies",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 18,
+          "armorPenetration": 2,
+          "effectSet": "titan-impact",
+          "specialRules": []
+        },
+        {
+          "name": "Titan Carving Tool",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 27,
+          "armorPenetration": 0,
+          "effectSet": "titan-impact",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "pointCost": 1860
+    }
+  ],
+  "ruleDefinitions": [
+    {
+      "name": "Infiltrate",
+      "passive": [
+        {
+          "hookID": "Deployment_OnPreDeploymentSelect",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "deferDeployment",
+            "timing": "LaterRound",
+            "placementRangeInches": 3,
+            "minArrivalRound": 2,
+            "mandatoryArrival": false
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+    },
+    {
+      "name": "Banner",
+      "passive": [
+        {
+          "hookID": "Morale_OnPreMoraleTest",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Morale",
+            "delta": 1
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit gets \u002B1 to morale test rolls."
+    },
+    {
+      "name": "Musician",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Charge"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+    },
+    {
+      "name": "Sergeant",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          },
+          "effect": {
+            "kind": "addExtraHit",
+            "onRollValue": 6,
+            "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model attacks, unmodified results of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
+    },
+    {
+      "name": "Morale Debuff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 18,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": true,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "statModifier",
+            "roll": "Morale",
+            "delta": -1,
+            "lifetimeScope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to morale test rolls once (next time the effect would apply)."
+    },
+    {
+      "name": "Casting Buff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 12,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Friend",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": "Caster"
+          },
+          "effect": {
+            "kind": "statModifier",
+            "roll": "Cast",
+            "delta": 1,
+            "lifetimeScope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
+    },
+    {
+      "name": "Repel Ambushers",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "repelAmbushers",
+            "distanceInches": 12
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Enemy units using Ambush must be set up over 12\u0022 away from this model\u0027s unit."
+    },
+    {
+      "name": "Spawn",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnActivationStart",
+          "cost": {
+            "kind": "oncePerGame"
+          },
+          "targetSelector": {
+            "rangeInches": 0,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Self",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "spawnUnit",
+            "radiusInches": 6
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": "Spawn"
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+    },
+    {
+      "name": "Reanimation Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Reanimation"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Reanimation."
+    },
+    {
+      "name": "Mind Control",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 18,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "moraleTestThen",
+            "onFailure": {
+              "kind": "triggeredMove",
+              "maxInches": 6,
+              "isOptional": true
+            }
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022, which must take a morale test. If failed you may move it by up to 6\u0022 in a straight line in any direction."
+    },
+    {
+      "name": "No Retreat Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "No Retreat"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get No Retreat."
+    },
+    {
+      "name": "Instinctive",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnCapabilityQuery",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "compelClosestTarget"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "CompelledToAttack"
+              },
+              "minCount": 1
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "isMelee"
+              }
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "CompelledToAttack"
+              },
+              "minCount": 1
+            },
+            "right": {
+              "kind": "and",
+              "left": {
+                "kind": "isMelee"
+              },
+              "right": {
+                "kind": "isCharging"
+              }
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
+    },
+    {
+      "name": "Spell Resistance",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isNotSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+    },
+    {
+      "name": "Fragment",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "statGreaterOrEqualTo",
+            "stat": "Defense",
+            "statValue": 5
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 5
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When attacking units where most models have Defense 5\u002B to Defense 6\u002B, the target must re-roll successful unmodified Defense results of 5-6."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Brace in Melee",
+      "passive": [
+        {
+          "hookID": "Activation_OnActivationStart",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Brace",
+            "scope": "ThisActivation"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model gets Brace(1) on its weapons in melee."
+    },
+    {
+      "name": "Unique Hero",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Hero",
+            "scope": "UntilEndOfGame"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Counts as having Hero, and this model may only be taken once per army."
+    },
+    {
+      "name": "Piercing Marksman Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Piercing Marksman"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Piercing Marksman."
+    },
+    {
+      "name": "Enhanced Cursed Undead Buff",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnBeforeAttackAction",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 12,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Friend",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Enhanced Cursed Undead",
+            "scope": "NextTrigger"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": ""
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Cursed Undead until the end of its next activation."
+    },
+    {
+      "name": "Cursed Undead",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Ignores each wound on a roll of 6\u002B."
+    },
+    {
+      "name": "Enhanced Cursed Undead",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Cursed Undead"
+            },
+            "right": {
+              "kind": "allModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If most models in this unit have Cursed Undead, they ignore wounds on rolls of 5-6 from Cursed Undead (instead of only on 6\u002B)."
+    },
+    {
+      "name": "Defense",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "ratedRollModifier",
+            "rollKind": "Save",
+            "delta": {
+              "kind": "arg",
+              "index": 0
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "This model gets \u002BX to Defense rolls."
+    },
+    {
+      "name": "Reanimation",
+      "passive": [
+        {
+          "hookID": "Activation_OnActivationStart",
+          "condition": {
+            "kind": "allModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "restoreWounds",
+            "minRoll": 5
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where all models have this rule is activated, roll as many dice as the max. number of models/wounds it could restore. For each 5\u002B you may restore one model/wound. Note that new models may only be restored if they can be placed in coherency with non-restored models."
+    },
+    {
+      "name": "No Retreat",
+      "passive": [
+        {
+          "hookID": "Morale_OnMoraleTestComplete",
+          "condition": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "effect": {
+            "kind": "passFailedMoraleTest",
+            "selfWoundOnRollAtMost": 3
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+    },
+    {
+      "name": "Piercing Marksman",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "isMelee"
+              }
+            },
+            "right": {
+              "kind": "distanceGreaterThan",
+              "distanceInches": 9
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+    }
+  ],
+  "spells": [
+    {
+      "name": "Seductive Invocation",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "moraleTestThen",
+        "onFailure": {
+          "kind": "triggeredMove",
+          "maxInches": 6,
+          "isOptional": true
+        }
+      }
+    },
+    {
+      "name": "Cursed Strike",
+      "threshold": 1,
+      "target": {
+        "rangeInches": 6,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 3,
+        "withRules": [
+          "Fragment"
+        ],
+        "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Dance of Death",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 12,
+        "minCount": 1,
+        "maxCount": 2,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Teleport",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Deadly Gaze",
+      "threshold": 2,
+      "target": {
+        "rangeInches": 6,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 2,
+        "withRules": [
+          "Deadly(3)"
+        ],
+        "armorPenetration": 2
+      }
+    },
+    {
+      "name": "Vigorous Return",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Cursed Undead",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Spectral Wind",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 6,
+        "withRules": [],
+        "armorPenetration": 2
+      }
+    }
+  ],
+  "unattributedPoints": 0
+}

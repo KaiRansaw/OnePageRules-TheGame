@@ -153,7 +153,7 @@ public class ExtraAttackShippedDataTests
     // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 21 -> 27 and 7 -> 11.
     // The new carriers are the Star Quest editions of heroes already counted, and all of them are still
     // 1-model units - which is the assertion below, and the only reason unit scope reads correctly here.
-    [TestCase(Strike, 27)]
+    [TestCase(Strike, 38)]
     [TestCase(Shot, 11)]
     public void EveryCarrier_IsASingleModelUnit(string ruleName, int expectedRefs)
     {

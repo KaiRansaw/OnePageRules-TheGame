@@ -216,6 +216,12 @@ public class ForgeCrossSectionReplaceShippedDataTests
     {
         "Throwing Knife", "Poisoned Knife", "Heavy Tusk", "Rough Horn",
         "Assault Linked Rifle-Array", "Raider Hoof", "Fumigator", "Explosive Spear",
+        // #417, from AoF: Quest's Wood Elves: the Eternal Guardian Ancient carries a Master Great
+        // Hammer and a Stomp, and OPR's shared package hangs a "Replace Venom-Dragonfly" section on it
+        // anyway. Confirmed against the raw Army Forge payload rather than assumed - the section's own
+        // replaceWhat is null upstream, so this is the same shared-package quirk as the eight above and
+        // not something the import invented.
+        "Venom-Dragonfly",
     };
 
     [Test]
@@ -262,7 +268,11 @@ public class ForgeCrossSectionReplaceShippedDataTests
         // Star Quest editions of units already here - Jackals' Charger Beast and Scavenger Beast, and
         // Machine Cults' Raider Cavalry - so the allowlist needed no new target names, which is itself
         // the useful signal: the quirk travels with the shared upgrade package, not with the system.
-        Assert.That(upstream, Has.Count.EqualTo(24),
+        // Re-taken again for AoF: Quest's 46 enemy books (288 books): 24 -> 37. This time the
+        // allowlist DID need a new name (Venom-Dragonfly), because AoF: Quest is the first fantasy
+        // system in this fixture's scope - Age of Fantasy proper is excluded and Skirmish does not
+        // publish the unit that carries the quirk.
+        Assert.That(upstream, Has.Count.EqualTo(37),
             "the 2026-10-31 census of OPR's own unreachable shared-package targets:\n  "
             + string.Join("\n  ", upstream));
     }
@@ -306,8 +316,9 @@ public class ForgeCrossSectionReplaceShippedDataTests
             }
         }
 
-        // Re-taken again for Star Quest's 54 enemy books (242 books): 91 -> 132.
-        Assert.That(fedFromBelow, Has.Count.EqualTo(132),
+        // Re-taken again for Star Quest's 54 enemy books (242 books): 91 -> 132, and again for AoF:
+        // Quest's 46 (288 books): 132 -> 137.
+        Assert.That(fedFromBelow, Has.Count.EqualTo(137),
             "census drift - re-run the audit and re-check the fix covers the new shape:\n  "
             + string.Join("\n  ", fedFromBelow));
         // Anchored by SHAPE rather than by two unit names. The 3.5.1 anchors were the War Errant
@@ -316,9 +327,10 @@ public class ForgeCrossSectionReplaceShippedDataTests
         // confined to one corner of the corpus: it occurs in every game system, so the #323 fix has to
         // hold everywhere and a future regression cannot hide in a system nobody checked.
         // (Age of Fantasy proper is out of this fixture's scope - GdfPaths() excludes the "AoF-" files,
-        // and the AoF corpus carries its own census. GF Firefight and AoF Skirmish are in scope and are
-        // where 3.6.0 added most of the new population.)
-        string[] prefixes = { "AoFS-", "GFF-" };
+        // and the AoF corpus carries its own census. GF Firefight, AoF Skirmish, GF Star Quest and AoF:
+        // Quest are in scope; 3.6.0 added most of the new population in the skirmish books, and #417's
+        // AoF: Quest import mirrors the Skirmish entries almost one for one.)
+        string[] prefixes = { "AoFS-", "AoFQ-", "GFF-" };
         foreach (string prefix in prefixes)
         {
             Assert.That(fedFromBelow, Has.Some.StartsWith(prefix),

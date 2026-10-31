@@ -95,11 +95,11 @@ public class ExtendedBuffRangeShippedDataTests
         // Re-taken again the same day, for Star Quest's 54 enemy books (242 books): 29 -> 43. The new
         // sites are the Star Quest editions of armies already in the census, so nothing about the
         // item-grant shape changed - see ShippedBooks for why every total in this family moved at once.
-        Assert.That(sites.Count, Is.EqualTo(43),
+        Assert.That(sites.Count, Is.EqualTo(49),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[]
         {
-            "AoFS-HumanEmpire", "GFF-HumanDefenseForce", "GFF-VoidspaceStalkers",
+            "AoFQ-HumanEmpire", "AoFS-HumanEmpire", "GFF-HumanDefenseForce", "GFF-VoidspaceStalkers",
             "GFSQ-HumanDefenseForce", "GFSQ-VoidspaceStalkers",
             "HumanDefenseForce", "VoidspaceStalkers",
         }));

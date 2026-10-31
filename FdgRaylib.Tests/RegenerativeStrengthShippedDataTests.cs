@@ -156,12 +156,18 @@ public class RegenerativeStrengthShippedDataTests
         // assertions below compare DISTINCT units and ARMIES rather than raw book file names: a claim
         // about which units carry a rule should not read as a new carrier appearing every time a game
         // system is imported.
-        Assert.That(sites.Count, Is.EqualTo(4),
+        Assert.That(sites.Count, Is.EqualTo(6),
             "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Select(s => s.Unit).Distinct(),
-            Is.EquivalentTo(new[] { "Engine of Suffering", "Carnivo-Rex" }));
+            // #417: AoF: Quest's books brought two more carriers, both fantasy units that have no
+            // Grimdark Future edition - the Avatar of Flame and the Hydra. The structural claim
+            // (every carrier is a single-model unit) is what matters and still holds.
+            Is.EquivalentTo(new[]
+                { "Engine of Suffering", "Carnivo-Rex", "Avatar of Flame", "Hydra" }));
         Assert.That(sites.Select(s => ShippedBooks.ArmyName(s.Book)).Distinct(),
-            Is.EquivalentTo(new[] { "DarkElfRaiders", "AlienHives" }));
+            // #417: and a third army, AoF: Quest's Dark Elves - a different book from Grimdark
+            // Future's Dark Elf Raiders, not another edition of it.
+            Is.EquivalentTo(new[] { "DarkElfRaiders", "AlienHives", "DarkElves" }));
 
         foreach (Site site in sites)
         {
