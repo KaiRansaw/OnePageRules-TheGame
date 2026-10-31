@@ -158,3 +158,75 @@ being deleted, since "is it selectable" is the question a future reader will hav
 19 rounds against the Dwarves enemy collection, high score 6, no errors. The played game proves the
 mode runs; the fixtures are what prove the two books are being obeyed separately, because the
 difference between them is mostly a prompt a bot answers the same way either way.
+
+### 2026-10-31 (later) - AoF: Quest is on 2.1.0 after all, and the split collapsed
+
+Kai added `AoFQ - Beginners Guide v2.1.0` and `AoFQ - Campaign Builder v2.1.0`. **AoF: Quest is on the
+2.1.0 generation**, and it matches Star Quest on every one of the six things this work item had just
+split:
+
+| | AoFQ 2.0.1 (what the split was built from) | AoFQ **2.1.0** (what the game is) |
+|---|---|---|
+| Extra action / revive | 2 power | **3 power** |
+| Failed hero skill | must pay; skill resolves | **may** pay; skill **fails** if declined |
+| Failed cast | may be bought for X*2 power | **final** |
+| Melee reach | 2" horizontal / 4" vertical | **flat 3"** |
+| Scout | 12" | **9"** |
+| Villain aura | 12", optional | **6", mandatory** |
+
+So the split was right about the book it had and wrong about the game. `QuestRulesProfile` now holds
+**one** Quest profile, quoted from the 2.1.0 books, with `For(system)` keeping the switch because OPR
+versions its systems one book at a time and this is where the next divergence goes. The failed-cast
+buy-back was **deleted** rather than left behind a flag nobody sets - an unreachable rule is the exact
+thing this codebase keeps getting bitten by - and the 2.0.1 wording is recorded in the table above in
+case a narrative campaign ever pins a party to the older book. Melee reach stays a per-game FIELD rather
+than going back to a `const`: the rule has now changed twice, and a const is a decision that something
+can never be per-game.
+
+Three tests flipped rather than being deleted, because "do these two systems agree?" is the question a
+future reader will have: the failed-skill discriminating pair now asserts agreement (and that a skill
+CAN fail in both, which is the half 2.0.1 did not have), Scout widens by 9" in both, and Q5's "melee
+reach is not per-system" claim is true again.
+
+**The lesson, written where the next person will hit it:** a per-system difference is only real while
+both systems' CURRENT books say so. Reading one book and finding a difference is not the same as the
+game having one.
+
+### 2026-10-31 (later) - the thing the new books DID give: items, injuries and gold
+
+The 2.1.0 Campaign Builder turned out to settle two of the three gaps this item had recorded, and expose
+a fault nobody had seen:
+
+- **Injuries:** the six-entry table (Chest Wound / Blinded Eye / Smashed Leg / Broken Arm / Spinal
+  Injury / Crushed Spirit) is in `AoFQuestRules.json` now, typed from the book.
+- **The level-1 hero stat line** is still not printed in any AoF: Quest book, but carrying Star Quest's
+  is now well founded rather than a guess: both systems are on 2.1.0 and share every mechanic it feeds.
+- **The shop's item list with costs and tiers is still unavailable** - and it turns out no OPR book
+  prints it for EITHER Quest system. Star Quest's 33 consumables came from Army Forge's own quest data,
+  and there is no endpoint for it. So `consumables` stays empty, deliberately.
+- **AoF: Quest heroes were finding Med Kits and credits.** The Hidden Treasure tables in the two
+  Campaign Builders are the same table roll for roll, reskinned - Injector Pouch is Elixir Pouch,
+  Grenade Bag is Bomb Bag, Kit Box is Potion Box, Credits Stash is Gold Stash, and the nine items inside
+  them pair up one to one. The engine had only Star Quest's, so a fantasy party was pulling sci-fi
+  gear out of the ground. `QuestItemSkin` maps the names per system; `QuestItems.Find` resolves either
+  vocabulary to the one definition that carries the rules, so a hero keeps the name it found and saved
+  heroes from before this keep working; and money is "15g" in AoF: Quest against "15c" in Star Quest,
+  parsed either way. Proved in a played mission: the log reads Elixir Pouch / Bomb Bag / Gold Stash.
+  **The effects are an inference** - no book prints them, so each AoF name is wired to the Star Quest
+  item in the same table slot - and that is written into `QuestItemSkin` rather than hidden.
+
+### Still open after the 2.1.0 books
+
+- **The 36 random-event NAMES are still Star Quest's** in an AoF: Quest game (Psychic Fog where the
+  book says Mystic Fog, Haste Stims where it says Haste Berries, and so on). The effects are identical
+  in both books and the two events that hand out an item or money are skinned, so this is flavour text
+  only - but it is 36 strings read straight from the AoFQ Beginners Guide when someone wants it.
+- **Casting is "once per activation, before attacking"** in both 2.1.0 books; the engine has the 2.0.1
+  gate. Now confirmed for both systems rather than one.
+- **AI group coherency is 1" / 3"** in both 2.1.0 books; the engine runs Grimdark Future's 1" / 9".
+- **Blast's per-unit cap**: AoFQ 2.1.0 words it as "Hits must be split evenly between the target and all
+  enemy units within 3" of any model from the target (players pick how), **but each unit may only take up
+  to as many hits as models in it**". #414 built the spread from Star Quest's shorter wording - worth
+  checking the per-receiver cap is enforced, with this text in hand.
+- **The AoF: Quest Horde book** (`AoFQ - Horde Mode v2.0.0.pdf`) has still never been read against the
+  engine; #416 covered the four 3.6.0 Horde books, and the two Quest Horde books are their own documents.

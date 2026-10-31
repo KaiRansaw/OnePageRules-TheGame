@@ -257,8 +257,13 @@ public class AoFQuestHeroDataTests
         Assert.That(AoF.Rules.Consumables, Is.Empty,
             "AoF: Quest's shop items are not available - if they have been added, the shop should read "
             + "them and this pin should be replaced by a real agreement test like Star Quest's");
-        Assert.That(AoF.Rules.Injuries, Is.Empty,
-            "AoF: Quest's injury table is not available - same as above");
+        // #418, later the same day: Kai added the v2.1.0 Beginners Guide and Campaign Builder, so the
+        // injury table IS available now and is typed from the book. The shop list still is not - no OPR
+        // book prints it for either Quest system.
+        Assert.That(AoF.Rules.Injuries.Select(i => i.Name), Is.EquivalentTo(new[]
+        {
+            "Chest Wound", "Blinded Eye", "Smashed Leg", "Broken Arm", "Spinal Injury", "Crushed Spirit",
+        }), "the six injuries in AoFQ Campaign Builder v2.1.0");
 
         // What IS available and typed from the AoFQ core rules book, word for word.
         Assert.That(AoF.Rules.Conditions.Select(c => c.Name),

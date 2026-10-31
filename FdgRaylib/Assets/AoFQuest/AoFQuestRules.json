@@ -1,5 +1,5 @@
 {
- "source": "Derived 2026-10-31 (#418). Classes and skills are the shared Quest ruleset taken from the Star Quest dataset at its GENERIC naming (Army Forge records each class twice: 'Soldier' for Star Quest, 'Fighter' for AoF: Quest - the second is this file's 'name', the first is kept as 'sqName'). Status conditions are typed from 'AoFQ - Core Rules v2.0.1.pdf' word for word. NOT AVAILABLE: AoF: Quest's shop consumables, its injury table and its level-1 hero stat line all live in the AoF: Quest Campaign Builder, which OPR serves through no API endpoint and which is not among the project's books - so 'consumables' and 'injuries' are deliberately EMPTY rather than guessed, and 'baseHero' is carried over from Star Quest and marked as carried. Add the AoFQ Campaign Builder PDF and these three can be done properly.",
+ "source": "Derived 2026-10-31 (#418). Classes and skills are the shared Quest ruleset taken from the Star Quest dataset at its GENERIC naming (Army Forge records each class twice: 'Soldier' for Star Quest, 'Fighter' for AoF: Quest - the second is this file's 'name', the first is kept as 'sqName'). Status conditions, injuries and the treasure item names are typed from 'AoFQ - Core Rules v2.0.1.pdf', 'AoFQ - Beginners Guide v2.1.0.pdf' and 'AoFQ - Campaign Builder v2.1.0.pdf' word for word. STILL NOT AVAILABLE: the SHOP's item list with its costs and tiers. Neither AoF: Quest book prints it (nor does the Star Quest Campaign Builder - Star Quest's 33 consumables came from Army Forge's own quest data, and there is no API endpoint for it), so 'consumables' stays EMPTY rather than guessed. The nine items the Hidden Treasure table can produce ARE known by name and are listed under 'treasureItems'; the engine wires each to the effect of the Star Quest item in the same table slot (QuestItemSkin), which is an inference recorded as one.",
  "notes": {
   "classesRenamedByStarQuest": 12,
   "starQuestSpecificSkillNames": [
@@ -16,10 +16,11 @@
    "Pathfinder's Precision",
    "Soldier's Might"
   ],
-  "whyIdsMatchStarQuest": "The class ids are the link between a class and its skills, and between a saved hero and its class. They are deliberately the same values the Star Quest dataset uses, because the two systems share one skill list - a hero's ClassId therefore resolves in either dataset."
+  "whyIdsMatchStarQuest": "The class ids are the link between a class and its skills, and between a saved hero and its class. They are deliberately the same values the Star Quest dataset uses, because the two systems share one skill list - a hero's ClassId therefore resolves in either dataset.",
+  "rulesGeneration": "AoF: Quest is on 2.1.0 core rules, same as Star Quest, confirmed from the v2.1.0 Beginners Guide: 3 power for an extra action and for a revive, an OPTIONAL 1-power payment on a failed hero skill, a flat 3\" melee reach, a 9\" Scout, and a 6\" mandatory Villain aura. The project's AoFQ Core Rules PDF is still the older v2.0.1, which disagreed on all of those - see WorkItems/418."
  },
  "baseHero": {
-  "note": "CARRIED OVER from Star Quest, not read from an AoF: Quest book. The level-1 hero stat line lives in the Campaign Builder, which is not available - see 'source'. Both systems are the same Quest ruleset, so this is very likely right, but it is unverified.",
+  "note": "Carried over from Star Quest, and now well founded rather than a guess: both systems are on 2.1.0 core rules, which share every hero mechanic this stat line feeds. Neither AoF: Quest book prints a level-1 stat line (the hero's Qua, Def and Tough come from its army-book profile, which IS imported).",
   "qua": 5,
   "def": 6,
   "pow": 3,
@@ -2192,7 +2193,44 @@
   }
  ],
  "consumables": [],
- "injuries": [],
+ "injuries": [
+  {
+   "id": "chest-wound",
+   "name": "Chest Wound",
+   "baseName": "Chest Wound",
+   "description": "-1 to Def rolls"
+  },
+  {
+   "id": "blinded-eye",
+   "name": "Blinded Eye",
+   "baseName": "Blinded Eye",
+   "description": "-1 to Qua rolls"
+  },
+  {
+   "id": "smashed-leg",
+   "name": "Smashed Leg",
+   "baseName": "Smashed Leg",
+   "description": "-2 inches on Advance, and -4 inches on Rush/Charge"
+  },
+  {
+   "id": "broken-arm",
+   "name": "Broken Arm",
+   "baseName": "Broken Arm",
+   "description": "-1 to Str rolls"
+  },
+  {
+   "id": "spinal-injury",
+   "name": "Spinal Injury",
+   "baseName": "Spinal Injury",
+   "description": "-1 to Dex rolls"
+  },
+  {
+   "id": "crushed-spirit",
+   "name": "Crushed Spirit",
+   "baseName": "Crushed Spirit",
+   "description": "-1 to Wil rolls"
+  }
+ ],
  "conditions": [
   {
    "id": "afflicted",
@@ -2455,5 +2493,33 @@
   "1": "Dex test",
   "2": "Wil test",
   "3": "class feature (no test)"
+ },
+ "treasureItems": {
+  "note": "The Hidden Treasure table's items, from AoFQ Campaign Builder v2.1.0. Names only - no book prints their effects. The engine maps each to its Star Quest twin in the same table slot (FDG.Quest.QuestItemSkin), so they behave identically and read as fantasy.",
+  "elixirPouch": [
+   "Heroic Elixir",
+   "Conquest Elixir",
+   "Power Elixir"
+  ],
+  "bombBag": [
+   "Noise Bomb",
+   "Grease Bomb",
+   "Stunning Bomb"
+  ],
+  "potionBox": [
+   "Curing Potion",
+   "Teleport Potion",
+   "Health Potion"
+  ],
+  "goldStash": [
+   "5g",
+   "10g",
+   "15g"
+  ]
+ },
+ "currency": {
+  "suffix": "g",
+  "word": "gold",
+  "note": "AoF: Quest counts gold where Star Quest counts credits (Hazard Pay is '5g times the chosen Difficulty level')."
  }
 }
