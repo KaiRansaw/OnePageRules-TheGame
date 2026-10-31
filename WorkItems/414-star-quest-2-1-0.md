@@ -18,10 +18,12 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
-### 2026-10-31 - Blast: the rules decided and tested, the delivery NOT built
+### 2026-10-31 - Blast's spread, delivered
 
-**Open, and deliberately stopped half way.** `BlastSpreadRules` holds the whole distribution with 14
-tests; nothing calls it yet, so Blast still plays the full-scale games' way in all five systems.
+**Done.** Landed in two passes: the distribution first (`BlastSpreadRules`, 14 tests, nothing calling
+it), then the delivery (`RollToHitStage`'s branch, `ResolveBlastSpillStage`, `DetermineMoreBlastSpillStage`,
+13 more tests). Live proof rather than inference: a seeded Star Quest Horde run logs
+`Blast spreads 2 hit(s) onto Test Soldier` ten times, and a Grimdark Future game logs it zero times.
 
 **The fork Kai settled.** The 3.6.0 skirmish wording is *"each hit is multiplied by X. Hits must be split
 evenly between the target and all enemy units within 3" of any model from the target (defender picks
@@ -41,23 +43,31 @@ Also decided: **"defender picks how" is not offered as a prompt.** An even split
 the target is deterministic, and a prompt per blast in a game that fires dozens of shots would cost more
 than it adds. A deviation, written down rather than taken quietly.
 
-**What the remaining slice needs** (also in the class comment, because that is where the next person
-will be standing):
+**How the delivery works, and the three traps in it.** `FireStage` gains a looping pair after the
+target's wounds land, on `ResolveSpellDamageStage`'s shape - which had already solved "resolve one attack
+against several units, each with its own saves". `ResolveBlastSpillStage` is a `ParentStage` popping one
+share per pass and running `DetermineSaveRollsNeeded -> RollToSave -> AssignWounds -> ApplyWounds` over a
+fresh `CombatMetadata`; `DetermineMoreBlastSpillStage` sends it round again, and exits straight to
+finished when no spill is queued - which is every shot in the two full-scale games and every shot without
+a Blast weapon, so those cost nothing.
 
-- a looping resolver inside `FireStage`, on `ResolveSpellDamageStage`'s shape - a `ParentStage` that pops
-  one share per pass, builds a fresh `CombatMetadata`, and runs
-  `DetermineSaveRollsNeeded -> RollToSave -> AssignWounds -> ApplyWounds` - plus a loop-decision sibling
-  like `DetermineMoreSpellTargetsStage`;
-- the spilled hits must **not** go through `SyntheticHitResolution`, which is the obvious choice and the
-  wrong one: it runs the whole hit-complete fold, so Blast would multiply a second time. They are
-  already-multiplied hits needing the weapon's AP and the **receiving** unit's defensive rules;
-- each receiving unit needs its own cover check seeded (Blast ignores Cover, so zero) and its own morale
-  consequence, since a bystander taken to half strength tests like any other.
+The three ways a hand-rolled version goes wrong:
 
-Three ways to get a half-built version subtly wrong, so the arithmetic shipped first and the delivery is
-its own slice. **Half-applying it would be worse than not touching it**: capping the multiplier by the
-cluster while still landing every hit on the target would concentrate 9 hits on one squad where the book
-spreads 3/3/3.
+1. **`SyntheticHitResolution.Resolve` is the obvious call and the wrong one.** It runs the whole
+   hit-complete fold, so Blast would multiply a **second** time - and because a synthetic hit count rides
+   as dice sitting at the top face, Rending and Crack would promote AP on **every single spilled hit**.
+   `ResolveAlreadyFinalHits` was added for this: it hands the hits over as one base-AP group and uses the
+   rule pass only for what the **receiving** unit contributes (its Shielded, its Fortified).
+2. **The target's share can be LOWER than the hits that landed.** A Blast(1) weapon multiplies nothing and
+   still shares its hits out, so the stage has to remove hits as well as add them. It reuses Parry's
+   `RemoveHitsWorstFirst`, so the hits that leave carry the heaviest AP with them - arbitrary, but the
+   books leave the choice open and one removal path is better than two.
+3. **Each receiver needs its own cover seed** (zero - Blast's own "Ignores Cover"), or the save stage has
+   no result to read. Morale needed no special case: a bystander taken to half strength tests through the
+   same path a directly targeted unit uses.
+
+Also pinned: the attacker's own side is never caught ("all **enemy** units within 3""), a weapon with no
+Blast never spreads, and a volley that hit nothing sprays nobody.
 
 ### 2026-10-31 - Scout done, and it was dead too
 
