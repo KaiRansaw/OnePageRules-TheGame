@@ -18,6 +18,104 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - dangerous terrain onto its 3.6.0 wording (Q8)
+
+Kai picked the terrain cluster (dangerous terrain / falling / jumping). **Reading the books first changed
+the shape of the whole slice** - for the third session running, which is now less a warning than a law.
+
+**What the four 3.6.0 books actually say, checked word for word:**
+
+| | GF 3.6.0 | AoF 3.6.0 | GFF/AoFS 3.6.0 | GFSQ 2.1.0 |
+|---|---|---|---|---|
+| Dangerous terrain | identical | identical | identical | identical |
+| Jumping | **absent** | **absent** | X dice at 2+, one per **1"** | X **Dex tests**, one per full **3"** |
+| Falling | **absent** | **absent** | X dice, one per 1", each 1-3 a wound | same |
+
+So the cluster is not one job. **Dangerous terrain is one game-wide fix** (this patch). Jumping and
+falling are a different, much larger job - see the elevation section below.
+
+> **Dangerous Terrain:** *"Units with models moving across Dangerous terrain, **or that activate in it**,
+> must roll as many dice as the **number of wounds it would take to fully destroy them**, and for each roll
+> of 1 the unit takes one wound."*
+
+**Two changes in one sentence, and the engine had neither.**
+
+1. **The dice pool moved from the crossing MODEL to the UNIT.** The engine implemented the 3.5.x wording
+   ("roll one die, or as many dice as the model's Tough value") per crossing model, so one model clipping
+   the corner of a minefield risked a single die while the nine models behind it risked nothing. Now one
+   model's path touching the piece puts the unit's **remaining** wounds on the table.
+2. **A unit that merely ACTIVATES in it now tests.** There was no such trigger anywhere - grep found
+   dangerous terrain only on the three movement paths. So a unit could Hold inside a minefield for twelve
+   rounds and never roll, which made standing in dangerous terrain *strictly safer than leaving it*. This
+   also closes the to-do list's long-open design fork "what happens when you hold in dangerous terrain?" -
+   OPR answered it.
+
+**Readings recorded, because both are judgement calls:**
+
+- **"Wounds it would take to fully destroy them" = REMAINING wounds**, summed over living models, not Tough
+  at full strength. Measured from where the unit is now, same as Falling and Regeneration. A mauled squad
+  therefore rolls fewer dice, and `DangerousTerrain_AWoundedUnitRollsFewerDice` is the test that
+  distinguishes this from the old reading (under per-model-Tough it would still roll 6).
+- **A unit that activates in it AND then walks through it tests twice.** "Moving across ... or that
+  activate in it" are two triggers and nothing in the book limits the rule to once per activation. Kai's
+  standing rules-as-written call decides it. Flagged here rather than hidden: if it feels punishing in
+  play, it is a one-line change to a once-per-activation gate.
+
+**Where it went.** `MovementExecutor` gained `RollActivationDangerousTerrain` and a shared
+`UnitTesters(unit)` so all three triggers (crossing, activation, forced debuff) cannot drift into rolling
+different pools for one rule. `RollBatch`'s arithmetic is **unchanged** - each array entry is still a
+model's share - so the pending-wound deferral, the per-model cap and the probabilistic spread all port
+untouched. A happy side effect: because a model's share is now its remaining wounds rather than its Tough,
+the cap is exactly the damage that model can absorb, so a 3-wound roll can no longer be parked on a model
+with 1 wound left.
+
+**Placement matters:** the activation test runs at the END of `ActivationStartStage`, after the ability
+offers. Explorer is offered at that same hook and waives all terrain for the activation, so testing first
+would have let a hero spend its one use and then be wounded by the exact thing it spent it on.
+
+**Verification.** Engine **3,828 / 0** (3 skipped), UI **3,038 / 0**, build clean, headless smoke exit 0.
+9 new tests in `DangerousTerrainActivationTests` (driving the gate directly, not the stage - a stage that
+can raise a request hangs a unit test, per Q6), 1 new in `RulesAccuracyTests`, 2 new in
+`DangerousTerrainMoraleTests`. **Sabotage-checked:** reverting the pool to Tough and the membership test to
+centre-only failed exactly the four cases that discriminate, and nothing else.
+
+**Two existing tests were rewritten rather than repaired**, and the distinction matters:
+`DangerousTerrainMoraleTests` asserted *"a model that never crossed dangerous terrain is untouched"* and
+*"one model died to terrain; the other three live"* - the exact sentences 3.6.0 deleted. They were failing
+because the rule changed. Their real claim (dangerous terrain is not a morale source) is preserved, but it
+needed a new `PartialOnesDiceRoller`: with the pool sized to destroy the unit exactly, `FixedFaceDiceRoller(1)`
+can now only ever produce a wipe, and a destroyed unit cannot demonstrate "was not Shaken".
+
+**Played, not just tested.** A seeded GF Horde run shows one unit testing across four activations with the
+pool shrinking as it takes damage - `5 dice`, `4 dice`, `3 dice`, `3 dice`. Both halves of the rule, visible
+in a log.
+
+#### Why jumping and falling are NOT in this patch
+
+**The engine cannot express elevation.** Audited rather than assumed:
+
+- `Position` **does** carry a `y`, and `GetDistance3D` / `GetVerticalDistance` / `MeleeRangeUtilities` /
+  move-distance summing all honour it. So a model at y=4" would already measure correctly.
+- **Nothing ever assigns a non-zero y to a model.** Every construction uses the 2-arg ctor or passes 0.
+  The only non-zero y in the codebase is a Star Quest treasure token, which is not a model.
+- `TerrainData.HeightInches` is **dead to the rules** - its own comment says height is intentionally
+  ignored, every bundled piece is 0, and a test pins that. Only the tooltip and the 3D view's box extrusion
+  read it.
+- `ETerrainType.Elevated` exists and **nothing reads it**; a test asserts no palette piece carries it.
+- The path-crossing sweep (`FindFirstTerrainCrossing`, `SweptBaseGeometry`) is strictly `Float2`.
+- There is no "which piece is this model standing on" or "is this footprint supported" query. `Zone.cs`
+  carries the only real design TODO about it.
+
+So falling and jumping are gated on a foundation that does not exist: terrain surfaces, assigning model
+elevation, a height-aware sweep, and a GUI that lets a player put a model on top of a building and move it
+there. That is a large slice with a visible half (hence partly rental), and it is a **gameplay** decision -
+whether this game has multi-level terrain at all - so it is Kai's to make, not something to start quietly.
+Put to him with the facts.
+
+Also note the two Star Quest items that were parked *pending* jumping stay parked: `QuestAdvancedSkills`
+still says *"There are no jumping rolls in this game, so Leap has no effect"*, and the Agility Injector's
+jumping clause is flavour text. Those unblock with elevation, not before.
+
 ### 2026-10-30 - naming the damaged model (Q7)
 
 **Kai's ask, in his own words:** *"I still want something to track how many wound each model has in a
