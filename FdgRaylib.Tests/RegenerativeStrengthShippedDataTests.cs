@@ -107,10 +107,25 @@ public class RegenerativeStrengthShippedDataTests
 
                 if (hit)
                 {
+                    // #412: this used to collect the unit's NATIVE rules only, which was enough while
+                    // every carrier's wound-ignore source was native (Dark Elf Raiders' Engine of
+                    // Suffering owns Regeneration outright). 3.6.0's Alien Hives carrier gets both halves
+                    // from one upgrade - the Psy-Nemesis item grants Regenerative Strength AND Spell
+                    // Resistance together - so a native-only view reported it as a rule that could never
+                    // fire, when it fires exactly as intended. Everything the unit can ever hold counts.
+                    var reachable = new List<string>();
+                    reachable.AddRange(NamesOf(unit.Rules));
+                    foreach (ItemEntry item in unit.Items) reachable.AddRange(NamesOf(item.Rules));
+                    foreach (UpgradeSection section in unit.Sections)
+                        foreach (UpgradeOption option in section.Options)
+                        {
+                            reachable.AddRange(NamesOf(option.RulesGained));
+                            foreach (ItemEntry item in option.ItemsGained)
+                                reachable.AddRange(NamesOf(item.Rules));
+                        }
+
                     yield return new Site(bookName, unit.Name, unit.MinModels, unit.MaxModels,
-                        unit.Rules.OfType<SpecialRuleEntry_Core>().Select(r => r.Name)
-                            .Concat(unit.Rules.OfType<SpecialRuleEntry_CoreNumeric>().Select(r => r.Name))
-                            .ToList());
+                        reachable.Distinct().ToList());
                 }
             }
         }
@@ -118,6 +133,9 @@ public class RegenerativeStrengthShippedDataTests
 
     private static bool Names(SpecialRuleEntry entry) =>
         entry is SpecialRuleEntry_Core core && string.Equals(core.Name, RuleName, StringComparison.Ordinal);
+
+    private static IEnumerable<string> NamesOf(IEnumerable<SpecialRuleEntry> rules) =>
+        rules.Select(r => ArmyListRuleResolution.DescribeRuleEntry(r).lookupName);
 
     [Test]
     public void BothCarriers_AreSingleModelUnits()
@@ -128,9 +146,13 @@ public class RegenerativeStrengthShippedDataTests
         // pool before allocation decides which model takes them.
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(2), "the audit's 2 references");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): still two carriers, but
+        // Alien Hives' Psycho-Rex is gone and Carnivo-Rex carries the rule now. Both are still one-model
+        // units, which is what the simplification above rests on.
+        Assert.That(sites.Count, Is.EqualTo(2),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Select(s => s.Unit),
-            Is.EquivalentTo(new[] { "Engine of Suffering", "Psycho-Rex" }));
+            Is.EquivalentTo(new[] { "Engine of Suffering", "Carnivo-Rex" }));
         Assert.That(sites.Select(s => s.Book),
             Is.EquivalentTo(new[] { "DarkElfRaiders", "AlienHives" }));
 
@@ -149,7 +171,10 @@ public class RegenerativeStrengthShippedDataTests
         // Standing lesson 1 in census form: the rule resolving is not the rule working. Regenerative
         // Strength triggers on ignoring a wound, so a carrier with no wound-ignore source would carry a
         // rule that is structurally live and practically inert.
-        string[] woundIgnoreRules = { "Regeneration", "Resistance" };
+        // Spell Resistance joined this list for the 3.6.0 import. It belongs here on its mechanics, not
+        // on its name: it emits ignoreWoundOnRoll (a spell wound ignored on 2+, anything else on 6+), so
+        // it is a wound-ignore source and Regenerative Strength's trigger fires off it.
+        string[] woundIgnoreRules = { "Regeneration", "Resistance", "Spell Resistance" };
 
         foreach (Site site in Sites())
         {

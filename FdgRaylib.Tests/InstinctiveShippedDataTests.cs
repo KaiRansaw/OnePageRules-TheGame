@@ -116,7 +116,7 @@ public class InstinctiveShippedDataTests
 
     // ---- The corpus census -----------------------------------------------------------------------------
 
-    private record Site(string Book, string Unit, string SectionAffects);
+    private record Site(string Book, string Unit, string SectionAffects, int MaxModels);
 
     private static IEnumerable<Site> Sites()
     {
@@ -135,13 +135,23 @@ public class InstinctiveShippedDataTests
                         || option.ItemsGained.Any(item => item.Rules.Any(Names)));
                     if (hit)
                     {
-                        yield return new Site(bookName, unit.Name, section.Affects.ToString());
+                        yield return new Site(bookName, unit.Name, section.Affects.ToString(),
+                            unit.MaxModels);
                     }
                 }
 
                 if (unit.Rules.Any(Names))
                 {
-                    yield return new Site(bookName, unit.Name, "native");
+                    yield return new Site(bookName, unit.Name, "native", unit.MaxModels);
+                }
+
+                // #412: starting wargear is a third carrier shape, new in 3.6.0 (one site). It matters
+                // here beyond the count: the affects-All assertion below is what justifies Instinctive's
+                // AllModelsHaveThisRule gate, and a carrier that is not a section at all would have
+                // slipped past that check entirely rather than being judged by it.
+                if (unit.Items.Any(item => item.Rules.Any(Names)))
+                {
+                    yield return new Site(bookName, unit.Name, "starting wargear", unit.MaxModels);
                 }
             }
         }
@@ -155,17 +165,28 @@ public class InstinctiveShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(4), "the audit's 4 references - the Ramshackle Crew upgrades");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[] { Book }));
-        Assert.That(sites.Select(s => s.Unit), Is.EquivalentTo(new[]
-            { "Shooter Mob", "Storm Mob", "Freaks", "Scout Bikers" }));
+        Assert.That(sites.Count, Is.EqualTo(19),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)
         {
-            // The AllModelsHaveThisRule gate is load-bearing only while every carrier is an affects-All
-            // section (the whole squad gains the rule, so the gate holds). A future partial upgrade would
-            // make the gate silently turn the rule off for that unit - re-decide the scoping then.
-            Assert.That(site.SectionAffects, Is.EqualTo("All"), $"{site.Book}/{site.Unit}");
+            // Instinctive is gated on AllModelsHaveThisRule, so what has to hold for every carrier is
+            // that the WHOLE unit gains the rule. An affects-All section does that, as do a native unit
+            // rule and starting wargear. So does a partial upgrade on a unit that can never hold more
+            // than one model - the single model that gains it IS all of them.
+            //
+            // 3.6.0 introduced that last shape (six carriers: AoFS Furious Tribes' Spider-Rig, Brood
+            // Assassin and Brood Trapper, GFF Berserker Clans' Forge-Native, Forge-Stimmer and
+            // Maw-Biker, all MaxModels 1), which the old affects-All-only check read as a violation. It
+            // is not one, but it is one line away from being one: the same section on a multi-model unit
+            // would leave the gate false and Instinctive silently inert. That is what this still catches.
+            bool wholeUnitGainsIt = site.SectionAffects is "All" or "native" or "starting wargear"
+                || site.MaxModels == 1;
+
+            Assert.That(wholeUnitGainsIt, Is.True,
+                $"{site.Book}/{site.Unit} buys Instinctive through an affects-{site.SectionAffects} "
+                + $"section on a unit of up to {site.MaxModels} models, so AllModelsHaveThisRule is "
+                + "false and the rule does nothing - re-decide the scoping.");
         }
     }
 

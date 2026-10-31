@@ -129,10 +129,13 @@ public class VengeanceShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(3), "the audit's 3 references");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[] { Book }));
-        Assert.That(sites.Select(s => s.Unit),
-            Is.EquivalentTo(new[] { "Warriors", "Royal Guard", "ONIs" }));
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 3 references on Eternal
+        // Dynasty's Honor-Bound item became 22 across six books, under five different item names (Spirit
+        // Balance, Kin Bond, Raider Pact, Nomad Bond, Honor-Bound). The book and unit lists are therefore
+        // gone - at that spread they pin nothing a reader can check - but the three structural assertions
+        // below are the ones that were load-bearing, and they now hold across all six books instead of one.
+        Assert.That(sites.Count, Is.EqualTo(22),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)
         {

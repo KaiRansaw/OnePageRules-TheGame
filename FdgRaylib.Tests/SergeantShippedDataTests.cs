@@ -27,10 +27,11 @@ public class SergeantShippedDataTests
 {
     private const string RuleName = "Sergeant";
 
-    private static readonly string[] Books =
-    {
-        "WormholeDaemonsofChange", "WormholeDaemonsofLust", "WormholeDaemonsofPlague", "WormholeDaemonsofWar",
-    };
+    // #412: this used to be a hardcoded four-book list, which was the whole corpus for Sergeant in
+    // 3.5.1. 3.6.0 puts the rule in 42 books, so the list is derived from the census now - a hardcoded
+    // one would have left TheEmbeddedBookCopies_AreWeaponScoped checking 4 books and silently skipping
+    // the other 38, which is exactly the "forgot to re-embed" failure that test exists to catch.
+    private static IEnumerable<string> Books => Sites().Select(s => s.Book).Distinct();
 
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
 
@@ -91,9 +92,13 @@ public class SergeantShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(12),
-            "the audit's 12 references - a change here means the corpus moved, not the engine");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(Books));
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 12 references in 4 books
+        // became 223 across 42, as Sergeant became a standard champion upgrade across Firefight and
+        // Skirmish rather than a Wormhole Daemons speciality. (The book-set assertion that used to sit
+        // here compared the census against the hardcoded list it was derived from, so it can no longer
+        // fail; the per-book embedded-copy check below is what actually covers the spread.)
+        Assert.That(sites.Count, Is.EqualTo(223),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)
         {

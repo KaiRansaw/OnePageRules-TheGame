@@ -91,6 +91,35 @@ public class BundledBookRulebookTests
             "the GDF book of the same name must stay the GDF book");
     }
 
+    // #412: OPR renames factions between rulesets - the 3.6.0 import renamed nine bundled books. An army
+    // saved under the OLD name must still find its book, or the backfill returns nothing and the player
+    // is told a rule the engine implements is "not implemented".
+    //
+    // This was a live bug, found by the #354 fixtures above: the lookup compared Name and Faction by
+    // string, so the moment "Saurian Starhost" became "Saurian Starhosts" every army saved under the old
+    // name stopped resolving. The rebuild records the old name in previousNames and the lookup now goes
+    // through BookFile.MatchesFactionName, which answers to all of them.
+    //
+    // Both directions are asserted, because the failure is silent either way: the old name must resolve,
+    // and it must resolve to the SAME book the current name does.
+    [TestCase("Saurian Starhost", "Saurian Starhosts")]
+    [TestCase("Wormhole Daemons of War", "Daemons of War")]
+    public void AFactionRenamedByOpr_StillResolvesUnderItsOldName(string oldName, string currentName)
+    {
+        BundledBookRulebook.Install();
+
+        IReadOnlyList<SpecialRuleDefinition> underOldName = CurrentRulebook.DefinitionsForFaction(oldName);
+        IReadOnlyList<SpecialRuleDefinition> underCurrentName =
+            CurrentRulebook.DefinitionsForFaction(currentName);
+
+        Assert.That(underCurrentName, Is.Not.Empty,
+            $"the bundled book is published as '{currentName}' and must resolve under it");
+        Assert.That(underOldName, Is.Not.Empty,
+            $"an army saved as '{oldName}' must still find the book OPR now calls '{currentName}'");
+        Assert.That(underOldName.Select(d => d.Name), Is.EquivalentTo(underCurrentName.Select(d => d.Name)),
+            "and find the same book, not merely some book");
+    }
+
     [Test]
     public void AnUnknownFaction_BackfillsNothing_AndDoesNotThrow()
     {

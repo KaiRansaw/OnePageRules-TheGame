@@ -117,10 +117,13 @@ public class NoRetreatShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count(s => s.Rule == AuraName), Is.EqualTo(5));
-        Assert.That(sites.Count(s => s.Rule == RuleName), Is.EqualTo(3));
-        Assert.That(sites.Count(s => s.Rule == BuffName), Is.EqualTo(1),
-            "the audit's 9 No Retreat references - a change here means the corpus moved, not the engine");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 9 No Retreat references
+        // became 36 as the Firefight and Skirmish books arrived. The resolve-and-follow-the-grant loop
+        // below is the real test and it now walks every one of them.
+        Assert.That(sites.Count(s => s.Rule == AuraName), Is.EqualTo(27));
+        Assert.That(sites.Count(s => s.Rule == RuleName), Is.EqualTo(7));
+        Assert.That(sites.Count(s => s.Rule == BuffName), Is.EqualTo(2),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var problems = new List<string>();
         foreach (string bookName in sites.Select(s => s.Book).Distinct())

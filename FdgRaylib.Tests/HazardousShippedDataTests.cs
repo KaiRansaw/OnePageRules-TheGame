@@ -144,14 +144,24 @@ public class HazardousShippedDataTests
         }
     }
 
+    // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 15 references in Ratmen Clans
+    // alone became 61 across six books, as the Firefight and Skirmish editions of Ratmen and Goblins
+    // arrived and the GF Goblin Reclaimers picked the rule up. The test name no longer claims one book.
+    // Every reference is still a WEAPON reference, which is the part that matters: Hazardous wounds the
+    // firer, and the enumeration below only walks weapons, so a reference landing anywhere else would
+    // drop out of this census silently rather than failing it.
     [Test]
-    public void EveryReference_IsAWeaponInRatmenClans()
+    public void EveryReference_IsAWeapon()
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(15),
-            "the audit's 15 references - a change here means the corpus moved, not the engine");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[] { "RatmenClans" }));
+        Assert.That(sites.Count, Is.EqualTo(61),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
+        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[]
+        {
+            "AoFS-Goblins", "AoFS-Ratmen", "GFF-GoblinReclaimers", "GFF-RatmenClans",
+            "GoblinReclaimers", "RatmenClans",
+        }));
     }
 
     [Test]

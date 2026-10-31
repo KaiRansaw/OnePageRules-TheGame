@@ -81,17 +81,28 @@ public class ExtendedBuffRangeShippedDataTests
         }
     }
 
+    // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 9 references in Human Defense
+    // Force alone became 29 across five books, as Firefight and Skirmish arrived and Voidspace Stalkers
+    // joined - so the test no longer claims one book, and its name no longer says so either. The item
+    // list is still pinned, because it is the part that would go wrong quietly: every one of these is a
+    // comms-style wargear grant, and a reference turning up on a weapon or as a native unit rule would
+    // mean the rule is being asked to do something the relay was never scoped for.
     [Test]
-    public void EveryReference_IsARadioItemInHumanDefenseForce()
+    public void EveryReference_IsARadioStyleItemGrant()
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(9),
-            "the audit's 9 references - a change here means the corpus moved, not the engine");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[] { "HumanDefenseForce" }));
+        Assert.That(sites.Count, Is.EqualTo(29),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
+        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[]
+        {
+            "AoFS-HumanEmpire", "GFF-HumanDefenseForce", "GFF-VoidspaceStalkers",
+            "HumanDefenseForce", "VoidspaceStalkers",
+        }));
         Assert.That(sites.Select(s => s.Item).Distinct(),
-            Is.EquivalentTo(new[] { "Field Radio", "Vehicle Radio" }),
-            "infantry carry Field Radios, vehicles carry Vehicle Radios - both grant the same rule");
+            Is.EquivalentTo(new[] { "Field Radio", "Vehicle Radio", "Radio Operator", "Message Runner" }),
+            "infantry carry Field Radios, vehicles carry Vehicle Radios, and 3.6.0 adds a Radio Operator "
+            + "and the fantasy-side Message Runner - all the same relay");
     }
 
     [Test]

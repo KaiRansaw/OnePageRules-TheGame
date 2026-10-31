@@ -188,10 +188,14 @@ public class QuickShotAndUnwieldyShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count(s => s.Rule == QuickShotAura), Is.EqualTo(5));
-        Assert.That(sites.Count(s => s.Rule == QuickShotMark), Is.EqualTo(4));
-        Assert.That(sites.Count(s => s.Rule == UnwieldyDebuff), Is.EqualTo(3),
-            "the audit's 12 P20 references - a change here means the corpus moved, not the engine");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 12 P20 references became 33
+        // as the Firefight and Skirmish books arrived. "Unwieldy in melee" itself still has no direct
+        // corpus reference and is not meant to - it is reached through the Unwieldy Debuff wrapper and
+        // through spell grants, both of which this fixture follows.
+        Assert.That(sites.Count(s => s.Rule == QuickShotAura), Is.EqualTo(23));
+        Assert.That(sites.Count(s => s.Rule == QuickShotMark), Is.EqualTo(5));
+        Assert.That(sites.Count(s => s.Rule == UnwieldyDebuff), Is.EqualTo(5),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var problems = new List<string>();
         foreach (string bookName in sites.Select(s => s.Book).Distinct())

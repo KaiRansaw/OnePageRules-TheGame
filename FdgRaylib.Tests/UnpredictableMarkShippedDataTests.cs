@@ -103,10 +103,16 @@ public class UnpredictableMarkShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(5),
-            "the audit's 5 references - a change here means the corpus moved, not the engine");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 5 references became 10, and
+        // the Fighter Mark is no longer Alien Hives' alone - Voidspace Stalkers (new in 3.6.0) and the
+        // Skirmish Crazed Zealots carry it too. Still worth pinning which books hold which mark: the two
+        // marks grant different rules, so a book drifting from one to the other would play a rule its own
+        // page does not describe, and both resolve cleanly so nothing else would catch it.
+        Assert.That(sites.Count, Is.EqualTo(10),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Where(s => s.Mark == FighterMark).Select(s => s.Book).Distinct(),
-            Is.EquivalentTo(new[] { "AlienHives" }), "Fighter Mark is Battle Pheromones");
+            Is.EquivalentTo(new[] { "AlienHives", "AoFS-CrazedZealots", "VoidspaceStalkers" }),
+            "Fighter Mark is Battle Pheromones and its kin");
         Assert.That(sites.Where(s => s.Mark == ShooterMark).Select(s => s.Book).Distinct(),
             Is.EquivalentTo(new[] { "GoblinReclaimers" }), "Shooter Mark is Targeted Frenzy");
     }
@@ -116,10 +122,15 @@ public class UnpredictableMarkShippedDataTests
     {
         // --apply-rules embeds the supplement's definition into each referencing book. A slice that edits
         // the supplement and forgets to re-embed ships a book whose mark is still an unresolvable name.
-        foreach (string bookName in Sites().Select(s => s.Book).Distinct())
+        // #412: this used to pick the expected mark with "AlienHives ? Fighter : Shooter", which was
+        // only ever right because Alien Hives was the single Fighter Mark book in 3.5.1. 3.6.0 added two
+        // more, so the guess sent it looking for a Shooter Mark in books that carry a Fighter Mark and
+        // reported a missing embedded definition that was present all along. It asks each site for the
+        // mark it actually names now, which is both correct and immune to the next book joining.
+        foreach (Site site in Sites())
         {
             BookFile book = JsonSerializer.Deserialize<BookFile>(
-                File.ReadAllText(ShippedBooks.Path(bookName + BookFile.EXTENSION_WITH_PERIOD)),
+                File.ReadAllText(ShippedBooks.Path(site.Book + BookFile.EXTENSION_WITH_PERIOD)),
                 RuleJson.Options)!;
 
             RuleResolver resolver = CoreRuleCatalog.CreateResolver();
@@ -128,10 +139,10 @@ public class UnpredictableMarkShippedDataTests
                 resolver.RegisterOrReplace(definition);
             }
 
-            string markName = bookName == "AlienHives" ? FighterMark : ShooterMark;
-            Assert.That(resolver.TryResolve(markName, out ResolvedRule resolved), Is.True, bookName);
+            Assert.That(resolver.TryResolve(site.Mark, out ResolvedRule resolved), Is.True,
+                $"{site.Book}: {site.Unit} names '{site.Mark}'");
             Assert.That(resolved.Definition.Activated.Single().Effect, Is.InstanceOf<Effect.MarkTarget>(),
-                $"{bookName}: the embedded copy carries the markTarget ability - re-run --apply-rules");
+                $"{site.Book}: the embedded copy carries the markTarget ability - re-run --apply-rules");
         }
     }
 }

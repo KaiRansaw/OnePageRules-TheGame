@@ -77,10 +77,10 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
                 // Only the books the lobby's Army Source allows: Grimdark Future, Age of Fantasy, or All.
                 _books = loading.Result.Where(b => GameSystems.IsAllowed(request.AllowedGameSystems, b.GameSystem))
                     .OrderBy(b => BookLabel(b, request.AllowedGameSystems)).ToList();
-                BookFile? match = _books.FirstOrDefault(b =>
-                    string.Equals(b.Faction, request.Faction, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(b.Name, request.Faction, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(b.Name, request.ArmyName, StringComparison.OrdinalIgnoreCase));
+                // #412: MatchesFactionName covers the names OPR has renamed away from, so a Horde
+                // party saved under an old faction name still opens its own shop.
+                BookFile? match = _books.FirstOrDefault(b => b.MatchesFactionName(request.Faction)
+                    || b.MatchesFactionName(request.ArmyName));
                 _bookMatched = match != null;
                 UseBook(match ?? _books.FirstOrDefault());
             }

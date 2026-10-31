@@ -37,7 +37,11 @@ public class PerModelSectionShippedDataTests
             .Where(s => s.Section.Label.StartsWith("Any model may ", StringComparison.Ordinal))
             .ToList();
 
-        Assert.That(anyModel, Has.Count.EqualTo(22), "the 2026-08-22 census of the live API");
+        // Re-taken 2026-10-31 for the OPR 3.6.0 import: 22 -> 32, which is corpus growth (88 books ->
+        // 188) rather than a shape change. The split is 16 on 3-model squads and 16 on single-model
+        // heroes, and 3.6.0 renamed the idiom from "Any model may REPLACE one X" to "Any model may TAKE
+        // one X attachment" - the stamp and the per-model arithmetic are unchanged.
+        Assert.That(anyModel, Has.Count.EqualTo(32), "the 2026-10-31 census of the 3.6.0 corpus");
         foreach ((string bookName, RosterUnit unit, UpgradeSection section) in anyModel)
         {
             Assert.That(section.PerModelBudget, Is.True, $"{bookName} / {unit.Name} / {section.Label}");
@@ -61,10 +65,17 @@ public class PerModelSectionShippedDataTests
         Assert.That(strays, Is.Empty);
     }
 
-    // The two reported units, by name - the census total above can absorb a swap; these cannot.
-    [TestCase("AlienHives", "Hive Warriors", "Any model may replace one Razor Claws")]
-    [TestCase("RobotLegions", "Robot Snakes", "Any model may replace Spike Whips")]
-    [TestCase("RobotLegions", "Robot Snakes", "Any model may replace one Metal Fangs")]
+    // Named units, by name - the census total above can absorb a swap; these cannot.
+    //
+    // The three originally pinned here were the ones in the 2026-08-22 screenshots (Alien Hives' Hive
+    // Warriors "Any model may replace one Razor Claws", and Robot Snakes' two sections). OPR 3.6.0
+    // rewrote all three units and the sections no longer exist, so holding onto those names only bought
+    // a "sequence contains no matching element". These are the 3.6.0 equivalents: 3-model squads whose
+    // "Any model may take ..." section is the same stamped per-model stepper, one per chapter family so
+    // a single book's edit cannot take the whole fixture with it.
+    [TestCase("BattleBrothers", "Veteran Battle Brothers", "Any model may take any Burst Battle Rifle attachment")]
+    [TestCase("BloodPrimeBrothers", "Blood Veteran Prime Brothers", "Any model may take one Burst Heavy Rifle attachment")]
+    [TestCase("WatchBrothers", "Watch Battle Brothers", "Any model may take one Burst Heavy Rifle attachment")]
     public void TheReportedSections_AreStamped(string bookFile, string unitName, string label)
     {
         BookFile book = JsonSerializer.Deserialize<BookFile>(

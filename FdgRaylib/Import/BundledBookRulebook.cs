@@ -96,8 +96,13 @@ public sealed class BundledBookRulebook : ICurrentRulebook
             if (book == null) continue;
             if (!GameSystems.SameSystem(book.GameSystem, gameSystem)) continue;
 
-            if (string.Equals(book.Faction, faction, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(book.Name, faction, StringComparison.OrdinalIgnoreCase))
+            // #412: through MatchesFactionName, not a pair of string compares, so a book OPR has since
+            // renamed still answers to the name a saved army was written under. The 3.6.0 import renamed
+            // nine of them ("Saurian Starhost" -> "Saurian Starhosts", and four Wormhole/Rift Daemons
+            // books to "Daemons of X"), and an exact-name lookup silently returned no definitions for
+            // every army saved before the rename - which lands as "this rule is not implemented" on a
+            // rule the engine implements, the exact failure #354's backfill exists to prevent.
+            if (book.MatchesFactionName(faction))
             {
                 return book.RuleDefinitions.Count == 0 ? None : book.RuleDefinitions;
             }

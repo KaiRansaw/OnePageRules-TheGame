@@ -165,7 +165,9 @@ public static class ArmyForgeShareService
             try
             {
                 BookFile? book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options);
-                if (book is not null && string.Equals(book.Name, factionName, StringComparison.OrdinalIgnoreCase)
+                // #412: MatchesFactionName, so a share link written before an OPR rename still finds
+                // its book instead of silently losing faction rules and spells.
+                if (book is not null && book.MatchesFactionName(factionName)
                     && GameSystems.SameSystem(book.GameSystem, gameSystem))
                     return book;
             }

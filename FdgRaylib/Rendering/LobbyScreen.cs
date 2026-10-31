@@ -941,7 +941,7 @@ public class LobbyScreen : IAppScreen
         _autoArmiedSlots.Add(playerID.ID);
         var books = BookLibrary.Load();
         FDG.ArmyBuilding.BuiltArmyFile party = FDG.Quest.QuestArmy.Build(heroes,
-            faction => books.FirstOrDefault(b => string.Equals(b.Faction, faction, StringComparison.OrdinalIgnoreCase)));
+            faction => books.FirstOrDefault(b => b.MatchesFactionName(faction)));   // #412: renames included
         _viewModel!.UpdateArmyListFile(playerID, party);
     }
 

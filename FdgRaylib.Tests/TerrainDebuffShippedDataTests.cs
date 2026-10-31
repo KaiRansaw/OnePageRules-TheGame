@@ -193,9 +193,11 @@ public class TerrainDebuffShippedDataTests
     {
         List<DebuffSite> sites = DebuffSites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(14),
-            "the audit's 14 references (11 Dangerous + 3 Difficult) - a change here means the corpus " +
-            "moved, not the engine");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 14 references became 16
+        // (11 Dangerous deferred + 2 Dangerous immediate + 3 Difficult) as AoFS Trade Federations and
+        // GFF Goblin Reclaimers picked up the deferred variant.
+        Assert.That(sites.Count, Is.EqualTo(16),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         var unresolved = new List<string>();
         foreach (string path in ShippedBooks.GdfPaths())
@@ -236,8 +238,12 @@ public class TerrainDebuffShippedDataTests
 
         Assert.That(immediate.Select(s => s.Book).Distinct().OrderBy(b => b),
             Is.EqualTo(immediateArmies.OrderBy(b => b)).AsCollection);
+        // Re-checked for the 3.6.0 import: the premise survives unchanged - still exactly two immediate
+        // carriers, still exactly Lust Disciples and War Disciples, so the routing decision this test
+        // guards is intact. Only the deferred side grew (9 -> 11: AoFS Trade Federations' Federation
+        // Snake Master and GFF Goblin Reclaimers' Waskatsin).
         Assert.That(immediate.Count, Is.EqualTo(2));
-        Assert.That(deferred.Count, Is.EqualTo(9));
+        Assert.That(deferred.Count, Is.EqualTo(11));
         Assert.That(deferred.Select(s => s.Book), Has.No.AnyOf(immediateArmies),
             "a book gets one variant or the other, never both");
     }

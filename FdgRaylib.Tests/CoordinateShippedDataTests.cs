@@ -119,13 +119,17 @@ public class CoordinateShippedDataTests
     private static bool Names(SpecialRuleEntry entry) =>
         entry is SpecialRuleEntry_Core core && string.Equals(core.Name, RuleName, StringComparison.Ordinal);
 
+    // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 3 references in one book became
+    // 6 across three, so the single-book assertion is gone - the rule is no longer HDF's alone, and the
+    // test name said otherwise. What is still pinned is the property the scoping decision rests on, and
+    // it now covers three books instead of one: every carrier is a one-model unit.
     [Test]
-    public void EveryCarrier_IsASingleModelHeroInOneBook()
+    public void EveryCarrier_IsASingleModelHero()
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(3), "the audit's 3 references - all the HDF 'General' item");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[] { Book }));
+        Assert.That(sites.Count, Is.EqualTo(6),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
 
         foreach (Site site in sites)
         {

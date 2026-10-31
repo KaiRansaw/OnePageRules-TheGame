@@ -1,11 +1,14 @@
 {
-  "name": "Wormhole Daemons of Lust",
-  "faction": "Wormhole Daemons of Lust",
-  "version": "OPR v3.5.3",
+  "name": "Daemons of Lust",
+  "faction": "Daemons of Lust",
+  "version": "OPR v3.6.0",
   "source": "OnePageRules - Army Forge (army-forge.onepagerules.com)",
   "license": "CC-BY-SA 4.0",
   "defaultRangedEffectSet": "ballistic-slug",
   "defaultMeleeEffectSet": "daemon-arcane-melee",
+  "previousNames": [
+    "Wormhole Daemons of Lust"
+  ],
   "units": [
     {
       "id": "LReGGIdjk",
@@ -15,7 +18,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 605,
+      "basePointCost": 635,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -24,20 +27,16 @@
       },
       "weapons": [
         {
-          "name": "Exalted Ritual Hammer",
+          "name": "Heavy Daemon Hammer",
           "quantity": 2,
           "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 0,
+          "attacks": 1,
+          "armorPenetration": 2,
           "specialRules": [
             {
               "kind": "coreNumeric",
               "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Surge"
+              "numericValue": 6
             }
           ]
         },
@@ -67,43 +66,109 @@
         },
         {
           "kind": "core",
-          "name": "Fearless"
-        },
-        {
-          "kind": "core",
           "name": "Lustbound"
         }
       ],
       "items": [],
       "sections": [
         {
-          "id": "ZaxbxD2",
-          "label": "Replace any Exalted Ritual Hammer",
+          "id": "4V45URN",
+          "label": "Replace 2x Heavy Daemon Hammer",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Exalted Ritual Hammer"
+            "2x Heavy Daemon Hammer"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "zaJz4PT",
-              "label": "Exalted Ritual Blade (A9, Rending, Surge)",
-              "cost": 45,
+              "id": "_-NAzkErnK",
+              "label": "Daemon Loremaster Staff (A12, Spell Amplifier)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Ritual Blade",
+                  "name": "Daemon Loremaster Staff",
                   "quantity": 1,
                   "rangeInches": 0,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "d5mgkCUjby",
+              "label": "Heavy Fist-Crossbow (9\u0022, A9, Anti-Cover, Assault, Surge), Heavy Daemon Hammer (A1, AP(2), Blast(6))",
+              "cost": 90,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Fist-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 9,
                   "attacks": 9,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Rending"
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                },
+                {
+                  "name": "Heavy Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "OrVu7u87qg",
+              "label": "Heavy Arm-Crossbow (18\u0022, A18, Anti-Cover, Surge)",
+              "cost": 135,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Arm-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 18,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
                     },
                     {
                       "kind": "core",
@@ -115,23 +180,37 @@
               "rulesGained": [],
               "itemsGained": [],
               "modelsGained": 0
-            },
+            }
+          ]
+        },
+        {
+          "id": "LbO1oyI",
+          "label": "Replace any Heavy Daemon Hammer",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Heavy Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
             {
-              "id": "JlRhb",
-              "label": "Exalted Arm-Crossbow (12\u0022, A12, Surge)",
-              "cost": 55,
+              "id": "dkMz1",
+              "label": "Perfect Sword (A6, Obliterate)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Arm-Crossbow",
+                  "name": "Perfect Sword",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 12,
+                  "rangeInches": 0,
+                  "attacks": 6,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Obliterate"
                     }
                   ]
                 }
@@ -142,25 +221,25 @@
             },
             {
               "id": "bw6hhmX",
-              "label": "Exalted Ritual Spear (A3, AP(2), Deadly(3), Surge)",
-              "cost": 60,
+              "label": "Heavy Daemon Spear (A1, AP(4), Deadly(6), Anti-Regen)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Ritual Spear",
+                  "name": "Heavy Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 2,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
                       "name": "Deadly",
-                      "numericValue": 3
+                      "numericValue": 6
                     },
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Anti-Regen"
                     }
                   ]
                 }
@@ -170,15 +249,15 @@
               "modelsGained": 0
             },
             {
-              "id": "nQfbHQghAG",
-              "label": "Exalted Crossbow (18\u0022, A6, AP(1), Surge)",
-              "cost": 60,
+              "id": "zaJz4PT",
+              "label": "Ritual Blade (A6, AP(1), Surge)",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Crossbow",
+                  "name": "Ritual Blade",
                   "quantity": 1,
-                  "rangeInches": 18,
+                  "rangeInches": 0,
                   "attacks": 6,
                   "armorPenetration": 1,
                   "specialRules": [
@@ -194,47 +273,18 @@
               "modelsGained": 0
             },
             {
-              "id": "dkMz1",
-              "label": "Exalted Perfect Sword (A9, Shatter)",
-              "cost": 65,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Exalted Perfect Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 9,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "lOe1IOa",
-              "label": "Exalted Ritual Gauntlet (A9, AP(3), Surge)",
-              "cost": 110,
+              "label": "Daemon Gauntlet (A6, AP(2))",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Ritual Gauntlet",
+                  "name": "Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 9,
-                  "armorPenetration": 3,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
+                  "attacks": 6,
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -244,7 +294,7 @@
           ]
         },
         {
-          "id": "tRBGBmr",
+          "id": "UO-Z-hW",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -254,9 +304,9 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "BOZXwXTZ",
+              "id": "g6PbX38K",
               "label": "Daemonic Incursion (Ambush)",
-              "cost": 100,
+              "cost": 85,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -277,7 +327,7 @@
           ]
         },
         {
-          "id": "KSL96fr",
+          "id": "RaKKhzQ",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -287,51 +337,45 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "5b0fxBpR",
-              "label": "Lust Favour (Lustbound Boost)",
-              "cost": 25,
+              "id": "YO83TXd9yD",
+              "label": "Storm of Lust (15\u0022, A6, Limited, Anti-Cover, Assault, Surge)",
+              "cost": 20,
               "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
+              "weaponsGained": [
                 {
-                  "name": "Lust Favour",
+                  "name": "Storm of Lust",
                   "quantity": 1,
-                  "rules": [
+                  "rangeInches": 15,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Lustbound Boost"
+                      "name": "Limited"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
                     }
                   ]
                 }
               ],
-              "modelsGained": 0
-            },
-            {
-              "id": "SQ3vX1Z0",
-              "label": "Lust God\u0027s Power (Storm of Lust)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [],
               "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Lust God\u0027s Power",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Storm of Lust"
-                    }
-                  ]
-                }
-              ],
+              "itemsGained": [],
               "modelsGained": 0
             },
             {
               "id": "48nmL3wA",
-              "label": "Envoy of Lust (Piercing Assault)",
-              "cost": 70,
+              "label": "Envoy of Lust (Piercing Charge)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -342,7 +386,28 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Piercing Assault"
+                      "name": "Piercing Charge"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "5b0fxBpR",
+              "label": "Lust Favour (Enhanced Lustbound)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Lust Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Lustbound"
                     }
                   ]
                 }
@@ -351,8 +416,8 @@
             },
             {
               "id": "8byO-CB_",
-              "label": "Gift of Lust (Counter-Attack)",
-              "cost": 95,
+              "label": "Gift of Lust (Counter in Melee)",
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -363,7 +428,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Counter-Attack"
+                      "name": "Counter in Melee"
                     }
                   ]
                 }
@@ -373,7 +438,7 @@
             {
               "id": "Bzi_V8pi",
               "label": "Lore of Lust (Caster(5))",
-              "cost": 130,
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -404,7 +469,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 280,
+      "basePointCost": 345,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -413,20 +478,15 @@
       },
       "weapons": [
         {
-          "name": "Great Ritual Hammer",
+          "name": "Heavy Perfect Sword",
           "quantity": 2,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 4,
           "armorPenetration": 0,
           "specialRules": [
             {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
               "kind": "core",
-              "name": "Surge"
+              "name": "Obliterate"
             }
           ]
         },
@@ -462,40 +522,166 @@
       "items": [],
       "sections": [
         {
-          "id": "0IYNb68",
-          "label": "Replace any Great Ritual Hammer",
+          "id": "0YOn3Y_",
+          "label": "Replace 2x Heavy Perfect Sword",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Great Ritual Hammer"
+            "2x Heavy Perfect Sword"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "8GwxTfo",
-              "label": "Great Ritual Spear (A2, AP(1), Deadly(3), Surge)",
-              "cost": 15,
+              "id": "UbcF_6dzKY",
+              "label": "Daemon Loremaster Staff (A8, Spell Amplifier)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Ritual Spear",
+                  "name": "Daemon Loremaster Staff",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
+                  "attacks": 8,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
-                      "kind": "coreNumeric",
-                      "name": "Deadly",
-                      "numericValue": 3
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Z_v363sEoY",
+              "label": "Heavy Fist-Crossbow (9\u0022, A6, Anti-Cover, Assault, Surge), Heavy Perfect Sword (A4, Obliterate)",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Fist-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
                     },
                     {
                       "kind": "core",
                       "name": "Surge"
                     }
                   ]
+                },
+                {
+                  "name": "Heavy Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Obliterate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xA6sW0vHps",
+              "label": "Heavy Arm-Crossbow (18\u0022, A12, Anti-Cover, Surge)",
+              "cost": 70,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Arm-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "IfjYv27",
+          "label": "Replace any Heavy Perfect Sword",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Heavy Perfect Sword"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "AxdiqsbWGa",
+              "label": "Heavy Daemon Hammer (A1, AP(2), Blast(6))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "8pDhn-w",
+              "label": "Heavy Daemon Gauntlet (A4, AP(2))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -504,90 +690,14 @@
             },
             {
               "id": "7wZlO34",
-              "label": "Great Ritual Blade (A6, Rending, Surge)",
-              "cost": 25,
+              "label": "Heavy Ritual Blade (A4, AP(1), Surge)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Ritual Blade",
+                  "name": "Heavy Ritual Blade",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 6,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "bZkXs",
-              "label": "Great Perfect Sword (A6, Shatter)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Perfect Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 6,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "rBZeg",
-              "label": "Great Arm-Crossbow (12\u0022, A8, Surge)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Arm-Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 8,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "kzVZpCRzC5",
-              "label": "Great Crossbow (18\u0022, A4, AP(1), Surge)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 18,
                   "attacks": 4,
                   "armorPenetration": 1,
                   "specialRules": [
@@ -603,21 +713,26 @@
               "modelsGained": 0
             },
             {
-              "id": "8pDhn-w",
-              "label": "Great Ritual Gauntlet (A6, AP(3), Surge)",
-              "cost": 50,
+              "id": "8GwxTfo",
+              "label": "Heavy Daemon Spear (A1, AP(4), Deadly(6), Anti-Regen)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Ritual Gauntlet",
+                  "name": "Heavy Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 6,
-                  "armorPenetration": 3,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    },
+                    {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Anti-Regen"
                     }
                   ]
                 }
@@ -629,7 +744,7 @@
           ]
         },
         {
-          "id": "nY1wFN4",
+          "id": "aKixZcH",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -639,7 +754,7 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "gjatxAcX",
+              "id": "O5aQ6ufT",
               "label": "Daemonic Incursion (Ambush)",
               "cost": 45,
               "costUnpriced": false,
@@ -662,7 +777,7 @@
           ]
         },
         {
-          "id": "_pEMZ9Z",
+          "id": "GQ_jk80",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -672,30 +787,9 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "vlNOeSLN",
-              "label": "Lust Favour (Lustbound Boost)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Lust Favour",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Lustbound Boost"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
               "id": "REQgWTaB",
               "label": "Symbol of Lust (Hit \u0026 Run Fighter)",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -714,30 +808,9 @@
               "modelsGained": 0
             },
             {
-              "id": "rVgkIlJi",
-              "label": "Gift of Lust (Counter-Attack)",
-              "cost": 35,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Gift of Lust",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Counter-Attack"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
               "id": "_QtjNRAm",
               "label": "Curse of Lust (Quick Shot Mark)",
-              "cost": 35,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -756,9 +829,51 @@
               "modelsGained": 0
             },
             {
+              "id": "vlNOeSLN",
+              "label": "Lust Favour (Enhanced Lustbound)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Lust Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Lustbound"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "rVgkIlJi",
+              "label": "Gift of Lust (Counter in Melee)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Gift of Lust",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter in Melee"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
               "id": "Vua-dUMO",
               "label": "Lore of Lust (Caster(4))",
-              "cost": 100,
+              "cost": 60,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -789,7 +904,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 110,
+      "basePointCost": 145,
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -798,20 +913,16 @@
       },
       "weapons": [
         {
-          "name": "Ritual Hammer",
+          "name": "Daemon Hammer",
           "quantity": 2,
           "rangeInches": 0,
           "attacks": 1,
-          "armorPenetration": 0,
+          "armorPenetration": 1,
           "specialRules": [
             {
               "kind": "coreNumeric",
               "name": "Blast",
               "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Surge"
             }
           ]
         },
@@ -847,25 +958,70 @@
       "items": [],
       "sections": [
         {
-          "id": "LNdv5N-",
-          "label": "Replace any Ritual Hammer",
+          "id": "AnPVG0Y",
+          "label": "Replace 2x Daemon Hammer",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Ritual Hammer"
+            "2x Daemon Hammer"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "zTUca",
-              "label": "Ritual Spear (A1, AP(1), Deadly(3), Surge)",
-              "cost": 10,
+              "id": "IzEeEsYC81",
+              "label": "Daemon Loremaster Staff (A4, Spell Amplifier)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Ritual Spear",
+                  "name": "Daemon Loremaster Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "IDnRPc6o-9",
+              "label": "Heavy Fist-Crossbow (9\u0022, A3, Anti-Cover, Assault, Surge), Daemon Hammer (A1, AP(1), Blast(3))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Fist-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                },
+                {
+                  "name": "Daemon Hammer",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
@@ -873,12 +1029,74 @@
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
-                      "name": "Deadly",
+                      "name": "Blast",
                       "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "QKj1ZHCmu0",
+              "label": "Heavy Arm-Crossbow (18\u0022, A6, Anti-Cover, Surge)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Arm-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
                     },
                     {
                       "kind": "core",
                       "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "P_iDMEb",
+          "label": "Replace any Daemon Hammer",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "pkLpy",
+              "label": "Perfect Sword (A3, Obliterate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Obliterate"
                     }
                   ]
                 }
@@ -889,91 +1107,15 @@
             },
             {
               "id": "NiGs0",
-              "label": "Heavy Ritual Blade (A3, Rending, Surge)",
+              "label": "Ritual Blade (A3, AP(1), Surge)",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Ritual Blade",
+                  "name": "Ritual Blade",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "pkLpy",
-              "label": "Heavy Perfect Sword (A3, Shatter)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Perfect Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "SRcmF",
-              "label": "Arm-Crossbow (12\u0022, A4, Surge)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Arm-Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "84krjv1icE",
-              "label": "Crossbow (18\u0022, A2, AP(1), Surge)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 2,
                   "armorPenetration": 1,
                   "specialRules": [
                     {
@@ -989,20 +1131,40 @@
             },
             {
               "id": "aKapG",
-              "label": "Heavy Ritual Gauntlet (A3, AP(3), Surge)",
-              "cost": 25,
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Ritual Gauntlet",
+                  "name": "Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "zTUca",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1014,7 +1176,7 @@
           ]
         },
         {
-          "id": "42lECr3",
+          "id": "dYSD9iI",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -1024,7 +1186,7 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "Fb3NrZ9W",
+              "id": "Q18QpBS2",
               "label": "Lust Boon (Retaliate(1))",
               "cost": 15,
               "costUnpriced": false,
@@ -1048,7 +1210,7 @@
           ]
         },
         {
-          "id": "WZlUvOO",
+          "id": "dFuSBfC",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1060,7 +1222,7 @@
             {
               "id": "JQVhi",
               "label": "Wings (Flying)",
-              "cost": 20,
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1079,7 +1241,7 @@
               "modelsGained": 0
             },
             {
-              "id": "Ua3VaJP5Ei",
+              "id": "qB-sMYpLaA",
               "label": "Daemonic Incursion (Ambush Aura)",
               "cost": 35,
               "costUnpriced": false,
@@ -1102,7 +1264,7 @@
             {
               "id": "Om1vI8M4Ij",
               "label": "Fury Wings (Flying, Scout)",
-              "cost": 45,
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1127,7 +1289,7 @@
           ]
         },
         {
-          "id": "Xxb4Pzw",
+          "id": "8JUGU5n",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1139,7 +1301,7 @@
             {
               "id": "A8K-E5rI",
               "label": "Symbol of Lust (Hit \u0026 Run Fighter Aura)",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1159,8 +1321,8 @@
             },
             {
               "id": "TXtIW7i_",
-              "label": "Lust Favour (Lustbound Boost Aura)",
-              "cost": 30,
+              "label": "Lust Favour (Enhanced Lustbound Aura)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1171,7 +1333,28 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Lustbound Boost Aura"
+                      "name": "Enhanced Lustbound Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "nbd2awUp",
+              "label": "Envoy of Lust (Piercing Charge Aura)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Envoy of Lust",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Piercing Charge Aura"
                     }
                   ]
                 }
@@ -1180,7 +1363,7 @@
             },
             {
               "id": "FDd7doj-",
-              "label": "Gift of Lust (Counter-Attack Aura)",
+              "label": "Gift of Lust (Counter in Melee Aura)",
               "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
@@ -1192,28 +1375,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Counter-Attack Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "nbd2awUp",
-              "label": "Envoy of Lust (Piercing Assault Aura)",
-              "cost": 35,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Envoy of Lust",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Piercing Assault Aura"
+                      "name": "Counter in Melee Aura"
                     }
                   ]
                 }
@@ -1223,7 +1385,7 @@
             {
               "id": "tQ_k3yVR",
               "label": "Lore of Lust (Caster(3))",
-              "cost": 75,
+              "cost": 45,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1254,7 +1416,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 35,
+      "basePointCost": 45,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -1263,35 +1425,12 @@
       },
       "weapons": [
         {
-          "name": "Blade",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 1,
+          "attacks": 4,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
-        },
-        {
-          "name": "Ritual Hammer",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -1312,43 +1451,103 @@
       "items": [],
       "sections": [
         {
-          "id": "nA4lm3m",
-          "label": "Replace Ritual Hammer and Blade",
+          "id": "MJvKe9T",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Ritual Hammer",
-            "Blade"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "r6gPU",
-              "label": "Blade (A1, Surge), Ritual Spear (A1, AP(1), Deadly(3), Surge)",
+              "id": "mbRU_NSUQe",
+              "label": "Master Daemon Hammer (A1, AP(2), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Blade",
+                  "name": "Master Daemon Hammer",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 0,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "thFZnTQ4rA",
+              "label": "Master Hand Weapon (A3, AP(1), Parry(3))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ZB5zleeyQs",
+              "label": "Master Perfect Sword (A3, AP(1), Obliterate)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Obliterate"
                     }
                   ]
-                },
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "29-twhyBe_",
+              "label": "Master Daemon Spear (A1, AP(4), Deadly(3), Anti-Regen)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
                 {
-                  "name": "Ritual Spear",
+                  "name": "Master Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
@@ -1357,7 +1556,233 @@
                     },
                     {
                       "kind": "core",
+                      "name": "Anti-Regen"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "4444If3E1D",
+              "label": "Master Ritual Blade (A3, AP(2), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Ritual Blade",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
                       "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "7ceyX_OKC8",
+              "label": "Master Daemon Gauntlet (A3, AP(4))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "wmbu67v",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "2jTPRL_XNt",
+              "label": "Daemon Loremaster Staff (A2, Spell Amplifier)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Loremaster Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ip5xVPo8pn",
+              "label": "Fist-Crossbow (9\u0022, A1, Anti-Cover, Assault, Surge), Daemon Hammer (A1, AP(1), Blast(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Fist-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                },
+                {
+                  "name": "Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Cohf9AfxHJ",
+              "label": "Heavy Arm-Crossbow (18\u0022, A3, Anti-Cover, Surge), Strike (A1)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Arm-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "bx0tpe-",
+          "label": "Replace Daemon Hammer",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "kFpiCKiPJy",
+              "label": "Perfect Sword (A3, Obliterate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Obliterate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "7P1NzOplQa",
+              "label": "Hand Weapon (A3, Parry(3))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1368,20 +1793,20 @@
             },
             {
               "id": "s_9h7-K8ie",
-              "label": "2x Perfect Sword (A2, Shatter)",
-              "cost": 15,
+              "label": "Ritual Blade (A3, AP(1), Surge)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Perfect Sword",
-                  "quantity": 2,
+                  "name": "Ritual Blade",
+                  "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shatter"
+                      "name": "Surge"
                     }
                   ]
                 }
@@ -1392,35 +1817,17 @@
             },
             {
               "id": "fvhi2",
-              "label": "Arm-Crossbow (12\u0022, A4, Surge), Perfect Sword (A2, Shatter)",
-              "cost": 20,
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Arm-Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                },
-                {
-                  "name": "Perfect Sword",
+                  "name": "Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -1428,34 +1835,22 @@
               "modelsGained": 0
             },
             {
-              "id": "kFpiCKiPJy",
-              "label": "Crossbow (18\u0022, A2, AP(1), Surge), Perfect Sword (A2, Shatter)",
-              "cost": 20,
+              "id": "r6gPU",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                },
-                {
-                  "name": "Perfect Sword",
+                  "name": "Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Shatter"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1467,73 +1862,7 @@
           ]
         },
         {
-          "id": "TGhndXO",
-          "label": "Replace any Perfect Sword",
-          "variant": "Replace",
-          "affects": "Any",
-          "targets": [
-            "Perfect Sword"
-          ],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "mrzBDwXdXx",
-              "label": "Ritual Blade (A2, Rending, Surge)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Ritual Blade",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "U8NyX",
-              "label": "Ritual Gauntlet (A2, AP(3), Surge)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Ritual Gauntlet",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 3,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "3gftPb3",
+          "id": "-HmWDrz",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -1543,7 +1872,7 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "yYfzlQB3",
+              "id": "dDmVLOwy",
               "label": "Lust Boon (Retaliate(1))",
               "cost": 5,
               "costUnpriced": false,
@@ -1567,7 +1896,7 @@
           ]
         },
         {
-          "id": "C5WAeOI",
+          "id": "PiqtMZG",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1578,12 +1907,12 @@
           "options": [
             {
               "id": "4ESey",
-              "label": "Lust Beast (Toxin Claws (A1, Bane), Fast)",
+              "label": "Lust Beast (Toxin Jaws (A1, Bane), Fast)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Toxin Claws",
+                  "name": "Toxin Jaws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
@@ -1612,7 +1941,7 @@
               "modelsGained": 0
             },
             {
-              "id": "9LLVpP0SVX",
+              "id": "CZ0JfA_EtS",
               "label": "Daemonic Incursion (Ambush Aura)",
               "cost": 35,
               "costUnpriced": false,
@@ -1634,10 +1963,24 @@
             },
             {
               "id": "0TNUv",
-              "label": "Razor-Flail Chariot (Armor(3), Fast, Fear(1), Impact(6), Tough(6))",
+              "label": "Razor-Flail Chariot (Lust Beasts (A2, Bane), Armor(3), Fast, Fear(1), Impact(4), Tough(6))",
               "cost": 135,
               "costUnpriced": false,
-              "weaponsGained": [],
+              "weaponsGained": [
+                {
+                  "name": "Lust Beasts",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
               "rulesGained": [],
               "itemsGained": [
                 {
@@ -1661,7 +2004,7 @@
                     {
                       "kind": "coreNumeric",
                       "name": "Impact",
-                      "numericValue": 6
+                      "numericValue": 4
                     },
                     {
                       "kind": "coreNumeric",
@@ -1675,12 +2018,12 @@
             },
             {
               "id": "Zr4RG",
-              "label": "Bonded Harbinger (Great Claws (A6, AP(1), Surge), Armor(2), Fear(1), Tough(6))",
-              "cost": 145,
+              "label": "Bonded Harbinger (Ritual Claws (A6, AP(1), Surge), Armor(2), Fear(1), Tough(6))",
+              "cost": 185,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Claws",
+                  "name": "Ritual Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 6,
@@ -1722,7 +2065,7 @@
           ]
         },
         {
-          "id": "vRFYFip",
+          "id": "givMXe0",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1734,7 +2077,7 @@
             {
               "id": "J7ACi",
               "label": "Symbol of Lust (Hit \u0026 Run Fighter Aura)",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1746,6 +2089,48 @@
                     {
                       "kind": "core",
                       "name": "Hit \u0026 Run Fighter Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "Xv34y",
+              "label": "Lust Favour (Enhanced Lustbound Aura)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Lust Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Lustbound Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "tshmg",
+              "label": "Icon of Lust (Unstoppable when Shooting Aura)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Lust",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Unstoppable when Shooting Aura"
                     }
                   ]
                 }
@@ -1775,51 +2160,9 @@
               "modelsGained": 0
             },
             {
-              "id": "tshmg",
-              "label": "Icon of Lust (Unstoppable when Shooting Aura)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Lust",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Unstoppable when Shooting Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "Xv34y",
-              "label": "Lust Favour (Lustbound Boost Aura)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Lust Favour",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Lustbound Boost Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
               "id": "ZjQS8",
-              "label": "Envoy of Lust (Piercing Assault Aura)",
-              "cost": 35,
+              "label": "Envoy of Lust (Piercing Charge Aura)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1830,7 +2173,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Piercing Assault Aura"
+                      "name": "Piercing Charge Aura"
                     }
                   ]
                 }
@@ -1840,7 +2183,7 @@
             {
               "id": "EwGKn",
               "label": "Lore of Lust (Caster(2))",
-              "cost": 50,
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1871,7 +2214,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 35,
+      "basePointCost": 45,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -1880,35 +2223,12 @@
       },
       "weapons": [
         {
-          "name": "Blade",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 1,
+          "attacks": 4,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
-        },
-        {
-          "name": "Ritual Hammer",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -1937,43 +2257,78 @@
       "items": [],
       "sections": [
         {
-          "id": "b8iUywp",
-          "label": "Replace Ritual Hammer and Blade",
+          "id": "NGsQd6l",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Ritual Hammer",
-            "Blade"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "n3jlA",
-              "label": "Blade (A1, Surge), Ritual Spear (A1, AP(1), Deadly(3), Surge)",
+              "id": "siFHXkXBSJ",
+              "label": "Master Daemon Hammer (A1, AP(2), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Blade",
+                  "name": "Master Daemon Hammer",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 0,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "uMOSWShSQH",
+              "label": "Master Perfect Sword (A3, AP(1), Obliterate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Obliterate"
                     }
                   ]
-                },
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Ls4XG9FNs8",
+              "label": "Master Daemon Spear (A1, AP(4), Deadly(3), Anti-Regen)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
                 {
-                  "name": "Ritual Spear",
+                  "name": "Master Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
@@ -1982,6 +2337,49 @@
                     },
                     {
                       "kind": "core",
+                      "name": "Anti-Regen"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "U9sSy8O6Pv",
+              "label": "Master Daemon Gauntlet (A3, AP(4))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "mFliTlkFfo",
+              "label": "Master Ritual Blade (A3, AP(2), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Ritual Blade",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
                       "name": "Surge"
                     }
                   ]
@@ -1990,44 +2388,42 @@
               "rulesGained": [],
               "itemsGained": [],
               "modelsGained": 0
-            },
+            }
+          ]
+        },
+        {
+          "id": "dpMl3au",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
             {
-              "id": "ci5XO",
-              "label": "2x Perfect Sword (A2, Shatter)",
+              "id": "e1PPX_h5",
+              "label": "Fist-Crossbow (9\u0022, A1, Anti-Cover, Assault, Surge), Daemon Hammer (A1, AP(1), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Perfect Sword",
-                  "quantity": 2,
-                  "rangeInches": 0,
-                  "attacks": 2,
+                  "name": "Fist-Crossbow",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "S3xkd",
-              "label": "Arm-Crossbow (12\u0022, A4, Surge), Perfect Sword (A2, Shatter)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Arm-Crossbow",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
-                  "armorPenetration": 0,
-                  "specialRules": [
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
                     {
                       "kind": "core",
                       "name": "Surge"
@@ -2035,15 +2431,16 @@
                   ]
                 },
                 {
-                  "name": "Perfect Sword",
+                  "name": "Daemon Hammer",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Shatter"
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -2053,16 +2450,109 @@
               "modelsGained": 0
             },
             {
-              "id": "nrWvgNeSrP",
-              "label": "Crossbow (18\u0022, A2, AP(1), Surge), Perfect Sword (A2, Shatter)",
-              "cost": 15,
+              "id": "megCkpTN",
+              "label": "Heavy Arm-Crossbow (18\u0022, A3, Anti-Cover, Surge), Strike (A1)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Crossbow",
+                  "name": "Heavy Arm-Crossbow",
                   "quantity": 1,
                   "rangeInches": 18,
-                  "attacks": 2,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "wSUswMA",
+          "label": "Replace Daemon Hammer",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "BqHOYtXM",
+              "label": "Perfect Sword (A3, Obliterate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Perfect Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Obliterate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "qTopVVIg",
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "I5lAS4cb",
+              "label": "Ritual Blade (A3, AP(1), Surge)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Ritual Blade",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
                   "armorPenetration": 1,
                   "specialRules": [
                     {
@@ -2070,61 +2560,6 @@
                       "name": "Surge"
                     }
                   ]
-                },
-                {
-                  "name": "Perfect Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "hVxQCq_",
-          "label": "Replace any Perfect Sword",
-          "variant": "Replace",
-          "affects": "Any",
-          "targets": [
-            "Perfect Sword"
-          ],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "u3HoS",
-              "label": "Ritual Blade (A2, Rending, Surge)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Ritual Blade",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
                 }
               ],
               "rulesGained": [],
@@ -2132,21 +2567,22 @@
               "modelsGained": 0
             },
             {
-              "id": "8bf5Y",
-              "label": "Ritual Gauntlet (A2, AP(3), Surge)",
-              "cost": 5,
+              "id": "5QWKaIJ2",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Ritual Gauntlet",
+                  "name": "Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 3,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -2158,7 +2594,7 @@
           ]
         },
         {
-          "id": "Z6FHe1a",
+          "id": "FofOcCU",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -2170,7 +2606,7 @@
             {
               "id": "t5njE",
               "label": "Symbol of Lust (Hit \u0026 Run Fighter Aura)",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -2210,8 +2646,29 @@
               "modelsGained": 0
             },
             {
+              "id": "HDSve",
+              "label": "Envoy of Lust (Piercing Charge Aura)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Envoy of Lust",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Piercing Charge Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
               "id": "ID6tT",
-              "label": "Gift of Lust (Counter-Attack Aura)",
+              "label": "Gift of Lust (Counter in Melee Aura)",
               "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
@@ -2223,28 +2680,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Counter-Attack Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "HDSve",
-              "label": "Envoy of Lust (Piercing Assault Aura)",
-              "cost": 35,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Envoy of Lust",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Piercing Assault Aura"
+                      "name": "Counter in Melee Aura"
                     }
                   ]
                 }
@@ -2263,7 +2699,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 45,
+      "basePointCost": 55,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -2275,18 +2711,9 @@
           "name": "Infernal Harp",
           "quantity": 1,
           "rangeInches": 18,
-          "attacks": 1,
+          "attacks": 3,
           "armorPenetration": 0,
           "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Indirect"
-            },
             {
               "kind": "core",
               "name": "Unstoppable"
@@ -2294,17 +2721,12 @@
           ]
         },
         {
-          "name": "Blade",
+          "name": "Strike",
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 1,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -2325,7 +2747,7 @@
       "items": [],
       "sections": [
         {
-          "id": "7uvsOrV",
+          "id": "GtxlBcr",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -2336,21 +2758,42 @@
           "options": [
             {
               "id": "ROW06azf65",
-              "label": "Song of Banishment (Storm of Lust)",
-              "cost": 30,
+              "label": "Song of Banishment (Storm of Lust (15\u0022, A3, Limited, Anti-Cover, Assault, Surge))",
+              "cost": 5,
               "costUnpriced": false,
-              "weaponsGained": [],
+              "weaponsGained": [
+                {
+                  "name": "Storm of Lust",
+                  "quantity": 1,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Limited"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
               "rulesGained": [],
               "itemsGained": [
                 {
                   "name": "Song of Banishment",
                   "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Storm of Lust"
-                    }
-                  ]
+                  "rules": []
                 }
               ],
               "modelsGained": 0
@@ -2358,7 +2801,7 @@
             {
               "id": "xEL__nR",
               "label": "Song of War (Spawn(Lust Warriors [5]))",
-              "cost": 55,
+              "cost": 65,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -2380,7 +2823,7 @@
           ]
         },
         {
-          "id": "nTZBb-q",
+          "id": "tfDF8p-",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -2423,7 +2866,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 50,
+      "basePointCost": 60,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -2432,7 +2875,7 @@
       },
       "weapons": [
         {
-          "name": "Hand Weapon",
+          "name": "Perfect Sword",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2440,7 +2883,7 @@
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Obliterate"
             }
           ]
         }
@@ -2454,7 +2897,7 @@
       "items": [],
       "sections": [
         {
-          "id": "HdX0EWi",
+          "id": "efV6gTG",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2479,24 +2922,9 @@
               "modelsGained": 0
             },
             {
-              "id": "Vw0GFp-",
-              "label": "Banner",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "Jy4bG64",
               "label": "Musician",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2507,49 +2935,40 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "Vw0GFp-",
+              "label": "Banner",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "gS9znCJ",
-          "label": "Replace all Hand Weapons",
+          "id": "jJvSTz4",
+          "label": "Replace all Perfect Swords",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Hand Weapons"
+            "Perfect Swords"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "MW5dR",
-              "label": "Perfect Sword (A1, Shatter)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Perfect Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Shatter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "Q7Zy4wQ",
-              "label": "Halberd (A1, Rending, Surge)",
-              "cost": 15,
+              "id": "gunHtQKh3Y",
+              "label": "Halberd (A1, Rending)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2562,10 +2981,31 @@
                     {
                       "kind": "core",
                       "name": "Rending"
-                    },
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "xIpSgizCEX",
+              "label": "Hand Weapon (A1, Parry(1))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 1
                     }
                   ]
                 }
@@ -2576,8 +3016,8 @@
             },
             {
               "id": "89ygFs5",
-              "label": "Spear (A1, Counter, Surge)",
-              "cost": 20,
+              "label": "Spear (A1, Counter, Brace(1))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2592,8 +3032,9 @@
                       "name": "Counter"
                     },
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
                     }
                   ]
                 }
@@ -2604,8 +3045,8 @@
             },
             {
               "id": "Xild_ol",
-              "label": "Great Weapon (A1, AP(2), Surge)",
-              "cost": 20,
+              "label": "Great Weapon (A1, AP(2))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2614,12 +3055,7 @@
                   "rangeInches": 0,
                   "attacks": 1,
                   "armorPenetration": 2,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2628,8 +3064,8 @@
             },
             {
               "id": "Z3FjAit",
-              "label": "Dual Hand Weapons (A2, Surge)",
-              "cost": 20,
+              "label": "Dual Hand Weapons (A2)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2638,6 +3074,25 @@
                   "rangeInches": 0,
                   "attacks": 2,
                   "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "DD64k5Pc_D",
+              "label": "Ritual Sword (A1, AP(1), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Ritual Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -2653,7 +3108,7 @@
           ]
         },
         {
-          "id": "09ttK_c",
+          "id": "KExZeo7",
           "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
@@ -2687,7 +3142,7 @@
           ]
         },
         {
-          "id": "_E854Vn",
+          "id": "CpxLPjT",
           "label": "Upgrade one model with",
           "variant": "Upgrade",
           "affects": "One",
@@ -2726,10 +3181,10 @@
       "name": "Lust Furies",
       "quality": 5,
       "defense": 5,
-      "baseModelCount": 5,
-      "minModels": 5,
-      "maxModels": 5,
-      "basePointCost": 85,
+      "baseModelCount": 10,
+      "minModels": 10,
+      "maxModels": 10,
+      "basePointCost": 120,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -2739,14 +3194,14 @@
       "weapons": [
         {
           "name": "Perfect Claws",
-          "quantity": 5,
+          "quantity": 10,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
-              "name": "Shatter"
+              "name": "Obliterate"
             }
           ]
         }
@@ -2768,7 +3223,7 @@
       "items": [],
       "sections": [
         {
-          "id": "6IF2Tap",
+          "id": "lElcp-8",
           "label": "Replace all Perfect Claws",
           "variant": "Replace",
           "affects": "All",
@@ -2780,23 +3235,18 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "RLQLdrcr93",
-              "label": "Rending Claws (A2, Rending)",
-              "cost": 5,
+              "id": "RaLIdYj",
+              "label": "Dual Armblades (A2)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Rending Claws",
+                  "name": "Dual Armblades",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 2,
                   "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    }
-                  ]
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2805,15 +3255,15 @@
             },
             {
               "id": "ueViF",
-              "label": "Armblades (A2, AP(1), Surge)",
-              "cost": 5,
+              "label": "Ritual Claws (A1, AP(1), Surge)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Armblades",
+                  "name": "Ritual Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
+                  "attacks": 1,
                   "armorPenetration": 1,
                   "specialRules": [
                     {
@@ -2839,7 +3289,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 95,
+      "basePointCost": 85,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -2850,10 +3300,14 @@
         {
           "name": "Arm-Crossbow",
           "quantity": 5,
-          "rangeInches": 12,
-          "attacks": 2,
+          "rangeInches": 18,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
+            {
+              "kind": "core",
+              "name": "Anti-Cover"
+            },
             {
               "kind": "core",
               "name": "Surge"
@@ -2861,7 +3315,7 @@
           ]
         },
         {
-          "name": "Claws",
+          "name": "Strike",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2886,7 +3340,7 @@
       "items": [],
       "sections": [
         {
-          "id": "pm0e70x",
+          "id": "tdFYtSt",
           "label": "Replace all Arm-Crossbows",
           "variant": "Replace",
           "affects": "All",
@@ -2898,18 +3352,22 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "dth-1-hW-_",
-              "label": "Crossbow (18\u0022, A1, AP(1), Surge)",
-              "cost": 0,
+              "id": "b5RTTnK4Gz",
+              "label": "Fist-Crossbow (9\u0022, A2, Anti-Cover, Surge)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Crossbow",
+                  "name": "Fist-Crossbow",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 1,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 2,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
                     {
                       "kind": "core",
                       "name": "Surge"
@@ -2933,7 +3391,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 105,
+      "basePointCost": 95,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -2944,10 +3402,14 @@
         {
           "name": "Arm-Crossbow",
           "quantity": 5,
-          "rangeInches": 12,
-          "attacks": 2,
+          "rangeInches": 18,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
+            {
+              "kind": "core",
+              "name": "Anti-Cover"
+            },
             {
               "kind": "core",
               "name": "Surge"
@@ -2955,7 +3417,7 @@
           ]
         },
         {
-          "name": "Hand Weapon",
+          "name": "Strike",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2972,7 +3434,7 @@
       "items": [],
       "sections": [
         {
-          "id": "HdX0EWi",
+          "id": "efV6gTG",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2997,24 +3459,9 @@
               "modelsGained": 0
             },
             {
-              "id": "Vw0GFp-",
-              "label": "Banner",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "Jy4bG64",
               "label": "Musician",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -3025,11 +3472,26 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "Vw0GFp-",
+              "label": "Banner",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "xdWWQQ8",
+          "id": "0WeZZsD",
           "label": "Replace all Arm-Crossbows",
           "variant": "Replace",
           "affects": "All",
@@ -3041,18 +3503,22 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "utk495yx",
-              "label": "Crossbow (18\u0022, A1, AP(1), Surge)",
-              "cost": 0,
+              "id": "fyWnyRxcil",
+              "label": "Fist-Crossbow (9\u0022, A2, Anti-Cover, Surge)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Crossbow",
+                  "name": "Fist-Crossbow",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 1,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 2,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
                     {
                       "kind": "core",
                       "name": "Surge"
@@ -3067,7 +3533,7 @@
           ]
         },
         {
-          "id": "eOiHAnN",
+          "id": "DOQmfct",
           "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
@@ -3110,7 +3576,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 90,
+      "basePointCost": 95,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3119,7 +3585,7 @@
       },
       "weapons": [
         {
-          "name": "Hand Weapon",
+          "name": "Perfect Sword",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -3127,12 +3593,12 @@
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Obliterate"
             }
           ]
         },
         {
-          "name": "Toxin Claws",
+          "name": "Toxin Jaws",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -3158,7 +3624,7 @@
       "items": [],
       "sections": [
         {
-          "id": "HdX0EWi",
+          "id": "efV6gTG",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -3183,24 +3649,9 @@
               "modelsGained": 0
             },
             {
-              "id": "Vw0GFp-",
-              "label": "Banner",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "Jy4bG64",
               "label": "Musician",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -3211,16 +3662,31 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "Vw0GFp-",
+              "label": "Banner",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "sEuIoGX",
-          "label": "Replace all Hand Weapons",
+          "id": "YZgHqJ1",
+          "label": "Replace all Perfect Swords",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Hand Weapons"
+            "Perfect Swords"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3228,20 +3694,20 @@
           "options": [
             {
               "id": "esRk2",
-              "label": "Perfect Sword (A1, Shatter)",
-              "cost": 10,
+              "label": "Ritual Sword (A1, AP(1), Surge)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Perfect Sword",
+                  "name": "Ritual Sword",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 0,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shatter"
+                      "name": "Surge"
                     }
                   ]
                 }
@@ -3253,7 +3719,7 @@
           ]
         },
         {
-          "id": "wgM13wv",
+          "id": "iXJhBK6",
           "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
@@ -3296,7 +3762,7 @@
       "baseModelCount": 3,
       "minModels": 3,
       "maxModels": 3,
-      "basePointCost": 70,
+      "basePointCost": 85,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -3305,7 +3771,7 @@
       },
       "weapons": [
         {
-          "name": "Swarm Attacks",
+          "name": "Toxin Fangs",
           "quantity": 3,
           "rangeInches": 0,
           "attacks": 3,
@@ -3334,7 +3800,62 @@
         }
       ],
       "items": [],
-      "sections": []
+      "sections": [
+        {
+          "id": "79Px32W",
+          "label": "Upgrade all models with one",
+          "variant": "Upgrade",
+          "affects": "All",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "ZaUDKPTYP2",
+              "label": "Combat Snake Master (Unpredictable Fighter)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Combat Snake Master",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Unpredictable Fighter"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "cQfhP81dWQ",
+              "label": "Vanguard Snake Master (Scout)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Vanguard Snake Master",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Scout"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "NKX25Iojs",
@@ -3353,15 +3874,15 @@
       },
       "weapons": [
         {
-          "name": "Mutated Claws",
+          "name": "Perfect Claws",
           "quantity": 3,
           "rangeInches": 0,
-          "attacks": 4,
+          "attacks": 3,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Obliterate"
             }
           ]
         }
@@ -3388,39 +3909,30 @@
       "items": [],
       "sections": [
         {
-          "id": "HnPM10J",
-          "label": "Replace all Mutated Claws",
+          "id": "x3zEMCq",
+          "label": "Replace all Perfect Claws",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Mutated Claws"
+            "Perfect Claws"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "nLisn",
-              "label": "Heavy Ritual Blade (A3, Rending, Surge)",
-              "cost": 15,
+              "id": "VDM8Tsfs91",
+              "label": "Soul Claws (A3, AP(2))",
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Ritual Blade",
+                  "name": "Soul Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -3428,21 +3940,21 @@
               "modelsGained": 0
             },
             {
-              "id": "1jHVF",
-              "label": "Mutated Perfect Claws (A4, Shatter)",
-              "cost": 30,
+              "id": "nLisn",
+              "label": "Ritual Blade (A3, AP(1), Surge)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Mutated Perfect Claws",
+                  "name": "Ritual Blade",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 4,
-                  "armorPenetration": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shatter"
+                      "name": "Surge"
                     }
                   ]
                 }
@@ -3463,7 +3975,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 125,
+      "basePointCost": 115,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3471,6 +3983,14 @@
         "heightInches": 3.543307
       },
       "weapons": [
+        {
+          "name": "Stomp",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 2,
+          "armorPenetration": 1,
+          "specialRules": []
+        },
         {
           "name": "Toxin Claws",
           "quantity": 1,
@@ -3488,25 +4008,146 @@
       "rules": [
         {
           "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 4
-        },
-        {
-          "kind": "coreNumeric",
           "name": "Tough",
           "numericValue": 6
-        },
-        {
-          "kind": "core",
-          "name": "Scout"
         },
         {
           "kind": "core",
           "name": "Lustbound"
         }
       ],
-      "items": [],
-      "sections": []
+      "items": [
+        {
+          "name": "Rapid Advance",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fast"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "EVVXFxT",
+          "label": "Replace all Toxin Claws",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Toxin Claws"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "MRkEH0jt5q",
+              "label": "Ritual Claws (A4, AP(1), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Ritual Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "3c5_KSC",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "LToJISaK0n",
+              "label": "Spit Venom (9\u0022, A1, Blast(3), Assault, Bane)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spit Venom",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "vnc0kXk",
+          "label": "Replace Rapid Advance",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Rapid Advance"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "kofI8qIdue",
+              "label": "Battle Hungry (Scout)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Battle Hungry",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Scout"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "RUdN0BIzN",
@@ -3516,7 +4157,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 125,
+      "basePointCost": 130,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3525,32 +4166,28 @@
       },
       "weapons": [
         {
-          "name": "Razor-Flail Crew",
+          "name": "Lust Beasts",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 2,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            },
-            {
-              "kind": "core",
-              "name": "Thrust"
-            }
-          ]
-        },
-        {
-          "name": "Toxin Claws",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
               "name": "Bane"
+            }
+          ]
+        },
+        {
+          "name": "Razor-Flail Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Thrust"
             }
           ]
         }
@@ -3560,11 +4197,6 @@
           "kind": "coreNumeric",
           "name": "Fear",
           "numericValue": 1
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 4
         },
         {
           "kind": "coreNumeric",
@@ -3580,15 +4212,28 @@
           "name": "Lustbound"
         }
       ],
-      "items": [],
+      "items": [
+        {
+          "name": "Chariot Shock",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Impact",
+              "numericValue": 4
+            }
+          ]
+        }
+      ],
       "sections": [
         {
-          "id": "P1vDkgn",
-          "label": "Replace Razor-Flail Crew",
+          "id": "GjGV8Iz",
+          "label": "Replace Razor-Flail Crew and Chariot Shock",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Razor-Flail Crew"
+            "Razor-Flail Crew",
+            "Chariot Shock"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3596,16 +4241,16 @@
           "options": [
             {
               "id": "O6GXgx8Uu3",
-              "label": "Great Crossbow (24\u0022, A1, AP(2), Deadly(6), Unstoppable)",
-              "cost": 45,
+              "label": "Great Crossbow (18\u0022, A1, AP(3), Deadly(6), Unstoppable)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
                   "name": "Great Crossbow",
                   "quantity": 1,
-                  "rangeInches": 24,
+                  "rangeInches": 18,
                   "attacks": 1,
-                  "armorPenetration": 2,
+                  "armorPenetration": 3,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
@@ -3625,17 +4270,21 @@
             },
             {
               "id": "cEHjWntTqb",
-              "label": "Crossbow Crew (18\u0022, A6, AP(1), Surge)",
-              "cost": 50,
+              "label": "Arm-Crossbow Crew (18\u0022, A6, Anti-Cover, Surge)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Crossbow Crew",
+                  "name": "Arm-Crossbow Crew",
                   "quantity": 1,
                   "rangeInches": 18,
                   "attacks": 6,
-                  "armorPenetration": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
                     {
                       "kind": "core",
                       "name": "Surge"
@@ -3650,7 +4299,7 @@
           ]
         },
         {
-          "id": "d191YN_",
+          "id": "70VlCYG",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -3662,7 +4311,7 @@
             {
               "id": "wavabZCm",
               "label": "Curse of Lust (Quick Shot Mark)",
-              "cost": 35,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3692,7 +4341,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 195,
+      "basePointCost": 165,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3703,14 +4352,13 @@
         {
           "name": "Horrific Reflection",
           "quantity": 1,
-          "rangeInches": 12,
-          "attacks": 2,
-          "armorPenetration": 2,
+          "rangeInches": 9,
+          "attacks": 8,
+          "armorPenetration": 0,
           "specialRules": [
             {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
+              "kind": "core",
+              "name": "Anti-Cover"
             },
             {
               "kind": "core",
@@ -3719,17 +4367,12 @@
           ]
         },
         {
-          "name": "Crew Attack",
+          "name": "Crew",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
+          "attacks": 2,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -3749,13 +4392,13 @@
         },
         {
           "kind": "core",
-          "name": "Resistance"
+          "name": "Spell Resistance"
         }
       ],
       "items": [],
       "sections": [
         {
-          "id": "jX6i61F",
+          "id": "rxf3gOF",
           "label": "Replace Horrific Reflection",
           "variant": "Replace",
           "affects": "One",
@@ -3768,7 +4411,7 @@
           "options": [
             {
               "id": "J0KTd170Jt",
-              "label": "Focused Reflection (18\u0022, A2, AP(2), Deadly(3), Unstoppable)",
+              "label": "Focused Reflection (18\u0022, A4, AP(1), Anti-Cover, Surge, Unstoppable)",
               "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [
@@ -3776,13 +4419,16 @@
                   "name": "Focused Reflection",
                   "quantity": 1,
                   "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 2,
+                  "attacks": 4,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
-                      "kind": "coreNumeric",
-                      "name": "Deadly",
-                      "numericValue": 3
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Surge"
                     },
                     {
                       "kind": "core",
@@ -3798,7 +4444,7 @@
           ]
         },
         {
-          "id": "wkMekwn",
+          "id": "voHnE5l",
           "label": "Upgrade with any",
           "variant": "Upgrade",
           "affects": "One",
@@ -3810,7 +4456,7 @@
             {
               "id": "AXhBnOhDQM",
               "label": "Curse of Lust (Quick Shot Mark)",
-              "cost": 35,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3861,7 +4507,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 625,
+      "basePointCost": 500,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3870,28 +4516,15 @@
       },
       "weapons": [
         {
-          "name": "Lust Cannon",
-          "quantity": 1,
-          "rangeInches": 24,
-          "attacks": 9,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
-        },
-        {
-          "name": "Lust Sword",
+          "name": "Perfect Sword",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 18,
+          "attacks": 6,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Obliterate"
             }
           ]
         },
@@ -3917,22 +4550,18 @@
         },
         {
           "kind": "core",
-          "name": "Fearless"
-        },
-        {
-          "kind": "core",
           "name": "Lustbound"
         }
       ],
       "items": [],
       "sections": [
         {
-          "id": "8Lge6ba",
-          "label": "Replace Lust Sword",
+          "id": "Jin2grf",
+          "label": "Replace any Perfect Sword",
           "variant": "Replace",
-          "affects": "One",
+          "affects": "Any",
           "targets": [
-            "Lust Sword"
+            "Perfect Sword"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3940,22 +4569,17 @@
           "options": [
             {
               "id": "3tmbFSw",
-              "label": "Heavy Lust Sword (A12, AP(2), Surge)",
-              "cost": 30,
+              "label": "Soul Sword (A6, AP(2))",
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Lust Sword",
+                  "name": "Soul Sword",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 12,
+                  "attacks": 6,
                   "armorPenetration": 2,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -3964,20 +4588,20 @@
             },
             {
               "id": "5t1PC",
-              "label": "Giant Perfect Sword (A18, Shatter)",
-              "cost": 60,
+              "label": "2x Ritual Blade (A6, AP(1), Surge)",
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Giant Perfect Sword",
-                  "quantity": 1,
+                  "name": "Ritual Blade",
+                  "quantity": 2,
                   "rangeInches": 0,
-                  "attacks": 18,
-                  "armorPenetration": 0,
+                  "attacks": 6,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shatter"
+                      "name": "Surge"
                     }
                   ]
                 }
@@ -3989,30 +4613,38 @@
           ]
         },
         {
-          "id": "jINRTJN",
-          "label": "Replace Lust Cannon",
+          "id": "JdcuN0g",
+          "label": "Replace one Perfect Sword",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Lust Cannon"
+            "Perfect Sword"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "BIgs9KA",
-              "label": "Heavy Lust Cannon (24\u0022, A6, AP(2), Surge)",
-              "cost": 25,
+              "id": "fuYyU1QdR1",
+              "label": "Ritual Cannon (15\u0022, A9, Anti-Cover, Assault, Surge)",
+              "cost": 95,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Lust Cannon",
+                  "name": "Ritual Cannon",
                   "quantity": 1,
-                  "rangeInches": 24,
-                  "attacks": 6,
-                  "armorPenetration": 2,
+                  "rangeInches": 15,
+                  "attacks": 9,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Anti-Cover"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
                     {
                       "kind": "core",
                       "name": "Surge"
@@ -4025,21 +4657,55 @@
               "modelsGained": 0
             },
             {
-              "id": "DQDY3",
-              "label": "Perfect Cannon (18\u0022, A18, Shatter)",
-              "cost": 155,
+              "id": "BIgs9KA",
+              "label": "Soul Cannon (15\u0022, A3, AP(2), Blast(3), Assault)",
+              "cost": 105,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Perfect Cannon",
+                  "name": "Soul Cannon",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 18,
-                  "armorPenetration": 0,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
                       "kind": "core",
-                      "name": "Shatter"
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "_Dd_cb7c8y",
+              "label": "Heavy Soul Cannon (15\u0022, A3, AP(2), Deadly(3), Assault)",
+              "cost": 115,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Soul Cannon",
+                  "quantity": 1,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
                     }
                   ]
                 }
@@ -4051,7 +4717,7 @@
           ]
         },
         {
-          "id": "0CWUT-N",
+          "id": "Oe-OvVv",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -4063,7 +4729,7 @@
             {
               "id": "xDWEMYAv",
               "label": "Curse of Lust (Quick Shot Mark)",
-              "cost": 35,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -4087,30 +4753,6 @@
     }
   ],
   "ruleDefinitions": [
-    {
-      "name": "Shatter",
-      "passive": [
-        {
-          "hookID": "Shooting_OnHitRollComplete",
-          "condition": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -2
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Weapon",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "Against units where most models have Tough 3\u002B, this weapon gets AP(\u002B2)."
-    },
     {
       "name": "Lustbound",
       "passive": [
@@ -4165,104 +4807,6 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Moves moves \u002B1 inches on Advance and \u002B3 inches on Rush/Charge."
-    },
-    {
-      "name": "Lustbound Boost",
-      "passive": [
-        {
-          "hookID": "Movement_OnMoveActionDeclared",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "actionTypeIs",
-              "actionType": "Advance"
-            },
-            "right": {
-              "kind": "unitHasRule",
-              "ruleName": "Lustbound"
-            }
-          },
-          "effect": {
-            "kind": "movementBonus",
-            "actionType": "Advance",
-            "distanceInches": 1,
-            "minResultInches": 0
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Movement_OnMoveActionDeclared",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "actionTypeIs",
-              "actionType": "Rush"
-            },
-            "right": {
-              "kind": "unitHasRule",
-              "ruleName": "Lustbound"
-            }
-          },
-          "effect": {
-            "kind": "movementBonus",
-            "actionType": "Rush",
-            "distanceInches": 3,
-            "minResultInches": 0
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Movement_OnMoveActionDeclared",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "actionTypeIs",
-              "actionType": "Charge"
-            },
-            "right": {
-              "kind": "unitHasRule",
-              "ruleName": "Lustbound"
-            }
-          },
-          "effect": {
-            "kind": "movementBonus",
-            "actionType": "Charge",
-            "distanceInches": 3,
-            "minResultInches": 0
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "If this model has Lustbound, it moves \u002B2 inches on Advance and \u002B6 inches on Rush/Charge (instead of only \u002B1 and \u002B3)."
-    },
-    {
-      "name": "Lustbound Boost Aura",
-      "passive": [
-        {
-          "hookID": "Lifecycle_OnUnitCreated",
-          "condition": {
-            "kind": "always"
-          },
-          "effect": {
-            "kind": "aura",
-            "ruleName": "Lustbound Boost"
-          },
-          "lifetime": "UntilEndOfGame",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "This model and its unit gain Lustbound Boost."
     },
     {
       "name": "Strider Aura",
@@ -4539,6 +5083,405 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight. One friendly unit that used a Rush action may still shoot it once."
+    },
+    {
+      "name": "Anti-Cover",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Cover."
+    },
+    {
+      "name": "Anti-Regen",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Regeneration."
+    },
+    {
+      "name": "Spell Resistance",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isNotSpell"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+    },
+    {
+      "name": "Obliterate",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "targetMajorityHasTough",
+            "minToughValue": 3
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 5
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Ignores Regeneration, and when attacking units where most models have Tough(3) or higher, the target must re-roll successful unmodified Defense results of 5-6."
+    },
+    {
+      "name": "Piercing Charge",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "isCharging"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model gets AP(\u002B1) on its weapons when charging."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Counter in Melee",
+      "passive": [
+        {
+          "hookID": "Melee_OnCounterTrigger",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "strikeFirst"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "reduceImpactDicePerModel"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+    },
+    {
+      "name": "Enhanced Lustbound",
+      "passive": [
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Lustbound"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Advance"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Lustbound"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Rush"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Lustbound"
+            },
+            "right": {
+              "kind": "actionTypeIs",
+              "actionType": "Charge"
+            }
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Charge",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If this model has Lustbound, it moves \u002B2 inches on Advance and \u002B4 inches on Rush/Charge from Lustbound (instead of only \u002B1 inch and \u002B2 inches)."
+    },
+    {
+      "name": "Counter in Melee Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Counter in Melee"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Counter in Melee."
+    },
+    {
+      "name": "Piercing Charge Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Piercing Charge"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Piercing Charge."
+    },
+    {
+      "name": "Enhanced Lustbound Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Lustbound"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Lustbound."
     }
   ],
   "spells": [
@@ -4561,29 +5504,27 @@
       }
     },
     {
-      "name": "Beautiful Pain",
+      "name": "Total Seizure",
       "threshold": 1,
       "target": {
-        "rangeInches": 12,
+        "rangeInches": 18,
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
         "requireLineOfSight": true,
         "requiredToken": null,
-        "singleModel": false,
+        "singleModel": true,
         "requiredRule": null
       },
       "effect": {
         "kind": "dealHits",
         "count": 2,
-        "withRules": [
-          "Shatter"
-        ],
-        "armorPenetration": 0
+        "withRules": [],
+        "armorPenetration": 1
       }
     },
     {
-      "name": "Blissful Dance",
+      "name": "Lust Boon",
       "threshold": 2,
       "target": {
         "rangeInches": 12,
@@ -4597,35 +5538,37 @@
       },
       "effect": {
         "kind": "addRule",
-        "ruleName": "Melee Evasion",
+        "ruleName": "Enhanced Lustbound",
         "scope": "NextTrigger"
       }
     },
     {
-      "name": "Total Seizure",
+      "name": "Beautiful Pain",
       "threshold": 2,
       "target": {
-        "rangeInches": 18,
+        "rangeInches": 12,
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
         "requireLineOfSight": true,
         "requiredToken": null,
-        "singleModel": true,
+        "singleModel": false,
         "requiredRule": null
       },
       "effect": {
         "kind": "dealHits",
         "count": 4,
-        "withRules": [],
-        "armorPenetration": 1
+        "withRules": [
+          "Obliterate"
+        ],
+        "armorPenetration": 0
       }
     },
     {
-      "name": "Lust Boon",
+      "name": "Blissful Dance",
       "threshold": 3,
       "target": {
-        "rangeInches": 12,
+        "rangeInches": 18,
         "minCount": 1,
         "maxCount": 3,
         "targetAffinity": "Friend",
@@ -4636,7 +5579,7 @@
       },
       "effect": {
         "kind": "addRule",
-        "ruleName": "Lustbound Boost",
+        "ruleName": "Melee Evasion",
         "scope": "NextTrigger"
       }
     },
@@ -4644,7 +5587,7 @@
       "name": "Overpowering Lash",
       "threshold": 3,
       "target": {
-        "rangeInches": 12,
+        "rangeInches": 18,
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
@@ -4659,7 +5602,7 @@
         "withRules": [
           "Shred"
         ],
-        "armorPenetration": 1
+        "armorPenetration": 0
       }
     }
   ]

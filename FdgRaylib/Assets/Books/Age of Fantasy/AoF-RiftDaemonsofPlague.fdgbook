@@ -1,12 +1,15 @@
 {
-  "name": "Rift Daemons of Plague",
-  "faction": "Rift Daemons of Plague",
-  "version": "OPR v3.5.3",
+  "name": "Daemons of Plague",
+  "faction": "Daemons of Plague",
+  "version": "OPR v3.6.0",
   "source": "OnePageRules - Army Forge (army-forge.onepagerules.com)",
   "license": "CC-BY-SA 4.0",
   "gameSystem": "age-of-fantasy",
   "defaultRangedEffectSet": "bio-organic",
   "defaultMeleeEffectSet": "toxic-melee",
+  "previousNames": [
+    "Rift Daemons of Plague"
+  ],
   "units": [
     {
       "id": "d4ZOjeR",
@@ -16,7 +19,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 645,
+      "basePointCost": 675,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -25,20 +28,16 @@
       },
       "weapons": [
         {
-          "name": "Exalted Plague Hammer",
+          "name": "Heavy Daemon Hammer",
           "quantity": 2,
           "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 0,
+          "attacks": 1,
+          "armorPenetration": 2,
           "specialRules": [
             {
               "kind": "coreNumeric",
               "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Bane"
+              "numericValue": 6
             }
           ]
         },
@@ -68,96 +67,39 @@
         },
         {
           "kind": "core",
-          "name": "Fearless"
-        },
-        {
-          "kind": "core",
           "name": "Plaguebound"
         }
       ],
       "items": [],
       "sections": [
         {
-          "id": "bp-gl11",
-          "label": "Replace any Exalted Plague Hammer",
+          "id": "1BPE1qg",
+          "label": "Replace 2x Heavy Daemon Hammer",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Exalted Plague Hammer"
+            "2x Heavy Daemon Hammer"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "BU-8LGNplf",
-              "label": "Exalted Infected Sword (A9, Surge)",
-              "cost": 10,
+              "id": "Ti7Gx76qvf",
+              "label": "Daemon Loremaster Staff (A12, Spell Amplifier)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Infected Sword",
+                  "name": "Daemon Loremaster Staff",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 9,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "scA_fan",
-              "label": "Exalted Plague Spear (A3, AP(1), Deadly(3), Bane)",
-              "cost": 40,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Exalted Plague Spear",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "coreNumeric",
-                      "name": "Deadly",
-                      "numericValue": 3
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "jfiui",
-              "label": "Exalted Scatter-Sling (12\u0022, A12, Bane)",
-              "cost": 50,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Exalted Scatter-Sling",
-                  "quantity": 1,
-                  "rangeInches": 12,
                   "attacks": 12,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Spell Amplifier"
                     }
                   ]
                 }
@@ -167,51 +109,41 @@
               "modelsGained": 0
             },
             {
-              "id": "JPm-HhH",
-              "label": "Exalted Plague Sword (A9, Rending, Bane)",
-              "cost": 50,
+              "id": "Ab5KdNvNhA",
+              "label": "Heavy Scatter-Sling (9\u0022, A9, Assault, Bane), Heavy Daemon Hammer (A1, AP(2), Blast(6))",
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Plague Sword",
+                  "name": "Heavy Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 0,
+                  "rangeInches": 9,
                   "attacks": 9,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Assault"
                     },
                     {
                       "kind": "core",
-                      "name": "Rending"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "7x50WcpjAE",
-              "label": "Exalted Sling (18\u0022, A6, AP(1), Bane)",
-              "cost": 60,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Exalted Sling",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 6,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
                       "name": "Bane"
                     }
                   ]
+                },
+                {
+                  "name": "Heavy Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -219,17 +151,17 @@
               "modelsGained": 0
             },
             {
-              "id": "gc6Y7BW",
-              "label": "Exalted Plague Gauntlet (A9, AP(3), Bane)",
-              "cost": 125,
+              "id": "lK88Mxaaj8",
+              "label": "Heavy Long-Sling (18\u0022, A18, Bane)",
+              "cost": 105,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Exalted Plague Gauntlet",
+                  "name": "Heavy Long-Sling",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 9,
-                  "armorPenetration": 3,
+                  "rangeInches": 18,
+                  "attacks": 18,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -245,7 +177,117 @@
           ]
         },
         {
-          "id": "y3gHN6f",
+          "id": "PPgrysu",
+          "label": "Replace any Heavy Daemon Hammer",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Heavy Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "JPm-HhH",
+              "label": "Plague Sword (A6, Bane)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "scA_fan",
+              "label": "Heavy Daemon Spear (A1, AP(4), Deadly(6), Anti-Regen)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Anti-Regen"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "AsACaw91Jh",
+              "label": "Infected Sword (A6, AP(1), Decimate)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "gc6Y7BW",
+              "label": "Daemon Gauntlet (A6, AP(2))",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "B3DoALU",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -255,9 +297,9 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "JiBFnW19",
+              "id": "kBMsQLNg",
               "label": "Daemonic Incursion (Ambush)",
-              "cost": 100,
+              "cost": 85,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -278,7 +320,7 @@
           ]
         },
         {
-          "id": "pJ_FxsL",
+          "id": "oOsF2P4",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -288,51 +330,46 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "WZd2GUaN",
-              "label": "Plague God\u0027s Power (Storm of Plague)",
-              "cost": 35,
+              "id": "iyXYEl6uni",
+              "label": "Storm of Plague (15\u0022, A2, Blast(3), Limited, Assault, Bane)",
+              "cost": 15,
               "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
+              "weaponsGained": [
                 {
-                  "name": "Plague God\u0027s Power",
+                  "name": "Storm of Plague",
                   "quantity": 1,
-                  "rules": [
+                  "rangeInches": 15,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
                     {
                       "kind": "core",
-                      "name": "Storm of Plague"
+                      "name": "Limited"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Bane"
                     }
                   ]
                 }
               ],
-              "modelsGained": 0
-            },
-            {
-              "id": "dMOSnQL-",
-              "label": "Plague Favour (Plaguebound Boost)",
-              "cost": 45,
-              "costUnpriced": false,
-              "weaponsGained": [],
               "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Plague Favour",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Plaguebound Boost"
-                    }
-                  ]
-                }
-              ],
+              "itemsGained": [],
               "modelsGained": 0
             },
             {
               "id": "AMflaRzq",
               "label": "Envoy of Plague (Rending in Melee)",
-              "cost": 55,
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -351,9 +388,30 @@
               "modelsGained": 0
             },
             {
+              "id": "dMOSnQL-",
+              "label": "Plague Favour (Enhanced Plaguebound)",
+              "cost": 70,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Plague Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Plaguebound"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
               "id": "GIdUquAu",
               "label": "Gift of Plague (Regeneration)",
-              "cost": 70,
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -374,7 +432,7 @@
             {
               "id": "-wpoMGra",
               "label": "Lore of Plague (Caster(5))",
-              "cost": 120,
+              "cost": 100,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -405,7 +463,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 300,
+      "basePointCost": 365,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -414,17 +472,12 @@
       },
       "weapons": [
         {
-          "name": "Great Plague Hammer",
+          "name": "Heavy Plague Sword",
           "quantity": 2,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 4,
           "armorPenetration": 0,
           "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
             {
               "kind": "core",
               "name": "Bane"
@@ -463,86 +516,33 @@
       "items": [],
       "sections": [
         {
-          "id": "sRefweT",
-          "label": "Replace any Great Plague Hammer",
+          "id": "8GkCZ3m",
+          "label": "Replace 2x Heavy Plague Sword",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Great Plague Hammer"
+            "2x Heavy Plague Sword"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "3qEuT",
-              "label": "Great Infected Sword (A6, Surge)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Infected Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 6,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "d4Gcx20",
-              "label": "Great Plague Spear (A2, AP(1), Deadly(3), Bane)",
+              "id": "ZBgL66Yz0S",
+              "label": "Daemon Loremaster Staff (A8, Spell Amplifier)",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Plague Spear",
+                  "name": "Daemon Loremaster Staff",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "coreNumeric",
-                      "name": "Deadly",
-                      "numericValue": 3
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "-RO0F",
-              "label": "Great Scatter-Sling (12\u0022, A8, Bane)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Scatter-Sling",
-                  "quantity": 1,
-                  "rangeInches": 12,
                   "attacks": 8,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Spell Amplifier"
                     }
                   ]
                 }
@@ -552,49 +552,38 @@
               "modelsGained": 0
             },
             {
-              "id": "i8DBNO1OQ7",
-              "label": "Great Sling (18\u0022, A4, AP(1), Bane)",
-              "cost": 25,
+              "id": "JWNYV3mMqz",
+              "label": "Heavy Scatter-Sling (9\u0022, A6, Assault, Bane), Heavy Plague Sword (A4, Bane)",
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Sling",
+                  "name": "Heavy Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 4,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "MlgVBHq",
-              "label": "Great Plague Sword (A6, Rending, Bane)",
-              "cost": 25,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Great Plague Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
+                  "rangeInches": 9,
                   "attacks": 6,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Assault"
                     },
                     {
                       "kind": "core",
-                      "name": "Rending"
+                      "name": "Bane"
+                    }
+                  ]
+                },
+                {
+                  "name": "Heavy Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
                     }
                   ]
                 }
@@ -604,17 +593,17 @@
               "modelsGained": 0
             },
             {
-              "id": "3ZoINf-",
-              "label": "Great Plague Gauntlet (A6, AP(3), Bane)",
-              "cost": 55,
+              "id": "_e8DGeGfY5",
+              "label": "Heavy Long-Sling (18\u0022, A12, Bane)",
+              "cost": 50,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Great Plague Gauntlet",
+                  "name": "Heavy Long-Sling",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 6,
-                  "armorPenetration": 3,
+                  "rangeInches": 18,
+                  "attacks": 12,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -630,7 +619,118 @@
           ]
         },
         {
-          "id": "6vsB-y2",
+          "id": "NU4w0pC",
+          "label": "Replace any Heavy Plague Sword",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Heavy Plague Sword"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "MlgVBHq",
+              "label": "Heavy Daemon Hammer (A1, AP(2), Blast(6))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "6CXEDkTHCe",
+              "label": "Heavy Infected Sword (A4, AP(1), Decimate)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "3ZoINf-",
+              "label": "Heavy Daemon Gauntlet (A4, AP(2))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "d4Gcx20",
+              "label": "Heavy Daemon Spear (A1, AP(4), Deadly(6), Anti-Regen)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Daemon Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Anti-Regen"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "qHtwg8e",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -640,7 +740,7 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "RbJ6Fpms",
+              "id": "5eJifj87",
               "label": "Daemonic Incursion (Ambush)",
               "cost": 45,
               "costUnpriced": false,
@@ -663,7 +763,7 @@
           ]
         },
         {
-          "id": "QJWN2wn",
+          "id": "uaUWOoW",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -672,27 +772,6 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
-            {
-              "id": "49Irqe6C",
-              "label": "Curse of Plague (Difficult Terrain Debuff)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Curse of Plague",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Difficult Terrain Debuff"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
             {
               "id": "w98evRVd",
               "label": "Symbol of Plague (Steadfast)",
@@ -715,9 +794,30 @@
               "modelsGained": 0
             },
             {
+              "id": "49Irqe6C",
+              "label": "Curse of Plague (Difficult Terrain Debuff)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Curse of Plague",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Difficult Terrain Debuff"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
               "id": "BhAjBL_w",
-              "label": "Plague Favour (Plaguebound Boost)",
-              "cost": 25,
+              "label": "Plague Favour (Enhanced Plaguebound)",
+              "cost": 45,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -728,7 +828,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Plaguebound Boost"
+                      "name": "Enhanced Plaguebound"
                     }
                   ]
                 }
@@ -738,7 +838,7 @@
             {
               "id": "jlHoMRAQ",
               "label": "Gift of Plague (Regeneration)",
-              "cost": 45,
+              "cost": 50,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -759,7 +859,7 @@
             {
               "id": "j9UI_swr",
               "label": "Lore of Plague (Caster(4))",
-              "cost": 95,
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -790,7 +890,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 120,
+      "basePointCost": 160,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -799,20 +899,16 @@
       },
       "weapons": [
         {
-          "name": "Plague Hammer",
+          "name": "Daemon Hammer",
           "quantity": 2,
           "rangeInches": 0,
           "attacks": 1,
-          "armorPenetration": 0,
+          "armorPenetration": 1,
           "specialRules": [
             {
               "kind": "coreNumeric",
               "name": "Blast",
               "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Bane"
             }
           ]
         },
@@ -848,57 +944,33 @@
       "items": [],
       "sections": [
         {
-          "id": "aZRgbsG",
-          "label": "Replace any Plague Hammer",
+          "id": "UmUyLY_",
+          "label": "Replace 2x Daemon Hammer",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Plague Hammer"
+            "2x Daemon Hammer"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "V826f",
-              "label": "Heavy Infected Sword (A3, Surge)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Infected Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "AzxWr",
-              "label": "Scatter-Sling (12\u0022, A4, Bane)",
+              "id": "DWknUAuX9X",
+              "label": "Daemon Loremaster Staff (A4, Spell Amplifier)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Scatter-Sling",
+                  "name": "Daemon Loremaster Staff",
                   "quantity": 1,
-                  "rangeInches": 12,
+                  "rangeInches": 0,
                   "attacks": 4,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Spell Amplifier"
                     }
                   ]
                 }
@@ -908,17 +980,17 @@
               "modelsGained": 0
             },
             {
-              "id": "WuI3a1bGgW",
-              "label": "Sling (18\u0022, A2, AP(1), Bane)",
+              "id": "O96uPVBPr7",
+              "label": "Heavy Long-Sling (18\u0022, A6, Bane)",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Sling",
+                  "name": "Heavy Long-Sling",
                   "quantity": 1,
                   "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 1,
+                  "attacks": 6,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -932,78 +1004,39 @@
               "modelsGained": 0
             },
             {
-              "id": "ES-5c",
-              "label": "Heavy Plague Sword (A3, Rending, Bane)",
+              "id": "V7aOykUHGU",
+              "label": "Heavy Scatter-Sling (9\u0022, A3, Assault, Bane), Daemon Hammer (A1, AP(1), Blast(3))",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Plague Sword",
+                  "name": "Heavy Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 0,
+                  "rangeInches": 9,
                   "attacks": 3,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Rending"
+                      "name": "Assault"
                     },
                     {
                       "kind": "core",
                       "name": "Bane"
                     }
                   ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "hnhLQ",
-              "label": "Plague Spear (A1, AP(2), Deadly(3), Bane)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
+                },
                 {
-                  "name": "Plague Spear",
+                  "name": "Daemon Hammer",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 2,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
-                      "name": "Deadly",
+                      "name": "Blast",
                       "numericValue": 3
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "1z3rE",
-              "label": "Heavy Plague Gauntlet (A3, AP(3), Bane)",
-              "cost": 30,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Plague Gauntlet",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 3,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
                     }
                   ]
                 }
@@ -1015,8 +1048,114 @@
           ]
         },
         {
-          "id": "3H__ZiU",
-          "label": "Upgrade with one",
+          "id": "gT3lewd",
+          "label": "Replace any Daemon Hammer",
+          "variant": "Replace",
+          "affects": "Any",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "ES-5c",
+              "label": "Plague Sword (A3, Bane)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "V826f",
+              "label": "Infected Sword (A3, AP(1), Decimate)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "1z3rE",
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "hnhLQ",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "gxbsHwP",
+          "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
           "targets": [],
@@ -1025,9 +1164,9 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "X67C8FJjZj",
+              "id": "uox2RjrEPG",
               "label": "Plague Boon (Fortified Growth)",
-              "cost": 15,
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1044,11 +1183,23 @@
                 }
               ],
               "modelsGained": 0
-            },
+            }
+          ]
+        },
+        {
+          "id": "90ztH-_",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
             {
-              "id": "cIGLG",
+              "id": "iWn1r84yqk",
               "label": "Wings (Flying)",
-              "cost": 20,
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1067,7 +1218,7 @@
               "modelsGained": 0
             },
             {
-              "id": "Jt4vwD_y3J",
+              "id": "a9RCiO7AuQ",
               "label": "Daemonic Incursion (Ambush Aura)",
               "cost": 35,
               "costUnpriced": false,
@@ -1090,7 +1241,7 @@
             {
               "id": "hhwNs9uZ6s",
               "label": "Fury Wings (Flying, Scout)",
-              "cost": 45,
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1115,7 +1266,7 @@
           ]
         },
         {
-          "id": "DLJJPKE",
+          "id": "AdwK0d9",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1147,8 +1298,8 @@
             },
             {
               "id": "-Lj5r9tB",
-              "label": "Plague Favour (Plaguebound Boost Aura)",
-              "cost": 20,
+              "label": "Plague Favour (Enhanced Plaguebound Aura)",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1159,7 +1310,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Plaguebound Boost Aura"
+                      "name": "Enhanced Plaguebound Aura"
                     }
                   ]
                 }
@@ -1169,7 +1320,7 @@
             {
               "id": "CI6DI-L6",
               "label": "Gift of Plague (Regeneration Aura)",
-              "cost": 30,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1190,7 +1341,7 @@
             {
               "id": "X-DblyWd",
               "label": "Envoy of Plague (Rending in Melee Aura)",
-              "cost": 40,
+              "cost": 45,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1211,7 +1362,7 @@
             {
               "id": "3fZ8gBl9",
               "label": "Lore of Plague (Caster(3))",
-              "cost": 70,
+              "cost": 60,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1242,7 +1393,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 40,
+      "basePointCost": 55,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -1251,35 +1402,12 @@
       },
       "weapons": [
         {
-          "name": "Plague Hammer",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 1,
+          "attacks": 4,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Bane"
-            }
-          ]
-        },
-        {
-          "name": "Sword",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Bane"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -1300,34 +1428,34 @@
       "items": [],
       "sections": [
         {
-          "id": "r15811S",
-          "label": "Replace Sword and Plague Hammer",
+          "id": "Wd2PaTm",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Sword",
-            "Plague Hammer"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "qsJqu2UCEg",
-              "label": "2x Infected Sword (A2, Surge)",
+              "id": "SsFt9UQt4n",
+              "label": "Master Daemon Hammer (A1, AP(2), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Infected Sword",
-                  "quantity": 2,
+                  "name": "Master Daemon Hammer",
+                  "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1337,34 +1465,70 @@
               "modelsGained": 0
             },
             {
-              "id": "vR02H",
-              "label": "Scatter-Sling (12\u0022, A4, Bane), Infected Sword (A2, Surge)",
-              "cost": 10,
+              "id": "bDwd4v1KTl",
+              "label": "Master Hand Weapon (A3, AP(1), Parry(3))",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Scatter-Sling",
+                  "name": "Master Hand Weapon",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
-                  "armorPenetration": 0,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "grx7PzRItp",
+              "label": "Master Plague Sword (A3, AP(1), Bane)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
                       "name": "Bane"
                     }
                   ]
-                },
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "syD09BBrzS",
+              "label": "Master Infected Sword (A3, AP(2), Decimate)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
                 {
-                  "name": "Infected Sword",
+                  "name": "Master Infected Sword",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -1374,17 +1538,17 @@
               "modelsGained": 0
             },
             {
-              "id": "fNoGq",
-              "label": "Sword (A1, Bane), Plague Spear (A1, AP(2), Deadly(3), Bane)",
+              "id": "PbaIuP5rHm",
+              "label": "Master Daemon Spear (A1, AP(4), Deadly(3), Anti-Regen)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Plague Spear",
+                  "name": "Master Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 2,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
@@ -1393,20 +1557,225 @@
                     },
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Anti-Regen"
                     }
                   ]
-                },
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "S1W4GvVcxK",
+              "label": "Master Daemon Gauntlet (A3, AP(4))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
                 {
-                  "name": "Sword",
+                  "name": "Master Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "kElvKFw",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "Y26Rlub6fw",
+              "label": "Scatter-Sling (9\u0022, A1, Assault, Bane), Daemon Hammer (A1, AP(1), Blast(3))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Scatter-Sling",
+                  "quantity": 1,
+                  "rangeInches": 9,
                   "attacks": 1,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
                       "name": "Bane"
+                    }
+                  ]
+                },
+                {
+                  "name": "Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "fakPgZ9Vck",
+              "label": "Heavy Long-Sling (18\u0022, A3, Bane), Strike (A1)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Long-Sling",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "1IMCfpOwLm",
+              "label": "Daemon Loremaster Staff (A2, Spell Amplifier)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Loremaster Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "bntfRtm",
+          "label": "Replace Daemon Hammer",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "vR02H",
+              "label": "Plague Sword (A3, Bane)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "5XVEW9EFcW",
+              "label": "Hand Weapon (A3, Parry(3))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "qsJqu2UCEg",
+              "label": "Infected Sword (A3, AP(1), Decimate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -1417,73 +1786,17 @@
             },
             {
               "id": "IeB_bOXGf6",
-              "label": "Sling (18\u0022, A2, AP(1), Bane), Infected Sword (A2, Surge)",
-              "cost": 15,
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Sling",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                },
-                {
-                  "name": "Infected Sword",
+                  "name": "Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "oCdK0qv",
-          "label": "Replace any Infected Sword",
-          "variant": "Replace",
-          "affects": "Any",
-          "targets": [
-            "Infected Sword"
-          ],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "Rspuh",
-              "label": "Plague Gauntlet (A2, AP(1), Bane)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Plague Gauntlet",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -1491,25 +1804,22 @@
               "modelsGained": 0
             },
             {
-              "id": "Id1w_",
-              "label": "Plague Sword (A2, Rending, Bane)",
-              "cost": 5,
+              "id": "fNoGq",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Plague Sword",
+                  "name": "Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Bane"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Rending"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1521,7 +1831,7 @@
           ]
         },
         {
-          "id": "VwCQu11",
+          "id": "VbHa9yQ",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1531,7 +1841,7 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "6ACP33yrqh",
+              "id": "0jXqEihFIN",
               "label": "Plague Boon (Fortified Growth)",
               "cost": 5,
               "costUnpriced": false,
@@ -1552,7 +1862,7 @@
               "modelsGained": 0
             },
             {
-              "id": "vlbMVI7Y74",
+              "id": "VwmGyoxktf",
               "label": "Daemonic Incursion (Ambush Aura)",
               "cost": 35,
               "costUnpriced": false,
@@ -1574,12 +1884,12 @@
             },
             {
               "id": "gXvfp",
-              "label": "Throne of Plague (Claws (A3, Bane), Tough(3))",
-              "cost": 45,
+              "label": "Throne of Plague (Toxin Claws (A3, Bane), Tough(3))",
+              "cost": 50,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Claws",
+                  "name": "Toxin Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -1610,16 +1920,16 @@
             },
             {
               "id": "2y4Kn",
-              "label": "Giant Snail (Toxic Maw (A6, AP(1), Bane), Slow, Tough(6))",
-              "cost": 90,
+              "label": "Giant Snail (Toxin Maw (A6, Bane), Slow, Tough(6))",
+              "cost": 80,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Toxic Maw",
+                  "name": "Toxin Maw",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 6,
-                  "armorPenetration": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -1651,7 +1961,7 @@
           ]
         },
         {
-          "id": "tWzaE86",
+          "id": "aRiWlnu",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1660,27 +1970,6 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
-            {
-              "id": "LY6LF",
-              "label": "Icon of Plague (Relentless Aura)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Plague",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Relentless Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
             {
               "id": "oZ48U",
               "label": "Symbol of Plague (Steadfast Aura)",
@@ -1726,8 +2015,8 @@
             },
             {
               "id": "ZF5HO",
-              "label": "Plague Favour (Plaguebound Boost Aura)",
-              "cost": 20,
+              "label": "Plague Favour (Enhanced Plaguebound Aura)",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1738,7 +2027,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Plaguebound Boost Aura"
+                      "name": "Enhanced Plaguebound Aura"
                     }
                   ]
                 }
@@ -1746,20 +2035,20 @@
               "modelsGained": 0
             },
             {
-              "id": "ZnSII",
-              "label": "Envoy of Plague (Rending in Melee Aura)",
-              "cost": 40,
+              "id": "LY6LF",
+              "label": "Icon of Plague (Relentless Aura)",
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Envoy of Plague",
+                  "name": "Icon of Plague",
                   "quantity": 1,
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Rending in Melee Aura"
+                      "name": "Relentless Aura"
                     }
                   ]
                 }
@@ -1769,7 +2058,7 @@
             {
               "id": "r8vZa",
               "label": "Lore of Plague (Caster(2))",
-              "cost": 45,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1782,6 +2071,27 @@
                       "kind": "coreNumeric",
                       "name": "Caster",
                       "numericValue": 2
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "ZnSII",
+              "label": "Envoy of Plague (Rending in Melee Aura)",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Envoy of Plague",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending in Melee Aura"
                     }
                   ]
                 }
@@ -1800,7 +2110,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 40,
+      "basePointCost": 50,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -1809,35 +2119,12 @@
       },
       "weapons": [
         {
-          "name": "Plague Hammer",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 1,
+          "attacks": 4,
           "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 3
-            },
-            {
-              "kind": "core",
-              "name": "Bane"
-            }
-          ]
-        },
-        {
-          "name": "Sword",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Bane"
-            }
-          ]
+          "specialRules": []
         }
       ],
       "rules": [
@@ -1866,34 +2153,34 @@
       "items": [],
       "sections": [
         {
-          "id": "EkAEovy",
-          "label": "Replace Sword and Plague Hammer",
+          "id": "0VZOcPW",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Sword",
-            "Plague Hammer"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "MTJ21k8ivf",
-              "label": "2x Infected Sword (A2, Surge)",
+              "id": "tXm3bL2sOf",
+              "label": "Master Daemon Hammer (A1, AP(2), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Infected Sword",
-                  "quantity": 2,
+                  "name": "Master Daemon Hammer",
+                  "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Surge"
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -1903,17 +2190,65 @@
               "modelsGained": 0
             },
             {
-              "id": "_fXYt",
-              "label": "Sword (A1, Bane), Plague Spear (A1, AP(2), Deadly(3), Bane)",
-              "cost": 10,
+              "id": "nhniH4v4Kv",
+              "label": "Master Plague Sword (A3, AP(1), Bane)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Plague Spear",
+                  "name": "Master Plague Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "hzLJfw1VAA",
+              "label": "Master Infected Sword (A3, AP(2), Decimate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ZzFSkriyis",
+              "label": "Master Daemon Spear (A1, AP(4), Deadly(3), Anti-Regen)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Daemon Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 2,
+                  "armorPenetration": 4,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
@@ -1922,20 +2257,7 @@
                     },
                     {
                       "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                },
-                {
-                  "name": "Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
+                      "name": "Anti-Regen"
                     }
                   ]
                 }
@@ -1945,73 +2267,18 @@
               "modelsGained": 0
             },
             {
-              "id": "1aLnZ",
-              "label": "Scatter-Sling (12\u0022, A4, Bane), Infected Sword (A2, Surge)",
+              "id": "QyhBkeBpx0",
+              "label": "Master Daemon Gauntlet (A3, AP(4))",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Scatter-Sling",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                },
-                {
-                  "name": "Infected Sword",
+                  "name": "Master Daemon Gauntlet",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "QcKs42kSsH",
-              "label": "Sling (18\u0022, A2, AP(1), Bane), Infected Sword (A2, Surge)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Sling",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                },
-                {
-                  "name": "Infected Sword",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Surge"
-                    }
-                  ]
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2021,33 +2288,51 @@
           ]
         },
         {
-          "id": "xjpdt7Q",
-          "label": "Replace any Infected Sword",
+          "id": "5wjbltr",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "One",
           "targets": [
-            "Infected Sword"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "ZwK7t",
-              "label": "Plague Gauntlet (A2, AP(1), Bane)",
+              "id": "I3Scbmab",
+              "label": "Scatter-Sling (9\u0022, A1, Assault, Bane), Daemon Hammer (A1, AP(1), Blast(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Plague Gauntlet",
+                  "name": "Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
                       "name": "Bane"
+                    }
+                  ]
+                },
+                {
+                  "name": "Daemon Hammer",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -2057,8 +2342,97 @@
               "modelsGained": 0
             },
             {
-              "id": "qyM8D",
-              "label": "Plague Sword (A2, Rending, Bane)",
+              "id": "M8n_P_I4",
+              "label": "Heavy Long-Sling (18\u0022, A3, Bane), Strike (A1)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Long-Sling",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "Z9ouReh",
+          "label": "Replace Daemon Hammer",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Daemon Hammer"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "HMS55fLp",
+              "label": "Daemon Gauntlet (A3, AP(2))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Gauntlet",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "PLr8erfb",
+              "label": "Infected Sword (A3, AP(1), Decimate)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "uRjMdamp",
+              "label": "Plague Sword (A3, Bane)",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
@@ -2066,16 +2440,37 @@
                   "name": "Plague Sword",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
+                  "attacks": 3,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
                       "name": "Bane"
-                    },
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "PAe1FSDu",
+              "label": "Daemon Spear (A1, AP(4), Deadly(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Daemon Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 4,
+                  "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Rending"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     }
                   ]
                 }
@@ -2087,7 +2482,7 @@
           ]
         },
         {
-          "id": "aEXYzRi",
+          "id": "8ZIh9Gi",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -2096,27 +2491,6 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
-            {
-              "id": "DkquMmCs",
-              "label": "Icon of Plague (Relentless Aura)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Plague",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Relentless Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
             {
               "id": "zT-mw4HV",
               "label": "Symbol of Plague (Steadfast Aura)",
@@ -2141,7 +2515,7 @@
             {
               "id": "3AYdlDJC",
               "label": "Gift of Plague (Regeneration Aura)",
-              "cost": 30,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -2160,9 +2534,30 @@
               "modelsGained": 0
             },
             {
+              "id": "DkquMmCs",
+              "label": "Icon of Plague (Relentless Aura)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Plague",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Relentless Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
               "id": "yW0YlfnR",
               "label": "Envoy of Plague (Rending in Melee Aura)",
-              "cost": 40,
+              "cost": 45,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -2253,7 +2648,7 @@
       ],
       "sections": [
         {
-          "id": "MsiEDNV",
+          "id": "NQf2jWR",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -2292,10 +2687,10 @@
       "name": "Plague Furies",
       "quality": 5,
       "defense": 5,
-      "baseModelCount": 5,
-      "minModels": 5,
-      "maxModels": 5,
-      "basePointCost": 75,
+      "baseModelCount": 10,
+      "minModels": 10,
+      "maxModels": 10,
+      "basePointCost": 135,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -2304,15 +2699,15 @@
       },
       "weapons": [
         {
-          "name": "Infected Claws",
-          "quantity": 5,
+          "name": "Plague Claws",
+          "quantity": 10,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Bane"
             }
           ]
         }
@@ -2334,33 +2729,33 @@
       "items": [],
       "sections": [
         {
-          "id": "27dMmlR",
-          "label": "Replace all Infected Claws",
+          "id": "e95ySbS",
+          "label": "Replace all Plague Claws",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Infected Claws"
+            "Plague Claws"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "qxB3U",
-              "label": "Armblades (A2, AP(1), Bane)",
-              "cost": 15,
+              "id": "vKFQcI-",
+              "label": "Infected Claws (A1, AP(1), Decimate)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Armblades",
+                  "name": "Infected Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 2,
+                  "attacks": 1,
                   "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -2370,27 +2765,18 @@
               "modelsGained": 0
             },
             {
-              "id": "vKFQcI-",
-              "label": "Rending Claws (A2, Rending, Bane)",
-              "cost": 25,
+              "id": "qxB3U",
+              "label": "Dual Armblades (A2)",
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Rending Claws",
+                  "name": "Dual Armblades",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 2,
                   "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    }
-                  ]
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2409,7 +2795,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 55,
+      "basePointCost": 65,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -2418,7 +2804,7 @@
       },
       "weapons": [
         {
-          "name": "Infected Sword",
+          "name": "Plague Sword",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2426,7 +2812,7 @@
           "specialRules": [
             {
               "kind": "core",
-              "name": "Surge"
+              "name": "Bane"
             }
           ]
         }
@@ -2440,7 +2826,7 @@
       "items": [],
       "sections": [
         {
-          "id": "fq3kHfw",
+          "id": "Zf5sjwm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2465,24 +2851,9 @@
               "modelsGained": 0
             },
             {
-              "id": "F5EVMBY",
-              "label": "Banner",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "rg4oiEw",
               "label": "Musician",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2493,49 +2864,40 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "F5EVMBY",
+              "label": "Banner",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "u-SbRQf",
-          "label": "Replace all Infected Swords",
+          "id": "pZz_Alc",
+          "label": "Replace all Plague Swords",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Infected Swords"
+            "Plague Swords"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "6nxW3c887Q",
-              "label": "Hand Weapon (A1, Bane)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Hand Weapon",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "cFcMLkc",
-              "label": "Halberd (A1, Rending, Bane)",
-              "cost": 15,
+              "label": "Halberd (A1, Rending)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2545,10 +2907,6 @@
                   "attacks": 1,
                   "armorPenetration": 0,
                   "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    },
                     {
                       "kind": "core",
                       "name": "Rending"
@@ -2561,9 +2919,58 @@
               "modelsGained": 0
             },
             {
+              "id": "U5fj75eNIu",
+              "label": "Hand Weapon (A1, Parry(1))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "dk98M",
+              "label": "Infected Sword (A1, AP(1), Decimate)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Infected Sword",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Decimate"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
               "id": "cYLog-U",
-              "label": "Spear (A1, Counter, Bane)",
-              "cost": 20,
+              "label": "Spear (A1, Counter, Brace(1))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2575,35 +2982,12 @@
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Counter"
                     },
                     {
-                      "kind": "core",
-                      "name": "Counter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "iE4pWv4",
-              "label": "Dual Hand Weapons (A2, Bane)",
-              "cost": 25,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Dual Hand Weapons",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
                     }
                   ]
                 }
@@ -2614,8 +2998,8 @@
             },
             {
               "id": "1i_Y1yi",
-              "label": "Great Weapon (A1, AP(2), Bane)",
-              "cost": 25,
+              "label": "Great Weapon (A1, AP(2))",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -2624,12 +3008,26 @@
                   "rangeInches": 0,
                   "attacks": 1,
                   "armorPenetration": 2,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "iE4pWv4",
+              "label": "Dual Hand Weapons (A2)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Dual Hand Weapons",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2639,7 +3037,7 @@
           ]
         },
         {
-          "id": "O1G2j4t",
+          "id": "eWn1tRl",
           "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
@@ -2672,7 +3070,7 @@
           ]
         },
         {
-          "id": "OY8E1FI",
+          "id": "s1SO5I6",
           "label": "Upgrade one model with",
           "variant": "Upgrade",
           "affects": "One",
@@ -2683,7 +3081,7 @@
           "options": [
             {
               "id": "BwVd6",
-              "label": "Banner of Plague (Rending in Melee Aura)",
+              "label": "Banner of Plague (Ravage Aura)",
               "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
@@ -2695,7 +3093,7 @@
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Rending in Melee Aura"
+                      "name": "Ravage Aura"
                     }
                   ]
                 }
@@ -2714,7 +3112,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 90,
+      "basePointCost": 85,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -2723,10 +3121,10 @@
       },
       "weapons": [
         {
-          "name": "Scatter-Sling",
+          "name": "Long-Sling",
           "quantity": 5,
-          "rangeInches": 12,
-          "attacks": 2,
+          "rangeInches": 18,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
             {
@@ -2736,7 +3134,7 @@
           ]
         },
         {
-          "name": "Claws",
+          "name": "Strike",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2761,12 +3159,12 @@
       "items": [],
       "sections": [
         {
-          "id": "WpGArFe",
-          "label": "Replace all Scatter-Slings",
+          "id": "J5yGoup",
+          "label": "Replace all Long-Slings",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Scatter-Slings"
+            "Long-Slings"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -2774,16 +3172,16 @@
           "options": [
             {
               "id": "txpkDnOhkn",
-              "label": "Sling (18\u0022, A1, AP(1), Bane)",
+              "label": "Scatter-Sling (9\u0022, A2, Bane)",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Sling",
+                  "name": "Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 1,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 2,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -2808,7 +3206,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 100,
+      "basePointCost": 90,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -2817,10 +3215,10 @@
       },
       "weapons": [
         {
-          "name": "Scatter-Sling",
+          "name": "Long-Sling",
           "quantity": 5,
-          "rangeInches": 12,
-          "attacks": 2,
+          "rangeInches": 18,
+          "attacks": 1,
           "armorPenetration": 0,
           "specialRules": [
             {
@@ -2830,7 +3228,7 @@
           ]
         },
         {
-          "name": "Hand Weapon",
+          "name": "Strike",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2847,7 +3245,7 @@
       "items": [],
       "sections": [
         {
-          "id": "fq3kHfw",
+          "id": "Zf5sjwm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2872,24 +3270,9 @@
               "modelsGained": 0
             },
             {
-              "id": "F5EVMBY",
-              "label": "Banner",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "rg4oiEw",
               "label": "Musician",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2900,16 +3283,31 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "F5EVMBY",
+              "label": "Banner",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "VodcXiX",
-          "label": "Replace all Scatter-Slings",
+          "id": "OENpdto",
+          "label": "Replace all Long-Slings",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Scatter-Slings"
+            "Long-Slings"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -2917,16 +3315,16 @@
           "options": [
             {
               "id": "BeLzCRDE",
-              "label": "Sling (18\u0022, A1, AP(1), Bane)",
+              "label": "Scatter-Sling (9\u0022, A2, Bane)",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Sling",
+                  "name": "Scatter-Sling",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 1,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 2,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -2942,7 +3340,7 @@
           ]
         },
         {
-          "id": "V2SuQrn",
+          "id": "eV4_Trc",
           "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
@@ -2984,7 +3382,7 @@
       "baseModelCount": 3,
       "minModels": 3,
       "maxModels": 3,
-      "basePointCost": 100,
+      "basePointCost": 130,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -2993,7 +3391,98 @@
       },
       "weapons": [
         {
-          "name": "Swarm Attacks",
+          "name": "Spear Plaguelings",
+          "quantity": 3,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Counter"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        },
+        {
+          "kind": "core",
+          "name": "Scout"
+        },
+        {
+          "kind": "core",
+          "name": "Plaguebound"
+        }
+      ],
+      "items": [],
+      "sections": [
+        {
+          "id": "2l65UVm",
+          "label": "Replace all Spear Plaguelings",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Spear Plaguelings"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "jwOcC-OL4G",
+              "label": "Sling Plaguelings (12\u0022, A3, Assault)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sling Plaguelings",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rLSYPnF",
+      "name": "Plague Soul Spawns",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 3,
+      "minModels": 3,
+      "maxModels": 3,
+      "basePointCost": 175,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Plague Sword",
           "quantity": 3,
           "rangeInches": 0,
           "attacks": 3,
@@ -3026,87 +3515,35 @@
         }
       ],
       "items": [],
-      "sections": []
-    },
-    {
-      "id": "rLSYPnF",
-      "name": "Plague Soul Spawns",
-      "quality": 4,
-      "defense": 4,
-      "baseModelCount": 3,
-      "minModels": 3,
-      "maxModels": 3,
-      "basePointCost": 170,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 1.5748031,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "weapons": [
-        {
-          "name": "Mutated Infected Claws",
-          "quantity": 3,
-          "rangeInches": 0,
-          "attacks": 4,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
-            }
-          ]
-        }
-      ],
-      "rules": [
-        {
-          "kind": "core",
-          "name": "Strider"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 3
-        },
-        {
-          "kind": "core",
-          "name": "Scout"
-        },
-        {
-          "kind": "core",
-          "name": "Plaguebound"
-        }
-      ],
-      "items": [],
       "sections": [
         {
-          "id": "dvaXSar",
-          "label": "Replace all Mutated Infected Claws",
+          "id": "RqeLQGc",
+          "label": "Replace all Plague Swords",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Mutated Infected Claws"
+            "Plague Swords"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "M_rVibQvVE",
-              "label": "Mutated Claws (A4, Bane)",
-              "cost": 5,
+              "id": "PtbJd",
+              "label": "Infected Claws (A3, AP(1), Decimate)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Mutated Claws",
+                  "name": "Infected Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 4,
-                  "armorPenetration": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -3116,27 +3553,18 @@
               "modelsGained": 0
             },
             {
-              "id": "hwtOOaNz94",
-              "label": "Heavy Plague Sword (A3, Rending, Bane)",
-              "cost": 15,
+              "id": "ma4Nuk01Kr",
+              "label": "Soul Claws (A3, AP(2))",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Plague Sword",
+                  "name": "Soul Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
+                  "armorPenetration": 2,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -3155,7 +3583,7 @@
       "baseModelCount": 3,
       "minModels": 3,
       "maxModels": 3,
-      "basePointCost": 175,
+      "basePointCost": 185,
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -3164,7 +3592,7 @@
       },
       "weapons": [
         {
-          "name": "Hand Weapon",
+          "name": "Plague Sword",
           "quantity": 3,
           "rangeInches": 0,
           "attacks": 1,
@@ -3177,12 +3605,17 @@
           ]
         },
         {
-          "name": "Stinger",
+          "name": "Toxin Stinger",
           "quantity": 3,
           "rangeInches": 0,
           "attacks": 3,
-          "armorPenetration": 1,
-          "specialRules": []
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
         }
       ],
       "rules": [
@@ -3203,7 +3636,7 @@
       "items": [],
       "sections": [
         {
-          "id": "fq3kHfw",
+          "id": "Zf5sjwm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -3215,7 +3648,7 @@
             {
               "id": "KF2CMTD",
               "label": "Sergeant",
-              "cost": 5,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -3228,24 +3661,9 @@
               "modelsGained": 0
             },
             {
-              "id": "F5EVMBY",
-              "label": "Banner",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "rg4oiEw",
               "label": "Musician",
-              "cost": 20,
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -3256,16 +3674,31 @@
               ],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "F5EVMBY",
+              "label": "Banner",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "PE8-0pd",
-          "label": "Replace all Hand Weapons",
+          "id": "E-I9xu9",
+          "label": "Replace all Plague Swords",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Hand Weapons"
+            "Plague Swords"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3273,8 +3706,8 @@
           "options": [
             {
               "id": "nv77G",
-              "label": "Infected Sword (A1, Surge)",
-              "cost": 0,
+              "label": "Infected Sword (A1, AP(1), Decimate)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -3282,11 +3715,11 @@
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 0,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -3298,30 +3731,39 @@
           ]
         },
         {
-          "id": "-V16eNi",
-          "label": "Replace all Stingers",
+          "id": "tV9wEWk",
+          "label": "Replace all Toxin Stingers",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Stingers"
+            "Toxin Stingers"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "2pIo6DL",
-              "label": "Poisoned Stinger (A3, AP(1), Bane)",
-              "cost": 10,
+              "id": "At_cECGrZR",
+              "label": "Poisoned Spit (12\u0022, A1, Blast(3), Reliable, Bane)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Poisoned Stinger",
+                  "name": "Poisoned Spit",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 3,
-                  "armorPenetration": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Reliable"
+                    },
                     {
                       "kind": "core",
                       "name": "Bane"
@@ -3332,23 +3774,42 @@
               "rulesGained": [],
               "itemsGained": [],
               "modelsGained": 0
+            },
+            {
+              "id": "2pIo6DL",
+              "label": "Heavy Stinger (A3, AP(2))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Stinger",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "O_sJb6v",
-          "label": "Upgrade all models with any",
+          "id": "IdbaCQV",
+          "label": "Upgrade all models with",
           "variant": "Upgrade",
           "affects": "All",
           "targets": [],
           "maxApplications": 0,
           "minPicks": 0,
-          "maxPicks": 2,
+          "maxPicks": 1,
           "options": [
             {
               "id": "9nKHQOAxk4",
               "label": "Plague Boon (Fortified Growth)",
-              "cost": 20,
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3364,30 +3825,6 @@
                   ]
                 }
               ],
-              "modelsGained": 0
-            },
-            {
-              "id": "2lZZcrQ",
-              "label": "Poisoned Spit (12\u0022, A3, Bane)",
-              "cost": 40,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Poisoned Spit",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 3,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
               "modelsGained": 0
             }
           ]
@@ -3419,11 +3856,11 @@
           "specialRules": []
         },
         {
-          "name": "Toxic Maw",
+          "name": "Toxin Maw",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 6,
-          "armorPenetration": 1,
+          "attacks": 4,
+          "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
@@ -3455,36 +3892,38 @@
       "items": [],
       "sections": [
         {
-          "id": "36NGXIH",
-          "label": "Upgrade with one",
-          "variant": "Upgrade",
+          "id": "PflGLNS",
+          "label": "Replace Toxin Maw",
+          "variant": "Replace",
           "affects": "One",
-          "targets": [],
+          "targets": [
+            "Toxin Maw"
+          ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "BZWIFS1Fa5",
-              "label": "Toxic Spit (18\u0022, A2, Deadly(3), Bane, Unstoppable)",
-              "cost": 35,
+              "id": "7oB4jrdOTR",
+              "label": "Toxin Vomit (12\u0022, A2, Blast(3), Reliable, Bane)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Toxic Spit",
+                  "name": "Toxin Vomit",
                   "quantity": 1,
-                  "rangeInches": 18,
+                  "rangeInches": 12,
                   "attacks": 2,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "coreNumeric",
-                      "name": "Deadly",
+                      "name": "Blast",
                       "numericValue": 3
                     },
                     {
                       "kind": "core",
-                      "name": "Unstoppable"
+                      "name": "Reliable"
                     },
                     {
                       "kind": "core",
@@ -3498,30 +3937,25 @@
               "modelsGained": 0
             },
             {
-              "id": "7oB4jrdOTR",
-              "label": "Toxic Vomit (12\u0022, A2, Blast(3), Reliable, Bane)",
-              "cost": 45,
+              "id": "BZWIFS1Fa5",
+              "label": "Toxin Spit (18\u0022, A4, AP(1), Bane, Unstoppable)",
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Toxic Vomit",
+                  "name": "Toxin Spit",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 2,
-                  "armorPenetration": 0,
+                  "rangeInches": 18,
+                  "attacks": 4,
+                  "armorPenetration": 1,
                   "specialRules": [
-                    {
-                      "kind": "coreNumeric",
-                      "name": "Blast",
-                      "numericValue": 3
-                    },
                     {
                       "kind": "core",
                       "name": "Bane"
                     },
                     {
                       "kind": "core",
-                      "name": "Reliable"
+                      "name": "Unstoppable"
                     }
                   ]
                 }
@@ -3533,19 +3967,47 @@
           ]
         },
         {
-          "id": "qO-xUfG",
-          "label": "Upgrade with",
+          "id": "BkvrVty",
+          "label": "Upgrade with any",
           "variant": "Upgrade",
           "affects": "One",
           "targets": [],
           "maxApplications": 0,
           "minPicks": 0,
-          "maxPicks": 1,
+          "maxPicks": 2,
           "options": [
             {
-              "id": "zouQw",
+              "id": "KU9Ogjo66c",
+              "label": "Spew Bile (9\u0022, A3, Assault, Bane)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spew Bile",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "NzEcSZUr",
               "label": "Curse of Plague (Difficult Terrain Debuff)",
-              "cost": 20,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3575,7 +4037,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 140,
+      "basePointCost": 160,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3584,23 +4046,23 @@
       },
       "weapons": [
         {
-          "name": "Claws",
+          "name": "Spear Plaguelings",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
+          "attacks": 6,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
-              "name": "Bane"
+              "name": "Counter"
             }
           ]
         },
         {
-          "name": "Crew Attacks",
+          "name": "Toxin Claws",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 6,
+          "attacks": 3,
           "armorPenetration": 0,
           "specialRules": [
             {
@@ -3629,19 +4091,43 @@
       "items": [],
       "sections": [
         {
-          "id": "qO-xUfG",
-          "label": "Upgrade with",
+          "id": "uMuvT8p",
+          "label": "Upgrade with any",
           "variant": "Upgrade",
           "affects": "One",
           "targets": [],
           "maxApplications": 0,
           "minPicks": 0,
-          "maxPicks": 1,
+          "maxPicks": 2,
           "options": [
+            {
+              "id": "rJ7OuUBXzI",
+              "label": "Sling Plaguelings (12\u0022, A3, Assault)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sling Plaguelings",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
             {
               "id": "zouQw",
               "label": "Curse of Plague (Difficult Terrain Debuff)",
-              "cost": 20,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3671,7 +4157,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 665,
+      "basePointCost": 580,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3680,28 +4166,15 @@
       },
       "weapons": [
         {
-          "name": "Plague Cannon",
-          "quantity": 1,
-          "rangeInches": 24,
-          "attacks": 9,
+          "name": "Plague Gauntlet",
+          "quantity": 2,
+          "rangeInches": 0,
+          "attacks": 6,
           "armorPenetration": 0,
           "specialRules": [
             {
               "kind": "core",
               "name": "Bane"
-            }
-          ]
-        },
-        {
-          "name": "Giant Infected Sword",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 18,
-          "armorPenetration": 0,
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Surge"
             }
           ]
         },
@@ -3727,43 +4200,39 @@
         },
         {
           "kind": "core",
-          "name": "Fearless"
-        },
-        {
-          "kind": "core",
           "name": "Plaguebound"
         }
       ],
       "items": [],
       "sections": [
         {
-          "id": "A1cIS5v",
-          "label": "Replace Giant Infected Sword",
+          "id": "Pp5wmtb",
+          "label": "Replace any Plague Gauntlet",
           "variant": "Replace",
-          "affects": "One",
+          "affects": "Any",
           "targets": [
-            "Giant Infected Sword"
+            "Plague Gauntlet"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "9KOwW8ygX_",
-              "label": "Plague Sword (A18, Bane)",
+              "id": "Ia7Ly",
+              "label": "Infected Sword (A6, AP(1), Decimate)",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Plague Sword",
+                  "name": "Infected Sword",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 18,
-                  "armorPenetration": 0,
+                  "attacks": 6,
+                  "armorPenetration": 1,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Bane"
+                      "name": "Decimate"
                     }
                   ]
                 }
@@ -3774,22 +4243,17 @@
             },
             {
               "id": "xL2zb",
-              "label": "Heavy Plague Gauntlet (A12, AP(2), Bane)",
-              "cost": 45,
+              "label": "Soul Sword (A6, AP(2))",
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Plague Gauntlet",
+                  "name": "Soul Sword",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 12,
+                  "attacks": 6,
                   "armorPenetration": 2,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    }
-                  ]
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -3799,30 +4263,39 @@
           ]
         },
         {
-          "id": "be7IyAI",
-          "label": "Replace Plague Cannon",
+          "id": "36ZWSY4",
+          "label": "Replace one Plague Gauntlet",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Plague Cannon"
+            "Plague Gauntlet"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "OwGAJvd",
-              "label": "Heavy Plague Cannon (24\u0022, A6, AP(2), Bane)",
-              "cost": 30,
+              "id": "iNh9uwI4Kw",
+              "label": "Plague Cannon (15\u0022, A3, Blast(3), Assault, Bane)",
+              "cost": 55,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Plague Cannon",
+                  "name": "Plague Cannon",
                   "quantity": 1,
-                  "rangeInches": 24,
-                  "attacks": 6,
-                  "armorPenetration": 2,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
                     {
                       "kind": "core",
                       "name": "Bane"
@@ -3835,21 +4308,55 @@
               "modelsGained": 0
             },
             {
-              "id": "nqGoY",
-              "label": "Infected Cannon (18\u0022, A18, Surge)",
-              "cost": 35,
+              "id": "BnlKVTxC1A",
+              "label": "Soul Cannon (15\u0022, A3, AP(2), Blast(3), Assault)",
+              "cost": 110,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Infected Cannon",
+                  "name": "Soul Cannon",
                   "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 18,
-                  "armorPenetration": 0,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
                       "kind": "core",
-                      "name": "Surge"
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "6FrOVBf-md",
+              "label": "Heavy Soul Cannon (15\u0022, A3, AP(2), Deadly(3), Assault)",
+              "cost": 120,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Soul Cannon",
+                  "quantity": 1,
+                  "rangeInches": 15,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
                     }
                   ]
                 }
@@ -3907,50 +4414,6 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Ignores each wound on a roll of 6\u002B."
-    },
-    {
-      "name": "Plaguebound Boost",
-      "passive": [
-        {
-          "hookID": "Shooting_OnSaveRollComplete",
-          "condition": {
-            "kind": "allModelsHaveThisRule"
-          },
-          "effect": {
-            "kind": "ignoreWoundOnRoll",
-            "minRoll": 5
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Subject"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "Ignores each wound on a roll of 5\u002B."
-    },
-    {
-      "name": "Plaguebound Boost Aura",
-      "passive": [
-        {
-          "hookID": "Lifecycle_OnUnitCreated",
-          "condition": {
-            "kind": "always"
-          },
-          "effect": {
-            "kind": "aura",
-            "ruleName": "Plaguebound Boost"
-          },
-          "lifetime": "UntilEndOfGame",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "This model and its unit gain Plaguebound Boost."
     },
     {
       "name": "Precision Attacks Buff",
@@ -4286,6 +4749,205 @@
       "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight, which counts as being in Difficult Terrain once (next time the effect would apply)."
     },
     {
+      "name": "Anti-Regen",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This weapon ignores Regeneration."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Enhanced Plaguebound",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "unitHasRule",
+              "ruleName": "Plaguebound"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If most models in this unit have Plaguebound, they ignore wounds on rolls of 5-6 from Plaguebound (instead of only on 6\u002B)."
+    },
+    {
+      "name": "Decimate",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "targetAboveHalfStrength"
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 6
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), the target must re-roll unmodified Defense results of 6."
+    },
+    {
+      "name": "Enhanced Plaguebound Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Plaguebound"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Plaguebound."
+    },
+    {
+      "name": "Ravage Aura",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "dealAutoWounds",
+            "diceCountPerModel": {
+              "kind": "literal",
+              "value": 1
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit gain Ravage(\u002B1): when it is this unit\u0027s turn to attack in melee, it rolls 1 extra Ravage die per model, and each 6\u002B deals one wound to the target."
+    },
+    {
       "name": "Precision Attacks",
       "passive": [
         {
@@ -4366,11 +5028,11 @@
       },
       "effect": {
         "kind": "dealHits",
-        "count": 2,
+        "count": 3,
         "withRules": [
-          "Surge"
+          "Decimate"
         ],
-        "armorPenetration": 1
+        "armorPenetration": 0
       }
     },
     {
@@ -4393,47 +5055,8 @@
       }
     },
     {
-      "name": "Plague Malediction",
-      "threshold": 2,
-      "target": {
-        "rangeInches": 24,
-        "minCount": 1,
-        "maxCount": 1,
-        "targetAffinity": "Foe",
-        "requireLineOfSight": true,
-        "requiredToken": null,
-        "singleModel": true,
-        "requiredRule": null
-      },
-      "effect": {
-        "kind": "dealHits",
-        "count": 2,
-        "withRules": [],
-        "armorPenetration": 4
-      }
-    },
-    {
-      "name": "Plague Boon",
-      "threshold": 3,
-      "target": {
-        "rangeInches": 12,
-        "minCount": 1,
-        "maxCount": 3,
-        "targetAffinity": "Friend",
-        "requireLineOfSight": false,
-        "requiredToken": null,
-        "singleModel": false,
-        "requiredRule": null
-      },
-      "effect": {
-        "kind": "addRule",
-        "ruleName": "Plaguebound Boost",
-        "scope": "NextTrigger"
-      }
-    },
-    {
       "name": "Rot Wave",
-      "threshold": 3,
+      "threshold": 2,
       "target": {
         "rangeInches": 18,
         "minCount": 1,
@@ -4446,9 +5069,48 @@
       },
       "effect": {
         "kind": "dealHits",
-        "count": 6,
+        "count": 4,
         "withRules": [],
         "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Plague Boon",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Plaguebound",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Plague Malediction",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 24,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": true,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 3,
+        "withRules": [],
+        "armorPenetration": 4
       }
     }
   ]

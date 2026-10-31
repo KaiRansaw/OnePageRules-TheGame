@@ -7818,7 +7818,10 @@
         "effect": {
           "kind": "extraAttack",
           "weaponName": "Takedown Strike",
-          "attacks": 1,
+          "attacks": {
+            "kind": "arg",
+            "index": 0
+          },
           "armorPenetration": 2,
           "withRules": [
             "Reliable",
@@ -7832,9 +7835,9 @@
       }
     ],
     "scope": "Unit",
-    "engineArgumentCount": 0,
+    "engineArgumentCount": 1,
     "valence": "Positive",
-    "description": "Once per game, when it's this model's turn to attack in melee, it may make one extra attack at Quality 2+ with AP(2), Deadly(3), and Takedown."
+    "description": "Once per game, when it's this model's turn to strike in melee, it may make X attacks at Quality 2+ with AP(2), Deadly(3), and Takedown."
   },
   {
     "name": "Takedown Shot",
@@ -7858,7 +7861,10 @@
         "effect": {
           "kind": "extraAttack",
           "weaponName": "Takedown Shot",
-          "attacks": 1,
+          "attacks": {
+            "kind": "arg",
+            "index": 0
+          },
           "armorPenetration": 2,
           "withRules": [
             "Reliable",
@@ -7875,9 +7881,9 @@
       }
     ],
     "scope": "Unit",
-    "engineArgumentCount": 0,
+    "engineArgumentCount": 1,
     "valence": "Positive",
-    "description": "Once per game, when this model shoots, it may make one extra attack against the target at Quality 2+ with AP(2), Deadly(3), and Takedown."
+    "description": "Once per game, when this model shoots, it may make X extra attacks against the target at Quality 2+ with AP(2), Deadly(3), and Takedown."
   },
   {
     "name": "Coordinate",

@@ -70,7 +70,7 @@ public static class PartyLoader
         List<QuestHero> heroes = Resolve(paths);
         List<BookFile> books = BookLibrary.Load();
         BuiltArmyFile party = QuestArmy.Build(heroes, faction =>
-            books.FirstOrDefault(b => string.Equals(b.Faction, faction, StringComparison.OrdinalIgnoreCase)));
+            books.FirstOrDefault(b => b.MatchesFactionName(faction)));   // #412: renames included
 
         Console.WriteLine($"Party: {heroes.Count} heroes, {party.TotalPoints} pts - "
             + string.Join(", ", heroes.Select(h => $"{h.Name} (Lvl {h.Level} {h.Class}, {h.Faction}, {h.Points} pts)")));

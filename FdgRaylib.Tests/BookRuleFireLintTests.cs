@@ -24,8 +24,12 @@ public class BookRuleFireLintTests
 {
     private static readonly IReadOnlyDictionary<string, string> Allowlist = new Dictionary<string, string>
     {
-        ["Unique"] = "list-building marker: no dispatch entries; enforced at army-build time by " +
-            "ListValidator ('the army may only include one copy'), never during play.",
+        // "Unique" was allowlisted here as a pure list-building marker with no dispatch entries. OPR
+        // 3.6.0 retired the bare name - 0 references across the 188 books - and replaced it with
+        // "Unique Hero" ("counts as having Hero, and this model may only be taken once per army", 169
+        // references). That one does NOT belong here: its Hero half is a real dispatch entry that fires,
+        // so the lint passes it on its own merits. Only its once-per-army half is a build-time
+        // constraint, and that is tracked as outstanding work rather than hidden behind an allowlist.
         ["Ethereal"] = "activated teleport enacted by TeleportStage (routed on Effect.Teleport), not by operations.",
     };
 

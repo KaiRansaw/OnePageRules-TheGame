@@ -1,7 +1,7 @@
 {
   "name": "Plague Disciples",
   "faction": "Plague Disciples",
-  "version": "OPR v3.5.3",
+  "version": "OPR v3.6.0",
   "source": "OnePageRules - Army Forge (army-forge.onepagerules.com)",
   "license": "CC-BY-SA 4.0",
   "gameSystem": "age-of-fantasy",
@@ -16,7 +16,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 65,
+      "basePointCost": 80,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -25,11 +25,11 @@
       },
       "weapons": [
         {
-          "name": "Heavy Hand Weapon",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 1,
+          "attacks": 4,
+          "armorPenetration": 0,
           "specialRules": []
         }
       ],
@@ -45,7 +45,7 @@
         },
         {
           "kind": "core",
-          "name": "Versatile Attack"
+          "name": "Versatile Expert"
         },
         {
           "kind": "core",
@@ -55,25 +55,25 @@
       "items": [],
       "sections": [
         {
-          "id": "gG3nbnK",
-          "label": "Replace Heavy Hand Weapon",
+          "id": "OHKcy6Z",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Heavy Hand Weapon"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "DFV89N_",
-              "label": "Heavy Halberd (A3, AP(1), Rending)",
-              "cost": 5,
+              "id": "E2sCJxiAKd",
+              "label": "Master Halberd (A3, AP(1), Rending)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Halberd",
+                  "name": "Master Halberd",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -91,18 +91,24 @@
               "modelsGained": 0
             },
             {
-              "id": "Kh98k",
-              "label": "Dual Heavy Hand Weapons (A4, AP(1))",
-              "cost": 10,
+              "id": "ProqSxObqn",
+              "label": "Master Hand Weapon (A3, AP(1), Parry(3))",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Dual Heavy Hand Weapons",
+                  "name": "Master Hand Weapon",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 4,
+                  "attacks": 3,
                   "armorPenetration": 1,
-                  "specialRules": []
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -110,13 +116,13 @@
               "modelsGained": 0
             },
             {
-              "id": "TqD8aK5",
-              "label": "Heavy Lance (A3, AP(1), Thrust)",
+              "id": "O-fkgRzgpK",
+              "label": "Master Lance (A3, AP(1), Thrust)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Lance",
+                  "name": "Master Lance",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -134,17 +140,46 @@
               "modelsGained": 0
             },
             {
-              "id": "p_mJ2mK",
-              "label": "Heavy Great Weapon (A3, AP(3))",
+              "id": "UbaqPyrkrL",
+              "label": "Master Spear (A3, AP(1), Counter, Brace(1))",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Great Weapon",
+                  "name": "Master Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "tI3f0Y3fiu",
+              "label": "Master Great Weapon (A3, AP(4))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
                   "specialRules": []
                 }
               ],
@@ -155,7 +190,311 @@
           ]
         },
         {
-          "id": "PTN2JE1",
+          "id": "hu-Pa6_",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "0UauZyqT",
+              "label": "Throwing Axes (12\u0022, A1, Assault), Hand Weapon (A3, Parry(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Throwing Axes",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "elqCHbU6",
+              "label": "Hell-Fire Gun (12\u0022, A1, Blast(3), Assault), Strike (A1)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hell-Fire Gun",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "fsQUrKNW",
+              "label": "Sorcerer Staff (A2, Spell Amplifier)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sorcerer Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "FTTsikN",
+          "label": "Replace Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "kh4afx5K",
+              "label": "Halberd (A3, Rending)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "QoPOS1uhM_",
+              "label": "Lance (A3, Thrust)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "PO2ZA8pZ",
+              "label": "Spear (A3, Counter, Brace(1))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "iynbkaeL",
+              "label": "Great Weapon (A3, AP(2))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "bqvBaE_",
+          "label": "Replace Throwing Axes",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Throwing Axes"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "stKSCtaeLI",
+              "label": "Heavy Javelins (12\u0022, A1, AP(2), Assault)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Javelins",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "VGzFD1h",
+          "label": "Replace Hell-Fire Gun",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hell-Fire Gun"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "LNsVyN5tpA",
+              "label": "Doom-Fire Gun (9\u0022, A1, AP(2), Deadly(3), Assault)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Doom-Fire Gun",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "7m6FTtV",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -193,7 +532,7 @@
             {
               "id": "heQ-MH_",
               "label": "Throne of Plague (Toxin Claws (A3, Bane), Tough(3))",
-              "cost": 60,
+              "cost": 70,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -228,17 +567,22 @@
             },
             {
               "id": "7gHEUZM",
-              "label": "Daemon Mount (Heavy Claws (A1, AP(1)), Fast, Fear(1), Impact(2), Tough(3))",
-              "cost": 90,
+              "label": "Daemon Mount (Sharp Claws (A3, Rending), Fast, Fear(1), Tough(3))",
+              "cost": 100,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Claws",
+                  "name": "Sharp Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 1,
-                  "specialRules": []
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -258,11 +602,6 @@
                     },
                     {
                       "kind": "coreNumeric",
-                      "name": "Impact",
-                      "numericValue": 2
-                    },
-                    {
-                      "kind": "coreNumeric",
                       "name": "Tough",
                       "numericValue": 3
                     }
@@ -273,8 +612,8 @@
             },
             {
               "id": "IqVrJ",
-              "label": "Chariot (Hooves (A2), Fast, Impact(4), Tough(6))",
-              "cost": 145,
+              "label": "Havoc Chariot (Hooves (A2, AP(1)), Fast, Impact(4), Tough(6))",
+              "cost": 160,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -282,14 +621,14 @@
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 2,
-                  "armorPenetration": 0,
+                  "armorPenetration": 1,
                   "specialRules": []
                 }
               ],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Chariot",
+                  "name": "Havoc Chariot",
                   "quantity": 1,
                   "rules": [
                     {
@@ -313,23 +652,14 @@
             },
             {
               "id": "MGH9S",
-              "label": "Beast Chariot (Heavy Claws (A2, AP(1)), Fast, Fear(1), Impact(4), Tough(6))",
-              "cost": 160,
+              "label": "Great Beast Chariot (Fast, Fear(1), Heavy Impact(6), Tough(6))",
+              "cost": 170,
               "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Claws",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": []
-                }
-              ],
+              "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Beast Chariot",
+                  "name": "Great Beast Chariot",
                   "quantity": 1,
                   "rules": [
                     {
@@ -343,8 +673,8 @@
                     },
                     {
                       "kind": "coreNumeric",
-                      "name": "Impact",
-                      "numericValue": 4
+                      "name": "Heavy Impact",
+                      "numericValue": 6
                     },
                     {
                       "kind": "coreNumeric",
@@ -358,12 +688,12 @@
             },
             {
               "id": "iOGKJV4",
-              "label": "Manticore (Rending Claws (A6, Rending), Fear(1), Flying, Tough(6))",
-              "cost": 180,
+              "label": "Manticore (Sharp Claws (A6, Rending), Fear(1), Flying, Tough(6))",
+              "cost": 190,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Rending Claws",
+                  "name": "Sharp Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 6,
@@ -403,23 +733,45 @@
             },
             {
               "id": "TAW-0",
-              "label": "Havoc Dragon (Heavy Claws (A6, AP(1)), Stomp (A4, AP(1)), Breath Attack, Fear(2), Flying, Tough(12))",
-              "cost": 360,
+              "label": "Havoc Dragon (Flame Breath (6\u0022, A1, Blast(3), Reliable, Assault), Heavy Claws (A8, AP(2)), Stomp (A4, AP(1)), Fear(2), Flying, Tough(12))",
+              "cost": 435,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Stomp",
+                  "name": "Flame Breath",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 4,
-                  "armorPenetration": 1,
-                  "specialRules": []
+                  "rangeInches": 6,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Reliable"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
                 },
                 {
                   "name": "Heavy Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 6,
+                  "attacks": 8,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                },
+                {
+                  "name": "Stomp",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
                   "armorPenetration": 1,
                   "specialRules": []
                 }
@@ -432,21 +784,92 @@
                   "rules": [
                     {
                       "kind": "coreNumeric",
-                      "name": "Tough",
-                      "numericValue": 12
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Breath Attack"
-                    },
-                    {
-                      "kind": "coreNumeric",
                       "name": "Fear",
                       "numericValue": 2
                     },
                     {
                       "kind": "core",
                       "name": "Flying"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 12
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "rH2ZWL0OBa",
+              "label": "Great Havoc Dragon (Heavy Flame Breath (6\u0022, A1, AP(1), Blast(6), Reliable, Assault), Sharp Claws (A12, Rending), Stomp (A6, AP(2)), Fear(3), Flying, Tough(18))",
+              "cost": 675,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Flame Breath",
+                  "quantity": 1,
+                  "rangeInches": 6,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Reliable"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Sharp Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                },
+                {
+                  "name": "Stomp",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Havoc Dragon",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Fear",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Flying"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 18
                     }
                   ]
                 }
@@ -456,7 +879,7 @@
           ]
         },
         {
-          "id": "Zji3Nuk",
+          "id": "pQcde11",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -488,27 +911,6 @@
               "modelsGained": 0
             },
             {
-              "id": "jy-OPH9",
-              "label": "Plague Lord (Plaguebound Boost Aura)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Plague Lord",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Plaguebound Boost Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
               "id": "dECfqdNuXm",
               "label": "Marauder (Unpredictable Fighter Aura)",
               "cost": 30,
@@ -530,20 +932,42 @@
               "modelsGained": 0
             },
             {
-              "id": "A_0cX9zoTL",
-              "label": "Warlock (Ranged Shrouding Aura)",
+              "id": "jy-OPH9",
+              "label": "Plague Lord (Enhanced Plaguebound Aura)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Plague Lord",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Plaguebound Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "Nk7dEyu6",
+              "label": "Sorcerer (Caster(2))",
               "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Warlock",
+                  "name": "Sorcerer",
                   "quantity": 1,
                   "rules": [
                     {
-                      "kind": "core",
-                      "name": "Ranged Shrouding Aura"
+                      "kind": "coreNumeric",
+                      "name": "Caster",
+                      "numericValue": 2
                     }
                   ]
                 }
@@ -572,21 +996,20 @@
               "modelsGained": 0
             },
             {
-              "id": "Nk7dEyu6",
-              "label": "Sorcerer (Caster(2))",
-              "cost": 45,
+              "id": "A_0cX9zoTL",
+              "label": "Warlock (Ranged Shrouding Aura)",
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Sorcerer",
+                  "name": "Warlock",
                   "quantity": 1,
                   "rules": [
                     {
-                      "kind": "coreNumeric",
-                      "name": "Caster",
-                      "numericValue": 2
+                      "kind": "core",
+                      "name": "Ranged Shrouding Aura"
                     }
                   ]
                 }
@@ -596,7 +1019,7 @@
             {
               "id": "e1upTXcC",
               "label": "Master Sorcerer (Caster(3))",
-              "cost": 70,
+              "cost": 60,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -627,7 +1050,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 55,
+      "basePointCost": 75,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -636,11 +1059,11 @@
       },
       "weapons": [
         {
-          "name": "Heavy Hand Weapon",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 1,
+          "attacks": 4,
+          "armorPenetration": 0,
           "specialRules": []
         }
       ],
@@ -662,25 +1085,25 @@
       "items": [],
       "sections": [
         {
-          "id": "gG3nbnK",
-          "label": "Replace Heavy Hand Weapon",
+          "id": "OHKcy6Z",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Heavy Hand Weapon"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "DFV89N_",
-              "label": "Heavy Halberd (A3, AP(1), Rending)",
-              "cost": 5,
+              "id": "E2sCJxiAKd",
+              "label": "Master Halberd (A3, AP(1), Rending)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Halberd",
+                  "name": "Master Halberd",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -698,18 +1121,24 @@
               "modelsGained": 0
             },
             {
-              "id": "Kh98k",
-              "label": "Dual Heavy Hand Weapons (A4, AP(1))",
-              "cost": 5,
+              "id": "ProqSxObqn",
+              "label": "Master Hand Weapon (A3, AP(1), Parry(3))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Dual Heavy Hand Weapons",
+                  "name": "Master Hand Weapon",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 4,
+                  "attacks": 3,
                   "armorPenetration": 1,
-                  "specialRules": []
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -717,13 +1146,13 @@
               "modelsGained": 0
             },
             {
-              "id": "TqD8aK5",
-              "label": "Heavy Lance (A3, AP(1), Thrust)",
+              "id": "O-fkgRzgpK",
+              "label": "Master Lance (A3, AP(1), Thrust)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Lance",
+                  "name": "Master Lance",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -741,17 +1170,46 @@
               "modelsGained": 0
             },
             {
-              "id": "p_mJ2mK",
-              "label": "Heavy Great Weapon (A3, AP(3))",
+              "id": "UbaqPyrkrL",
+              "label": "Master Spear (A3, AP(1), Counter, Brace(1))",
               "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Great Weapon",
+                  "name": "Master Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "tI3f0Y3fiu",
+              "label": "Master Great Weapon (A3, AP(4))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
                   "specialRules": []
                 }
               ],
@@ -762,7 +1220,311 @@
           ]
         },
         {
-          "id": "PTN2JE1",
+          "id": "hu-Pa6_",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "0UauZyqT",
+              "label": "Throwing Axes (12\u0022, A1, Assault), Hand Weapon (A3, Parry(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Throwing Axes",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "elqCHbU6",
+              "label": "Hell-Fire Gun (12\u0022, A1, Blast(3), Assault), Strike (A1)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hell-Fire Gun",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "fsQUrKNW",
+              "label": "Sorcerer Staff (A2, Spell Amplifier)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sorcerer Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "FTTsikN",
+          "label": "Replace Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "kh4afx5K",
+              "label": "Halberd (A3, Rending)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "QoPOS1uhM_",
+              "label": "Lance (A3, Thrust)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Lance",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Thrust"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "PO2ZA8pZ",
+              "label": "Spear (A3, Counter, Brace(1))",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "iynbkaeL",
+              "label": "Great Weapon (A3, AP(2))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "bqvBaE_",
+          "label": "Replace Throwing Axes",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Throwing Axes"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "stKSCtaeLI",
+              "label": "Heavy Javelins (12\u0022, A1, AP(2), Assault)",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Javelins",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "VGzFD1h",
+          "label": "Replace Hell-Fire Gun",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hell-Fire Gun"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "LNsVyN5tpA",
+              "label": "Doom-Fire Gun (9\u0022, A1, AP(2), Deadly(3), Assault)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Doom-Fire Gun",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "7m6FTtV",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -800,7 +1562,7 @@
             {
               "id": "heQ-MH_",
               "label": "Throne of Plague (Toxin Claws (A3, Bane), Tough(3))",
-              "cost": 55,
+              "cost": 65,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -835,17 +1597,22 @@
             },
             {
               "id": "7gHEUZM",
-              "label": "Daemon Mount (Heavy Claws (A1, AP(1)), Fast, Fear(1), Impact(2), Tough(3))",
-              "cost": 85,
+              "label": "Daemon Mount (Sharp Claws (A3, Rending), Fast, Fear(1), Tough(3))",
+              "cost": 95,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Claws",
+                  "name": "Sharp Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 1,
-                  "specialRules": []
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -865,11 +1632,6 @@
                     },
                     {
                       "kind": "coreNumeric",
-                      "name": "Impact",
-                      "numericValue": 2
-                    },
-                    {
-                      "kind": "coreNumeric",
                       "name": "Tough",
                       "numericValue": 3
                     }
@@ -880,8 +1642,8 @@
             },
             {
               "id": "IqVrJ",
-              "label": "Chariot (Hooves (A2), Fast, Impact(4), Tough(6))",
-              "cost": 140,
+              "label": "Havoc Chariot (Hooves (A2, AP(1)), Fast, Impact(4), Tough(6))",
+              "cost": 155,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -889,14 +1651,14 @@
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 2,
-                  "armorPenetration": 0,
+                  "armorPenetration": 1,
                   "specialRules": []
                 }
               ],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Chariot",
+                  "name": "Havoc Chariot",
                   "quantity": 1,
                   "rules": [
                     {
@@ -920,23 +1682,14 @@
             },
             {
               "id": "MGH9S",
-              "label": "Beast Chariot (Heavy Claws (A2, AP(1)), Fast, Fear(1), Impact(4), Tough(6))",
-              "cost": 155,
+              "label": "Great Beast Chariot (Fast, Fear(1), Heavy Impact(6), Tough(6))",
+              "cost": 170,
               "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Claws",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": []
-                }
-              ],
+              "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Beast Chariot",
+                  "name": "Great Beast Chariot",
                   "quantity": 1,
                   "rules": [
                     {
@@ -950,8 +1703,8 @@
                     },
                     {
                       "kind": "coreNumeric",
-                      "name": "Impact",
-                      "numericValue": 4
+                      "name": "Heavy Impact",
+                      "numericValue": 6
                     },
                     {
                       "kind": "coreNumeric",
@@ -965,12 +1718,12 @@
             },
             {
               "id": "iOGKJV4",
-              "label": "Manticore (Rending Claws (A6, Rending), Fear(1), Flying, Tough(6))",
-              "cost": 165,
+              "label": "Manticore (Sharp Claws (A6, Rending), Fear(1), Flying, Tough(6))",
+              "cost": 175,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Rending Claws",
+                  "name": "Sharp Claws",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 6,
@@ -1010,23 +1763,45 @@
             },
             {
               "id": "TAW-0",
-              "label": "Havoc Dragon (Heavy Claws (A6, AP(1)), Stomp (A4, AP(1)), Breath Attack, Fear(2), Flying, Tough(12))",
-              "cost": 335,
+              "label": "Havoc Dragon (Flame Breath (6\u0022, A1, Blast(3), Reliable, Assault), Heavy Claws (A8, AP(2)), Stomp (A4, AP(1)), Fear(2), Flying, Tough(12))",
+              "cost": 400,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Stomp",
+                  "name": "Flame Breath",
                   "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 4,
-                  "armorPenetration": 1,
-                  "specialRules": []
+                  "rangeInches": 6,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Reliable"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
                 },
                 {
                   "name": "Heavy Claws",
                   "quantity": 1,
                   "rangeInches": 0,
-                  "attacks": 6,
+                  "attacks": 8,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                },
+                {
+                  "name": "Stomp",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 4,
                   "armorPenetration": 1,
                   "specialRules": []
                 }
@@ -1039,21 +1814,92 @@
                   "rules": [
                     {
                       "kind": "coreNumeric",
-                      "name": "Tough",
-                      "numericValue": 12
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Breath Attack"
-                    },
-                    {
-                      "kind": "coreNumeric",
                       "name": "Fear",
                       "numericValue": 2
                     },
                     {
                       "kind": "core",
                       "name": "Flying"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 12
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "rH2ZWL0OBa",
+              "label": "Great Havoc Dragon (Heavy Flame Breath (6\u0022, A1, AP(1), Blast(6), Reliable, Assault), Sharp Claws (A12, Rending), Stomp (A6, AP(2)), Fear(3), Flying, Tough(18))",
+              "cost": 620,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Heavy Flame Breath",
+                  "quantity": 1,
+                  "rangeInches": 6,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Reliable"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Sharp Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 12,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                },
+                {
+                  "name": "Stomp",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 6,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Havoc Dragon",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Fear",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Flying"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Tough",
+                      "numericValue": 18
                     }
                   ]
                 }
@@ -1063,7 +1909,7 @@
           ]
         },
         {
-          "id": "Zji3Nuk",
+          "id": "pQcde11",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1095,27 +1941,6 @@
               "modelsGained": 0
             },
             {
-              "id": "jy-OPH9",
-              "label": "Plague Lord (Plaguebound Boost Aura)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Plague Lord",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Plaguebound Boost Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
               "id": "dECfqdNuXm",
               "label": "Marauder (Unpredictable Fighter Aura)",
               "cost": 30,
@@ -1137,20 +1962,42 @@
               "modelsGained": 0
             },
             {
-              "id": "A_0cX9zoTL",
-              "label": "Warlock (Ranged Shrouding Aura)",
+              "id": "jy-OPH9",
+              "label": "Plague Lord (Enhanced Plaguebound Aura)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Plague Lord",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Enhanced Plaguebound Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "Nk7dEyu6",
+              "label": "Sorcerer (Caster(2))",
               "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Warlock",
+                  "name": "Sorcerer",
                   "quantity": 1,
                   "rules": [
                     {
-                      "kind": "core",
-                      "name": "Ranged Shrouding Aura"
+                      "kind": "coreNumeric",
+                      "name": "Caster",
+                      "numericValue": 2
                     }
                   ]
                 }
@@ -1179,21 +2026,20 @@
               "modelsGained": 0
             },
             {
-              "id": "Nk7dEyu6",
-              "label": "Sorcerer (Caster(2))",
-              "cost": 45,
+              "id": "A_0cX9zoTL",
+              "label": "Warlock (Ranged Shrouding Aura)",
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Sorcerer",
+                  "name": "Warlock",
                   "quantity": 1,
                   "rules": [
                     {
-                      "kind": "coreNumeric",
-                      "name": "Caster",
-                      "numericValue": 2
+                      "kind": "core",
+                      "name": "Ranged Shrouding Aura"
                     }
                   ]
                 }
@@ -1203,7 +2049,7 @@
             {
               "id": "e1upTXcC",
               "label": "Master Sorcerer (Caster(3))",
-              "cost": 70,
+              "cost": 60,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1234,7 +2080,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 35,
+      "basePointCost": 50,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -1243,10 +2089,10 @@
       },
       "weapons": [
         {
-          "name": "Hand Weapon",
+          "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
+          "attacks": 4,
           "armorPenetration": 0,
           "specialRules": []
         }
@@ -1284,7 +2130,221 @@
       ],
       "sections": [
         {
-          "id": "UEzQDy4",
+          "id": "121XbQY",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "K5Vrp4w0rD",
+              "label": "Master Hand Weapon (A3, AP(1), Parry(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "P0ArT0tcEW",
+              "label": "Master Spear (A3, AP(1), Counter, Brace(1))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Spear",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "B2DJLZ1MUm",
+              "label": "Master Great Flail (A3, AP(2), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Flail",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "DggZ18D6rx",
+              "label": "Master Great Weapon (A3, AP(4))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Master Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 4,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "yasdhDC",
+          "label": "Replace Dual Hand Weapons",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Dual Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "haldShB1d-",
+              "label": "Rapid Shortbow (18\u0022, A4), Strike (A1)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Rapid Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 4,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "UnOPFr0g4Q",
+              "label": "Javelins (12\u0022, A1, Assault), Hand Weapon (A3, Parry(3))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Javelins",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                },
+                {
+                  "name": "Hand Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "OD2QK53dAD",
+              "label": "Sorcerer Staff (A2, Spell Amplifier)",
+              "cost": 35,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sorcerer Staff",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Spell Amplifier"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "qaL0TLR",
           "label": "Replace Hand Weapon",
           "variant": "Replace",
           "affects": "One",
@@ -1296,32 +2356,13 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "9IOId",
-              "label": "Dual Hand Weapons (A4)",
-              "cost": 5,
+              "id": "JBTVPVLiNN",
+              "label": "Spear (A3, Counter, Brace(1))",
+              "cost": 0,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Dual Hand Weapons",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 4,
-                  "armorPenetration": 0,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "G9ZmlCx",
-              "label": "Lance (A3, Thrust)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Lance",
+                  "name": "Spear",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
@@ -1329,7 +2370,12 @@
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Thrust"
+                      "name": "Counter"
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
                     }
                   ]
                 }
@@ -1339,9 +2385,33 @@
               "modelsGained": 0
             },
             {
-              "id": "CSJn0_u",
+              "id": "kAPhPREFBQ",
+              "label": "Great Flail (A3, AP(1), Surge)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Flail",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "G9ZmlCx",
               "label": "Great Weapon (A3, AP(2))",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -1356,78 +2426,112 @@
               "rulesGained": [],
               "itemsGained": [],
               "modelsGained": 0
-            },
+            }
+          ]
+        },
+        {
+          "id": "-ZbhhOb",
+          "label": "Replace Javelins",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Javelins"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
             {
-              "id": "d2ymphv",
-              "label": "Halberd (A3, Rending)",
-              "cost": 10,
+              "id": "cZ2vs4Gkll",
+              "label": "Barbed Javelins (9\u0022, A1, Assault, Scourge)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Halberd",
+                  "name": "Barbed Javelins",
                   "quantity": 1,
-                  "rangeInches": 0,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Scourge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "fqCCzNQ",
+          "label": "Replace Rapid Shortbow",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Rapid Shortbow"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "-CZiMh3wQu",
+              "label": "Hunting Harpoons (9\u0022, A1, AP(2), Deadly(3), Assault)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Hunting Harpoons",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "rbkNvFEkcA",
+              "label": "Trapper Net (9\u0022, A3, Rending, Assault)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Trapper Net",
+                  "quantity": 1,
+                  "rangeInches": 9,
                   "attacks": 3,
                   "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
                       "name": "Rending"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "8S3FQzI",
-          "label": "Upgrade with one",
-          "variant": "Upgrade",
-          "affects": "One",
-          "targets": [],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "ovX7Zezua3",
-              "label": "Shortbow (18\u0022, A2)",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Shortbow",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "dqN_cItftB",
-              "label": "Barbed Javelin (12\u0022, A2, AP(1), Shred)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Barbed Javelin",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": [
+                    },
                     {
                       "kind": "core",
-                      "name": "Shred"
+                      "name": "Assault"
                     }
                   ]
                 }
@@ -1439,7 +2543,7 @@
           ]
         },
         {
-          "id": "trmLFgf",
+          "id": "YUeRWUs",
           "label": "Replace Raid Master",
           "variant": "Replace",
           "affects": "One",
@@ -1453,7 +2557,7 @@
             {
               "id": "SDT9lXj",
               "label": "Horse Master (Fast, Impact(1), Vanguard)",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1483,7 +2587,7 @@
           ]
         },
         {
-          "id": "NMKLIS3",
+          "id": "0DBgEQ2",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1493,20 +2597,20 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "n_n60Tukbl",
-              "label": "Lord of Plague (Plaguebound Boost Aura)",
-              "cost": 20,
+              "id": "LJPgqmPg",
+              "label": "Marauder (Unpredictable Fighter Aura)",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Lord of Plague",
+                  "name": "Marauder",
                   "quantity": 1,
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Plaguebound Boost Aura"
+                      "name": "Unpredictable Fighter Aura"
                     }
                   ]
                 }
@@ -1535,41 +2639,20 @@
               "modelsGained": 0
             },
             {
-              "id": "LJPgqmPg",
-              "label": "Marauder (Unpredictable Fighter Aura)",
+              "id": "n_n60Tukbl",
+              "label": "Lord of Plague (Enhanced Plaguebound Aura)",
               "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Marauder",
+                  "name": "Lord of Plague",
                   "quantity": 1,
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Unpredictable Fighter Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "fg-MFBLQ",
-              "label": "Warlock (Ranged Shrouding Aura)",
-              "cost": 35,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Warlock",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Ranged Shrouding Aura"
+                      "name": "Enhanced Plaguebound Aura"
                     }
                   ]
                 }
@@ -1579,7 +2662,7 @@
             {
               "id": "PDGzdCgyzE",
               "label": "Sorcerer  (Caster(2))",
-              "cost": 45,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -1597,6 +2680,158 @@
                 }
               ],
               "modelsGained": 0
+            },
+            {
+              "id": "fg-MFBLQ",
+              "label": "Warlock (Ranged Shrouding Aura)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Warlock",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Ranged Shrouding Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Mw-tHaP",
+      "name": "Plague Beast Warriors",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 10,
+      "minModels": 10,
+      "maxModels": 10,
+      "basePointCost": 135,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 10,
+          "rangeInches": 0,
+          "attacks": 1,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Plaguebound"
+        }
+      ],
+      "items": [],
+      "sections": [
+        {
+          "id": "i43vhqb",
+          "label": "Replace all Hand Weapons",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "DVCYt98wBW",
+              "label": "Great Weapon (A1, AP(2))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "dfk9dYm",
+          "label": "Upgrade up to three models with one",
+          "variant": "Upgrade",
+          "affects": "Any",
+          "targets": [],
+          "maxApplications": 3,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "90dWcTi",
+              "label": "Sergeant",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "_T_SSCh",
+              "label": "Musician",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "gyA2sDO",
+              "label": "Banner",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
             }
           ]
         }
@@ -1610,7 +2845,7 @@
       "baseModelCount": 10,
       "minModels": 10,
       "maxModels": 10,
-      "basePointCost": 100,
+      "basePointCost": 155,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -1624,7 +2859,13 @@
           "rangeInches": 0,
           "attacks": 1,
           "armorPenetration": 0,
-          "specialRules": []
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
         }
       ],
       "rules": [
@@ -1644,7 +2885,7 @@
       "items": [],
       "sections": [
         {
-          "id": "PbLRljY",
+          "id": "dfk9dYm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -1686,7 +2927,7 @@
             {
               "id": "gyA2sDO",
               "label": "Banner",
-              "cost": 10,
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -1701,7 +2942,7 @@
           ]
         },
         {
-          "id": "a53x4aM",
+          "id": "Q8oCW4K",
           "label": "Replace all Hand Weapons",
           "variant": "Replace",
           "affects": "All",
@@ -1713,28 +2954,9 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "Rjhvq6D",
-              "label": "Flail (A1, AP(1))",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Flail",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 1,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "t1TTf",
-              "label": "Spear (A1, Counter)",
-              "cost": 25,
+              "label": "Spear (A1, Counter, Brace(1))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -1747,182 +2969,46 @@
                     {
                       "kind": "core",
                       "name": "Counter"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "ShxlhGm",
-          "label": "Upgrade one model with one",
-          "variant": "Upgrade",
-          "affects": "One",
-          "targets": [],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "rKFyV6wUbc",
-              "label": "Havoc Favour (Steadfast Aura)",
-              "cost": 25,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Havoc Favour",
-                  "quantity": 1,
-                  "rules": [
+                    },
                     {
-                      "kind": "core",
-                      "name": "Steadfast Aura"
+                      "kind": "coreNumeric",
+                      "name": "Brace",
+                      "numericValue": 1
                     }
                   ]
                 }
               ],
-              "modelsGained": 0
-            },
-            {
-              "id": "iIvpr7Ri",
-              "label": "Icon of Havoc (Versatile Defense Aura)",
-              "cost": 40,
-              "costUnpriced": false,
-              "weaponsGained": [],
               "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Havoc",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Versatile Defense Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "G-o0YzuAh",
-      "name": "Plague Warriors",
-      "quality": 3,
-      "defense": 3,
-      "baseModelCount": 5,
-      "minModels": 5,
-      "maxModels": 5,
-      "basePointCost": 80,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 1.2598425,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "weapons": [
-        {
-          "name": "Heavy Hand Weapon",
-          "quantity": 5,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 1,
-          "specialRules": []
-        }
-      ],
-      "rules": [
-        {
-          "kind": "core",
-          "name": "Plaguebound"
-        }
-      ],
-      "items": [],
-      "sections": [
-        {
-          "id": "PbLRljY",
-          "label": "Upgrade up to three models with one",
-          "variant": "Upgrade",
-          "affects": "Any",
-          "targets": [],
-          "maxApplications": 3,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "90dWcTi",
-              "label": "Sergeant",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Sergeant"
-                }
-              ],
               "itemsGained": [],
               "modelsGained": 0
             },
             {
-              "id": "_T_SSCh",
-              "label": "Musician",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Musician"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "gyA2sDO",
-              "label": "Banner",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "AQ7p1Yj",
-          "label": "Replace all Heavy Hand Weapons",
-          "variant": "Replace",
-          "affects": "All",
-          "targets": [
-            "Heavy Hand Weapons"
-          ],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "47obGZt",
-              "label": "Heavy Halberd (A1, AP(1), Rending)",
+              "id": "ZQtH3dPGOB",
+              "label": "Dual Hand Weapons (A2)",
               "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Halberd",
+                  "name": "Dual Hand Weapons",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Rjhvq6D",
+              "label": "Flail (A1, AP(1), Surge)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Flail",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
@@ -1930,47 +3016,9 @@
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Rending"
+                      "name": "Surge"
                     }
                   ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "NdaV_Ee",
-              "label": "Heavy Great Weapon (A1, AP(3))",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Great Weapon",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 3,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "sj1XsR1",
-              "label": "Dual Heavy Hand Weapons (A2, AP(1))",
-              "cost": 35,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Dual Heavy Hand Weapons",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -1980,7 +3028,7 @@
           ]
         },
         {
-          "id": "ShxlhGm",
+          "id": "7TFkxKK",
           "label": "Upgrade one model with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -1989,27 +3037,6 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
-            {
-              "id": "rKFyV6wUbc",
-              "label": "Havoc Favour (Steadfast Aura)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Havoc Favour",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Steadfast Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
             {
               "id": "iIvpr7Ri",
               "label": "Icon of Havoc (Versatile Defense Aura)",
@@ -2030,195 +3057,11 @@
                 }
               ],
               "modelsGained": 0
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "c0Coqt4qJ",
-      "name": "Plague Chosen Warriors",
-      "quality": 3,
-      "defense": 3,
-      "baseModelCount": 5,
-      "minModels": 5,
-      "maxModels": 5,
-      "basePointCost": 95,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 1.2598425,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "weapons": [
-        {
-          "name": "Heavy Hand Weapon",
-          "quantity": 5,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 1,
-          "specialRules": []
-        }
-      ],
-      "rules": [
-        {
-          "kind": "core",
-          "name": "Versatile Attack"
-        },
-        {
-          "kind": "core",
-          "name": "Plaguebound"
-        }
-      ],
-      "items": [],
-      "sections": [
-        {
-          "id": "PbLRljY",
-          "label": "Upgrade up to three models with one",
-          "variant": "Upgrade",
-          "affects": "Any",
-          "targets": [],
-          "maxApplications": 3,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "90dWcTi",
-              "label": "Sergeant",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Sergeant"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
             },
             {
-              "id": "_T_SSCh",
-              "label": "Musician",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Musician"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "gyA2sDO",
-              "label": "Banner",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Banner"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "AQ7p1Yj",
-          "label": "Replace all Heavy Hand Weapons",
-          "variant": "Replace",
-          "affects": "All",
-          "targets": [
-            "Heavy Hand Weapons"
-          ],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "47obGZt",
-              "label": "Heavy Halberd (A1, AP(1), Rending)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Halberd",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 1,
-                  "specialRules": [
-                    {
-                      "kind": "core",
-                      "name": "Rending"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "NdaV_Ee",
-              "label": "Heavy Great Weapon (A1, AP(3))",
-              "cost": 25,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Heavy Great Weapon",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 1,
-                  "armorPenetration": 3,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
-              "id": "sj1XsR1",
-              "label": "Dual Heavy Hand Weapons (A2, AP(1))",
-              "cost": 50,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Dual Heavy Hand Weapons",
-                  "quantity": 1,
-                  "rangeInches": 0,
-                  "attacks": 2,
-                  "armorPenetration": 1,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "ShxlhGm",
-          "label": "Upgrade one model with one",
-          "variant": "Upgrade",
-          "affects": "One",
-          "targets": [],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "rKFyV6wUbc",
+              "id": "GE8JhNHtul",
               "label": "Havoc Favour (Steadfast Aura)",
-              "cost": 15,
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -2230,27 +3073,6 @@
                     {
                       "kind": "core",
                       "name": "Steadfast Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "iIvpr7Ri",
-              "label": "Icon of Havoc (Versatile Defense Aura)",
-              "cost": 25,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Havoc",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Versatile Defense Aura"
                     }
                   ]
                 }
@@ -2269,7 +3091,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 95,
+      "basePointCost": 85,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -2278,12 +3100,17 @@
       },
       "weapons": [
         {
-          "name": "Mutated Limbs",
+          "name": "Infected Bites",
           "quantity": 5,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 1,
           "armorPenetration": 0,
-          "specialRules": []
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
         }
       ],
       "rules": [
@@ -2301,7 +3128,525 @@
         }
       ],
       "items": [],
-      "sections": []
+      "sections": [
+        {
+          "id": "ZOAleKn",
+          "label": "Replace all Infected Bites",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Infected Bites"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "c1hsyTZbKI",
+              "label": "Mutated Claws (A1, AP(1), Surge)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Mutated Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "E2i7VZMFng",
+              "label": "Razor Claws (A2)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Razor Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "G-o0YzuAh",
+      "name": "Plague Warriors",
+      "quality": 3,
+      "defense": 3,
+      "baseModelCount": 5,
+      "minModels": 5,
+      "maxModels": 5,
+      "basePointCost": 90,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 5,
+          "rangeInches": 0,
+          "attacks": 1,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Plaguebound"
+        }
+      ],
+      "items": [],
+      "sections": [
+        {
+          "id": "dfk9dYm",
+          "label": "Upgrade up to three models with one",
+          "variant": "Upgrade",
+          "affects": "Any",
+          "targets": [],
+          "maxApplications": 3,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "90dWcTi",
+              "label": "Sergeant",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "_T_SSCh",
+              "label": "Musician",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "gyA2sDO",
+              "label": "Banner",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "jX8OOlS",
+          "label": "Replace all Hand Weapons",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "gxIC3aa96v",
+              "label": "Halberd (A1, Rending)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "NdaV_Ee",
+              "label": "Great Weapon (A1, AP(2))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "sj1XsR1",
+              "label": "Dual Hand Weapons (A2)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Dual Hand Weapons",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "7TFkxKK",
+          "label": "Upgrade one model with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "iIvpr7Ri",
+              "label": "Icon of Havoc (Versatile Defense Aura)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Havoc",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Versatile Defense Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "GE8JhNHtul",
+              "label": "Havoc Favour (Steadfast Aura)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Havoc Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Steadfast Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c0Coqt4qJ",
+      "name": "Plague Chosen Warriors",
+      "quality": 3,
+      "defense": 3,
+      "baseModelCount": 5,
+      "minModels": 5,
+      "maxModels": 5,
+      "basePointCost": 100,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Hand Weapon",
+          "quantity": 5,
+          "rangeInches": 0,
+          "attacks": 1,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Versatile Expert"
+        },
+        {
+          "kind": "core",
+          "name": "Plaguebound"
+        }
+      ],
+      "items": [],
+      "sections": [
+        {
+          "id": "dfk9dYm",
+          "label": "Upgrade up to three models with one",
+          "variant": "Upgrade",
+          "affects": "Any",
+          "targets": [],
+          "maxApplications": 3,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "90dWcTi",
+              "label": "Sergeant",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Sergeant"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "_T_SSCh",
+              "label": "Musician",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "gyA2sDO",
+              "label": "Banner",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Banner"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "jX8OOlS",
+          "label": "Replace all Hand Weapons",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Hand Weapons"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "gxIC3aa96v",
+              "label": "Halberd (A1, Rending)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Halberd",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "NdaV_Ee",
+              "label": "Great Weapon (A1, AP(2))",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "sj1XsR1",
+              "label": "Dual Hand Weapons (A2)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Dual Hand Weapons",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "7TFkxKK",
+          "label": "Upgrade one model with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "iIvpr7Ri",
+              "label": "Icon of Havoc (Versatile Defense Aura)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Havoc",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Versatile Defense Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "GE8JhNHtul",
+              "label": "Havoc Favour (Steadfast Aura)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Havoc Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Steadfast Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "3Q4hAgz",
@@ -2311,7 +3656,7 @@
       "baseModelCount": 3,
       "minModels": 3,
       "maxModels": 3,
-      "basePointCost": 160,
+      "basePointCost": 185,
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -2342,12 +3687,12 @@
       "items": [],
       "sections": [
         {
-          "id": "sjuHA7p",
-          "label": "Replace any Dual Hand Weapon",
+          "id": "lKprKSy",
+          "label": "Replace all Dual Hand Weapons",
           "variant": "Replace",
-          "affects": "Any",
+          "affects": "All",
           "targets": [
-            "Dual Hand Weapon"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -2355,17 +3700,23 @@
           "options": [
             {
               "id": "3FkH0",
-              "label": "Heavy Hand Weapon (A3, AP(1))",
+              "label": "Hand Weapon (A3, Parry(3))",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Hand Weapon",
+                  "name": "Hand Weapon",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 1,
-                  "specialRules": []
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Parry",
+                      "numericValue": 3
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -2374,16 +3725,16 @@
             },
             {
               "id": "b7-U6",
-              "label": "Heavy Great Weapon (A3, AP(3))",
-              "cost": 15,
+              "label": "Great Weapon (A3, AP(2))",
+              "cost": 30,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Great Weapon",
+                  "name": "Great Weapon",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 3,
+                  "armorPenetration": 2,
                   "specialRules": []
                 }
               ],
@@ -2394,7 +3745,7 @@
           ]
         },
         {
-          "id": "PbLRljY",
+          "id": "dfk9dYm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2406,7 +3757,7 @@
             {
               "id": "90dWcTi",
               "label": "Sergeant",
-              "cost": 5,
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2421,7 +3772,7 @@
             {
               "id": "_T_SSCh",
               "label": "Musician",
-              "cost": 25,
+              "cost": 20,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2436,7 +3787,7 @@
             {
               "id": "gyA2sDO",
               "label": "Banner",
-              "cost": 30,
+              "cost": 40,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -2460,7 +3811,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 65,
+      "basePointCost": 70,
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -2469,20 +3820,17 @@
       },
       "weapons": [
         {
-          "name": "Shortbow",
+          "name": "Javelins",
           "quantity": 5,
-          "rangeInches": 18,
+          "rangeInches": 12,
           "attacks": 1,
           "armorPenetration": 0,
-          "specialRules": []
-        },
-        {
-          "name": "Hand Weapon",
-          "quantity": 5,
-          "rangeInches": 0,
-          "attacks": 1,
-          "armorPenetration": 0,
-          "specialRules": []
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            }
+          ]
         }
       ],
       "rules": [
@@ -2498,7 +3846,7 @@
       "items": [],
       "sections": [
         {
-          "id": "ShxlhGm",
+          "id": "7TFkxKK",
           "label": "Upgrade one model with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -2508,7 +3856,28 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "rKFyV6wUbc",
+              "id": "iIvpr7Ri",
+              "label": "Icon of Havoc (Versatile Defense Aura)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Havoc",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Versatile Defense Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "GE8JhNHtul",
               "label": "Havoc Favour (Steadfast Aura)",
               "cost": 15,
               "costUnpriced": false,
@@ -2527,37 +3896,16 @@
                 }
               ],
               "modelsGained": 0
-            },
-            {
-              "id": "iIvpr7Ri",
-              "label": "Icon of Havoc (Versatile Defense Aura)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Havoc",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Versatile Defense Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "jOrIZoJ",
-          "label": "Replace all Shortbows",
+          "id": "m1ZfYt9",
+          "label": "Replace all Javelins",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Shortbows"
+            "Javelins"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -2565,22 +3913,53 @@
           "options": [
             {
               "id": "UR9QNOZo",
-              "label": "Barbed Javelin (12\u0022, A1, AP(1), Shred)",
-              "cost": 5,
+              "label": "Barbed Javelins (9\u0022, A1, Assault, Scourge)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Barbed Javelin",
+                  "name": "Barbed Javelins",
                   "quantity": 1,
-                  "rangeInches": 12,
+                  "rangeInches": 9,
                   "attacks": 1,
-                  "armorPenetration": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shred"
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Scourge"
                     }
                   ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "HJ9lvJ8CZm",
+              "label": "Shortbow (18\u0022, A2), Strike (A1)",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
                 }
               ],
               "rulesGained": [],
@@ -2599,7 +3978,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 80,
+      "basePointCost": 85,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -2608,7 +3987,7 @@
       },
       "weapons": [
         {
-          "name": "Rending Claws",
+          "name": "Jagged Teeth",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
@@ -2616,7 +3995,7 @@
           "specialRules": [
             {
               "kind": "core",
-              "name": "Rending"
+              "name": "Shred"
             }
           ]
         }
@@ -2633,77 +4012,82 @@
       ],
       "items": [
         {
-          "name": "Malicious Predator",
+          "name": "Bounding Advance",
           "quantity": 5,
           "rules": [
             {
               "kind": "core",
-              "name": "Fast"
+              "name": "Scout"
             }
           ]
         }
       ],
       "sections": [
         {
-          "id": "vaPVdwS",
-          "label": "Upgrade all models with",
-          "variant": "Upgrade",
-          "affects": "All",
-          "targets": [],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "FSTpWcs",
-              "label": "Vicious (Shred in Melee)",
-              "cost": 10,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Vicious",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Shred in Melee"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "sMPmahM",
-          "label": "Replace all Malicious Predators",
+          "id": "CuTf5JG",
+          "label": "Replace all Jagged Teeths",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Malicious Predators"
+            "Jagged Teeths"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
-              "id": "AQBIw-t1uH",
-              "label": "Bounding Advance (Scout)",
+              "id": "h9UasBh3Wm",
+              "label": "Sharp Claws (A1, Rending)",
               "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Sharp Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Rending"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "PcNRKg6",
+          "label": "Replace all Bounding Advances",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Bounding Advances"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "x1n6xIw",
+              "label": "Malicious Predator (Fast)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
               "itemsGained": [
                 {
-                  "name": "Bounding Advance",
+                  "name": "Malicious Predator",
                   "quantity": 1,
                   "rules": [
                     {
                       "kind": "core",
-                      "name": "Scout"
+                      "name": "Fast"
                     }
                   ]
                 }
@@ -2722,7 +4106,7 @@
       "baseModelCount": 5,
       "minModels": 5,
       "maxModels": 5,
-      "basePointCost": 85,
+      "basePointCost": 105,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -2736,7 +4120,13 @@
           "rangeInches": 0,
           "attacks": 1,
           "armorPenetration": 0,
-          "specialRules": []
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
         }
       ],
       "rules": [
@@ -2749,11 +4139,6 @@
           "name": "Furious"
         },
         {
-          "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 1
-        },
-        {
           "kind": "core",
           "name": "Vanguard"
         },
@@ -2762,10 +4147,64 @@
           "name": "Plaguebound"
         }
       ],
-      "items": [],
+      "items": [
+        {
+          "name": "Trample",
+          "quantity": 5,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Impact",
+              "numericValue": 1
+            }
+          ]
+        }
+      ],
       "sections": [
         {
-          "id": "uveawe2",
+          "id": "OFzvyUw",
+          "label": "Replace all Hand Weapons and Tramples",
+          "variant": "Replace",
+          "affects": "All",
+          "targets": [
+            "Hand Weapons",
+            "Tramples"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "aHIuaOw1Lo",
+              "label": "Shortbow (18\u0022, A2), Strike (A1)",
+              "cost": -5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Shortbow",
+                  "quantity": 1,
+                  "rangeInches": 18,
+                  "attacks": 2,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Strike",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "KQk3HON",
           "label": "Replace all Hand Weapons",
           "variant": "Replace",
           "affects": "All",
@@ -2778,7 +4217,31 @@
           "options": [
             {
               "id": "E93HmvE",
-              "label": "Flail (A1, AP(1))",
+              "label": "Javelins (12\u0022, A1, Assault)",
+              "cost": 0,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Javelins",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "Z3twrf0HNP",
+              "label": "Flail (A1, AP(1), Surge)",
               "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
@@ -2788,38 +4251,12 @@
                   "rangeInches": 0,
                   "attacks": 1,
                   "armorPenetration": 1,
-                  "specialRules": []
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
-            }
-          ]
-        },
-        {
-          "id": "dtsxeqx",
-          "label": "Upgrade all models with one",
-          "variant": "Upgrade",
-          "affects": "All",
-          "targets": [],
-          "maxApplications": 0,
-          "minPicks": 0,
-          "maxPicks": 1,
-          "options": [
-            {
-              "id": "aHIuaOw1Lo",
-              "label": "Shortbow (18\u0022, A1)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Shortbow",
-                  "quantity": 1,
-                  "rangeInches": 18,
-                  "attacks": 1,
-                  "armorPenetration": 0,
-                  "specialRules": []
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
                 }
               ],
               "rulesGained": [],
@@ -2827,21 +4264,25 @@
               "modelsGained": 0
             },
             {
-              "id": "9tCCn1h",
-              "label": "Barbed Javelin (12\u0022, A1, AP(1), Shred)",
-              "cost": 25,
+              "id": "k1HzfX1G0e",
+              "label": "Barbed Javelins (9\u0022, A1, Assault, Scourge)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Barbed Javelin",
+                  "name": "Barbed Javelins",
                   "quantity": 1,
-                  "rangeInches": 12,
+                  "rangeInches": 9,
                   "attacks": 1,
-                  "armorPenetration": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shred"
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Scourge"
                     }
                   ]
                 }
@@ -2853,7 +4294,7 @@
           ]
         },
         {
-          "id": "ShxlhGm",
+          "id": "7TFkxKK",
           "label": "Upgrade one model with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -2863,7 +4304,28 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "rKFyV6wUbc",
+              "id": "iIvpr7Ri",
+              "label": "Icon of Havoc (Versatile Defense Aura)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Icon of Havoc",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Versatile Defense Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
+            {
+              "id": "GE8JhNHtul",
               "label": "Havoc Favour (Steadfast Aura)",
               "cost": 15,
               "costUnpriced": false,
@@ -2882,32 +4344,11 @@
                 }
               ],
               "modelsGained": 0
-            },
-            {
-              "id": "iIvpr7Ri",
-              "label": "Icon of Havoc (Versatile Defense Aura)",
-              "cost": 20,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Icon of Havoc",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Versatile Defense Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "PbLRljY",
+          "id": "dfk9dYm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -2982,12 +4423,18 @@
       },
       "weapons": [
         {
-          "name": "Heavy Hand Weapon",
+          "name": "Hand Weapon",
           "quantity": 5,
           "rangeInches": 0,
           "attacks": 1,
-          "armorPenetration": 1,
-          "specialRules": []
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Parry",
+              "numericValue": 1
+            }
+          ]
         }
       ],
       "rules": [
@@ -3008,7 +4455,7 @@
       "items": [],
       "sections": [
         {
-          "id": "PbLRljY",
+          "id": "dfk9dYm",
           "label": "Upgrade up to three models with one",
           "variant": "Upgrade",
           "affects": "Any",
@@ -3050,7 +4497,7 @@
             {
               "id": "gyA2sDO",
               "label": "Banner",
-              "cost": 10,
+              "cost": 15,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [
@@ -3065,12 +4512,12 @@
           ]
         },
         {
-          "id": "xUSpqAm",
-          "label": "Replace all Heavy Hand Weapons",
+          "id": "eUVhEzG",
+          "label": "Replace all Hand Weapons",
           "variant": "Replace",
           "affects": "All",
           "targets": [
-            "Heavy Hand Weapons"
+            "Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3078,16 +4525,16 @@
           "options": [
             {
               "id": "zYkUhcd",
-              "label": "Heavy Lance (A1, AP(1), Thrust)",
-              "cost": 20,
+              "label": "Lance (A1, Thrust)",
+              "cost": 5,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Lance",
+                  "name": "Lance",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 1,
-                  "armorPenetration": 1,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
@@ -3103,7 +4550,64 @@
           ]
         },
         {
-          "id": "ShxlhGm",
+          "id": "TNwAFcV",
+          "label": "Replace one Hand Weapon",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hand Weapon"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "i9U4blN4mZ",
+              "label": "Great Weapon (A3, AP(2))",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Weapon",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "eafGU92mcc",
+              "label": "Great Flail (A3, AP(1), Surge)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Flail",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "7TFkxKK",
           "label": "Upgrade one model with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -3112,27 +4616,6 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
-            {
-              "id": "rKFyV6wUbc",
-              "label": "Havoc Favour (Steadfast Aura)",
-              "cost": 15,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Havoc Favour",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Steadfast Aura"
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
             {
               "id": "iIvpr7Ri",
               "label": "Icon of Havoc (Versatile Defense Aura)",
@@ -3153,6 +4636,27 @@
                 }
               ],
               "modelsGained": 0
+            },
+            {
+              "id": "GE8JhNHtul",
+              "label": "Havoc Favour (Steadfast Aura)",
+              "cost": 15,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Havoc Favour",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Steadfast Aura"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
             }
           ]
         }
@@ -3166,7 +4670,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 125,
+      "basePointCost": 145,
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -3175,15 +4679,15 @@
       },
       "weapons": [
         {
-          "name": "Heavy Hand Weapon",
+          "name": "Great Weapon",
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 3,
-          "armorPenetration": 1,
+          "armorPenetration": 2,
           "specialRules": []
         },
         {
-          "name": "Stinger",
+          "name": "Heavy Stinger",
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 3,
@@ -3214,7 +4718,7 @@
       "items": [],
       "sections": [
         {
-          "id": "4NPktPA",
+          "id": "jUX7n6U",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -3225,17 +4729,21 @@
           "options": [
             {
               "id": "K_s7S",
-              "label": "Poison Spit (12\u0022, A4, Bane)",
-              "cost": 25,
+              "label": "Poison Spit (9\u0022, A3, Assault, Bane)",
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [
                 {
                   "name": "Poison Spit",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 4,
+                  "rangeInches": 9,
+                  "attacks": 3,
                   "armorPenetration": 0,
                   "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
                     {
                       "kind": "core",
                       "name": "Bane"
@@ -3250,7 +4758,7 @@
           ]
         },
         {
-          "id": "OUf6-vT",
+          "id": "fRUTy-F",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -3275,21 +4783,6 @@
               "modelsGained": 0
             },
             {
-              "id": "MhGL5fiG",
-              "label": "Great Sergeant",
-              "cost": 5,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [
-                {
-                  "kind": "core",
-                  "name": "Great Sergeant"
-                }
-              ],
-              "itemsGained": [],
-              "modelsGained": 0
-            },
-            {
               "id": "49aybch_",
               "label": "Great Musician",
               "cost": 10,
@@ -3299,6 +4792,21 @@
                 {
                   "kind": "core",
                   "name": "Great Musician"
+                }
+              ],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "MhGL5fiG",
+              "label": "Great Sergeant",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [
+                {
+                  "kind": "core",
+                  "name": "Great Sergeant"
                 }
               ],
               "itemsGained": [],
@@ -3316,7 +4824,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 255,
+      "basePointCost": 290,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3328,15 +4836,15 @@
           "name": "Dual Hand Weapons",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 6,
+          "attacks": 4,
           "armorPenetration": 0,
           "specialRules": []
         },
         {
-          "name": "Rending Claws",
+          "name": "Sharp Claws",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 3,
+          "attacks": 4,
           "armorPenetration": 0,
           "specialRules": [
             {
@@ -3373,12 +4881,12 @@
       "items": [],
       "sections": [
         {
-          "id": "7ByIlsA",
-          "label": "Replace Dual Hand Weapon",
+          "id": "20p1wb8",
+          "label": "Replace Dual Hand Weapons",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Dual Hand Weapon"
+            "Dual Hand Weapons"
           ],
           "maxApplications": 0,
           "minPicks": 0,
@@ -3386,16 +4894,16 @@
           "options": [
             {
               "id": "BI3RE",
-              "label": "Heavy Great Weapon (A3, AP(3))",
-              "cost": 5,
+              "label": "Great Weapon (A3, AP(2))",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
-                  "name": "Heavy Great Weapon",
+                  "name": "Great Weapon",
                   "quantity": 1,
                   "rangeInches": 0,
                   "attacks": 3,
-                  "armorPenetration": 3,
+                  "armorPenetration": 2,
                   "specialRules": []
                 }
               ],
@@ -3406,7 +4914,7 @@
           ]
         },
         {
-          "id": "uK73GFW",
+          "id": "z-Y8Znp",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -3416,25 +4924,59 @@
           "maxPicks": 1,
           "options": [
             {
-              "id": "hScas",
-              "label": "Pox Tongue (12\u0022, A3, Reliable, Bane, Takedown)",
-              "cost": 35,
+              "id": "UP_ORZWyND",
+              "label": "Pox Spurt (9\u0022, A1, Blast(3), Assault, Bane)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Pox Spurt",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 3
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Bane"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "ykOJL",
+              "label": "Pox Tongue (9\u0022, A1, AP(2), Deadly(3), Assault, Takedown)",
+              "cost": 55,
               "costUnpriced": false,
               "weaponsGained": [
                 {
                   "name": "Pox Tongue",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 3,
-                  "armorPenetration": 0,
+                  "rangeInches": 9,
+                  "attacks": 1,
+                  "armorPenetration": 2,
                   "specialRules": [
                     {
-                      "kind": "core",
-                      "name": "Bane"
+                      "kind": "coreNumeric",
+                      "name": "Deadly",
+                      "numericValue": 3
                     },
                     {
                       "kind": "core",
-                      "name": "Reliable"
+                      "name": "Assault"
                     },
                     {
                       "kind": "core",
@@ -3446,44 +4988,11 @@
               "rulesGained": [],
               "itemsGained": [],
               "modelsGained": 0
-            },
-            {
-              "id": "ykOJL",
-              "label": "Pox Spurt (12\u0022, A2, Blast(3), Reliable, Bane)",
-              "cost": 45,
-              "costUnpriced": false,
-              "weaponsGained": [
-                {
-                  "name": "Pox Spurt",
-                  "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 2,
-                  "armorPenetration": 0,
-                  "specialRules": [
-                    {
-                      "kind": "coreNumeric",
-                      "name": "Blast",
-                      "numericValue": 3
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Bane"
-                    },
-                    {
-                      "kind": "core",
-                      "name": "Reliable"
-                    }
-                  ]
-                }
-              ],
-              "rulesGained": [],
-              "itemsGained": [],
-              "modelsGained": 0
             }
           ]
         },
         {
-          "id": "7hY4vZC",
+          "id": "pf3907u",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -3494,8 +5003,8 @@
           "options": [
             {
               "id": "tVe11",
-              "label": "Daemon Fury (Impact(3))",
-              "cost": 15,
+              "label": "Daemon Fury (Piercing Charge)",
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3505,9 +5014,8 @@
                   "quantity": 1,
                   "rules": [
                     {
-                      "kind": "coreNumeric",
-                      "name": "Impact",
-                      "numericValue": 3
+                      "kind": "core",
+                      "name": "Piercing Charge"
                     }
                   ]
                 }
@@ -3538,7 +5046,7 @@
             {
               "id": "3SRTt",
               "label": "Pox Spawned (Caster(2))",
-              "cost": 45,
+              "cost": 35,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3569,7 +5077,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 245,
+      "basePointCost": 255,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3578,12 +5086,17 @@
       },
       "weapons": [
         {
-          "name": "Giant Fists",
+          "name": "Giant Infected Claws",
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 8,
-          "armorPenetration": 2,
-          "specialRules": []
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
         },
         {
           "name": "Stomp",
@@ -3613,7 +5126,128 @@
       "items": [],
       "sections": [
         {
-          "id": "qNnZI2e",
+          "id": "m441i3X",
+          "label": "Replace Giant Infected Claws",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Giant Infected Claws"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "IhjeyVB0pq",
+              "label": "Giant Mutant Fists (A8, AP(2))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Mutant Fists",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 8,
+                  "armorPenetration": 2,
+                  "specialRules": []
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "qtag_E7LZT",
+              "label": "Giant Mutated Claws (A8, AP(1), Surge)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Giant Mutated Claws",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 8,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "EvcKJm8",
+          "label": "Upgrade with one",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "b1l5jmXkLF",
+              "label": "Javelin Crew (12\u0022, A3, Assault)",
+              "cost": 25,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Javelin Crew",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "trtoA9-PLo",
+              "label": "Barbed Javelin Crew (9\u0022, A3, Assault, Scourge)",
+              "cost": 30,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Barbed Javelin Crew",
+                  "quantity": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Scourge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "JtFxQNS",
           "label": "Upgrade with any",
           "variant": "Upgrade",
           "affects": "One",
@@ -3625,7 +5259,7 @@
             {
               "id": "049Pq_xQae",
               "label": "Battle Aura (Precision Fighter Buff)",
-              "cost": 20,
+              "cost": 25,
               "costUnpriced": false,
               "weaponsGained": [],
               "rulesGained": [],
@@ -3644,7 +5278,7 @@
               "modelsGained": 0
             },
             {
-              "id": "4xnL9REn7r",
+              "id": "5AjY0wKcPo",
               "label": "Summoned Tendrils (Dangerous Terrain Debuff)",
               "cost": 35,
               "costUnpriced": false,
@@ -3676,7 +5310,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 145,
+      "basePointCost": 165,
       "base": {
         "shape": "Rectangle",
         "diameterInches": 1.1023622,
@@ -3685,10 +5319,10 @@
       },
       "weapons": [
         {
-          "name": "Heavy Crew Attacks",
+          "name": "Great Weapon Crew",
           "quantity": 1,
           "rangeInches": 0,
-          "attacks": 2,
+          "attacks": 3,
           "armorPenetration": 2,
           "specialRules": []
         },
@@ -3697,20 +5331,11 @@
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 2,
-          "armorPenetration": 0,
+          "armorPenetration": 1,
           "specialRules": []
         }
       ],
       "rules": [
-        {
-          "kind": "core",
-          "name": "Fast"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 4
-        },
         {
           "kind": "coreNumeric",
           "name": "Tough",
@@ -3718,39 +5343,107 @@
         },
         {
           "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "core",
           "name": "Plaguebound"
         }
       ],
-      "items": [],
+      "items": [
+        {
+          "name": "Chariot Shock",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Impact",
+              "numericValue": 4
+            }
+          ]
+        }
+      ],
       "sections": [
         {
-          "id": "DwAtG-y",
-          "label": "Replace Heavy Crew Attack",
+          "id": "aO8dUEN",
+          "label": "Replace Great Weapon Crew",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Heavy Crew Attack"
+            "Great Weapon Crew"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
+              "id": "zgotoEELGw",
+              "label": "Great Flail Crew (A3, AP(1), Surge)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Great Flail Crew",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 1,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Surge"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
+              "id": "M4Le_0GMPz",
+              "label": "Javelin Crew (12\u0022, A3, Assault)",
+              "cost": 5,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Javelin Crew",
+                  "quantity": 1,
+                  "rangeInches": 12,
+                  "attacks": 3,
+                  "armorPenetration": 0,
+                  "specialRules": [
+                    {
+                      "kind": "core",
+                      "name": "Assault"
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
               "id": "mpswXEbpXB",
-              "label": "Barbed Javelin Crew (12\u0022, A6, AP(1), Shred)",
-              "cost": 40,
+              "label": "Barbed Javelin Crew (9\u0022, A3, Assault, Scourge)",
+              "cost": 10,
               "costUnpriced": false,
               "weaponsGained": [
                 {
                   "name": "Barbed Javelin Crew",
                   "quantity": 1,
-                  "rangeInches": 12,
-                  "attacks": 6,
-                  "armorPenetration": 1,
+                  "rangeInches": 9,
+                  "attacks": 3,
+                  "armorPenetration": 0,
                   "specialRules": [
                     {
                       "kind": "core",
-                      "name": "Shred"
+                      "name": "Assault"
+                    },
+                    {
+                      "kind": "core",
+                      "name": "Scourge"
                     }
                   ]
                 }
@@ -3762,7 +5455,49 @@
           ]
         },
         {
-          "id": "7Y8vUnC",
+          "id": "3Mtm0c9",
+          "label": "Replace Hooves and Chariot Shock",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Hooves",
+            "Chariot Shock"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "P9TlQgk2nu",
+              "label": "Great Beast (Fear(1), Heavy Impact(6))",
+              "cost": 20,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Great Beast",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Fear",
+                      "numericValue": 1
+                    },
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Heavy Impact",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        },
+        {
+          "id": "KGCGi9T",
           "label": "Upgrade with",
           "variant": "Upgrade",
           "affects": "One",
@@ -3795,67 +5530,6 @@
           ]
         }
       ]
-    },
-    {
-      "id": "HHpuslkUz",
-      "name": "Plague Beast Chariot",
-      "quality": 3,
-      "defense": 3,
-      "baseModelCount": 1,
-      "minModels": 1,
-      "maxModels": 1,
-      "basePointCost": 160,
-      "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
-        "widthInches": 3.6220472,
-        "heightInches": 4.7244096
-      },
-      "weapons": [
-        {
-          "name": "Heavy Claws",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 2,
-          "armorPenetration": 1,
-          "specialRules": []
-        },
-        {
-          "name": "Heavy Crew Attacks",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 2,
-          "armorPenetration": 2,
-          "specialRules": []
-        }
-      ],
-      "rules": [
-        {
-          "kind": "core",
-          "name": "Fast"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Fear",
-          "numericValue": 1
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 4
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 6
-        },
-        {
-          "kind": "core",
-          "name": "Plaguebound"
-        }
-      ],
-      "items": [],
-      "sections": []
     }
   ],
   "ruleDefinitions": [
@@ -3882,44 +5556,6 @@
       "description": "This unit counts as being in Difficult Terrain on its next move - its move is capped at 6\u0022 (from Aura of Pestilence)."
     },
     {
-      "name": "Breath Attack",
-      "passive": [],
-      "activated": [
-        {
-          "triggerHook": "Activation_OnBeforeAttackAction",
-          "cost": {
-            "kind": "oncePerActivation"
-          },
-          "targetSelector": {
-            "rangeInches": 6,
-            "minCount": 1,
-            "maxCount": 1,
-            "targetAffinity": "Foe",
-            "requireLineOfSight": true,
-            "requiredToken": null,
-            "singleModel": false,
-            "requiredRule": null
-          },
-          "effect": {
-            "kind": "dealHits",
-            "count": 1,
-            "withRules": [
-              "Blast(3)"
-            ],
-            "armorPenetration": 1
-          },
-          "availableWhen": {
-            "kind": "always"
-          },
-          "label": ""
-        }
-      ],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "Once per activation, before attacking, one enemy unit within 6\u0022 in line of sight takes 1 hit with Blast(3) and AP(1)."
-    },
-    {
       "name": "Plaguebound",
       "passive": [
         {
@@ -3940,50 +5576,6 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Ignores each wound on a roll of 6\u002B."
-    },
-    {
-      "name": "Plaguebound Boost",
-      "passive": [
-        {
-          "hookID": "Shooting_OnSaveRollComplete",
-          "condition": {
-            "kind": "allModelsHaveThisRule"
-          },
-          "effect": {
-            "kind": "ignoreWoundOnRoll",
-            "minRoll": 5
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Subject"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "Ignores each wound on a roll of 5\u002B."
-    },
-    {
-      "name": "Plaguebound Boost Aura",
-      "passive": [
-        {
-          "hookID": "Lifecycle_OnUnitCreated",
-          "condition": {
-            "kind": "always"
-          },
-          "effect": {
-            "kind": "aura",
-            "ruleName": "Plaguebound Boost"
-          },
-          "lifetime": "UntilEndOfGame",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "This model and its unit gain Plaguebound Boost."
     },
     {
       "name": "Precision Fighter Buff",
@@ -4019,66 +5611,6 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Precision Fighter for its next relevant roll."
-    },
-    {
-      "name": "Versatile Attack",
-      "passive": [],
-      "activated": [
-        {
-          "triggerHook": "Activation_OnActivationStart",
-          "cost": {
-            "kind": "oncePerActivation"
-          },
-          "targetSelector": {
-            "rangeInches": 0,
-            "minCount": 1,
-            "maxCount": 1,
-            "targetAffinity": "Self",
-            "requireLineOfSight": false,
-            "requiredToken": null,
-            "singleModel": false,
-            "requiredRule": null
-          },
-          "effect": {
-            "kind": "addRule",
-            "ruleName": "Versatile Attack (Piercing)",
-            "scope": "ThisActivation"
-          },
-          "availableWhen": {
-            "kind": "always"
-          },
-          "label": "AP(\u002B1)"
-        },
-        {
-          "triggerHook": "Activation_OnActivationStart",
-          "cost": {
-            "kind": "oncePerActivation"
-          },
-          "targetSelector": {
-            "rangeInches": 0,
-            "minCount": 1,
-            "maxCount": 1,
-            "targetAffinity": "Self",
-            "requireLineOfSight": false,
-            "requiredToken": null,
-            "singleModel": false,
-            "requiredRule": null
-          },
-          "effect": {
-            "kind": "addRule",
-            "ruleName": "Versatile Attack (Precision)",
-            "scope": "ThisActivation"
-          },
-          "availableWhen": {
-            "kind": "always"
-          },
-          "label": "\u002B1 to hit"
-        }
-      ],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "When this unit is activated, pick one effect until the end of the activation: when shooting or charging enemies over 9 inches away, it gets either AP(\u002B1) or \u002B1 to hit rolls."
     },
     {
       "name": "Versatile Defense Aura",
@@ -4227,6 +5759,32 @@
       "description": "When this model attacks, unmodified results of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
     },
     {
+      "name": "Heavy Impact",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "arg",
+              "index": 0
+            },
+            "armorPenetration": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+    },
+    {
       "name": "Dangerous Terrain Debuff",
       "passive": [],
       "activated": [
@@ -4260,6 +5818,281 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which counts as being in Dangerous Terrain once (next time the effect would apply)."
+    },
+    {
+      "name": "Piercing Charge",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "isCharging"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model gets AP(\u002B1) on its weapons when charging."
+    },
+    {
+      "name": "Brace",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
+          },
+          "effect": {
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "arg",
+                "index": 0
+              }
+            },
+            "armorPenetration": 0
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "Enemies charging this unit get -X total Impact rolls, unless this unit is Fatigued."
+    },
+    {
+      "name": "Parry",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "allModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreHitsOnRoll",
+            "dicePerModel": {
+              "kind": "arg",
+              "index": 0
+            },
+            "successThreshold": 6
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 1,
+      "valence": "Positive",
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+    },
+    {
+      "name": "Enhanced Plaguebound",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "unitHasRule",
+              "ruleName": "Plaguebound"
+            }
+          },
+          "effect": {
+            "kind": "ignoreWoundOnRoll",
+            "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "If most models in this unit have Plaguebound, they ignore wounds on rolls of 5-6 from Plaguebound (instead of only on 6\u002B)."
+    },
+    {
+      "name": "Scourge",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "bankTokenPerUnmodifiedSaveRoll",
+            "tType": {
+              "id": "MeleeWoundTally"
+            },
+            "onRollValue": 1,
+            "perMatch": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Melee_OnMeleeResolution",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "tokenScaledExtraMeleeWoundCount",
+            "tType": {
+              "id": "MeleeWoundTally"
+            },
+            "perMarkers": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "For each unmodified result of 1 to block hits, enemies count as having taken 2 extra wounds when checking who won melee, or if shooting wounds would trigger Morale Tests."
+    },
+    {
+      "name": "Decimate",
+      "passive": [
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "targetAboveHalfStrength"
+          },
+          "effect": {
+            "kind": "reroll",
+            "roll": "Save",
+            "condition": {
+              "kind": "onUnmodifiedValue",
+              "minValue": 6
+            }
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), the target must re-roll unmodified Defense results of 6."
+    },
+    {
+      "name": "Versatile Expert",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Activation_OnActivationStart",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 0,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Self",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Versatile Expert (Piercing)",
+            "scope": "ThisActivation"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": "AP(\u002B1)"
+        },
+        {
+          "triggerHook": "Activation_OnActivationStart",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 0,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Self",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "addRule",
+            "ruleName": "Versatile Expert (Precision)",
+            "scope": "ThisActivation"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": "\u002B1 to hit"
+        }
+      ],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
+    },
+    {
+      "name": "Enhanced Plaguebound Aura",
+      "passive": [
+        {
+          "hookID": "Lifecycle_OnUnitCreated",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Enhanced Plaguebound"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Enhanced Plaguebound."
     },
     {
       "name": "Great Sergeant",
@@ -4391,52 +6224,6 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "\u002B1 to hit rolls in melee."
-    },
-    {
-      "name": "Versatile Attack (Piercing)",
-      "passive": [
-        {
-          "hookID": "Shooting_OnHitRollComplete",
-          "condition": {
-            "kind": "always"
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
-    },
-    {
-      "name": "Versatile Attack (Precision)",
-      "passive": [
-        {
-          "hookID": "Shooting_OnHitRollModifier",
-          "condition": {
-            "kind": "always"
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Hit",
-            "delta": 1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        }
-      ],
-      "activated": [],
-      "scope": "Unit",
-      "engineArgumentCount": 0,
-      "valence": "Positive",
-      "description": "\u002B1 to hit rolls when attacking, for this activation."
     },
     {
       "name": "Versatile Defense",
@@ -4606,6 +6393,52 @@
       "description": "This unit counts as being in Dangerous Terrain on its next move - each moving model rolls a die, taking a wound on a 1."
     },
     {
+      "name": "Versatile Expert (Piercing)",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "AP(\u002B1) when attacking, for this activation."
+    },
+    {
+      "name": "Versatile Expert (Precision)",
+      "passive": [
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "always"
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "\u002B1 to hit when attacking, for this activation."
+    },
+    {
       "name": "Versatile Defense (Guard)",
       "passive": [
         {
@@ -4703,7 +6536,7 @@
         "kind": "dealHits",
         "count": 2,
         "withRules": [
-          "Surge"
+          "Decimate"
         ],
         "armorPenetration": 1
       }
@@ -4728,47 +6561,8 @@
       }
     },
     {
-      "name": "Plague Malediction",
-      "threshold": 2,
-      "target": {
-        "rangeInches": 24,
-        "minCount": 1,
-        "maxCount": 1,
-        "targetAffinity": "Foe",
-        "requireLineOfSight": true,
-        "requiredToken": null,
-        "singleModel": true,
-        "requiredRule": null
-      },
-      "effect": {
-        "kind": "dealHits",
-        "count": 2,
-        "withRules": [],
-        "armorPenetration": 4
-      }
-    },
-    {
-      "name": "Plague Boon",
-      "threshold": 3,
-      "target": {
-        "rangeInches": 12,
-        "minCount": 1,
-        "maxCount": 3,
-        "targetAffinity": "Friend",
-        "requireLineOfSight": false,
-        "requiredToken": null,
-        "singleModel": false,
-        "requiredRule": null
-      },
-      "effect": {
-        "kind": "addRule",
-        "ruleName": "Plaguebound Boost",
-        "scope": "NextTrigger"
-      }
-    },
-    {
       "name": "Rot Wave",
-      "threshold": 3,
+      "threshold": 2,
       "target": {
         "rangeInches": 18,
         "minCount": 1,
@@ -4781,9 +6575,48 @@
       },
       "effect": {
         "kind": "dealHits",
-        "count": 6,
+        "count": 4,
         "withRules": [],
         "armorPenetration": 0
+      }
+    },
+    {
+      "name": "Plague Boon",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 18,
+        "minCount": 1,
+        "maxCount": 3,
+        "targetAffinity": "Friend",
+        "requireLineOfSight": false,
+        "requiredToken": null,
+        "singleModel": false,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "addRule",
+        "ruleName": "Enhanced Plaguebound",
+        "scope": "NextTrigger"
+      }
+    },
+    {
+      "name": "Plague Malediction",
+      "threshold": 3,
+      "target": {
+        "rangeInches": 24,
+        "minCount": 1,
+        "maxCount": 1,
+        "targetAffinity": "Foe",
+        "requireLineOfSight": true,
+        "requiredToken": null,
+        "singleModel": true,
+        "requiredRule": null
+      },
+      "effect": {
+        "kind": "dealHits",
+        "count": 3,
+        "withRules": [],
+        "armorPenetration": 4
       }
     }
   ]

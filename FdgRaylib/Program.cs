@@ -360,13 +360,23 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
 
         // Existing books by their own Name, so a rebuild keeps each one's file name.
         var existing = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // #412: and the names each one has ALREADY been through. Without this the rename record only
+        // survives the FIRST rebuild: once the file on disk carries the new name, the next run matches
+        // on that name, finds nothing to record, and writes previousNames away - silently breaking
+        // every saved army and share link that still says "Saurian Starhost". A rebuild has to be
+        // idempotent, and dropping history on the second run is not.
+        var inheritedPreviousNames = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         if (Directory.Exists(systemDir))
             foreach (string path in Directory.EnumerateFiles(systemDir, "*" + BookFile.EXTENSION_WITH_PERIOD,
                          SearchOption.AllDirectories))
                 try
                 {
                     if (JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options) is { } b)
+                    {
                         existing[b.Name] = path;
+                        if (b.PreviousNames is { Count: > 0 })
+                            inheritedPreviousNames[b.Name] = new List<string>(b.PreviousNames);
+                    }
                 }
                 catch (JsonException) { /* a malformed existing book just means no name to reuse */ }
 
@@ -418,8 +428,13 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                 string? priorName = existing.ContainsKey(book.Name)
                     ? book.Name
                     : OldNamesFor(book.Name).FirstOrDefault(existing.ContainsKey);
-                if (priorName != null && !string.Equals(priorName, book.Name, StringComparison.OrdinalIgnoreCase))
-                    book.PreviousNames = new List<string> { priorName };
+                var previousNames = new List<string>();
+                if (inheritedPreviousNames.TryGetValue(book.Name, out List<string>? inherited))
+                    previousNames.AddRange(inherited);
+                if (priorName != null && !string.Equals(priorName, book.Name, StringComparison.OrdinalIgnoreCase)
+                    && !previousNames.Contains(priorName, StringComparer.OrdinalIgnoreCase))
+                    previousNames.Add(priorName);
+                if (previousNames.Count > 0) book.PreviousNames = previousNames;
 
                 // The supplements, in the order scripts/bake-aof-books.sh established: the GDF set
                 // always, then AoF's for the fantasy systems, then the per-book override LAST so its
@@ -446,6 +461,13 @@ if (rebuildIdx >= 0 && rebuildIdx + 2 < args.Length)
                 // optional. Without the first, every rebuilt book loses the faction default effect sets
                 // #239 stamped; without the second, every rectangular base goes back to OPR's
                 // length-first spec and faces across its short axis (#225).
+                //
+                // NOT here, deliberately: the #383 per-model section stamp. --import-section-shapes
+                // exists because the stamp cannot be re-derived from a SNAPSHOT (it needs the raw
+                // `select`/`model` fields the snapshot never stored) - but a full rebuild imports from
+                // the raw response, where OprBookImporter reads those fields itself, so all 32 "Any
+                // model may ..." sections come out stamped with no extra pass. Adding one here stamps
+                // nothing. Verified 2026-10-31 across the 188-book rebuild.
                 WeaponEffectAssigner.ApplyToBook(book);
                 var baseEstimates = new List<string>();
                 BaseOrientationRetrofit.ApplyToBook(book, baseEstimates);
@@ -874,9 +896,9 @@ if (editableIdx >= 0 && editableIdx + 1 < args.Length)
 
         // #378: the faction-name match is gated on the army's game system (absent = GDF), because four
         // AoF faction names collide with GDF books and the wrong book solves to the wrong upgrades.
-        BookFile? book = books.FirstOrDefault(b =>
-            (string.Equals(b.Faction, army.Faction, StringComparison.OrdinalIgnoreCase)
-             || string.Equals(b.Name, army.Faction, StringComparison.OrdinalIgnoreCase))
+        // #412: and through MatchesFactionName, so an army saved under a name OPR has since changed
+        // still matches its book.
+        BookFile? book = books.FirstOrDefault(b => b.MatchesFactionName(army.Faction)
             && FDG.ArmyBuilding.GameSystems.SameSystem(b.GameSystem, army.GameSystem));
         if (book is null)
         {

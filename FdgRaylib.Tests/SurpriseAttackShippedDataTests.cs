@@ -131,10 +131,18 @@ public class SurpriseAttackShippedDataTests
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(2), "the audit's 2 references");
+        // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books): 2 carriers became 5, as the
+        // Firefight Inquisition assassin and two Skirmish infiltrators joined. Still small enough to pin
+        // by name, which is worth doing here - the X values are a per-unit balance figure, so a silent
+        // change to one is exactly the kind of drift this census is for.
+        Assert.That(sites.Count, Is.EqualTo(5),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
         Assert.That(sites.Select(s => (s.Book, s.Unit, s.Rating)), Is.EquivalentTo(new[]
         {
             ("AlienHives", "Hive Burrower", 5),
+            ("AoFS-Goblins", "Nasty Assassin", 2),
+            ("AoFS-Halflings", "Thief", 2),
+            ("GFF-HumanInquisition", "Espionage Ministry Assassin", 6),
             ("HumanInquisition", "Espionage Ministry Assassin", 3),
         }));
 

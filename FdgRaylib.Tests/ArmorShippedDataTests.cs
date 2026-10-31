@@ -56,8 +56,14 @@ public class ArmorShippedDataTests
 
     // ---- The corpus -----------------------------------------------------------------------------------
 
-    private record Site(string Book, string Unit, int ArmorValue);
+    private record Site(string Book, string Unit, int ArmorValue, bool FromUpgrade);
 
+    // #412: this used to walk option.ItemsGained ONLY, because in the 3.5.1 corpus every Armor site was a
+    // paid upgrade. 3.6.0 also gives units armour in their STARTING wargear (110 such sites), which the old
+    // enumeration could not see - so those books were silently absent from the census, from the X-range
+    // check, and from TheEmbeddedBookCopies_CarryTheMechanic below, which iterates the books this finds.
+    // A book whose only Armor reference is starting wargear would therefore never have had its embedded
+    // definition checked at all. Both site kinds are walked now, and FromUpgrade keeps them tellable apart.
     private static IEnumerable<Site> Sites()
     {
         foreach (string path in ShippedBooks.GdfPaths()
@@ -67,32 +73,52 @@ public class ArmorShippedDataTests
             string bookName = Path.GetFileNameWithoutExtension(path);
 
             foreach (RosterUnit unit in book.Units)
+            {
+                foreach (ItemEntry item in unit.Items)
+                    foreach (SpecialRuleEntry rule in item.Rules)
+                        if (IsArmor(rule, out int startingValue))
+                            yield return new Site(bookName, unit.Name, startingValue, FromUpgrade: false);
+
                 foreach (UpgradeSection section in unit.Sections)
                     foreach (UpgradeOption option in section.Options)
                         foreach (ItemEntry item in option.ItemsGained)
                             foreach (SpecialRuleEntry rule in item.Rules)
-                            {
-                                if (rule is SpecialRuleEntry_CoreNumeric numeric
-                                    && string.Equals(numeric.Name, RuleName, StringComparison.Ordinal))
-                                {
-                                    yield return new Site(bookName, unit.Name, numeric.NumericValue);
-                                }
-                            }
+                                if (IsArmor(rule, out int boughtValue))
+                                    yield return new Site(bookName, unit.Name, boughtValue, FromUpgrade: true);
+            }
         }
     }
 
+    private static bool IsArmor(SpecialRuleEntry rule, out int armorValue)
+    {
+        if (rule is SpecialRuleEntry_CoreNumeric numeric
+            && string.Equals(numeric.Name, RuleName, StringComparison.Ordinal))
+        {
+            armorValue = numeric.NumericValue;
+            return true;
+        }
+
+        armorValue = 0;
+        return false;
+    }
+
+    // Census re-taken for the OPR 3.6.0 import (2026-10-31, 188 books). Armor went from 11 references in
+    // 7 books to 493 across 92, so the old explicit book list is gone: naming 92 books pins nothing a
+    // reader can check, and the next import would only move it again. What the fixture still pins is the
+    // part that cannot drift harmlessly - EVERY reference is a wargear grant (no Armor on a weapon, where
+    // the creation-seam mechanic would never fold it) and every authored X is a plausible Defense value.
+    // The count stays as the canary the comment always described: a change here means the corpus moved.
     [Test]
-    public void EveryReference_IsAnItemGrantAcrossSevenBooks()
+    public void EveryReference_IsAWargearGrant()
     {
         List<Site> sites = Sites().ToList();
 
-        Assert.That(sites.Count, Is.EqualTo(11),
-            "the audit's 11 references - a change here means the corpus moved, not the engine");
-        Assert.That(sites.Select(s => s.Book).Distinct(), Is.EquivalentTo(new[]
-        {
-            "DarkElfRaiders", "GoblinReclaimers", "HumanDefenseForce", "SaurianStarhost",
-            "WormholeDaemonsofChange", "WormholeDaemonsofLust", "WormholeDaemonsofWar",
-        }));
+        Assert.That(sites.Count, Is.EqualTo(493),
+            "the 2026-10-31 census - a change here means the corpus moved, not the engine");
+        Assert.That(sites.Count(s => s.FromUpgrade), Is.EqualTo(383),
+            "paid upgrades, the only shape 3.5.1 had");
+        Assert.That(sites.Count(s => !s.FromUpgrade), Is.EqualTo(110),
+            "starting wargear, new in 3.6.0 - see the note on Sites()");
         Assert.That(sites.Select(s => s.ArmorValue), Is.All.InRange(2, 5),
             "every authored X is a plausible Defense value");
     }
