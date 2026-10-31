@@ -2497,7 +2497,8 @@ public class GuiDefineMovementResolver
         uint coverLineCol   = ImGui.ColorConvertFloat4ToU32(new Vector4(0.85f, 0.80f, 0.30f, 0.85f));
         uint coverTextCol   = ImGui.ColorConvertFloat4ToU32(new Vector4(0.95f, 0.85f, 0.35f, 1f));
         float lineH = ImGui.GetTextLineHeight();
-        const float meleeRange = GameWideConstants.MELEE_RANGE_INCHES_HORIZONTAL;
+        // #418: per game now, not per build - AoF: Quest's 2.0.1 book keeps the 2" reach.
+        float meleeRange = GameWideConstants.MELEE_RANGE_INCHES_HORIZONTAL;
 
         // Per-frame blocker snapshots: each enemy unit gets its own terrain+model-blocker list
         // because BuildModelBlockers excludes the defender unit (so it won't self-block).

@@ -107,3 +107,54 @@ with enemy-shaped data fails exactly `TheRosterIsTheHeroDataset_NotTheEnemyBooks
   `notes`.
 - **The engine's `QuestItems`, injury and treasure tables are one shared GF-worded set**, like
   `CoreRuleCatalog`. The AoF: Quest shop will read Star Quest's items until its own are available.
+
+### 2026-10-31 - the rules split, and AoF: Quest becomes selectable
+
+`QuestRulesProfile` is the seam: per-system hero mechanics, deliberately separate from
+`CoreRulesProfile` (which answers "how does this special RULE read here" - Scout's procedure, Fear's
+consumer, Blast's spread) because this answers "what do the hero mechanics cost and how do they
+resolve", which is Quest-only. Both books quoted in the file. What differs:
+
+| | Star Quest (GFSQ 2.1.0) | AoF: Quest (AoFQ 2.0.1) |
+|---|---|---|
+| Extra action / extra skill | 3 power | **2** |
+| Revive another hero | 3 power | **2** |
+| Failed hero-skill test | **may** pay 1 power; the skill **fails** if you decline | **must** pay 1 power and the skill **resolves** |
+| Failed cast | final | **may spend X*2 power to count it as cast** |
+| Melee reach | flat 3" | **2" horizontal / 4" vertical** |
+| Scout | within 9" of its zone | within **12"** |
+| Villain aura | 6", mandatory | **12", optional** |
+| Pass a Str/Dex/Wil test, ignore Shaken | 2 power | 2 power (agree) |
+
+Four of those were engine behaviour, not numbers:
+
+- **The failed hero-skill test** now branches on `FailedSkillPaymentIsOptional`. Under 2.0.1 there is
+  nothing to ask and a hero skill **cannot fail** - which is the behaviour Q3 deleted for Star Quest,
+  and is still AoF: Quest's rule. Pinned by a discriminating pair in `QuestFailedSkillPaymentTests`:
+  same roll, same hero, different book; Star Quest asks and a declined skill fails, AoF: Quest takes
+  the power without asking and the skill resolves.
+- **The failed cast buy-back** had never been implemented at all (Q4 recorded its absence and
+  `QuestCastPowerTests` pins it for Star Quest). Added for AoF: Quest only, offered after the die is
+  shown so the player decides knowing what it rolled, defaulting to no when the hero cannot pay in
+  full - overspending power costs a wound per missing point, and a prompt nobody answers must not
+  injure a hero over a spell it never chose to rescue.
+- **Melee reach** went from a compile-time `const` to a value `ConfigureTable` sets per game. Q5's pin
+  asserted reach is NOT per-system, and its stated reason was that no book wanted the split any more;
+  AoF: Quest's does, so the test was rewritten rather than repaired (its claim is unchanged in spirit:
+  flat 3" everywhere unless the system's own book keeps the split).
+- **The priced labels.** Q3 made the cost appear once so a button could not lie about a price. With two
+  systems the labels have to be built per game, so `QuestRulesProfile` owns them and both the offer
+  site and the match site read the same string. The revive SKILL's name lost its price - its catalog
+  entry is built at class-load time with no game to ask - and the price moved to the description, which
+  `DescriptionIn(context)` fills in per game. `QuestPowerCostTests` now asserts the prices for **both**
+  systems, which is a stronger claim than it made before.
+
+`CoreRulesProfile` also stopped sending AoF: Quest to the full-scale reading, which it had been doing
+by default: its book's Scout, Fear and Blast clauses were read line by line and all three match Star
+Quest's, so it shares that profile - the systems' NUMBERS differ, their special-rule readings do not.
+
+**AoF: Quest is now selectable in the lobby**, and `GameSystemArmySourceTests` flipped rather than
+being deleted, since "is it selectable" is the question a future reader will have. A played game:
+19 rounds against the Dwarves enemy collection, high score 6, no errors. The played game proves the
+mode runs; the fixtures are what prove the two books are being obeyed separately, because the
+difference between them is mostly a prompt a bot answers the same way either way.
