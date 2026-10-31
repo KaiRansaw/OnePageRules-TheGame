@@ -2440,8 +2440,6 @@ public class RaylibRenderer
                 ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated this round");
             if (unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken))
                 ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");
-            if (FDG.Stages.FirefightRules.MarkerSummary(unit) is { } woundMarkers)
-                UiText.Colored(new Vector4(1f, 0.65f, 0.3f, 1f), woundMarkers);
             if (UnitActivation.IsInReserve(unit))
                 ImGui.TextDisabled("In reserve (off the table)");
 

@@ -18,6 +18,66 @@ GFSQ Campaign Builder v2.1.0):
 
 ## Notes
 
+### 2026-10-30 - Firefight onto 3.6.0: the wound-marker system is deleted
+
+**Kai's decision, 2026-10-30, and it is a standing one:** *"let's keep the game rules to as close to 'as
+written' as possible. There's some things, like the 1" away from ALL models, that won't work well in
+video game form, but for the most part I want things as written. If I find things that I want changed
+I'll let you know."* Recorded in project memory too. That answers the question Q5 raised and it answers
+a class of future ones: implement the book, don't deviate on his behalf, and let him be the one to ask
+for a house rule.
+
+**So Firefight's wound effects and its morale are gone.** FF1/FF2 implemented **v3.5.1** Firefight,
+which replaced two whole subsystems. **GFF Core Rules v3.6.0 contains neither:**
+
+| | 3.5.1 Firefight (what the engine had) | 3.6.0 (what it has now) |
+|---|---|---|
+| Wounds | each wound kills a model until one is left, then markers on the last one; once it holds Tough(X) markers, roll 1d6 + markers (+1 Shaken, +Fear(X) in melee), 5+X = Knocked Out, lower = unit Shaken | *"Once a model has taken as many wounds as its Tough value, it is killed"* - the standard rule |
+| Morale | **no** morale from wounds or lost melees; instead every unit in an army down to half its starting UNITS tested at the end of each round | the standard Morale Tests and Melee Results |
+| Fear(X) | added to the wound-effect roll | *"enemies count as having taken +X wounds when checking who won"* - the standard 3.6 rule, already in the catalog |
+| Pushing | off the wound-effect roll | kept, but re-triggered - see below |
+
+`FirefightRules.cs` went from 165 lines to ~90, and most of that is the write-up of what was removed.
+Deleted: `ApplyWounds`, `WoundMarker`, `MarkerSummary`, `RemoveMarker`, `FearValue`,
+`ArmyMoraleAtRoundEnd`. Nine production call sites lost their skirmish branch (`ApplyWoundsStage`,
+`CasualtyPresentation` x2, `RollForMoraleStage`, `MoraleUtilities.ResolveWoundDrivenMorale`,
+`ReconcileObjectivesStage`, `HordePlacement`'s token sweep, `GameMasterHub` x2) and three UI sites lost
+the marker line (hover card, unit card, Game Master panel).
+
+**Pushing was the interesting part.** GFF 3.6.0 keeps it - *"Whenever a unit is Shaken after being
+attacked, the attacker may try to push it. Roll one die, and on a 4+ the attacker may move one model
+from the target by up to 2"..."* - and it is the only Firefight-only mechanic left in that file. But its
+**trigger was the wound-effect roll**, which no longer exists. It now hangs off the two places an attack
+can Shake a unit: the wound-driven test after shooting or strafing (`ResolveRangedMoraleStage`) and the
+melee-loss test (`AssignMeleeMoralePenaltyStage`, where the pusher is whichever side did *not* lose).
+Deliberately NOT wired to the self-inflicted Shaken paths (a Star Quest skill, a treasure, a random
+event): the book says "after being attacked" and there is no attacker in those.
+
+`ShouldPush` is split out from `TryPush` - the gates and the die, without the move. That split exists
+because of a mistake worth recording: the first version of the test called `TryPush`, which raises a
+real move request, and **the whole engine suite went from 29 seconds to over ten minutes** with nobody
+to answer it. Same family as the M3 hang. A rules gate is unit-testable; a move prompt is not.
+
+Recorded approximation, carried over from the old implementation: the book pushes ONE model and has the
+defender place the rest within 1" of it. This moves the unit as a unit, up to 2", steered by the
+attacker's player, with the engine's coherency rules keeping it legal. Two prompts' worth of fidelity
+for less than an inch of difference.
+
+**Played, not just tested.** A headless Firefight Horde game (`--game-system gff --game-mode horde
+--all-ai --seed 414`) exits 0 with **zero** wound-marker lines, **4 Pushing** lines and **24 morale**
+lines - so the new trigger fires and standard morale is live in the mode. Standard Firefight
+(`--game-system gff --seed 7`) also exits 0 with no errors. **Firefight is noticeably harder now:** that
+Horde run was overrun in round 7 for a high score of 0, where the 3.5.1 rules reached 540. That is the
+rules change, not a regression - wound-driven morale did not exist in 3.5.1 Firefight, so units now get
+Shaken far more often.
+
+Verified: engine **3,816 / 0** (3 skipped, unchanged), UI 3,026 / 0, `dotnet build` clean, both
+headless Firefight runs exit 0, standard GF smoke exit 0.
+
+**Not done, and not silently:** Jumping and Falling are in the GFF/AoFS 3.6.0 books' Special Movement
+section and the engine has never had them (`WorkItems/408` flagged this first). They are the same
+cluster as Star Quest's falling and jumping, so they go together.
+
 ### 2026-10-30 - melee reach and fatigue: both turned out to be 3.6.0-wide, not Star Quest
 
 **Read the books before scoping an item off this list.** Two entries were filed here as Star Quest

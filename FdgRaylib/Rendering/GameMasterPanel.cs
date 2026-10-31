@@ -676,7 +676,6 @@ public sealed class GameMasterPanel
         float left = unit.Models.Sum(m => m.TotalWounds - m.WoundsDealt);
         ImGui.TextUnformatted($"Wounds: {WoundFormat.Format(left)}/{WoundFormat.Format(total)}" +
                               (unit.Tokens.HasToken(TokenType.Shaken) ? "   SHAKEN" : ""));
-        if (FDG.Stages.FirefightRules.MarkerSummary(unit) is { } markers) UiText.Disabled(markers);
 
         if (Button("Wound 1", "Deals 1 wound, ignoring saves.", first: true)) hub.WoundUnit(unit.ID, 1);
         if (Button("Heal 1", "Restores 1 wound (a dead model can come back).")) hub.HealUnit(unit.ID, 1);
