@@ -182,6 +182,17 @@ public class MainMenuScreen : IAppScreen
         ImGui.TextUnformatted(disclaimer);
         ImGui.PopStyleColor();
 
+        // Build stamp, bottom right: confirms at a glance that a pull actually landed before you
+        // start a game. The commit beside the number updates itself when the number is forgotten.
+        string build = AppVersion.BuildLabel;
+        Vector2 buildSize = ImGui.CalcTextSize(build);
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.50f, 0.50f, 0.50f, 1f));
+        ImGui.SetCursorPos(new Vector2(
+            screenW - buildSize.X - (screenW * 0.012f),
+            screenH - buildSize.Y - (screenH * 0.012f)));
+        ImGui.TextUnformatted(build);
+        ImGui.PopStyleColor();
+
         ImGui.End();
         ImGui.PopStyleColor();
     }
