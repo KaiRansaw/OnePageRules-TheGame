@@ -82,9 +82,15 @@ int seedIdx = Array.IndexOf(args, "--seed");
 if (seedIdx >= 0 && seedIdx + 1 < args.Length && int.TryParse(args[seedIdx + 1], out int parsedSeed))
     diceSeed = parsedSeed;
 
-// --ai-profile <solorules|tactician> (#191): which AI drives the computer slots on the headless and
-// scenario paths (lobby AI selection is a later slice, plan A6). Default: solo-rules.
-var aiProfile = FDG.Ai.EAiProfile.SoloRules;
+// --ai-profile <solocoop|starquest|solorules|tactician|strategist|gunline> (#191): which AI drives the
+// computer slots on the headless and scenario paths.
+//
+// #419: the default is now the OFFICIAL OPR AI (Solo & Co-Op Rules v3.6.0), not the frozen SoloRules
+// baseline - scripted play should exercise what a player actually faces. The house bots and the baseline
+// are still reachable by name here, which is plan G4's "selectable behind flags forever" and the reason
+// hiding them from the lobby is allowed. FdgLab names SoloRules explicitly in every benchmark path, so
+// the yardstick does not move with this default.
+var aiProfile = FDG.Ai.EAiProfile.SoloCoOp;
 int profileIdx = Array.IndexOf(args, "--ai-profile");
 if (profileIdx >= 0 && profileIdx + 1 < args.Length)
 {
@@ -1265,10 +1271,9 @@ if (cliParty != null && ArgValue(args, "--army1") != null)
     throw new ArgumentException("--party and --army1 both set slot 0: name one or the other. "
         + "A Star Quest party and an army list cannot both be the local side.");
 
-// Star Quest's enemies follow the Star Quest AI flowchart, which is what the lobby gives them (it offers
-// "Add Star Quest AI" and nothing else on a Quest game). A scripted run would otherwise get the
-// solo-rules bot and quietly test the wrong opponent, so the Quest systems pick it themselves unless
-// --ai-profile said otherwise.
+// The Quest systems' enemies follow the Quest AI flowchart from their own core rules, which is what the
+// lobby gives them. A scripted run would otherwise get the Solo & Co-Op bot and quietly test the wrong
+// opponent, so the Quest systems pick their own official AI unless --ai-profile said otherwise.
 if (profileIdx < 0 && (cliSystem is { } questCheck && GameSystemInfo.IsQuest(questCheck)
         || cliMode is { } questModeCheck && GameSystemInfo.IsQuestMode(questModeCheck)))
     aiProfile = FDG.Ai.EAiProfile.StarQuest;

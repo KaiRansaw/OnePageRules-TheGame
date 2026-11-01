@@ -416,32 +416,21 @@ public class LobbyScreen : IAppScreen
             if (ImGui.IsItemHovered())
                 UiText.Tooltip(LocalPlayerTooltip);
             ImGui.SameLine();
-            // #191 A6/B5: three bot flavors, one per ladder rung - the Strategist (searches ahead),
-            // the Tactician (challenge AI, one ply), and the legacy solo-rules bot, rechristened
-            // DerpBot (Chris's naming). Every rung stays selectable forever (plan G4).
-            if (GameSystemInfo.IsQuest(_viewModel.GameSystem))
-            {
-                // Star Quest: one bot, playing the Star Quest AI rules.
-                if (UiButton.Navigate("Add Star Quest AI"))
-                    _viewModel.AddAiPlayer(EAiProfile.StarQuest);
-                if (ImGui.IsItemHovered())
-                    UiText.Tooltip("The enemy side, following the Star Quest AI flowchart:\nshoot or charge the closest hero it can see,\notherwise head for its AI Goal.");
-                return;
-            }
-            if (UiButton.Navigate("Add Strategist Bot"))
-                _viewModel.AddAiPlayer(EAiProfile.Strategist);
+
+            // #419, Kai's call on 2026-10-31: the game runs the OFFICIAL OPR AI and the lobby offers
+            // nothing else. One button, and which official AI it adds depends on the rules family being
+            // played - the Quest systems print their own flowchart in their core rules, everything else
+            // uses Solo & Co-Op Rules v3.6.0.
+            //
+            // The house bots (Strategist, Tactician, the frozen DerpBot baseline, Gunline) are NOT gone:
+            // they stay selectable with --ai-profile, which is what plan G4 requires ("selectable behind
+            // flags forever"). Hiding them from the menu is allowed; deleting them is not, and they are
+            // still the only yardstick for telling whether the official bot is improving.
+            bool quest = GameSystemInfo.IsQuest(_viewModel.GameSystem);
+            if (UiButton.Navigate("Add AI Player"))
+                _viewModel.AddAiPlayer(quest ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
             if (ImGui.IsItemHovered())
-                UiText.Tooltip(StrategistBotTooltip);
-            ImGui.SameLine();
-            if (UiButton.Navigate("Add Tactician Bot"))
-                _viewModel.AddAiPlayer(EAiProfile.Tactician);
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip(TacticianBotTooltip);
-            ImGui.SameLine();
-            if (UiButton.Navigate("Add DerpBot"))
-                _viewModel.AddAiPlayer(EAiProfile.SoloRules);
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip(DerpBotTooltip);
+                UiText.Tooltip(quest ? QuestAiTooltip : OfficialAiTooltip);
         }
     }
 
@@ -473,10 +462,25 @@ public class LobbyScreen : IAppScreen
         "Based off the solo play rules from OnePageRules. Very dumb. Can\n" +
         "occasionally beat a human through sheer luck.";
 
-    /// <summary>#405: the four add-button tooltips, so the ASCII guard can sweep them all.</summary>
+    // #419: the lobby's only AI button. Two tooltips because the two rules families print different
+    // flowcharts - the Quest systems carry theirs in their core rules, everything else uses the
+    // Solo & Co-Op book.
+    internal const string OfficialAiTooltip =
+        "The enemy side, playing OnePageRules' official Solo & Co-Op rules:\n" +
+        "it takes and holds objectives, shoots the closest target it can see,\n" +
+        "and favours enemies that haven't moved yet.";
+
+    internal const string QuestAiTooltip =
+        "The enemy side, following the official Quest AI flowchart: shoot or\n" +
+        "charge the closest hero it can see, otherwise head for its AI Goal.";
+
+    /// <summary>#405: the add-button tooltips, so the ASCII guard can sweep them all. The three house-bot
+    /// tooltips stay listed - the bots are still reachable with --ai-profile (plan G4), so their text is
+    /// still shipped text and still has to be ASCII.</summary>
     internal static IReadOnlyList<string> AddPlayerTooltips { get; } = new[]
     {
         LocalPlayerTooltip, StrategistBotTooltip, TacticianBotTooltip, DerpBotTooltip,
+        OfficialAiTooltip, QuestAiTooltip,
     };
 
     /// <summary>Why the Random Army button is or isn't available on a given row.</summary>
