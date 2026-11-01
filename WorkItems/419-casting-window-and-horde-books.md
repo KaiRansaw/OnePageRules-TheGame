@@ -10,6 +10,74 @@ needs neither his input nor a playtest.
 
 ## Notes
 
+### 2026-10-31 - a hero-side AI, and three priority calls I got wrong before playing it (B16)
+
+Kai picked this from four options as the next build: "the biggest single lever on how much Claude can
+verify without Kai", and the to-do had ranked it first for the same reason.
+
+**The gap.** `StarQuestAiBrain` is the ENEMY's flowchart and says so - `UsesQuestAi` excludes heroes - so
+a bot-run party fell through to the generic solo bot, which plays Grimdark Future: it walks at enemies and
+at `IObjective` markers. A Quest mission is won by standing **within 1"** of a `QuestMarker` and taking the
+Objective skill, then leaving by a table corner; loot comes from standing within 1" of a search token.
+**None of those three things is an `IObjective`**, so the solo bot could not see any of them. #414 had
+already taught the bot to TAKE its free Skill action, which was the other half - but a Skill action taken
+8" from the nearest marker just reports "No objective marker within 1"."
+
+`QuestHeroAi` is the policy. OPR has no AI for the heroes (they are the player's side), so the order is a
+decision, not a reading: deliver what it carries -> leave -> work the live objective marker -> pick up a
+token within 6" -> no plan, and the solo bot fights. Wired in by two small hooks: the movement resolver
+walks to the plan's goal, and the action resolver substitutes Move for a Charge the solo bot wanted while
+the hero still has somewhere to be. The Skill latch, the shoot-if-in-range rule and the decline latch all
+stay where they already work.
+
+**Measured, eight played missions, same eight seeds throughout:**
+
+| | before | after |
+|---|---:|---:|
+| Primary objective completed | 0 | 6 |
+| Secondary objective completed | 0 | 3 |
+| **Mission finished and left by a corner** | **0** | **4** |
+
+Heroes also collect loot in Horde now - 11 reveals and pickups in one game, where the old comment in the
+Horde fixture read "the bots never pick them up". That also makes B14's AoF: Quest item-name guard live:
+the party really does finish those games holding items, so a Star Quest name among them would fail.
+
+**Three of the four priority calls were wrong, and only playing it showed each one.** Worth recording as a
+pattern, not three incidents - every one of them looked obviously right in the file:
+
+1. **Tokens above leaving.** A party finished both objectives by round 19, then spent six rounds wandering
+   between two unopened tokens while reinforcements arrived every other round, and died holding the loot.
+   Leaving is what banks the XP.
+2. **One carry destination instead of four.** A carried marker goes to a delivery marker (primary 6), an
+   extraction marker (secondary 6), the party's own corner (primary 3) or **any** corner (secondary 3).
+   Only the two that are markers on the table were handled, so a hero that picked up a Capture marker had
+   no plan at all, fell back to the solo bot, and went looting with the objective in its hands. Four of
+   eight missions drew Capture or Escort and every one stalled there.
+3. **No cap on the token walk.** This one broke Horde Mode. With tokens chased at any range the party
+   stopped fighting: it crossed the table for loot, never closed with anything, so it neither killed
+   enemies nor died. Waves then piled up until a seed that finished in **under a second** could not finish
+   in **ten minutes**. I spent three wrong guesses on it (a stay-in-place fallback, then a once-per-
+   activation latch on the Charge substitution - both real guards, both kept) before instrumenting the
+   resolver and finding only 438 hero decisions across 28 rounds. It was never looping. It was a different,
+   much longer game. `TokenDetourInches = 6f` fixed it: 45 Horde integration tests went from failing after
+   4 minutes to passing in 12 seconds.
+
+The lesson I want to keep: when a change makes a game slow, **count the decisions before assuming a
+loop**. Three guesses cost more than one `Console.Error.WriteLine` would have.
+
+Also fixed two assertions my own change falsified - both said "the bots never pick them up" - rather than
+leaving them green by accident.
+
+Engine 4,062 -> **4,086** (24 tests in `QuestHeroAiTests`, brain and movement). App 8,750 unchanged.
+Build **0.30**. Sabotage-checked: removing the detour cap or the cut-losses rule fails three tests each.
+
+**Deliberately not done, recorded rather than dropped:** the party does not spread over several markers
+(every hero walks to the nearest, which for objectives is often right and for tokens is wasteful); no
+notion of holding Horde's objective markers at the end of a wave for the 2 XP each; and the remaining
+mission losses are attrition, not navigation - all six failures were "every hero went down", to between
+two and nine waves of reinforcements, which is evidence for Kai's open "is Star Quest too hard" question
+rather than an AI defect.
+
 ### 2026-10-31 - the casting window: one per activation, in every current book
 
 `Caster(X)` was **"at any point before attacking"** in GF 3.5.1 and Quest 2.0.1, and #234 built the gate
