@@ -851,3 +851,9 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > habit the rule is really asking for - "file the number the moment the slice has a name, not when it has
 > code" - and the reason 422, 424, 426, 427 and 432 all slipped is that each of those started as code and
 > acquired a name afterwards. Five slips, one cause.
+
+> **2026-11-01 - number 437, filed BEFORE the number went anywhere.** `git fetch origin`, read from
+> `origin/campaign-360`: nothing numbered 437-440 in the index or the archive. **437 = the four
+> per-system rule splits the rules audit found** (Quest AI coherency, Quest shooting targets, Quest
+> mandatory strike-back, and the Horde reinforce range). No collision. 433-436 remain reserved for the
+> campaign work; this is the audit's own slice.
