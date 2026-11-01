@@ -15,6 +15,86 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - Unstoppable's modifier half, and two findings that are not faults (B29)
+
+**Unstoppable's second facet is in, and the obstacle was never the effect.** The rule, identical in all
+six systems: "this weapon ignores Regeneration, **and ignores all negative modifiers which are not from
+this model's special rules**." The Regeneration half was built; the second carried a comment saying it
+"needs a modifier-immunity effect and lands when that's modelled". What actually blocked it was that
+`RollModifierSink` kept TOTALS - a net, and since #412's Pierce a net plus a positive/negative split -
+while this clause asks where a penalty **came from**, which no total can answer.
+
+So `RuleOperation.ApplyRollModifier` now carries the `UnitID` of the unit whose rule produced it
+(`Effect.RollModifier` and its two siblings read it off `ruleInvocation.Bearer`), the sink keeps each
+unfavourable entry with its source, and `NetIgnoringForeignNegatives(roll, bearer)` is the Pierce-shaped
+read: the same "drop part of the stack" move, choosing by **source** instead of by sign.
+`DetermineHitRollStage` branches on the marker exactly where it branches for Pierce.
+
+Why the hit roll only: an unfavourable modifier to the DEFENDER's save is the attacker's own AP, which
+this clause has no business removing, and the defender's save bonuses are favourable. So in play it
+strips the target's Stealth and the -1 for shooting at an Aircraft, and leaves the model's own penalties
+(the `HitPenaltyWhenShooting` family) alone - which is the whole point of "not from this model's special
+rules", and the half a blunt "ignore all negatives" would have got wrong. Five cases, including the one
+that proves the two are separated rather than one winning (own -1 kept AND target's -1 dropped: 4 + 1,
+not 4 + 2), and an untagged negative counts as foreign because the attacker's own rules always arrive
+tagged.
+
+An untagged write still works: `IRollModifierSink.Add(roll, delta, source)` is a default interface
+member forwarding to the two-argument version, so every existing implementer is untouched.
+
+**Not a fault - do not re-report (this is the third entry on this list for a reason).** The audit's line
+on **Harassing / Hit & Run Shooter** said "once per round" was missing. It is not: `PostCombatMoveGate`
+has enforced it since #391, with one shared `PostCombatMoveUsed` token per unit (RoundEnd clear), set
+only when the unit ACTUALLY repositions so a declined move keeps the round's budget, and shared across
+shooting and melee so a unit moves at most once after combat per round. Read the gate before touching
+the family. (`Hit & Run Shooter` also appears in zero bundled books; `Harassing` in six.)
+
+**Prevalence, measured rather than guessed**, since it decides what is worth doing next: Strider 254
+books, Indirect 185, Unstoppable 180, Slayer 121, Mend 88, Ravage 72, Crossing Attack 17, Harassing 6,
+Martial Prowess 5, Hit & Run Shooter 0.
+
+### DESIGN FORK - needs Kai's sign-off: how per-system rule variants should work
+
+Three findings now point at the same missing mechanism, and the next one should not be built without a
+decision, because all three want the same thing and a bad choice gets copied.
+
+**The three:**
+- **Slayer's Tough threshold** is 3 / 9 / 27 by system, baked into `Condition.TargetMajorityHasTough(3)`
+  as a constructor argument.
+- **Indirect is structurally different in the Quest books**: GF/AoF/Firefight/Skirmish gate the
+  out-of-line-of-sight shooting on a Hold action, while both Quest books allow it on any action and
+  instead apply **-1 to hit when shooting after moving** (the pre-3.6 shape). The engine implements the
+  GF reading for all six.
+- **Melee Slayer in the Quest books** drops the charge clause entirely and halves the threshold.
+
+**Why `CoreRulesProfile` cannot absorb these.** Its six existing flags are read by STAGE code
+(`HeroStatRules`, `TransportUtilities`, the Scout and Blast stages), which has the table state in hand
+and can call `CoreRulesProfile.For(system)`. A rule DEFINITION is a static readonly record built once at
+class-init, with no table state anywhere near it - so a condition cannot ask which system is being
+played.
+
+**The options, with a recommendation:**
+
+1. **A profile-aware condition** - `Condition.ProfileFlag(ECoreRuleFlag)` plus a profile-driven
+   `ValueSource`, so one catalog carries both arms and each is gated. Needs the current system reachable
+   from condition evaluation: either threaded onto every hook context (large, touches everything) or read
+   off an ambient "current game's profile" (small, but global mutable state, and wrong in a hypothetical
+   two-games-in-one-process case - which the lobby does not do today).
+2. **Per-system catalogs** - `CoreRuleCatalog` becomes a function of the system, with the ~95% that is
+   shared built by a common factory and the differing rules overridden per system. Honest and obvious at
+   the call site; costs a resolver per system (built at army-load, so cheap) and a pass over every place
+   that reaches for `CoreRuleCatalog.X` statically, which includes a lot of tests.
+3. **Leave them as known gaps** and fix only what the common systems need.
+
+**Recommendation: (2), per-system catalogs.** It is the only one that can express a structurally
+different rule rather than a different number, which is what Indirect and Melee Slayer actually need; it
+keeps the rule's text and its implementation in one place per system, which is what made this whole audit
+possible; and it has no global state. The cost is a mechanical pass rather than a risky one. (1) looks
+cheaper but buys only the numbers - the first structural variant would force (2) anyway, on top of it.
+
+**Not started.** `CLAUDE.md` already names "no per-system rule catalog yet" as a known gap; this is the
+shape of filling it.
+
 ### 2026-10-31 - four more rules read against their code (B28)
 
 **Mend was healing the wrong model, and sometimes an illegal one.** The rule: "once per activation, before
