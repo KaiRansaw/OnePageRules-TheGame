@@ -15,6 +15,74 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - the audit of all 63 differing rules (B21)
+
+Kai: *"Check the 34"*. It turned out to be **63**, not 34 - the count rose once the shipped text covered
+army-book rules and not just the core 39. Each was read against its implementation (four parallel passes,
+every finding then hand-checked here) rather than diffed, per the lesson above.
+
+**Result: 63 rules read, ~40 correct, 23 findings. Nine fixed this slice.**
+
+#### Fixed
+
+**Seven rules gated on EVERY model where the book says MOST** - Evasive, Melee Evasion, Protected,
+Shielded, Fortified, Ranged Shrouding, Melee Shrouding. #093 built the family on every-model (that
+ruleset's wording); #409's 3.6.0 sweep moved Stealth, Regeneration, Fearless and Artillery onto
+`MostModelsHaveThisRule` and stopped. At the table **a single joined Hero without the rule switched the
+whole squad's defence off**. Counter-Attack keeps every-model: no OPR book publishes a "most models"
+wording for it.
+
+**Two wrong magnitudes**, both in the Shrouding pair and therefore in Darkborn (Defensive), which grants
+them:
+
+| Rule | Engine | Book | What it cost |
+|---|---|---|---|
+| Ranged Shrouding | -6" | **-4"** | a 24" weapon read 18" instead of 20"; every shot in that band refused |
+| Melee Shrouding | -3" | **-2"** | a 12" charge reached 9" instead of 10" - an inch that decides charges |
+
+Eleven tests pinned the old behaviour and were **rewritten, not repaired** - their subject (the gate, the
+fold, the floor) still holds; the expected value is what changed. The majority ones gained a minority
+case, so the gate cannot be deleted to make them pass. All nine fixes sabotage-checked: reverting them
+fails 14 tests.
+
+#### Open, highest value first
+
+| Rule | Gap |
+|---|---|
+| **Ambush** | "Players alternate in placing" - the arrival loop is army-by-army, so one player places every Ambusher before the other places any |
+| **Scout** | the same clause, the same shape (`PlaceDeferredUnitsStage` walks a pre-built list); `ReDeploymentStage` already does alternation properly and is the model to copy |
+| **Martial Prowess** | neither "stops being Fatigued when activated again" nor the "up to one third of the army's carriers per round" cap. Both are one argument at the call site (`Effect.Reactivate` already takes them for the Inquisitorial Agent); the shipped-data test pins the current reading and moves with them |
+| **Hero** | Firefight, Skirmish and both Quest systems print only the 6" morale aura, with **no Tough(9) threshold and no join/Defense clauses**. The engine hard-codes `BigHeroMinTough = 9` everywhere, so in those four a unit beside an ordinary Hero tests on its own Quality. Wants a `CoreRulesProfile` flag |
+| **Indirect** | Star Quest's version has no Hold restriction and a -1 after moving instead; the engine plays GF's, so a Star Quest unit that moved loses out-of-sight fire entirely. `Condition.AfterMoving` and `IHasAttackerMoved` already exist for exactly this and are unused |
+| **Slayer** | gated "shooting from over 9&quot;" where the book says "when using **Hold actions** and shooting". Wrong both ways: AP(+2) granted on a move-and-shoot at 20", denied on a Hold at 5" |
+| **Ravage** | no "once per round" marker. A carrier charged twice in a round rolls its pool twice (passives cannot hold a `Cost`, so this needs a token like `PostCombatMoveUsed`) |
+| **Transport** | "getting **within 2&quot;** to enter"; `EmbarkContactDistanceInches = 1f`, so a unit ending 1.5" from the hull is refused |
+| **Mend** | no "with Tough" filter, and the heal always lands on `Models.First()` rather than the wounded model - so most Mends do nothing visible |
+| **Crossing Attack** | "pick one of them"; the stage targets `crossed[0]`, so a model crossing chaff then a Hero cannot aim at the Hero |
+| **Unstoppable** | "ignores all negative modifiers which are not from this model's special rules" - needs a modifier-immunity effect, which does not exist |
+| **Aircraft** | "even if Shaken"; `ChooseActionStage.Enter` returns a Shaken unit to end-of-activation before any Aircraft check, so a Shaken aircraft hovers |
+| **Fanatic**, **Vanguard** | both missing "over 9&quot; away from non-Vanguard enemy units". `ScoutDeploymentRules.EnemyKeepOutDiscs` is the ready-made mechanism. Vanguard is additionally a *move* where the book says *placed*, so terrain can block a legal placement |
+| **Furious Buff** | per-system: Star Quest is once per game and up to 3 targets, Skirmish 3 targets, AoF: Quest "3 nearest". Engine plays GF's (1 target, unlimited uses). **Unreachable from shipped data** - no Quest asset carries it |
+| **Harassing**, **Hit &amp; Run Shooter** | the known missing "once per round" (already on the list from B5) |
+| **Strider** | the jumping clause - blocked on the jumping subsystem, which is parked with elevation until the Godot port. Nothing observable today |
+
+#### Stale comments found, no behaviour impact
+
+`CrossingAttackStage`'s summary claims its once-per-activation marker is never cleared ("a unit crosses at
+most once per game") - it is cleared, by `TokenClearService` at end of activation. `MoraleUtilities` says
+Fearless gates on all-models; it gates on most. `SpecialRulesAudit.md` says the Hit &amp; Run family is
+"once per shoot + once per melee"; `PostCombatMoveGate` shares one budget per round. The Hit &amp; Run
+Fighter doc says "the charged unit" where #391 made it role-neutral.
+
+#### One source conflict to settle with the books, not the code
+
+The harvested text gives **Star Quest's Scout as 12&quot;**, while `QuestRulesProfile` and
+`CoreRulesProfile` both quote GFSQ Core Rules v2.1.0 as **9&quot;** (and attribute 12" to AoFQ 2.0.1).
+One of the two is stale. The project holds `GFSQ - Core Rules v2.1.0.pdf`; read it before changing
+anything, since Army Forge's data and the PDF can disagree.
+
+---
+
 ### 2026-10-31 - the measurement, the asset, and two missing clauses (B20)
 
 **The measurement first, because the scale is the finding.** `SpecialRuleDefinition.Description` held
