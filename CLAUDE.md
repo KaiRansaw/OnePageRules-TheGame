@@ -121,11 +121,11 @@ Veteran is **55pts, Q6 D6** as a playable hero (id 9) and **100pts, Q5 D5** as a
 roster is 8 units against 41. Pulling the hero roster from id 10 would silently give every hero the
 enemy's profile. The official index is keyed by the *slug without* the `-ai` suffix either way
 (`grimdark-future-star-quest` = 56 books, `age-of-fantasy-quest` = 48). Both Quest systems' **enemy**
-books are bundled now — Star Quest's 54 (#412) and AoF: Quest's 46 (#417), each from the `-ai` id. What is
-still missing is each Quest system's **hero roster**: Star Quest's is imported and lives in its own dataset
-(`FdgRaylib/Assets/StarQuest/`, Army Forge id 9), and **AoF: Quest's (id 7) is not imported at all**, which
-is why AoF: Quest is still unselectable in the lobby. Tracked in `WorkItems/417` — never a licence to reuse
-the parent system's book.
+books are bundled now — Star Quest's 54 (#412) and AoF: Quest's 46 (#417), each from the `-ai` id. **Both
+hero rosters are imported too**, each in its own dataset: Star Quest's 205 heroes in
+`FdgRaylib/Assets/StarQuest/` (id 9) and AoF: Quest's 161 in `FdgRaylib/Assets/AoFQuest/` (id 7, #418).
+**All six systems are selectable in the lobby as of #420** — AoF: Skirmish was the last one greyed out, and
+nothing had been blocking it. Never a licence to reuse the parent system's book.
 
 ### Core rules differ per system too, not just unit stats
 
