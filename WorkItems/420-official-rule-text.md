@@ -15,6 +15,52 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - the Hero aura and transport caps, per system (B23)
+
+Kai: *"work on what you think is the most pressing matter"*. These two, from the audit's open list,
+because both are wrong in **four of the six systems** and both fire constantly.
+
+**Hero morale aura.** GF and AoF gate it on Tough(9)+; Firefight, Skirmish and both Quest systems print
+the identical sentence with no threshold. The engine ran GF's gate everywhere, and Tough(9) is a
+vehicle-scale number in a skirmish game, so in four systems **essentially no Hero ever lent its
+Quality**. `CoreRulesProfile.EveryHeroLendsMoraleQuality`, read in `HeroStatRules.GetMoraleQuality` off
+`ITableState.Progress.GameSystem` - no signature change, every caller already passes the table state.
+
+**Transport caps.** The Tough scale differs per family and OPR scales the caps with it:
+
+| | GF / AoF | GFF / AoFS | SQ / AoFQ |
+|---|---|---|---|
+| Hero cap | 6 | 18 | 54 |
+| non-Hero cap | 3 | 9 | 27 |
+| standard model | 1 | 3 | 9 |
+
+GF's row ran everywhere. Two effects: passengers the book allows were refused as "too tough", and - the
+quieter, worse one - an ordinary Tough(3) Firefight trooper was over GF's Tough(1) standard-model line
+and charged the 3-space large-model rate, so a 6-space transport held two instead of six. Three numbers
+on `CoreRulesProfile`; the capacity helpers take an optional profile defaulting to GF's, which is what
+the 52 existing assertions were written against, and both production call sites pass the real one.
+
+**22 tests, both sabotage-checked.** Flipping the aura flag off fails 5; collapsing the three transport
+profiles into one fails 3.
+
+#### Surfaced, not decided - needs the owner
+
+Those same four books print **no Hero JOINING clauses at all**: no Tough(6) cap on joining, no "must use
+the unit's Defense until all other models have been killed". The engine allows joining in every system
+on GF's terms. Per CLAUDE.md that is a *structural* disagreement rather than a number, so it is asked
+rather than guessed: **may a Hero join a unit in Firefight, Skirmish or the Quest games at all?** On the
+waiting-on-Kai list.
+
+#### A trap worth recording
+
+The aura resolves its system through the **store's** `GameProgressData`, not the context's settings, and
+`TryGetProgress` returns the first one it finds. Two `TestGameContext`s sharing a store therefore both
+read whichever system was written first - the two-family discriminating test passed for the wrong reason
+until each context was given its own store. Any future per-system test that builds two contexts has the
+same hazard.
+
+---
+
 ### 2026-10-31 - the audit of all 63 differing rules (B21)
 
 Kai: *"Check the 34"*. It turned out to be **63**, not 34 - the count rose once the shipped text covered
