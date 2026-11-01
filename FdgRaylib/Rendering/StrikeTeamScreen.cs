@@ -34,9 +34,14 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private List<(string Path, BuiltArmyFile Army, EGameSystem System)> _all = new();
 
-    /// <summary>Every campaign army on this computer, across all four systems with a campaign book.</summary>
+    /// <summary>
+    /// The player's campaign armies, across all four systems with a campaign book. Bot armies (#428)
+    /// are campaign armies too and live in the same folder - the lobby has to be able to pick them up -
+    /// but they are the opponent, not something to manage, so they are kept out of this list and shown
+    /// instead on the camp screen of the campaign they belong to.
+    /// </summary>
     private List<(string Path, BuiltArmyFile Army, EGameSystem System)> Teams =>
-        _all.Where(a => a.Army.StrikeTeam != null).ToList();
+        _all.Where(a => a.Army.StrikeTeam is { IsBot: false }).ToList();
 
     /// <summary>
     /// The ordinary armies a new campaign may start from. Scoped to the system being created under
@@ -45,6 +50,13 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// </summary>
     private List<(string Path, BuiltArmyFile Army, EGameSystem System)> Armies =>
         _all.Where(a => a.Army.StrikeTeam == null && a.System == _newSystem).ToList();
+
+    /// <summary>This campaign's standing enemy (#428), or null when it has none.</summary>
+    private (string Path, BuiltArmyFile Army, EGameSystem System)? EnemyOf(StrikeTeamInfo info) =>
+        info.EnemyArmyFile is { } path
+            ? _all.Cast<(string Path, BuiltArmyFile Army, EGameSystem System)?>()
+                  .FirstOrDefault(a => a!.Value.Path == path)
+            : null;
     private int _selected = -1;
     private int _unit;
     private bool _confirmDelete;
@@ -517,11 +529,37 @@ public sealed class StrikeTeamScreen : IAppScreen
             else UiText.Disabled($"The cap is {n.ArmyCapOverLowest} pts over the smallest army.");
         }
 
+        // #428: the standing enemy. The player never manages it, but they should be able to watch it
+        // grow - a campaign whose opponent improves invisibly is indistinguishable from one whose
+        // opponent does not improve at all.
+        ImGui.Separator();
+        UiText.Colored(TextDim, "Your enemy");
+        if (EnemyOf(info) is { } foe && foe.Army.StrikeTeam is { } foeInfo)
+        {
+            UiText.Colored(Gold, foeInfo.Name);
+            int cap = bringing + n.ArmyCapOverLowest;
+            int foeBrings = foe.Army.Units.Where(CampaignRules.CanBringToMission).Sum(u => u.PointCost);
+            ImGui.TextUnformatted($"{foe.Army.Units.Count} unit(s), {foe.Army.TotalPoints} pts, "
+                                  + $"treasury {foeInfo.BankedPoints} pts, {foeInfo.Vp} VP");
+            UiText.Disabled(foeBrings > cap
+                ? $"It will bring its best up to {cap} pts ({n.ArmyCapOverLowest} over what you bring)."
+                : "It will bring everything it has.");
+            int levels = foe.Army.Units.Sum(u => CampaignRules.Sheet(u)?.Level ?? 0);
+            if (levels > 0) UiText.Disabled($"{levels} level(s) earned across its army so far.");
+        }
+        else
+        {
+            UiText.Disabled("This campaign has no standing enemy, so the lobby rolls a fresh one each "
+                            + "mission and nothing carries over on their side.");
+        }
+
         ImGui.Separator();
         UiText.Colored(TextDim, "How to play it");
-        UiText.Wrapped($"Play > Game Type {GameSystemInfo.DisplayName(info.GameSystem)} > pick \"{info.Name}\" as your army. " +
-                       $"Campaign games have no points limit, so set Army Points to at least {army.TotalPoints}. " +
-                       "The result is written back here after the game.");
+        UiText.Wrapped("\"Play next mission\" opens a lobby with your army already picked"
+                       + (EnemyOf(info) != null ? " and your enemy already seated" : "")
+                       + $", set to {GameSystemInfo.DisplayName(info.GameSystem)} with the points limit lifted "
+                       + "clear of both armies. Press LAUNCH when the table settings suit you. The result is "
+                       + "written back here after the game.");
 
         if (info.History.Count > 0)
         {
@@ -731,10 +769,62 @@ public sealed class StrikeTeamScreen : IAppScreen
         // screen upgrades against, and the book stays attached so there is something to buy from.
         army.Selections = null;
         if (!StrikeTeamFiles.Save(path, army)) { Say("Couldn't save the campaign army file.", true); return; }
+
+        // #428: the enemy this campaign is fought against, created with it and kept for its whole life.
+        // Without a persistent opponent the campaign has no arc - every mission would be a fresh army
+        // list that never levels, never recruits and never remembers losing.
+        string? enemyNote = CreateEnemy(name, path);
+
         Reload();
         _selected = Teams.FindIndex(t => t.Path == path);
         OpenCamp(_selected);
-        Say($"{name} created, with {army.StrikeTeam!.BankedPoints} pts left in the treasury.");
+        Say($"{name} created, with {army.StrikeTeam!.BankedPoints} pts left in the treasury."
+            + (enemyNote != null ? " " + enemyNote : ""));
+    }
+
+    /// <summary>
+    /// #428 - creates this campaign's enemy army: another army from the same game's folder, started
+    /// with the same treasury under the same rules, marked as the bot's.
+    /// <para>
+    /// It is a campaign army in its own right, which is what makes the arc work - the existing
+    /// after-game write-back finds it by its units' own sheets and pays it, levels it and injures it
+    /// exactly like the player's. <see cref="CampaignBot"/> then spends its treasury for it.
+    /// </para>
+    /// <para>
+    /// Returns a line to append to the creation message, or null when there was no second army to
+    /// use - in which case the campaign still works, it just has no persistent opponent until the
+    /// player puts another army in the folder, and the lobby rolls a fresh enemy each mission as before.
+    /// </para>
+    /// </summary>
+    private string? CreateEnemy(string playerArmyName, string playerPath)
+    {
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
+        // Any other army of this game that could legally start a campaign. Taken at random so two
+        // campaigns started on the same folder do not face the same enemy.
+        var candidates = Armies
+            .Where(a => a.Path != Armies[_newArmy].Path && CampaignRules.CannotStart(a.Army, n) == null)
+            .ToList();
+        if (candidates.Count == 0)
+            return "No second army in that folder, so this campaign has no standing enemy yet - "
+                   + "add another army and start a new campaign to get one.";
+
+        var pick = candidates[Rng.Next(candidates.Count)];
+        if (StrikeTeamFiles.Load(pick.Path) is not { } enemy) return null;
+
+        string enemyName = $"{pick.Army.Name} (enemy of {playerArmyName})";
+        string enemyPath = StrikeTeamFiles.NewPath(_newSystem, enemyName);
+        CampaignRules.Start(enemy, enemyName, enemyPath, n, _newSystem, ECampaignType.Endless,
+            _newNoPermadeath, isBot: true);
+        enemy.Selections = null;
+        if (!StrikeTeamFiles.Save(enemyPath, enemy)) return null;
+
+        // Remember which enemy belongs to this campaign, so "Play next mission" can find it again.
+        if (StrikeTeamFiles.Load(playerPath) is { StrikeTeam: not null } saved)
+        {
+            saved.StrikeTeam.EnemyArmyFile = enemyPath;
+            StrikeTeamFiles.Save(playerPath, saved);
+        }
+        return $"Your enemy this campaign is {pick.Army.Name}.";
     }
 
     private void Delete(string path)
@@ -845,10 +935,45 @@ public sealed class StrikeTeamScreen : IAppScreen
         }
 
         LobbyScreen.PendingCampaignArmy = play;
+        LobbyScreen.PendingCampaignEnemyArmy = PrepareEnemyForMission(info, coming.Sum(u => u.PointCost));
         // A new mission: the one-new-Hero-per-mission allowance comes back.
         _heroRecruited = false;
         Say($"Taking {coming.Count} unit(s), {coming.Sum(u => u.PointCost)} pts.");
         OnPlay?.Invoke(info.GameSystem);
+    }
+
+    /// <summary>
+    /// #428 - the enemy's side of mission setup: it picks what to bring up to the book's cap over what
+    /// the player is bringing, and gets a mission file of its own the same way the player does.
+    /// <para>
+    /// The player chooses first and the cap is measured against their choice, which is the only order
+    /// that terminates - the book's cap is "the lowest army plus N", and with both sides choosing at
+    /// once each one's limit depends on the other's. Choosing second is not an advantage: the cap is the
+    /// same number either way round, it just has to be a number before anyone can obey it.
+    /// </para>
+    /// <para>Returns the path to hand the lobby, or null when this campaign has no standing enemy.</para>
+    /// </summary>
+    private string? PrepareEnemyForMission(StrikeTeamInfo info, int playerPoints)
+    {
+        if (info.EnemyArmyFile is not { } enemyPath) return null;
+        if (StrikeTeamFiles.Load(enemyPath) is not { StrikeTeam: not null } enemy) return null;
+
+        CampaignNumbers n = CampaignNumbers.For(info.GameSystem);
+        int cap = playerPoints + n.ArmyCapOverLowest;
+        var bringing = new HashSet<string>(CampaignBot.PickWhatToBring(enemy, cap), StringComparer.Ordinal);
+        CampaignBot.RollSpecialObjective(enemy, D6);
+        StrikeTeamFiles.Save(enemyPath, enemy);
+
+        if (bringing.Count == 0) return null;
+        if (bringing.Count == enemy.Units.Count) return enemyPath;
+
+        // Only some of it is coming, so the same "this mission only" copy the player's side writes -
+        // every sheet keeps its id and its TeamFile, so the after-game result still lands on the real
+        // campaign army rather than on the copy.
+        if (StrikeTeamFiles.Load(enemyPath) is not { } copy) return null;
+        copy.Units.RemoveAll(u => CampaignRules.Sheet(u) is not { } sh || !bringing.Contains(sh.Id));
+        string play = Path.ChangeExtension(enemyPath, ".fdgmission");
+        return StrikeTeamFiles.Save(play, copy) ? play : null;
     }
 
     private void DrawMessage(float margin, float by, Vector2 btn)

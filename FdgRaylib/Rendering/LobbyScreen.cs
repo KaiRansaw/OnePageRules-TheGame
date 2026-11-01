@@ -858,6 +858,14 @@ public class LobbyScreen : IAppScreen
     public static string? PendingCampaignArmy;
 
     /// <summary>
+    /// #428 - set beside <see cref="PendingCampaignArmy"/> when the campaign has a bot opponent: the
+    /// path of the ENEMY campaign army. The lobby seats a bot for it and gives it that army, so the
+    /// same enemy comes back mission after mission with the levels, injuries and recruits it earned.
+    /// Consumed and cleared by <see cref="ApplyPendingCampaignArmy"/> like the player's.
+    /// </summary>
+    public static string? PendingCampaignEnemyArmy;
+
+    /// <summary>
     /// #410 - gives the host's own slot the campaign army the campaign screen chose, and raises the
     /// points limit to fit it, because a campaign game has no points limit of its own.
     /// <para>
@@ -875,7 +883,9 @@ public class LobbyScreen : IAppScreen
     public void ApplyPendingCampaignArmy()
     {
         string? path = PendingCampaignArmy;
+        string? enemyPath = PendingCampaignEnemyArmy;
         PendingCampaignArmy = null;
+        PendingCampaignEnemyArmy = null;
         if (path == null || _viewModel == null) return;
         if (LoadArmyFile(path) is not { } army) return;
         if (_viewModel.PlayerInfos.Count == 0) return;
@@ -886,6 +896,21 @@ public class LobbyScreen : IAppScreen
         _viewModel.UpdateArmyListFile(host, army);
         // Mark it the way every other deliberate assignment does, so the starter-army roll leaves it be.
         _autoArmiedSlots.Add(host.ID);
+
+        // #428: the campaign's own enemy, if it has one. Seated as a bot and handed ITS campaign army,
+        // so the opponent is the same army that fought the last mission rather than a fresh list rolled
+        // from the folder. Added after the host's own row so PlayerInfos[0] stays the host (#405).
+        if (enemyPath == null || LoadArmyFile(enemyPath) is not { } enemy) return;
+        _viewModel.AddAiPlayer(FDG.Ai.EAiProfile.SoloRules);
+        // The bot that was just added is the AI row with no army on it - #402 means a fresh bot arrives
+        // army-less, and the starter-army roll has not run yet. Found by that rather than by taking the
+        // last row, so this does not depend on the roster's ordering.
+        if (_viewModel.PlayerInfos.FirstOrDefault(p =>
+                p.PlayerID.ID != host.ID && p.PlayerType == EPlayerType.AI
+                && !_autoArmiedSlots.Contains(p.PlayerID.ID)) is not { } botRow) return;
+        if (enemy.TotalPoints > _viewModel.ArmyPoints) _viewModel.SetArmyPoints(enemy.TotalPoints);
+        _viewModel.UpdateArmyListFile(botRow.PlayerID, enemy);
+        _autoArmiedSlots.Add(botRow.PlayerID.ID);
     }
     private List<(string Path, FDG.Quest.QuestHero Hero)>? _savedHeroes;
     private double _savedHeroesAt = -10;

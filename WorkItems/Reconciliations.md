@@ -814,3 +814,6 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > detail files existed - the same slip as 422 and 424, even though 425 was done the right way round an
 > hour earlier. Nothing had to be renumbered. The habit that actually works is to file the number the
 > moment the slice has a name, not when it has code.
+
+> **2026-11-01 - number 428, taken in order after 427.** Same fetch as 425-427, nothing new on either
+> remote. **428 = a bot campaign army with its own treasury.** No collision.

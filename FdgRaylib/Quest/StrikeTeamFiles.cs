@@ -126,7 +126,20 @@ public static class StrikeTeamFiles
         var groups = table.Units.Objects.OfType<UnitData>()
             .Select(u => (Unit: u, Sheet: StrikeUnit.FromJson(u.StrikeUnitJson)))
             .Where(x => x.Sheet?.TeamFile != null)
-            .GroupBy(x => x.Sheet!.TeamFile!);
+            .GroupBy(x => x.Sheet!.TeamFile!)
+            .ToList();
+
+        // #428: the roster ceiling the bot spends against is the biggest NON-bot campaign army that
+        // played - it will not build past what it could ever legally bring to a table. Read before any
+        // army is written, so a bot does not measure itself against a rival that today's casualties
+        // have already shrunk.
+        int rivalValue = groups
+            .Select(g => Load(g.Key))
+            .Where(a => a is { StrikeTeam: { IsBot: false } })
+            .Select(a => a!.TotalPoints)
+            .DefaultIfEmpty(0)
+            .Max();
+
         foreach (var group in groups)
         {
             if (Load(group.Key) is not { StrikeTeam: not null } team) continue;
@@ -138,7 +151,21 @@ public static class StrikeTeamFiles
             // offered Firefight - the write-back could not have served anything else correctly.
             CampaignNumbers n = CampaignNumbers.For(SystemForPath(group.Key, team.StrikeTeam));
             List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7));
+
+            // #428: the bot has nobody to sit at its campaign screen, so it does its own steps 5 and 6
+            // here - take the choices waiting on its sheets, then spend its treasury. Run after
+            // AfterGame so it is spending the reward it just earned, which is what a player would do.
+            if (team.StrikeTeam.IsBot)
+                log.AddRange(CampaignBot.BetweenMissions(team, team.Book, n, rivalValue, () => rng.Next(1, 7)));
+
             if (!Save(group.Key, team)) continue;
+            if (team.StrikeTeam.IsBot)
+            {
+                lines.Add($"The enemy {team.StrikeTeam.Name} {(won ? "won" : "lost")} too: it banked "
+                    + $"{team.StrikeTeam.BankedPoints} pts and is now worth {team.TotalPoints} pts.");
+                continue;
+            }
+
             int pending = team.Units.Sum(u => CampaignRules.Sheet(u)?.Pending.Count ?? 0);
             lines.Add($"Campaign army {team.StrikeTeam.Name}: {(won ? "won" : "lost")}, {log.Count(l => l.Contains("levels up"))} level up(s)"
                 + (pending > 0 ? $", {pending} choice(s) to make" : "") + " - see Campaign.");
