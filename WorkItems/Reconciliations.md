@@ -817,3 +817,7 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 
 > **2026-11-01 - number 428, taken in order after 427.** Same fetch as 425-427, nothing new on either
 > remote. **428 = a bot campaign army with its own treasury.** No collision.
+
+> **2026-11-01 - numbers 429 and 430, taken in order after 428.** Same fetch as 425-428; nothing new has
+> landed on either remote this session. **429 = the deployment zones outliving deployment. 430 = the
+> special objectives actually being scored.** No collision.

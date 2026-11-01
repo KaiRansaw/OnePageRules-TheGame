@@ -57,6 +57,19 @@ This also closes most of **#188**'s "in-game routing testable but uncovered" rem
 2 remote clients now play a full game in the suite. The real-machine verify and the #076 drop path
 during play stay open there.
 
+### A mistake I made with them later the same day, worth recording
+
+While finishing #430 I twice decided the full engine suite had **hung** and killed it, because the
+console logger prints a test only when it finishes and these two sit for ~50 seconds each with almost no
+CPU - so the last line in the log stayed the same through several minutes of polling, and the testhost
+looked idle. It was not hung either time: run as a pair they finish in 1m48s, and the whole suite
+finishes normally. Two healthy runs were thrown away for nothing.
+
+Two things come out of that. The suite's wall time is now about five minutes rather than three, almost
+all of it these tests waiting on sockets, and **a quiet log plus a quiet CPU is what a correct networked
+test looks like** - the thing to check is the test's own timeout (180s here, which is what would actually
+report a hang), not the absence of output.
+
 ### Cost, and why it is accepted
 
 ~2 minutes of suite time for the two together. The host lobby hard-codes

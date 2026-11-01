@@ -152,11 +152,37 @@ public static class StrikeTeamFiles
             CampaignNumbers n = CampaignNumbers.For(SystemForPath(group.Key, team.StrikeTeam));
             List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7));
 
+            // #430: the special objective it rolled before the mission, finally scored. Before this it
+            // was shown to the player and then never checked, so the bonus could not be earned at all.
+            // Scored before the objective is cleared, and paid by CompleteSpecialObjective so the
+            // treasury write stays in one place.
+            if (team.StrikeTeam.SpecialObjective is { Length: > 0 } objective)
+            {
+                PlayerID owner = group.First().Unit.PlayerID;
+                CampaignObjectiveResult scored = CampaignObjectives.Score(table, owner, objective);
+                string line = scored.Completed
+                    ? CampaignPreGame.CompleteSpecialObjective(team, objective, n) + $" ({scored.Detail})"
+                    : $"{team.StrikeTeam.Name} did not complete its special objective ({objective}): {scored.Detail}";
+                log.Add(line);
+                // AfterGame has ALREADY written this match's history entry from the log as it stood, so
+                // anything added after it needs its own entry - otherwise the player would never see the
+                // verdict, which is the whole point of scoring it.
+                team.StrikeTeam.History.Add(line);
+                // A new objective is rolled before the next mission, so this one is done either way.
+                team.StrikeTeam.SpecialObjective = "";
+            }
+
             // #428: the bot has nobody to sit at its campaign screen, so it does its own steps 5 and 6
             // here - take the choices waiting on its sheets, then spend its treasury. Run after
             // AfterGame so it is spending the reward it just earned, which is what a player would do.
             if (team.StrikeTeam.IsBot)
-                log.AddRange(CampaignBot.BetweenMissions(team, team.Book, n, rivalValue, () => rng.Next(1, 7)));
+            {
+                List<string> spent = CampaignBot.BetweenMissions(team, team.Book, n, rivalValue,
+                    () => rng.Next(1, 7));
+                log.AddRange(spent);
+                // Its own history, for the same reason: AfterGame's entry was written before this ran.
+                if (spent.Count > 0) team.StrikeTeam.History.Add(string.Join(" ", spent));
+            }
 
             if (!Save(group.Key, team)) continue;
             if (team.StrikeTeam.IsBot)
