@@ -10,6 +10,69 @@ needs neither his input nor a playtest.
 
 ## Notes
 
+### 2026-10-31 - one official AI, and the decision tree driving it (B18)
+
+**Kai's decision, which settles the AI question:** "Let's archive the old bots or if archiving them is too
+much, maybe just deactivate them so they're not a choosable option in the menu. Let's stick to the game
+running the official OPR solo rules." Plus: no bot-controlled heroes, and difficulty modifiers later. He
+also added the AoF and AoFS Solo & Co-Op books and all four Mission Cards books, and asked to understand
+the whole shape before any of it was built - which is why this slice was explained in full first.
+
+**All four Solo & Co-Op books read.** The decision tree, shooting, melee, terrain, activation order,
+Ambush, Caster, Indirect, Relentless, Scout and the Challenge Bonuses are word for word identical across
+GF, GFF, AoF and AoFS. Seven clauses differ, and `claude/fdg-todo.md` holds the table. **AoFS was the
+trap**: two deployment sections off a d6 and four objective squares, where the other three use three
+sections off a D3 and six squares. Assuming it matched Firefight because both are skirmish games would
+have repeated B12 exactly. Its book also says "3 groups" and then "2 sections" in consecutive sentences -
+OPR's inconsistency, followed literally and written down rather than tidied.
+
+**Slice 1 - the split, which was also a repair.** Plan D1 (signed off 2026-07-09) makes the solo-rules bot
+the permanent benchmark baseline and forbids changing its behaviour; I had changed its target priority and
+activation order earlier in the day, silently invalidating every Tactician and Strategist gate measured
+against it. `BuildSoloRules` now takes an `ESoloFlavour`: `Baseline` restored exactly and documented as
+frozen, `StarQuest` unchanged, `SoloCoOp` the official book AI. `SoloFlavourSplitTests` pins the
+baseline's behaviour directly - six tests, including one that simply asserts the two flavours disagree,
+because nothing at all had told me there were two solo bots and only one was mine to change.
+
+Checking plan G4 turned the lobby question from a conflict into a non-issue: it requires the old rungs stay
+"selectable **behind flags** forever" - behind flags, not in the menu. So hiding them satisfies the plan
+and deleting them would violate it. The lobby now has one **Add AI Player** button that picks the official
+AI for the rules family being played; `--ai-profile` still reaches everything, and FdgRaylib's headless
+default moved to `SoloCoOp` (FdgLab names `SoloRules` explicitly in every benchmark path, so the yardstick
+does not move with it).
+
+**Slice 2 - the tree driving units.** `SoloCoOpActionResolver` carries the five branches onto the action
+menu; `SoloCoOpMovementResolver` answers the movement request with the objective's position for four of
+the five. Advance versus Rush is decided by the move distance, so a branch that promises a shot is capped
+at the Advance budget - getting that backwards would quietly cost the AI either its shooting or its pace.
+Charges are delegated to the baseline mover, which already drives legal base contact and for which "go at
+the nearest enemy" is exactly right.
+
+**The measurement, which is the point of the whole slice:**
+
+| | Objectives scored |
+|---|---:|
+| Frozen baseline | 0 of 5 games |
+| Official bot | **20 of 24 games**, across all four systems |
+
+Four systems x Standard and Horde all play through in 3-4 seconds, no hangs. The old bot never contested
+an objective on purpose in its life: it ranked Charge > Move > Shoot with no notion that objectives exist,
+in modes where objectives decide the winner.
+
+`AiMoveExecutor` was extracted on the way - the walk-toward-a-point move with B16's loop guard built in -
+and the Quest hero resolver now delegates to it, with its 24 tests passing unchanged to prove the
+extraction is behaviour-identical. The per-activation family latch in the action resolver is B16's lesson
+applied up front rather than after three wrong guesses: a family tried this activation is never offered
+again, so a move that cannot be carried out cannot spin the menu.
+
+Engine 4,117 -> **4,136** (19 tests across two fixtures). App 8,750 unchanged. Builds **0.32** and
+**0.33**. Sabotage-checked both slices: removing the baseline split fails two of its pins, removing the
+family latch fails the loop guard.
+
+**Next, in the order Kai approved:** AI deployment and objective placement (with the four per-system
+variations), then the eight per-rule clauses, then terrain, then Challenge Bonuses. Noticed and not
+chased: Firefight and Skirmish Horde end after 4 rounds where GF and AoF run 12.
+
 ### 2026-10-31 - the enemy AI audit, and the first slice of the Solo & Co-Op rules (B17)
 
 **Kai's direction, which narrowed the whole item:** "I don't need a bot controlling any hero's. I just need
