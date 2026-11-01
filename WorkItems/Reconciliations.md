@@ -821,3 +821,10 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **2026-11-01 - numbers 429 and 430, taken in order after 428.** Same fetch as 425-428; nothing new has
 > landed on either remote this session. **429 = the deployment zones outliving deployment. 430 = the
 > special objectives actually being scored.** No collision.
+
+> **2026-11-01 - number 431, filed BEFORE the number went anywhere.** `git fetch origin`, read from
+> `origin/campaign-360`: detail files max **430**, no `431` anywhere in the index or archive.
+> **431 = the five AoF-only core rules (which turned out to need no work).** No collision.
+>
+> Right order this time: fetch, confirm free, then write it into the test. That is the fourth number
+> today and the second done the way the rule asks.
