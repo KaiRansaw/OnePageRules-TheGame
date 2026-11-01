@@ -828,3 +828,14 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 >
 > Right order this time: fetch, confirm free, then write it into the test. That is the fourth number
 > today and the second done the way the rule asks.
+
+> **2026-11-01 - number 432, and the ordering slip once more.** `git fetch origin`, read from
+> `origin/campaign-360`: index items **412-424**, archive real items max **431**, nothing numbered
+> `432` in either. (The archive does contain the string "432" - inside #272's engine commit hash
+> `f432c03`. Worth knowing for anyone grepping: the check has to be for a work-item number, not a
+> substring.) **432 = the campaign random events happening on the table.** No collision.
+>
+> Honest note: the number went into three new source files' doc comments while the slice was being
+> written, before the detail file existed - the same slip as 422, 424, 426 and 427, and after 431 was
+> done the right way round the same day. Nothing had to be renumbered. The lesson has not changed:
+> file the number the moment the slice has a name, not when it has code.
