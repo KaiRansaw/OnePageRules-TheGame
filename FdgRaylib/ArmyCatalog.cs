@@ -30,6 +30,20 @@ public readonly record struct ArmyCatalogEntry(
 
     /// <inheritdoc cref="Key"/>
     public static string KeyFor(string name, string faction, int points) => $"{name}|{faction}|{points}";
+
+    /// <summary>
+    /// #421: the file's own name, without the extension - what the player typed when they saved, and
+    /// what they look for when they come back.
+    ///
+    /// <para>
+    /// The picker used to list <see cref="Name"/>, the name stored INSIDE the army. For a Forge-built
+    /// list that is the book's name unless the builder set one, so a folder of lists read as "Army",
+    /// "Army", "Army" while the files beside them had perfectly good names. The owner reported exactly
+    /// that. <see cref="Name"/> is still what crosses the wire and still forms <see cref="Key"/>; only
+    /// what a human reads changed.
+    /// </para>
+    /// </summary>
+    public string FileName => System.IO.Path.GetFileNameWithoutExtension(Path);
 }
 
 /// <summary>

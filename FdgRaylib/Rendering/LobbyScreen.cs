@@ -51,11 +51,14 @@ public class LobbyScreen : IAppScreen
     private IReadOnlyList<string> _launchProblems = Array.Empty<string>();
 
     // #372/#388 starter armies. The folder scan is process-wide and starts the first time a lobby opens
-    // (SetViewModel touches it), because the armies folder doesn't change under us and re-reading 12 MB
-    // of JSON per lobby would be waste. The ROTATION is per-lobby, so a fresh lobby re-rolls freely.
-    private static readonly Lazy<ArmyCatalog> SharedArmyCatalog =
-        new(() => { ArmyPaths.EnsureGameTypeFolders(); return new ArmyCatalog(); },
-            LazyThreadSafetyMode.ExecutionAndPublication);
+    // (SetViewModel touches it), because re-reading 12 MB of JSON every frame would be waste. The
+    // ROTATION is per-lobby, so a fresh lobby re-rolls freely.
+    //
+    // #421: it used to be a `static readonly Lazy<>` - scanned once per LAUNCH and never again, on the
+    // reasoning that "the armies folder doesn't change under us". The in-game Army Forge makes that
+    // false: save a list, come back here, and it is not in the picker until the game is restarted.
+    // ArmyCatalogCache keeps the caching and adds an Invalidate, which OnShown below calls - so walking
+    // Forge -> Save -> lobby always rescans.
 
     private BotArmyPicker? _botArmyPicker;
 
@@ -88,6 +91,22 @@ public class LobbyScreen : IAppScreen
         HandleLaunch(game);
     }
 
+    /// <summary>
+    /// #421: the lobby is reached by navigating, so this fires every time it comes back into view -
+    /// including the walk the owner reported as broken: Army Forge, build a list, Save, back here. The
+    /// armies folder CAN change while the app runs, so the cached scan is dropped and the per-system
+    /// slice rebuilt; the next read starts a fresh background scan.
+    /// </summary>
+    public void OnShown()
+    {
+        // RefreshIfChanged rather than Invalidate: this also fires on every return from the army
+        // picker, and a blind invalidate would reparse ~12 MB of lists each time. The check is a
+        // directory walk comparing names, sizes and write times.
+        if (!ArmyCatalogCache.RefreshIfChanged()) return;
+        _gameTypeArmies = null;
+        _botArmyPicker = null;
+    }
+
     public void SetViewModel(ILobbyViewModel viewModel)
     {
         _viewModel?.Dispose();
@@ -100,7 +119,7 @@ public class LobbyScreen : IAppScreen
         _botArmyPicker = null;
         _autoArmiedSlots.Clear();
         _resetSections = true;   // Connection closed, the rest open, every time the lobby opens
-        _ = SharedArmyCatalog.Value;
+        _ = ArmyCatalogCache.Current;
         viewModel.OnLaunched += game => _pendingGame = game;
         // Fires on the engine thread; the renderer just records it and reacts on the main thread.
         viewModel.OnGameEnded += result => OnGameEnded?.Invoke(result);
@@ -441,7 +460,7 @@ public class LobbyScreen : IAppScreen
     // the engine has no business reading the user's disk. A slot the roll cannot fill stays visibly
     // empty and blocks the launch, rather than quietly playing a list nobody picked.
 
-    private static bool ArmyCatalogReady => SharedArmyCatalog.Value.IsLoaded;
+    private static bool ArmyCatalogReady => ArmyCatalogCache.Current.IsLoaded;
 
     // #405 (Chris's wording). UiText.Tooltip does not wrap, so these are hard-wrapped, same as
     // RandomArmyTooltip below. ASCII only - the ImGui atlas bakes no glyph past U+00FF.
@@ -721,7 +740,7 @@ public class LobbyScreen : IAppScreen
             // system to armies/GDF, from before Star Quest had books of its own - so the dropdown listed
             // Grimdark Future armies that the launch gate then refused, while armies/GF Star Quest went
             // unread. The heroes still come from the party picker, not from here.
-            _gameTypeArmies = ArmyPaths.EntriesFor(system, SharedArmyCatalog.Value.Entries)
+            _gameTypeArmies = ArmyPaths.EntriesFor(system, ArmyCatalogCache.Current.Entries)
                 // Grouped by 1000-point bracket (0-1000, 1001-2000, ...), then A-Z inside each bracket.
                 .OrderBy(e => e.Points <= 0 ? 0 : (e.Points - 1) / 1000)
                 .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();

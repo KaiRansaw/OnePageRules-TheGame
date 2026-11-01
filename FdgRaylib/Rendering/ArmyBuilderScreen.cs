@@ -154,6 +154,8 @@ public class ArmyBuilderScreen : IAppScreen
             path = Path.ChangeExtension(path, ArmyListFile.EXTENSION_WITH_PERIOD);
 
         File.WriteAllText(path, JsonSerializer.Serialize(_army, RuleJson.Options));
+        // #421: the lobby caches its scan of the armies folder, and this just changed it.
+        ArmyCatalogCache.Invalidate();
         // What's on disk is now a plain freeform army; later saves in this session need no re-confirm.
         _loadedForgeArmy = false;
     }
@@ -268,10 +270,15 @@ public class ArmyBuilderScreen : IAppScreen
         if (ImGui.InputText("Faction", ref faction, 64))
             _army.Faction = faction;
 
-        int limit = _army.PointsLimit;
-        if (ImGui.InputInt("Points Limit", ref limit))
-            _army.PointsLimit = limit;
-
+        // #421: the Points Limit box is gone at the owner's request - "the player can see how many
+        // points you have, so the limit isn't really needed when building armies". It never restricted
+        // anything (#003: this screen is advisory, and an over-cap list always saved and launched), so
+        // all it did was ask for a number in order to colour a total the player can read for themselves.
+        //
+        // ArmyListFile.PointsLimit itself stays: saved armies carry it, the LOBBY still has a real
+        // points limit for a match, and the Load Game screen reads it to summarise a save. What is gone
+        // is only the control that asked the player to set it here. A list built from now on keeps
+        // whatever DefaultPointsLimit it was created with, which nothing reads as a restriction.
         ImGui.TextUnformatted($"Current total: {_army.TotalPoints} pts");
 
         // #003: advisory force-organization warnings — surfaced inline but never blocking. The player

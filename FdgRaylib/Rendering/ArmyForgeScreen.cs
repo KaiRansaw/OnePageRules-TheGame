@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using System.Threading.Tasks;
+using FDG;
 using FDG.ArmyBuilding;
 using FDG.Rules.Serialization;
 using FDG.SaveLoad;
@@ -130,17 +131,29 @@ public class ArmyForgeScreen : IAppScreen
     private string? _pendingSavePath;
     private ESaveGuard _pendingSaveGuard;
 
+    // #421 in-game "Name Army" save. _openSaveGuardNextFrame exists because ImGui will not open a second
+    // modal in the same frame the first one closes - the guard has to wait a frame.
+    private string _saveName = string.Empty;
+    private string? _saveNameError;
+    private bool _focusSaveName;
+    private string? _pendingSaveName;
+    private bool _openSaveGuardNextFrame;
+
     // #356: a load held while the user decides whether to accept the rebuild. NOT adopted yet - the screen
     // still holds its previous list until "Open for editing" is pressed.
     private BuiltArmyFile? _pendingReopen;
     private string? _pendingReopenFileName;
     private EditableSessionDrift? _pendingReopenDrift;
 
-    // #403: the importer is how we recommend getting a list in, so it opens with the screen rather than
-    // waiting to be found. Only the INTENT is recorded here - ImGui.OpenPopup has to be called from
-    // inside the window that owns the popup, which is Draw, several frames-worth of setup later. Starts
-    // true so a screen shown without going through NavigateTo still leads with it.
-    private bool _openImportOnShow = true;
+    // #403 made the importer open with the screen, on the reasoning that it is how we recommend getting
+    // a list in. #421 turns that off at the owner's request: "there's a button to import, so i don't
+    // want it auto popping up all the time." A modal that appears without being asked for is a modal
+    // you dismiss, every single time, on the way to doing something else - and the Forge's main job is
+    // building a list from the bundled books, not importing one.
+    //
+    // The field and the OpenPopup path stay: the flag is still how an intentional open is requested
+    // from outside Draw (ImGui.OpenPopup must be called from inside the window that owns the popup).
+    private bool _openImportOnShow;
 
     // #241 Import-from-share-link modal state. The fetch runs on a worker task (HTTP must not stall the
     // ImGui thread); Draw polls for completion. Only Draw (main thread) reads/writes these fields.
@@ -292,6 +305,57 @@ public class ArmyForgeScreen : IAppScreen
         ImGui.EndPopup();
     }
 
+    /// <summary>
+    /// #421: the in-game name box that replaced the system Save dialog. Deliberately plain - a label,
+    /// a text box, Save and Cancel - because the layout is rented and the port will redraw it; what
+    /// survives is that naming happens in game and the folder is chosen from the army's own system.
+    /// </summary>
+    private void DrawSaveNameModal()
+    {
+        bool open = true;
+        ImGui.SetNextWindowSize(new Vector2(UiChrome.Em(26f), 0f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopupModal(SaveNameTitle, ref open, ImGuiWindowFlags.AlwaysAutoResize)) return;
+
+        EGameSystem system = GameSystemInfo.FromSlug(_book.GameSystem) ?? EGameSystem.GrimdarkFuture;
+        // UiText.Disabled, not ImGui.TextDisabled: that one takes a printf format string, so a folder
+        // name containing a % would print stack garbage. CalculatorTextSafetyTests lints for it.
+        UiText.Disabled($"Saves to armies\\{ArmyPaths.FolderNameFor(system)}");
+        ImGui.Spacing();
+
+        if (_focusSaveName)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _focusSaveName = false;
+        }
+
+        ImGui.SetNextItemWidth(-1f);
+        bool submitted = ImGui.InputText("##armyname", ref _saveName, 64,
+            ImGuiInputTextFlags.EnterReturnsTrue);
+
+        if (_saveNameError is { } error)
+        {
+            ImGui.Spacing();
+            WrappedText(error, RedText, 420f);
+        }
+
+        ImGui.Spacing();
+        bool named = !string.IsNullOrWhiteSpace(_saveName);
+        if (!named) ImGui.BeginDisabled();
+        bool pressed = UiButton.Confirm("Save", UiChrome.ButtonSize("Save"));
+        if (!named) ImGui.EndDisabled();
+
+        if (named && (pressed || submitted)) CommitNamedSave(_saveName.Trim());
+
+        ImGui.SameLine();
+        if (UiButton.Back("Cancel", UiChrome.ButtonSize("Cancel")))
+        {
+            _saveNameError = null;
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
+    }
+
     // #307: the last gate before a write that would not be the army the user thinks it is. Confirm, never
     // block - the whole screen is advisory (#003).
     private void DrawSaveGuardModal()
@@ -306,7 +370,14 @@ public class ArmyForgeScreen : IAppScreen
         ImGui.Spacing();
         if (UiButton.Confirm("Save anyway", UiChrome.ButtonSize("Save anyway")))
         {
-            if (_pendingSavePath is string path) WriteArmy(path, Compile());
+            if (_pendingSavePath is string path)
+            {
+                BuiltArmyFile confirmed = Compile();
+                // #421: the name the player typed, not the list's own, or confirming the guard would
+                // write the file under one name and the army under another.
+                if (_pendingSaveName is { } named) confirmed.Name = named;
+                WriteArmy(path, confirmed);
+            }
             // Confirming IS the acknowledgement that the screen holds what it holds - do not re-warn about
             // the same failed load on every subsequent save.
             _failedLoadFingerprint = null;
@@ -355,6 +426,7 @@ public class ArmyForgeScreen : IAppScreen
     {
         _pendingSavePath = null;
         _pendingSaveGuard = ESaveGuard.None;
+        _pendingSaveName = null;
     }
 
     private void ClearPendingReopen()
@@ -616,6 +688,8 @@ public class ArmyForgeScreen : IAppScreen
         try
         {
             File.WriteAllText(path, SerializeArmy(army));
+            // #421: the lobby caches its scan of the armies folder, and this just changed it.
+            ArmyCatalogCache.Invalidate();
         }
         catch (Exception ex) // #307: never report a write that did not happen as a success
         {
@@ -686,7 +760,10 @@ public class ArmyForgeScreen : IAppScreen
     // ── Draw ────────────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>#403: every entry into the Forge leads with the importer.</summary>
-    public void OnShown() => _openImportOnShow = true;
+    /// <summary>
+    /// #421: deliberately does NOT re-arm the import modal. Entering the Forge opens the Forge.
+    /// </summary>
+    public void OnShown() { }
 
     public void Draw(int screenW, int screenH)
     {
@@ -764,7 +841,15 @@ public class ArmyForgeScreen : IAppScreen
             else { _pendingBookIndex = bi; ImGui.OpenPopup("Switch book?"); }
         }
         DrawSwitchBookConfirm();
+        // #421: the guard cannot be opened in the same frame the name modal closed.
+        if (_openSaveGuardNextFrame)
+        {
+            _openSaveGuardNextFrame = false;
+            ImGui.OpenPopup(SaveGuardTitle);
+        }
+
         DrawImportModal();
+        DrawSaveNameModal();
         DrawLoadFailedModal();
         DrawSaveGuardModal();
         DrawReopenDriftModal();
@@ -1314,21 +1399,121 @@ public class ArmyForgeScreen : IAppScreen
 
     // ── Save / Load ─────────────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// #421: Save asks for a NAME in game, then files the list in its own Game Type's folder - it no
+    /// longer opens a system file dialog.
+    ///
+    /// <para>
+    /// Owner's workflow, 2026-10-31: "Army Forge -&gt; choose game mode -&gt; choose faction -&gt; build
+    /// army -&gt; Save -&gt; in-game window appears 'Name Army' -&gt; you name army -&gt; list is
+    /// automatically saved into the folder for the game mode that was chosen."
+    /// </para>
+    /// <para>
+    /// Picking the folder from the army's own <c>GameSystem</c> rather than asking is the part that
+    /// matters beyond convenience: the lobby lists armies by the folder they are in
+    /// (<c>ArmyPaths.EntriesFor</c>), so a Firefight list saved into <c>armies/GDF</c> is invisible in
+    /// the Firefight picker and offered in the Grimdark Future one, where the launch gate then refuses
+    /// it. Taking the destination from the data removes a way to file a list wrongly rather than asking
+    /// the user not to.
+    /// </para>
+    /// </summary>
     private void Save(BuiltArmyFile compiled)
     {
-        var (canceled, path) = TinyDialogs.SaveFileDialog("Save Army", ArmyPaths.DefaultDialogPath, ArmyFilter);
-        if (canceled || string.IsNullOrEmpty(path)) return;
-        if (Path.GetExtension(path) != ArmyListFile.EXTENSION_WITH_PERIOD)
-            path = Path.ChangeExtension(path, ArmyListFile.EXTENSION_WITH_PERIOD);
+        _saveName = SuggestedArmyName(compiled);
+        _saveNameError = null;
+        _focusSaveName = true;
+        ImGui.OpenPopup(SaveNameTitle);
+    }
 
-        // #307: a save that would write something other than an army the user built gets one confirm naming
-        // the target file. The ordinary path (a real list, deliberately saved) is untouched - no extra click.
+    /// <summary>
+    /// What the name box opens with: the list's own name when it has a real one, otherwise the faction,
+    /// which is the most useful thing to type over. Never blank - an empty box reads as "nothing
+    /// happened" next to a button labelled Save.
+    /// </summary>
+    private string SuggestedArmyName(BuiltArmyFile compiled)
+    {
+        // ListCompiler falls back to the book's name when the list has none, so "same as the book" is
+        // how an unnamed list reads - offer it, since it is a reasonable name and easy to type over.
+        if (!string.IsNullOrWhiteSpace(_list.Name)) return _list.Name!;
+        if (!string.IsNullOrWhiteSpace(compiled.Name)) return compiled.Name;
+        return string.IsNullOrWhiteSpace(_book.Name) ? "New Army" : _book.Name;
+    }
+
+    /// <summary>
+    /// The folder this army belongs in, made if it is missing, or null when there is no armies folder
+    /// at all. Keyed off the ARMY's system, not the screen's dropdown, so a list loaded for editing is
+    /// re-saved where it belongs even if the dropdown has moved on since.
+    /// </summary>
+    private static string? FolderForArmy(ArmyListFile army)
+    {
+        if (ArmyPaths.FolderPath is not { } root) return null;
+
+        EGameSystem system = GameSystemInfo.FromSlug(army.GameSystem) ?? EGameSystem.GrimdarkFuture;
+        string folder = Path.Combine(root, ArmyPaths.FolderNameFor(system));
+        try
+        {
+            Directory.CreateDirectory(folder);
+            return folder;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Commits the named save: resolves the folder, applies the #307 guard, and writes. Split from the
+    /// modal so the guard path can finish the write after its own confirm without re-prompting for a
+    /// name.
+    /// </summary>
+    private void CommitNamedSave(string name)
+    {
+        _list.Name = name;          // so a second Save suggests what was typed the first time
+        BuiltArmyFile compiled = Compile();
+        compiled.Name = name;
+
+        if (FolderForArmy(compiled) is not { } folder)
+        {
+            _saveNameError = "No armies folder was found to save into.";
+            return;
+        }
+
+        string path = Path.Combine(folder, SanitizeFileName(name) + ArmyListFile.EXTENSION_WITH_PERIOD);
+
+        // #307: a save that would write something other than an army the user built gets one confirm
+        // naming the target file. The ordinary path (a real list, deliberately saved) is untouched.
         ESaveGuard guard = PendingSaveGuard();
-        if (guard == ESaveGuard.None) { WriteArmy(path, compiled); return; }
+        if (guard == ESaveGuard.None)
+        {
+            WriteArmy(path, compiled);
+            ImGui.CloseCurrentPopup();
+            return;
+        }
 
         _pendingSavePath = path;
         _pendingSaveGuard = guard;
-        ImGui.OpenPopup(SaveGuardTitle);
+        _pendingSaveName = name;
+        ImGui.CloseCurrentPopup();
+        _openSaveGuardNextFrame = true;
+    }
+
+    /// <summary>
+    /// A file name from what the player typed. Strips what the filesystem refuses rather than rejecting
+    /// the name, because "Bob's Lads" is a perfectly good army name and bouncing it would be the app
+    /// being pedantic about its own storage. Collapses runs of separators and trims trailing dots and
+    /// spaces, which Windows silently drops and which would otherwise make "Lads." and "Lads" the same
+    /// file.
+    /// </summary>
+    internal static string SanitizeFileName(string name)
+    {
+        var sb = new System.Text.StringBuilder(name.Length);
+        foreach (char c in name)
+            sb.Append(Array.IndexOf(Path.GetInvalidFileNameChars(), c) >= 0 ? ' ' : c);
+
+        string cleaned = string.Join(" ", sb.ToString()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        cleaned = cleaned.TrimEnd('.', ' ');
+        return cleaned.Length == 0 ? "Army" : cleaned;
     }
 
     /// <summary>Serialize at the army's RUNTIME type. Serializing through a base-typed reference writes only
@@ -1342,6 +1527,8 @@ public class ArmyForgeScreen : IAppScreen
         try
         {
             File.WriteAllText(path, SerializeArmy(compiled));
+            // #421: the lobby caches its scan of the armies folder, and this just changed it.
+            ArmyCatalogCache.Invalidate();
             SetStatus(EForgeStatusKind.Success, $"Saved {Path.GetFileName(path)}");
         }
         catch (Exception ex) // read-only target, vanished directory, permissions - never leave it looking saved
@@ -1383,6 +1570,7 @@ public class ArmyForgeScreen : IAppScreen
 
     internal const string LoadFailedTitle = "Load failed";
     internal const string SaveGuardTitle = "Save this list?";
+    internal const string SaveNameTitle = "Name your army";
     internal const string ReopenDriftTitle = "Open for editing?";
 
     /// <summary>#356: what reopening an imported army for editing would change, or empty when it changes

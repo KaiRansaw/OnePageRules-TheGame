@@ -136,7 +136,7 @@ public class ArmyPickerScreen : IAppScreen
 
                 // One Selectable across the row, so the whole line is the hit target. A single click
                 // previews; a double click is the shortcut past the Select button.
-                bool clicked = ImGui.Selectable($"{entry.Name}##{entry.Path}", entry.Key == _selectedKey,
+                bool clicked = ImGui.Selectable($"{entry.FileName}##{entry.Path}", entry.Key == _selectedKey,
                     ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowDoubleClick);
                 ImGui.TableSetColumnIndex(1);
                 ImGui.TextUnformatted(entry.Faction);
@@ -187,7 +187,7 @@ public class ArmyPickerScreen : IAppScreen
             return;
         }
 
-        ImGui.TextUnformatted(army.Name);
+        ImGui.TextUnformatted(army.FileName);
         ImGui.Spacing();
         UiText.Disabled($"Faction: {army.Faction}");
         UiText.Disabled($"Points: {army.Points}");
@@ -197,8 +197,13 @@ public class ArmyPickerScreen : IAppScreen
             UiText.Wrapped($"Over the {_pointsLimit} pt limit for this game - you can still pick it.");
             ImGui.PopStyleColor();
         }
-        ImGui.Spacing();
-        UiText.Wrapped(System.IO.Path.GetFileName(army.Path));
+        // #421: the heading is the file's name now, so the army's own stored name is only worth showing
+        // when it says something different - otherwise it is the same word twice.
+        if (!string.Equals(army.Name, army.FileName, StringComparison.OrdinalIgnoreCase))
+        {
+            ImGui.Spacing();
+            UiText.Disabled($"Saved as: {army.Name}");
+        }
 
         // The unit list belongs here, and is not here yet: the army catalog stores a file's name,
         // faction and points, not its roster, so showing units means opening every .fdgarmy on the
@@ -245,6 +250,7 @@ public class ArmyPickerScreen : IAppScreen
         string needle = _search.Trim();
         IEnumerable<ArmyCatalogEntry> q = _armies.Where(e =>
             (needle.Length == 0
+             || e.FileName.Contains(needle, StringComparison.OrdinalIgnoreCase)
              || e.Name.Contains(needle, StringComparison.OrdinalIgnoreCase)
              || e.Faction.Contains(needle, StringComparison.OrdinalIgnoreCase))
             && (_faction.Length == 0
@@ -257,7 +263,7 @@ public class ArmyPickerScreen : IAppScreen
             1 => q.OrderBy(e => _pointsLimit > 0 && e.Points > _pointsLimit).ThenBy(e => e.Points),
             2 => q.OrderBy(e => _pointsLimit > 0 && e.Points > _pointsLimit).ThenByDescending(e => e.Points),
             _ => q.OrderBy(e => _pointsLimit > 0 && e.Points > _pointsLimit)
-                  .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase),
+                  .ThenBy(e => e.FileName, StringComparer.OrdinalIgnoreCase),
         };
         return q.ToList();
     }

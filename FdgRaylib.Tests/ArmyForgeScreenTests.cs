@@ -25,28 +25,33 @@ public class ArmyForgeScreenTests
         Assert.That(screen.Compile().Units, Is.Empty);
     }
 
-    // ---- #403: the screen leads with the importer --------------------------------------------------
+    // ---- #421: the screen does NOT lead with the importer ------------------------------------------
+    //
+    // #403 made the Forge open with the import modal, on the reasoning that importing is how we
+    // recommend getting a list in. The owner asked for it to stop, 2026-10-31: "there's a button to
+    // import, so i don't want it auto popping up all the time." These two assertions are inverted
+    // rather than deleted - the flag still exists and still drives an intentional open, so what the
+    // tests pin is that nothing arms it behind the player's back.
 
     [Test]
-    public void TheImportPopupIsArmedBeforeTheFirstDraw()
+    public void TheImportPopupIsNotArmedBeforeTheFirstDraw()
     {
-        // Arriving at the Forge should present the importer without the player having to find the
-        // button. Draw() cannot run here (no ImGui context), so the armed flag is what is pinned.
-        Assert.That(new ArmyForgeScreen().ImportOpensOnShow, Is.True);
+        // Draw() cannot run here (no ImGui context), so the armed flag is what is pinned.
+        Assert.That(new ArmyForgeScreen().ImportOpensOnShow, Is.False,
+            "entering the Forge opens the Forge - a modal nobody asked for is one you dismiss on the "
+            + "way to doing something else, every single time.");
     }
 
     [Test]
-    public void EveryEntryIntoTheScreenRearmsIt()
+    public void NoEntryIntoTheScreenRearmsIt()
     {
         var screen = new ArmyForgeScreen();
-        typeof(ArmyForgeScreen).GetField("_openImportOnShow",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .SetValue(screen, false); // as a draw would leave it
 
         screen.OnShown();
 
-        Assert.That(screen.ImportOpensOnShow, Is.True,
-            "coming back to the Forge leads with the importer again, not just the first visit");
+        Assert.That(screen.ImportOpensOnShow, Is.False,
+            "coming back to the Forge - from the army picker, from a save - must not re-open the "
+            + "importer either.");
     }
 
     // Game text is ASCII-only: the ImGui font atlas bakes Basic Latin + Latin-1, so a smart quote or an
