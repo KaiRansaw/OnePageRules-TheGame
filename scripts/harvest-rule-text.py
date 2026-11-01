@@ -65,13 +65,28 @@ stats = {}
 for slug, sid in SYSTEMS.items():
     text = {}
 
+    # Priority matters, and getting it wrong is silent. Three sources, highest first:
+    #   1. the common endpoint's RULES - the core ruleset, worded for this system
+    #   2. each book's specialRules    - what units in that book actually carry
+    #   3. the common endpoint's TRAITS - campaign Hero traits, which are a DIFFERENT namespace
+    #
+    # Traits must go last, because six names appear in both namespaces meaning different rules:
+    # Agile, Berserker, Crazed, Destroyer, Fanatic and Runner. Grimdark Future's Hero trait "Fanatic"
+    # is "the Hero and its unit get AP(+1) in melee when charging"; the Soul Snatcher Cults BOOK rule
+    # of the same name is a 9" redeploy, and it is the book one a unit on the table has. Loading
+    # traits first (the first cut of this script did) ships the trait's text for every one of those
+    # six, which is not a wording difference - it is the wrong rule.
     common = get(f"{BASE}/api/rules/common/{sid}")
+    common_traits = {}
     n_common = 0
     if common:
-        for entry in common.get("rules", []) + common.get("traits", []):
+        for entry in common.get("rules", []):
             if entry.get("name") and entry.get("description"):
                 text[entry["name"]] = fold(entry["description"])
                 n_common += 1
+        for entry in common.get("traits", []):
+            if entry.get("name") and entry.get("description"):
+                common_traits[entry["name"]] = fold(entry["description"])
 
     index_slug = INDEX_SLUG.get(slug, slug)
     index = get(f"{BASE}/api/army-books?filters=official&gameSystemSlug={index_slug}")
@@ -100,11 +115,18 @@ for slug, sid in SYSTEMS.items():
         if (i + 1) % 10 == 0:
             print(f"  {slug}: {i + 1}/{len(uids)} books", flush=True)
 
+    # Traits last: they fill names nothing else defined, and never displace a rule.
+    shadowed = sorted(n for n in common_traits if n in text)
+    for name, desc in common_traits.items():
+        text.setdefault(name, desc)
+
     out[slug] = dict(sorted(text.items()))
     stats[slug] = {"rules": len(text), "fromCommon": n_common, "books": n_books,
-                   "booksListed": len(uids), "conflicts": sorted(conflicts)}
+                   "booksListed": len(uids), "conflicts": sorted(conflicts),
+                   "traitsShadowedByARule": shadowed}
     print(f"{slug}: {len(text)} rules ({n_common} common + books), "
-          f"{n_books}/{len(uids)} books, {len(conflicts)} per-book disagreements", flush=True)
+          f"{n_books}/{len(uids)} books, {len(conflicts)} per-book disagreements, "
+          f"{len(shadowed)} trait names shadowed by a real rule", flush=True)
 
 # Each Quest system is TWO Army Forge ids (CLAUDE.md): the player's hero roster and the enemy/AI army
 # books, with different stats - and, it turns out, overlapping but non-identical rule text. The GAME has
