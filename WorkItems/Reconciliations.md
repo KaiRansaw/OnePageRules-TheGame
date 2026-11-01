@@ -796,3 +796,11 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > And again the number went into source comments before it was checked - this time before any commit, so
 > nothing was pushed wrong, but the rule in CLAUDE.md says to fetch and file FIRST for a reason. Twice in
 > one day. The check costs one command; the renumber costs a day.
+
+> **2026-11-01 - number 425 filed clean, and filed BEFORE the number went anywhere.** `git fetch origin`,
+> read from `origin/campaign-360`: index items **412-424**, detail files max **424**, archive real items
+> max **411**. **425 = end-to-end networked playthrough coverage.** No collision.
+>
+> Recorded because it is the first time today the order was right: detail file and archive entry written
+> first, then the number put into the test's doc comment. After 422 and 424 both went into source
+> comments ahead of the check, this is the cadence the rule asks for.
