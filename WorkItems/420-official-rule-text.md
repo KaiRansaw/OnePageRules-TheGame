@@ -15,6 +15,49 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - all six modes selectable, and the alternation clause (B24, B25)
+
+**AoF: Skirmish was greyed out and nothing was blocking it.** Found while answering "what stands between
+here and shippable" by reading the code rather than recalling it. It had its own 46 army books (#412),
+slug, army folder, force-org profile, CLI alias, display name, menu subtitle, the 4'x4' table and 6"
+coherency, and it shares `CoreRulesProfile.Skirmish` with Firefight - selectable throughout. It had also
+been playing full headless games the whole time. `GameSystemInfo.IsAvailable` was a hand-written member
+list that never got updated when its books landed, so one of six modes sat unclickable for weeks for a
+reason nobody had written down. It now enumerates `DisplayOrder`, and `GameSystemAvailabilityTests` pins
+that every listed system is selectable AND has the slug, modes, rules profile and official text to be
+more than a menu entry.
+
+**"Players alternate in placing X units, starting with the player that activates next."** Three core
+rules carry that sentence word for word - Scout, Ambush, Re-Deployment - and the engine honoured it in
+one. `PlaceDeferredUnitsStage` walked `DeferredUnits` (built team -> player -> army -> unit);
+`StartOfRoundExtraActionStage.BringOnReserves` walked armies then units. Both placed everything one
+player owned before the other placed any.
+
+These are the two rules whose point is committing blind, so the alternation is the rule, not decoration:
+army-by-army hands the second player the entire enemy commitment before they place a unit. All the
+placements are legal and nothing is logged, which is why it survived.
+
+**Re-Deployment got it right because it is interactive** - a round-robin of prompts, so there was a loop
+over players to hang the clause on. The other two are non-interactive sweeps over a collection. Worth
+remembering as a shape: *a rule about taking turns goes missing wherever the code has no turn to take.*
+
+`AlternatingPlacement.Interleave` now serves both. Each owner's units keep their relative order; an
+owner missing from the turn order places late rather than not at all, since dropping a unit from
+deployment would be worse than the fault being fixed.
+
+**13 tests** - 9 on the ordering, 4 driving the real stage. The second set is the link assertion: a
+working helper and a stage that still walks its own list look identical from outside, and this project
+has been bitten by that repeatedly. **No existing Scout test had two players' Scouts in one
+deployment**, which is how the bug survived - the fault could only ever appear with more than one owner.
+
+Also corrected in `CLAUDE.md`: it still told every session that AoF: Quest's hero roster "is not
+imported at all, which is why AoF: Quest is still unselectable in the lobby". #418 imported its 161
+heroes and unlocked it two weeks ago. Worth fixing promptly - an audit pass earlier today read a wrong
+doc comment of mine and repeated the mistake back as a finding, and a stale line in the file every
+session reads first is the most expensive kind.
+
+---
+
 ### 2026-10-31 - the Hero aura and transport caps, per system (B23)
 
 Kai: *"work on what you think is the most pressing matter"*. These two, from the audit's open list,
