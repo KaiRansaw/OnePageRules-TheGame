@@ -774,3 +774,17 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > "466"... and concluded 416 was taken. Those are **test-suite tallies** in prose ("Suite 416/0"), not
 > item numbers, and the index's "810" is a Star Quest high score. Grep the item SYNTAX (`- [x] NNN —`),
 > not bare three-digit numbers, or the archive's own narrative will look like a numbering collision.
+
+> **2026-11-01 - numbers 422 and 423 filed, and one of them was used before it was filed.** `git fetch
+> origin` first, read from `origin/campaign-360` (the branch being pushed to): index items **412-421**,
+> detail files max **421**, archive real items max **411**, and `origin/main` is far behind at 408. No
+> `42x` on either remote. **422 = the rule clauses #420's audit found, fixed. 423 = the official AI's
+> Special Rules clauses.** No collision.
+>
+> **The mistake worth recording: #422 went into source comments across three patches before the number
+> was checked or a detail file existed.** It happened to be free, so nothing had to be renumbered - but
+> that was luck, and the whole reason CLAUDE.md says to fetch and file BEFORE writing the number anywhere
+> is that the number is copied into comments, tests and filenames immediately. The fix was cheap here
+> (one detail file created so the number resolves, pointing at `WorkItems/420` where the notes already
+> lived); a collision would have cost a renumber across dozens of references, which is exactly what
+> reconciliations 39 and 40 describe.
