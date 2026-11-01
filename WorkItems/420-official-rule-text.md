@@ -74,12 +74,24 @@ Fearless gates on all-models; it gates on most. `SpecialRulesAudit.md` says the 
 "once per shoot + once per melee"; `PostCombatMoveGate` shares one budget per round. The Hit &amp; Run
 Fighter doc says "the charged unit" where #391 made it role-neutral.
 
-#### One source conflict to settle with the books, not the code
+#### Settled: Army Forge outranks the books on numbers (B22)
 
-The harvested text gives **Star Quest's Scout as 12&quot;**, while `QuestRulesProfile` and
-`CoreRulesProfile` both quote GFSQ Core Rules v2.1.0 as **9&quot;** (and attribute 12" to AoFQ 2.0.1).
-One of the two is stale. The project holds `GFSQ - Core Rules v2.1.0.pdf`; read it before changing
-anything, since Army Forge's data and the PDF can disagree.
+The harvested text gave **Star Quest's Scout as 12"** where `QuestRulesProfile` quoted GFSQ Core Rules
+v2.1.0 as **9"**. Raised with the owner, who ruled on 2026-10-31: *"On Army Forge it says Scout is 12".
+If there'''s any stat differences, refer to Army Forge."*
+
+`ScoutForwardInches` is **12** for both Quest systems, and the convention is now in `CLAUDE.md` under
+"When the books and Army Forge disagree" so it does not have to be rediscovered. The reasoning worth
+keeping: every unit'''s points, Quality, Defense and weapons already come from Army Forge, so taking a
+rule'''s number from a PDF while taking the units''' numbers from the API builds a game that disagrees
+with itself invisibly.
+
+Scoped to **numbers** - ranges, thresholds, costs, caps. The books stay the authority on what a rule
+*does*; a disagreement about a rule'''s structure gets surfaced rather than silently resolved.
+
+Three tests quoted the PDF'''s 9" as their reasoning and were rewritten, one of them carrying the number
+in its own name. The Star Quest case no longer compares against `ScoutDeploymentRules.ForwardRangeInches`
+- that is Grimdark Future'''s 9", and the two are now genuinely different numbers.
 
 ---
 
