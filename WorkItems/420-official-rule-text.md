@@ -15,6 +15,82 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - three more clauses, and a machine-played sweep (B27)
+
+**Ravage: "once per round" was "once per melee".** `ResolveRavageWoundsStage` runs in `MeleeStage` and
+again in `StrikeBackStage`, which is right inside one melee - both combatants roll before their own
+swings, neither twice - and wrong across a round. A unit that charges on its own activation and is then
+charged later in the round swings in two melees and rolled its full dice in both; a Ravage(6) carrier was
+worth up to 12 unsaveable wounds a round instead of 6.
+
+New `TokenType.RavagedThisRound`, RoundEnd clear trigger, same shape and lifecycle as
+`PostCombatMoveUsed`. **The token is stamped by the STAGE, not by the hook's condition**, and that is the
+load-bearing detail: a hook evaluation that finds no living carriers or a zero-dice pool must not spend
+the round's budget, or a Fatigued unit would lose the Ravage it never rolled. Both halves are a test.
+
+**Aircraft: the "(even if Shaken)" parenthesis.** Aircraft reads "may only use Advance actions, moving in
+a straight line, and adding 30" to its total move (even if Shaken)". Shaken forces a unit to spend its
+activation idle, and `ChooseActionStage` applied that to Aircraft too - so a Shaken Aircraft hovered
+motionless, which cannot happen on a table. It is now routed to its forced Advance instead of to
+end-of-activation, and still gets no attack: the forced move returns to the same stage, where
+`StartedActivationShaken` is still set and `HasMoved` is now true, so the branch ends the activation
+before the shoot option is offered. The idle banner is suppressed on that second pass - the unit flew, it
+did not idle. Falls back to idling when the unit cannot move at all.
+
+**Transport: 2" to board, not 1".** `EmbarkContactDistanceInches` was reasoned from first principles
+(true base contact is unreachable since #205 made friendly models end-of-move obstacles, so the band had
+to be non-zero, and 1" matched cohesion's idea of "adjacent"). Sound reasoning, wrong number: the book
+gives it explicitly - "getting within 2" to enter" - in all six systems, which differ only in the Tough
+caps. A squad that stopped 1.5" from the hull was refused a boarding it is entitled to. The 6" exit band
+is from the same sentence and was already right.
+
+**A machine-played sweep, and what it caught.** All six systems x standard and Horde x five dice seeds =
+60 complete AI-vs-AI games, each checked for exit 0, a real `Game result` line and no exception text. All
+60 clean. Two runs in the first pass did fail, and the cause is worth recording: **the sweep rebuilds, so
+it compiled a source tree that was mid-edit** (a two-minute compile error in a new test file). Re-run
+against a clean build, both passed. Lesson - either build once and sweep the binary, or do not edit while
+a sweep runs. The second pass uses the prebuilt binary for that reason.
+
+### 2026-10-31 - Slayer's Hold gate, and the per-system Tough threshold (B27)
+
+**Slayer's shooting arm was gated on a distance, not on a Hold action.** The book, in all six systems:
+*"When using **Hold actions** and shooting, or when charging, this model's weapons get AP(+2) if most
+models in the target have Tough(3) or higher."* The engine had `DistanceGreaterThan(9)`, which is wrong
+in both directions at once - AP(+2) handed to a unit that Advanced and shot from 20", and denied to a
+unit that Held and shot from 5". Both of those are now a test (`SlayerRuleIntegrationTests`, 7 cases).
+
+The fix reads "Hold action" as `Not(TokenPresent(MovedThisRound))`, which is Artillery's idiom for the
+same phrase, and adds `Not(IsMelee())`, which Artillery does not need: Artillery's surviving 12" gate
+cannot pass in base contact, but with Slayer's distance gate gone the shooting entry would otherwise
+fire on a **held unit's strike-back** - a unit that Held is by definition still unmoved when charged.
+Both halves were sabotage-checked separately: reverting to the distance gate fails 2 cases, dropping
+only `Not(IsMelee)` fails the strike-back case.
+
+**Deferred, and worth its own slice: Slayer's Tough threshold is per-system, and the Quest melee arm
+is a different rule.** Read off `OfficialRuleText.json` rather than from memory:
+
+| system | `Slayer` | `Melee Slayer` | `Ranged Slayer` |
+|---|---|---|---|
+| Grimdark Future, Age of Fantasy | Tough(**3**) | Tough(3), *when charging* | Tough(3), Hold + shooting |
+| GF: Firefight, AoF: Skirmish | Tough(**9**) | Tough(9), *when charging* | Tough(9), Hold + shooting |
+| GF: Star Quest, AoF: Quest | Tough(**27**) | Tough(**9**), **no charge clause at all** | Tough(27), Hold + shooting |
+
+Two separate problems in that table, and the second is the nastier one:
+
+1. `Condition.TargetMajorityHasTough(3)` bakes the 3 in as a constructor argument, so there is nowhere
+   for `CoreRulesProfile` to reach it. Unlike the six flags already on the profile this needs either a
+   profile-aware condition or a per-system rule catalog - the same shape as the known "no per-system
+   rule catalog yet" gap in CLAUDE.md, and it should be fixed with that rather than bolted on here.
+2. In both Quest systems **Melee Slayer is structurally a different rule**: *"This model's melee weapons
+   get AP(+2) against units where most models have Tough(9) or higher"* - every melee attack, not just a
+   charge, and at a third of the combined rule's threshold. That is the "disagreement about a rule's
+   *structure* rather than a number" case CLAUDE.md says to surface rather than silently pick. Neither
+   `Melee Slayer` nor `Ranged Slayer` is implemented as its own definition yet (only the combined
+   `Slayer`, which Slayer Mark grants), so nothing is currently wrong in play - but the Quest reading
+   cannot be expressed by changing a number.
+
+**Recorded, not quietly dropped.**
+
 ### 2026-10-31 - all six modes selectable, and the alternation clause (B24, B25)
 
 **AoF: Skirmish was greyed out and nothing was blocking it.** Found while answering "what stands between
