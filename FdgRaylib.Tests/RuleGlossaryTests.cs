@@ -19,11 +19,18 @@ public class RuleGlossaryTests
     private static BookFile BookWith(params SpecialRuleDefinition[] definitions) =>
         new() { Name = "Test Book", RuleDefinitions = new List<SpecialRuleDefinition>(definitions) };
 
+    // #420 rewrote this test's EXPECTATION, not its subject. It still proves a core rule resolves from
+    // a book that does not define it; what changed is the answer, which is now OPR's published wording
+    // rather than the hand-written summary. The summary for Stealth was close, but 36 of the 38
+    // summaries that could be checked against OPR's text were not, so the glossary no longer serves any
+    // of them where real text exists.
     [Test]
-    public void Describe_CoreRule_ReturnsTheCatalogsDescription()
+    public void Describe_CoreRule_ReturnsTheOfficialText()
     {
         RuleGlossary glossary = RuleGlossary.Build(BookWith());
-        Assert.That(glossary.Describe("Stealth"), Is.EqualTo(CoreRuleCatalog.Stealth.Description));
+
+        Assert.That(glossary.Describe("Stealth"),
+            Is.EqualTo(OfficialRuleText.Text("Stealth", GameSystems.GrimdarkFuture)));
         Assert.That(glossary.Describe("Stealth"), Is.Not.Empty);
     }
 
@@ -49,7 +56,8 @@ public class RuleGlossaryTests
 
         Assert.That(tough.PrintableName, Is.EqualTo("Tough(3)"));
         Assert.That(glossary.Describe("Tough(3)"), Is.Null, "the printable name is not a catalog key");
-        Assert.That(glossary.Describe(tough), Is.EqualTo(CoreRuleCatalog.Tough.Description));
+        Assert.That(glossary.Describe(tough),
+            Is.EqualTo(OfficialRuleText.Text("Tough", GameSystems.GrimdarkFuture)));
     }
 
     [Test]
@@ -58,7 +66,8 @@ public class RuleGlossaryTests
         RuleGlossary glossary = RuleGlossary.Build(BookWith());
         var alias = new SpecialRuleEntry_Alias("Medical Training", new SpecialRuleEntry_Core("Regeneration"));
 
-        Assert.That(glossary.Describe(alias), Is.EqualTo(CoreRuleCatalog.Regeneration.Description));
+        Assert.That(glossary.Describe(alias),
+            Is.EqualTo(OfficialRuleText.Text("Regeneration", GameSystems.GrimdarkFuture)));
     }
 
     [Test]
@@ -133,7 +142,9 @@ public class RuleGlossaryTests
         RuleGlossary glossary = RuleGlossary.Build(BookWith());
         string tooltip = glossary.Tooltip(new SpecialRuleEntry_CoreNumeric("Tough", 3));
 
-        Assert.That(tooltip, Is.EqualTo($"Tough(3)\n{CoreRuleCatalog.Tough.Description}"));
+        Assert.That(tooltip,
+            Is.EqualTo($"Tough(3)\n{OfficialRuleText.Text("Tough", GameSystems.GrimdarkFuture)}"),
+            "the tooltip is the printable name, a newline, then OPR's own wording for the rule (#420).");
     }
 
     [Test]

@@ -451,14 +451,19 @@ public sealed class ArmyListOverlay
     }
 
     /// <summary>The comma-joined hoverable segment list for a set of resolved rules.</summary>
-    private static List<RuleHoverText.Segment> RuleSegmentsFor(IReadOnlyList<ResolvedRule> rules)
+    private List<RuleHoverText.Segment> RuleSegmentsFor(IReadOnlyList<ResolvedRule> rules)
     {
+        // #420: OPR's own wording for the system being played, not the authored summary.
+        string? slug = _tableState?.Progress is { } progress
+            ? GameSystemInfo.Slug(progress.GameSystem)
+            : null;
+
         var segments = new List<RuleHoverText.Segment>();
         foreach (ResolvedRule rule in rules)
         {
             if (segments.Count > 0) segments.Add(new RuleHoverText.Segment(", ", null, null));
             segments.Add(new RuleHoverText.Segment(rule.RequestedName, rule.RequestedName,
-                rule.Definition.Description));
+                OfficialRuleText.Display(rule.Definition, slug)));
         }
         return segments;
     }

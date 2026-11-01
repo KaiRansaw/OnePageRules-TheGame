@@ -41,21 +41,51 @@ public sealed class RuleGlossary
     /// it rather than claim the rule does nothing. Same comparer as the resolver means the glossary is
     /// silent exactly when army load would also fail to resolve the name.
     /// </remarks>
-    public static RuleGlossary Build(BookFile? book) => Build(book?.RuleDefinitions);
+    public static RuleGlossary Build(BookFile? book) =>
+        Build(book?.RuleDefinitions, book?.GameSystem);
 
     /// <summary>
     /// The same glossary from a bare definition list, for a source that carries rules but no book -
     /// a saved .fdgarmy opened in the Combat Calculator (#397), whose embedded definitions are all the
     /// hovers have to go on.
     /// </summary>
-    public static RuleGlossary Build(IEnumerable<SpecialRuleDefinition>? definitions)
+    public static RuleGlossary Build(IEnumerable<SpecialRuleDefinition>? definitions,
+        string? gameSystem = null)
     {
         var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Lowest priority: the hand-written summary each definition was authored with. #420 measured
+        // these against OPR's own text and 36 of the 38 that could be checked did not match - several
+        // had dropped a whole clause - so they are now only ever the answer for a rule OPR publishes no
+        // text for, which in practice means the engine's internally generated helper definitions
+        // ("AP(+1) in melee", "Trait: Agile") that no player looks up.
         foreach (SpecialRuleDefinition definition in CoreRuleCatalog.All)
             byName[definition.Name] = definition.Description;
+
+        // Then OPR's wording for this system, which beats the summary for every rule OPR publishes -
+        // and which has to be keyed PER SYSTEM, because Star Quest's Fear, Scout, Blast, Tough and
+        // Flying all read differently from Grimdark Future's and those are real rules differences.
+        // Showing a Star Quest player Grimdark Future's Fear tells them to check the wrong thing at the
+        // end of a melee.
+        foreach (string name in byName.Keys.ToList())
+        {
+            string? official = OfficialRuleText.Text(name, gameSystem);
+            if (official is not null) byName[name] = official;
+        }
+
+        // Last, and therefore highest: the book's OWN definition of a name. This is also OPR's text -
+        // the importer takes it from the same place - but it is the more specific of the two, because
+        // OPR does occasionally reword a rule for one book, and the per-system table above cannot hold
+        // two answers for one name. A faction rule that only this book has is here and nowhere else.
         if (definitions is not null)
             foreach (SpecialRuleDefinition definition in definitions)
-                byName[definition.Name] = definition.Description;
+                if (!string.IsNullOrWhiteSpace(definition.Description))
+                    byName[definition.Name] = definition.Description;
+
+        // Deliberately NOT seeded with every name OPR publishes. The glossary's key set is also its
+        // answer to "is this rule known here?", and a rule the engine has no definition for must keep
+        // reading as unknown rather than acquiring a confident description of behaviour that will never
+        // happen. That is the #420 fault in miniature: convincing text in front of nothing.
         return new RuleGlossary(byName);
     }
 

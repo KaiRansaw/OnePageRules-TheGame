@@ -360,11 +360,12 @@ public class TableTooltipOverlay
             foreach (var rule in rules)
             {
                 ImGui.TextUnformatted(RuleDisplayName(rule));
-                if (!string.IsNullOrEmpty(rule.Definition.Description))
+                string text = RuleText(rule);
+                if (!string.IsNullOrEmpty(text))
                 {
                     ImGui.Indent();
                     ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
-                    ImGui.TextDisabled(rule.Definition.Description);
+                    ImGui.TextDisabled(text);
                     ImGui.PopTextWrapPos();
                     ImGui.Unindent();
                 }
@@ -759,10 +760,11 @@ public class TableTooltipOverlay
             foreach (var rule in rules)
             {
                 ImGui.TextUnformatted(RuleDisplayName(rule));
-                if (!string.IsNullOrEmpty(rule.Definition.Description))
+                string text = RuleText(rule);
+                if (!string.IsNullOrEmpty(text))
                 {
                     ImGui.Indent();
-                    ImGui.TextDisabled(rule.Definition.Description);
+                    ImGui.TextDisabled(text);
                     ImGui.Unindent();
                 }
             }
@@ -879,4 +881,17 @@ public class TableTooltipOverlay
     // The resolved RequestedName already carries any numeric args (army-load formats it "Tough(2)"), so
     // it's used as-is; re-appending Arguments would double them into "Tough(2)(2)".
     private static string RuleDisplayName(ResolvedRule rule) => rule.RequestedName;
+
+    /// <summary>
+    /// #420: the rule text a player reads is OPR's own wording for the system being played, not the
+    /// hand-written summary the definition was authored with. Keyed off the live game so a Star Quest
+    /// table shows Star Quest's Fear and Blast - the two that differ most, and the two most likely to
+    /// make a player check the wrong thing at the end of a melee.
+    /// </summary>
+    private string RuleText(ResolvedRule rule) =>
+        OfficialRuleText.Display(rule.Definition, SystemSlug());
+
+    private string? SystemSlug() => _tableState?.Progress is { } progress
+        ? GameSystemInfo.Slug(progress.GameSystem)
+        : null;
 }
