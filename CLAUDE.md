@@ -56,6 +56,26 @@ Long-running engineering tasks are tracked outside this file to keep the context
 
 This file-based system is for durable, cross-session tracking. The built-in Task tool is still the right place for in-session ad-hoc todos.
 
+## When the books and Army Forge disagree, Army Forge wins
+
+**Owner's ruling, 2026-10-31:** *"On Army Forge it says Scout is 12". If there's any stat differences,
+refer to Army Forge."*
+
+The PDFs in the project and the Army Forge API do not always agree on a **number**, because OPR updates
+the two on different schedules. Where they disagree, **Army Forge is the source of truth** — it is where
+the army data itself is imported from, so taking a rule's number from the PDF while taking the units'
+numbers from Army Forge produces a game that is internally inconsistent in a way nobody can see.
+
+Worked example, and the reason this is written down: GFSQ Core Rules v2.1.0 prints Scout as *"anywhere
+fully within **9"** of its deployment zone"*; Army Forge serves **12"** for both Quest systems.
+`QuestRulesProfile.ScoutForwardInches` is 12.
+
+This governs **numbers** — ranges, thresholds, costs, caps. It does not license ignoring a clause the
+PDF has and Army Forge's one-line summary omits: the books remain the authority on what a rule *does*,
+and `BuiltInAssets/OfficialRuleText.json` (#420) is Army Forge's own wording, not a paraphrase, so the
+two rarely conflict on substance. When a disagreement is about a rule's *structure* rather than a
+number, surface it rather than silently picking one.
+
 ## Game systems vs game modes — every mode has its own unit stats
 
 **This is integral to the game and the single easiest thing to get catastrophically wrong.**
