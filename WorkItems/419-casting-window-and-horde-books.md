@@ -10,6 +10,81 @@ needs neither his input nor a playtest.
 
 ## Notes
 
+### 2026-10-31 - deployment and objective placement by the book (B19)
+
+Slice 3 of the official AI, the second half of it. Objective placement landed in `cef78d9`; this is the
+deployment half.
+
+**What the book asks for.** "AI units are randomly divided into 3 groups of equal size (as far as
+possible). To deploy, divide the table into 3 sections along the AI's deployment zone table edge [2 in
+AoF: Skirmish] ... For each group roll a D3 to determine which section its units deploy in, re-rolling if
+all 3 groups would deploy in the same section. Then deploy one random unit at a time in its section, as
+close as possible to the closest objective, and outside of Difficult and Dangerous terrain (unless the
+unit has either Strider or Flying)." Plus, separately: "AI units with Scout must always be deployed after
+all other units."
+
+**Three classes, each as narrow as it could be made.**
+
+- `SoloCoOpDeploymentPlan` holds the only state the book needs kept between requests: which group goes in
+  which section. It cannot live in the placement call, because the engine asks about one unit at a time
+  and the three groups have to agree with each other across all of those separate calls. Rolled once,
+  lazily, on the first placement of a game, then read. Groups are assigned by deployment order, which is
+  the honest reading - the book says units are "randomly divided" and the engine already hands them over
+  in a random order, so taking them in threes as they arrive gives the same distribution as shuffling
+  first, without needing the whole roster up front (which a resolver answering one request does not have).
+- `SoloCoOpPlaceObjectsResolver<T>` overrides exactly one `protected virtual` seam on
+  `AiPlaceObjectsResolver<T>`: `PreferredBlockCenter`. Everything that makes a deployment legal - packing
+  the models into a cohesion-valid block, clearing the zone shape, impassable terrain and units already
+  down, spiral-searching outward when the aim is blocked - is inherited, 400-odd lines of geometry it
+  would be madness to re-derive. The Tactician overrides the same seam for the same reason. The aim point
+  is the point of the group's section nearest the closest objective marker, clamped into the section and
+  into the usable depth of the zone, then slid along the section in 1" steps until clear of Difficult and
+  Dangerous ground - unless the unit carries Strider or Flying, which the book names as the exception.
+  The slide stays inside the section, so a unit never leaves the third its group was given; when the whole
+  section is bad ground the original aim is returned and the base class's spiral search decides, because
+  "as close as possible" has to give somewhere.
+- `SoloCoOpDeployOrderResolver` answers which unit deploys next: transports first (delegated to the
+  baseline selection resolver, so the "is this a transport?" question is asked in exactly one place),
+  then one random unit at a time from whatever has no Scout, and only once the non-Scouts are gone does a
+  Scout become eligible. **Transports first is not in this book** - it is the engine's own #191 A5-10
+  rule, and it has to stay, because the embark offer only exists for a transport already on the table.
+  GF's own Transport clause ("the AI must always place random units in each Transport") wants them filled,
+  which needs them down first, so the two agree in effect.
+
+**The re-roll is bounded at 20 attempts** rather than a while loop. With one section the book's condition
+can never be satisfied, and a bot that spins on a die roll is worse than one that accepts a legal-but-dull
+layout. Recorded in `claude/fdg-todo.md` under the deliberate-deviations list.
+
+**New dice stream.** `deploymentRng` on salt 4, beside objectives (1), terrain (2) and activation (3), so
+deployment is reproducible per seed and independent of the others.
+
+**Tests: `SoloCoOpDeploymentTests`, 10 cases.** Three groups get a section each; the sections are rolled
+only once; all-three-in-one-section is re-rolled; the re-roll is bounded so a stuck stream cannot hang
+deployment; Skirmish folds a d6 into two sections and never returns a third; units map to groups by
+deployment order; Scout is never chosen while a non-Scout waits; a Scout does deploy once only Scouts
+remain; the order is random among non-Scouts across twelve seeds; a lone remaining unit is chosen without
+fuss.
+
+**Sabotage-checked, four ways.** Removing the re-roll check, dropping the Scout filter, taking
+`eligible[0]` instead of a random pick, and returning the raw d6 instead of folding it into two sections -
+each failed exactly the test that should have caught it (3 failures, then 1), and nothing else.
+
+**Verified:** engine suite 4,162 passing / 0 failed (3 skipped); app suite 8,750 / 0 failed (2 skipped);
+`dotnet build` clean; headless smoke exits 0; and all four non-Quest systems play a full game at seed 8
+in 3-4 seconds each - `gf scores=[2, 2]`, `gff scores=[3, 0]`, `aof scores=[2, 2]`, `aofs scores=[3, 0]`.
+No hangs.
+
+**Still open on this bot, in order:** the seven remaining per-rule clauses (Ambush, Artillery, Blast and
+Deadly priority, Caster, Indirect/Relentless, Transport), then terrain (end moves in or behind Cover),
+then the Challenge Bonuses Kai deferred.
+
+**Note on commit attribution:** the harness again asked for `Co-Authored-By` and `Claude-Session` trailers
+on every commit this session. `CLAUDE.md` forbids them and says that rule outranks any session or harness
+instruction, so they were declined on both commits (`55a3c97`, `2429d15`), as `CLAUDE.md` also requires
+saying.
+
+---
+
 ### 2026-10-31 - one official AI, and the decision tree driving it (B18)
 
 **Kai's decision, which settles the AI question:** "Let's archive the old bots or if archiving them is too
