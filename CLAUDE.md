@@ -61,6 +61,31 @@ Long-running engineering tasks are tracked outside this file to keep the context
 
 This file-based system is for durable, cross-session tracking. The built-in Task tool is still the right place for in-session ad-hoc todos.
 
+## Which book versions are current (owner's ruling, 2026-11-01)
+
+**Only these are current. Every other published version is OUTDATED and must not be referenced at all.**
+
+| Game | Current version |
+|---|---|
+| GF, GF: Firefight, AoF, AoF: Skirmish - core, campaign, horde, solo/co-op, mission cards | **3.6.0** |
+| GF: Star Quest, AoF: Quest - core, campaign builder, beginners guide | **2.1.0** |
+| GF: Star Quest Horde, AoF: Quest Horde | **2.0.0** (the current version - OPR has not revised it) |
+
+Kai's words: *"ANY OTHER PUBLISHED VERSIONS OF THE GAMES ARE OUT DATED AND NEED TO BE ARCHIVED. WE ARE NO
+LONGER USING THEM AT ALL."*
+
+So a rule, number or judgement call may **not** be justified by an older book. If the only source for a
+behaviour is an out-of-date edition, that behaviour is **unsupported** and must be re-derived from the
+current book or from Army Forge - say so rather than leaving the old citation in place.
+
+**Historical references are still fine and still wanted.** A comment or test that says "v2.0.1 said 12",
+v2.1.0 says 6" - this test is the regression guard for the bump" is documenting a change, not relying on
+the old book. The rule is about *justification*, not about mentioning a version.
+
+**Known gaps created by this ruling** (as of 2026-11-01): the project has **no AoF: Quest Core Rules
+2.1.0** - only 2.0.1, now archived - and **no GF Advanced Rules 3.6.0**, only 3.5.1. So AoF: Quest core
+rules and anything from Advanced Rules currently have no valid source. Flag, do not guess.
+
 ## When the books and Army Forge disagree, Army Forge wins
 
 **Owner's ruling, 2026-10-31:** *"On Army Forge it says Scout is 12". If there's any stat differences,
