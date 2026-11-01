@@ -5,13 +5,70 @@
 particular rule. Pieces 1-3 (the baseline split, the decision tree, deployment and objective placement)
 landed in B18/B19.
 
-**Status:** six of seven clauses done (B30, B31). **Artillery is parked by the owner's decision of
-2026-11-01** - "Artillery can wait until we port into Godot and have the 3d map working" - which settles
-the question B30 raised rather than leaving it open.
+**Status:** **every clause either done or settled (B30, B31, B32).** Seven per-rule clauses plus the
+General Special Rules clause are implemented; **Artillery is parked by the owner's decision of 2026-11-01**
+- "Artillery can wait until we port into Godot and have the 3d map working" - which settles the question
+B30 raised rather than leaving it open. This item is closed except for Artillery's return with the port.
 
 ---
 
 ## Notes
+
+### 2026-11-01 - the General Special Rules clause, and the end of the list (B32)
+
+The last one, and the clause that was not in `claude/fdg-todo.md`'s table at all until B30 read the books
+for it:
+
+> **General Special Rules:** AI units must always use their special rules **as soon as they are
+> activated**, **targeting the closest unit that makes sense**.
+
+**The same shape of fault as Caster, and the same size.** `SoloCoOpActionResolver`'s switch over the
+decision tree covers Charge, Move, Shoot and Pass, so a **rule-named** action - Teleport, a Storm of X,
+Mend, Furious's buff, a campaign skill, any faction rule an army book authors as an activated ability -
+was never picked by the official bot. Measured against the catalog first rather than guessed: the complete
+set of abilities a unit can be offered at activation is Disembark, Embark, Teleport, the four Storms,
+Furious Buff, Mend and the campaign activation-start abilities. **Self Destruct was the one to check** -
+an AI told to use every rule immediately would blow its own units up - and it turns out to be a passive
+melee trigger with no activated ability at all, so the risk was not real.
+
+The test is a **denylist** of the engine's own menu choices rather than a list of rules, and that is the
+point: the rules come from the army BOOKS, so the bot has to use an ability the engine has never heard of.
+
+Two exclusions, both deliberate:
+- **Cast**, because its own clause overrides this one ("always cast spells AFTER moving"). A test pins
+  that a caster still moves first.
+- **Embark**, on the owner's own ruling of 2026-08-15 ("units should very rarely embark into a transport
+  AFTER deployment"). Without it the bot would climb straight back into the hull the Transport clause had
+  just told it to leave.
+
+Each rule is tried at most once per activation, and a unit with two of them uses both - one per ask - so
+a cancelled custom action cannot spin the menu.
+
+**"Targeting the closest unit that makes sense"** is `SoloCoOpAbilityTargetResolver`. Every unit-targeting
+pick an ability raises arrives as a `CancellableSelectionRequest<UnitData>`, which the baseline answers
+with `AiChooseMeleeDefenderResolver` - "the unit with the fewest living models", a melee-defender heuristic
+and not this clause. Closest is also what the book's Shooting and Melee clauses ask for, so the whole book
+points one way. Distance is measured from `IGameProgress.ActivatingUnit`, since these requests carry the
+options and the player but not the acting unit; with no activating unit the baseline's answer stands rather
+than a guess. **"That makes sense" is left to the engine**: the options have already been filtered by the
+ability's own `TargetSelector`, so every offer is sensible by construction and the clause reduces to
+"the closest of them".
+
+The melee-defender request itself keeps the fewest-models heuristic in both flavours - it is its own
+request type, and the book's Melee clause is about which enemy to CHARGE rather than which to fight once
+several are already in contact.
+
+**Verified in play**, and it needed a third army pair to do it: no lab army fields a unit with Teleport or
+Mend, so the clause could not fire in any sweep. `armies/GDF/3k - High Elf Fleets.fdgarmy` against
+`armies/GDF/3k - Knight Brothers.fdgarmy` teleports four times in four rounds, both sides. **That is now
+twice this item has been caught by armies that do not carry the rule under test** - see the sweep note in
+`claude/fdg-todo.md`.
+
+### Verified (B32)
+
+Engine **4,288 passed / 0 failed** (3 skipped), app **8,766 / 0 failed** (2 skipped), build clean,
+headless smoke exits 0, and 36 more AI games across all six modes clean. 9 new tests, sabotage-checked:
+disabling the rule-action pick fails 2 and flattening the distance key fails 2.
 
 ### 2026-11-01 - Caster and Transport, and Artillery settled (B31)
 

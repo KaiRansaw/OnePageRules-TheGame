@@ -41,6 +41,11 @@ Both numbers surface together everywhere a human sees a release, never in the ta
 ## Working Conventions
 
 - **One vertical slice at a time.** Implement -> add an integration test mirroring the nearest existing `*RuleIntegrationTests` -> verify (above) -> commit -> update the canonical running record (the work item's dated notes / partial-facet ledger). Don't batch unrelated facets into a single change.
+- **Every deliberate difference from the books goes in the house-rules list.** `claude/house-rules.md`
+  (a project doc, not in this repo) is the running list the owner asked for on 2026-11-01: lobby toggles,
+  baked-in deviations, and the judgement calls where a book is silent or contradicts itself. A patch that
+  adds, removes or changes one edits that file in the same session, and says so in the patch notes. A bug
+  is not a house rule - those belong in `claude/fdg-todo.md`.
 - **Never silently cut scope.** When deferring a facet or edge case, say so explicitly and record it in the canonical ledger at the same time — don't drop it quietly.
 - **Surface design forks before building anything non-trivial.** Present the options with tradeoffs and a recommendation, and get sign-off before committing to UI or architecture decisions.
 - **Game text is ASCII-only.** The ImGui font atlas bakes only Basic Latin + Latin-1 glyphs, so anything beyond U+00FF (em/en dashes, arrows, ellipsis, `<=`-style symbols as single glyphs, accented letters) renders as `?` in-game. No such characters in any user-facing string: log lines, banners, request instructions/labels, UI text, rule/spell descriptions, or book/army data. Use `-`, `->`, `...`, `<=`, `>=`, `x` instead. `OprBookImporter.AsciiFold` scrubs imported OPR text; hand-authored strings must be born ASCII. (Comments and docs are exempt.)
