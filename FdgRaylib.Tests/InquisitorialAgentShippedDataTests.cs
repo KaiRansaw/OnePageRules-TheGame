@@ -48,14 +48,24 @@ public class InquisitorialAgentShippedDataTests
     }
 
     [Test]
-    public void MartialProwess_KeepsNeitherRider()
+    public void MartialProwess_CarriesTheSameTwoRiders()
     {
-        // The core rule this one is modelled on. Both riders default to off, so a future edit that moves
-        // either into the shared primitive would show up here.
+        // #422: this case used to assert the opposite - "Martial Prowess says nothing about fatigue ... and
+        // has no army-wide cap" - as the control for both riders defaulting to off. That was true of the
+        // 3.5.1 wording the engine was written against. The 3.6.0 rule is word for word the Inquisitorial
+        // Agent's shape: "...(stops being Fatigued when activated again). Only up to one third of the units
+        // in the army with this rule at the beginning of the game (rounding up) may use it in a single
+        // round." The control for "neither rider" now lives in the engine suite, on a reactivation that
+        // declares neither (ReactivateWithNoRiders_KeepsFatigue_AndIgnoresTheQuota).
         var effect = (Effect.Reactivate)CoreRuleCatalog.MartialProwess.Activated.Single().Effect;
 
-        Assert.That(effect.ClearsFatigue, Is.False, "Martial Prowess says nothing about fatigue");
-        Assert.That(effect.ArmyRoundQuotaDivisor, Is.Zero, "...and has no army-wide cap");
+        Assert.Multiple(() =>
+        {
+            Assert.That(effect.ClearsFatigue, Is.True,
+                "'stops being Fatigued when activated again'");
+            Assert.That(effect.ArmyRoundQuotaDivisor, Is.EqualTo(3),
+                "'only up to one third of the units in the army with this rule ... in a single round'");
+        });
     }
 
     // ---- The corpus ----------------------------------------------------------------------------------

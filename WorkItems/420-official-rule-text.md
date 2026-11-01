@@ -15,6 +15,52 @@ summarization skills with these rules is lakcing."*
 
 ## Notes
 
+### 2026-10-31 - four more rules read against their code (B28)
+
+**Mend was healing the wrong model, and sometimes an illegal one.** The rule: "once per activation, before
+attacking, pick one friendly model within 3" **with Tough**, and remove D3 wounds from it."
+`Effect.Heal` took `EffectiveTarget.Models.First()`, behind a comment saying model selection
+("most-wounded first") was "Phase 8". Two faults in one line: no Tough filter, so a one-wound model was a
+legal pick the book forbids, and selection by list position, so the heal routinely landed on an undamaged
+model while the Tough(6) model beside it sat on its last wound. Selection is now the most-wounded LIVING
+model that has Tough, and no operation at all when the unit holds none.
+
+**Deferred, explicitly:** the book's "pick" is the player's choice and this is a deterministic stand-in.
+The UNIT is already the player's pick (the ability carries a 3" friendly `TargetSelector`); what is
+approximated is which model inside it. A model-level request does not exist - there is no
+"pick a model in this unit" request type and no CLI or GUI resolver for one to reuse - so it is its own
+slice. The stand-in is what a player picks essentially every time.
+
+This also moved `RuleFireLint`: it applied each ability's effect against the plain opponent only, so
+Mend's correct refusal to heal a 1-wound unit read as a dead rule. It now tries each synthesized target
+in turn, the same way `ContextVariants` synthesizes several contexts. The guarantee is unchanged - the
+effect must produce operations in SOME legal world, not in every world.
+
+**Crossing Attack took `crossed[0]` where the book says "pick one of them".** On a flyer's run across the
+board the path routinely crosses two or three units, and the first one clipped is frequently the least
+useful - the squad holding the objective is the point of the rule. `StrafingStage` already had the prompt
+for its identical clause (yes/no when one enemy is crossed, a cancellable pick when several, and no yes/no
+on top of the pick). That implementation is now `MoveThroughTargetPick`, shared by both stages, so there
+is one place for the wording to be right. Still deferred: the once-per-activation marker is not
+auto-cleared, so a unit crosses at most once per game.
+
+**Martial Prowess was missing both of its riders, and both were one word.** The full 3.6.0 text: "once per
+game, if all models in this unit have this rule, it may be activated even if it had already activated this
+round (**stops being Fatigued when activated again**). **Only up to one third of the units in the army with
+this rule at the beginning of the game (rounding up) may use it in a single round**." `Effect.Reactivate`
+has carried `ClearsFatigue` and `ArmyRoundQuotaDivisor` since #197 built them for the Inquisitorial Agent,
+under a comment reading "Martial Prowess says no such thing, so it stays off by default" - true of 3.5.1,
+and nobody went back to the comment when the rule grew into the Agent's shape. Without the quota a Martial
+Prowess army could take a second activation with every unit in one round; without the fatigue clear the
+second activation swung Fatigued, which is most of what it is for.
+
+**Two tests asserted the old reading and were rewritten rather than deleted**, one per repo:
+`MartialProwess_KeepsItsFatigue_AndIgnoresTheQuota` (engine) and `MartialProwess_KeepsNeitherRider` (app)
+were the controls for "both riders default to off". The control moved to a reactivation that declares
+neither (`ReactivateWithNoRiders_KeepsFatigue_AndIgnoresTheQuota`), so the guarantee survives on a rule
+that is actually supposed to lack them. **A test that encodes a misreading is the most expensive kind of
+wrong**: it makes the bug look deliberate, which is why both now carry the book's sentence in the comment.
+
 ### 2026-10-31 - three more clauses, and a machine-played sweep (B27)
 
 **Ravage: "once per round" was "once per melee".** `ResolveRavageWoundsStage` runs in `MeleeStage` and
