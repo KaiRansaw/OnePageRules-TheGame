@@ -5,11 +5,80 @@
 particular rule. Pieces 1-3 (the baseline split, the decision tree, deployment and objective placement)
 landed in B18/B19.
 
-**Status:** four of seven clauses done (B30). Artillery, Caster and Transport remain.
+**Status:** six of seven clauses done (B30, B31). **Artillery is parked by the owner's decision of
+2026-11-01** - "Artillery can wait until we port into Godot and have the 3d map working" - which settles
+the question B30 raised rather than leaving it open.
 
 ---
 
 ## Notes
+
+### 2026-11-01 - Caster and Transport, and Artillery settled (B31)
+
+**Kai, 2026-11-01: "Let's get caster and transport working. Artillery can wait until we port into Godot
+and have the 3d map working."** So Artillery's half-clause question from B30 is answered: it waits, whole,
+for terrain that can express "the highest position". Grouped with the elevation decision as recommended.
+
+**Caster, and the larger fault behind it.** The clause: "AI units always cast spells **after moving**,
+selecting a random spell by rolling **D3+X**, where X is their caster level. If there is no valid target
+for that spell, or they don't have enough tokens to cast it, they must **cycle through the list** until
+there is a valid spell, or else don't cast anything."
+
+Before the selection half was worth writing, there was this: **`SoloCoOpActionResolver` never picked Cast
+in any branch, so the official bot's casters never cast a spell, in any mode, ever.** The switch over the
+decision tree covers Charge, Move, Shoot and Pass and there was no fifth case. Cast is now picked once no
+move is still to come - the unit has already moved, cannot, or the tree is holding it - and it is picked
+**before** Shoot, because casting is once per activation and attacking closes the window, so a bot that
+shot first would never cast at all.
+
+The selection half is `SoloCoOpSpellResolver`. OPR numbers spell lists 1-6, so D3+X is a spell NUMBER:
+Caster(1) rolls 2-4, Caster(3) rolls 4-6. Converted to a zero-based index, then cycled forward **with
+wraparound** - without the wrap a Caster(1) could never reach spell 1 or 6 even as the only castable ones,
+and "cycle through the list" plainly means the whole list. A list shorter than the roll (a faction with
+four spells) wraps for the same reason rather than failing to cast. **No boost**: the clause says nothing
+about spending spare tokens on the roll, so none are spent - Star Quest's resolver boosts because its own
+flowchart tells it to, and inventing it here would be house AI in the book bot's clothing.
+
+**Transport (Grimdark Future only - verified against all four books).** Three instructions in one
+paragraph, and the engine had one and a half of them:
+
+1. *"The AI must always place random units in each Transport, **trying to fill up their cargo limit**."*
+   Taking the ride was already right (#191 A5-10 answers the deploy-time embark prompt rather than
+   declining it, after the owner's own 2026-08-15 reversal). What was missing is WHICH transport: the
+   first offered one spreads a load thinly over two half-empty hulls. The fullest transport that still has
+   room now wins - best-fit packing, which is "trying to fill up their cargo limit" in as many words. Every
+   option the engine offers is already validated to fit the unit, so the smallest remaining space is a safe
+   pick without knowing what the unit costs.
+2. *"AI units with Transport **always activate before their cargo on the first round**."* A new optional
+   `holdBack` predicate on `SoloAiActivationOrder.Pick`, in the same shape as the Shaken clause beside it
+   and with the same safety valve: if holding back would leave nothing to activate, nothing is held back.
+   Read as **each transport before ITS OWN cargo**, not "all transports first" - the book ties the two
+   together, so a second transport's passengers do not hold up a transport that has already unloaded.
+   Round 1 only, as written.
+3. *"units inside of them **must always disembark on their first activation** (if possible)."* The one
+   that mattered most, because an embarked unit fails `GetCanMove` ("Embarked; disembark first") and this
+   resolver never offered Disembark - **so cargo the official bot loaded at deployment rode inside until
+   the transport died.** Unconditional and ranked above everything, which is what the book says; the
+   baseline bot instead waits until its ride is within 12" of something worth having
+   (`AiStringSelectionResolver.ShouldDisembark`), a better tactic and not this rulebook's instruction.
+
+Both new picks are latched per activation, like Move and Charge: a declined disembark placement (nowhere
+legal within 6" of the hull) or a cancelled cast reopens the menu with the same option on it, and an AI
+that re-picks an unchanged option spins until the engine's decision watchdog fires.
+
+**A test-harness trap worth recording, because it has now cost time twice.** `TableState.Progress` reads a
+`GameProgressData` out of the STORE, and `TryGetProgress` returns the first one it finds - so a second
+`Create` does not override the round, it makes the answer arbitrary. The engine has
+`GameProgressUtilities.WriteProgress` for exactly this ("the store's single progress record - updating the
+existing one in place"), and that is what the tests use. The first version of
+`AfterRoundOne_TheClauseDoesNotApply` failed for this reason and looked like a logic bug.
+
+### Verified (B31)
+
+Engine **4,278 passed / 0 failed** (3 skipped), app **8,766 / 0 failed** (2 skipped), build clean,
+headless smoke exits 0. 16 new tests. All sabotage-checked: disabling the disembark clause fails 3,
+the activation hold-back fails 1, the best-fit transport pick fails 1, the cast window fails 3 and the
+D3+X spell pick fails 4.
 
 ### 2026-11-01 - Ambush, Indirect, Relentless, Blast and Deadly (B30)
 
