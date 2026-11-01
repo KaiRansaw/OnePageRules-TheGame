@@ -10,6 +10,57 @@ needs neither his input nor a playtest.
 
 ## Notes
 
+### 2026-10-31 - the enemy AI audit, and the first slice of the Solo & Co-Op rules (B17)
+
+**Kai's direction, which narrowed the whole item:** "I don't need a bot controlling any hero's. I just need
+the bots to correctly run enemy armies in every game mode correctly for their game mode." Recorded in the
+to-do as the priority. The hero AI from B16 stays (it is what lets a mission be verified at all) but it is
+not the goal, and nothing should surface it to the player.
+
+**Where the spec lives.** The 3.6.0 Horde books say the enemy side "can either be controlled by another
+player or by the AI (**using the Solo & Co-Op rules**)". Kai then added `GF - Solo & Co-Op Rules v3.6.0`
+and `GFF - Solo & Co-Op Rules v3.6.0`, and confirmed there are none for the Quest systems - right, their
+core rules carry their own flowchart. Read both in full. They are word for word identical except four
+clauses: **Blast** targeting (GF: multi-model without Tough first; GFF: multi-model first), **Deadly**
+targeting (GF: single-model with Tough first; GFF: single-model first), and **Artillery** and
+**Transport**, which only GF has. So AoF and AoFS cannot be assumed to match - still not uploaded.
+
+**What the audit found.** The by-the-book bot followed almost none of it. Two findings mattered most:
+
+- **Shooting had no notion of distance.** `AiChooseRangedAttackResolver` ordered by cover, then by how many
+  of its own models could shoot. The book says closest, always. So the bot would shoot across the table
+  past a unit at 6" whenever the far one was in the open or more guns could see it.
+- **Activation was army build order.** The activation request went through a `DerivedRequestAdapter` onto
+  `AiSelectionResolver`, which takes the first option. The book wants a D3 for one of three table sections,
+  the next section along if that one is empty, a random unit from it, and Shaken units last. Predictable
+  activation is a real weakness - a player who can name the next unit to move can stand outside its reach
+  all game.
+
+**Shipped in this slice:** `SoloAiTargeting` (closest, not-yet-activated, open-before-cover, wired into the
+ranged resolver and reused for melee), `SoloAiActivationOrder` + `SoloRulesActivationResolver` (the D3
+section order, Shaken last, on its own seeded stream at salt 3 so it does not shift the objective or
+terrain streams and re-roll the pinned benchmarks), and `AiCombatMath`, which is the geometry and
+expected-wounds estimate extracted out of `StarQuestAiBrain` so the two brains share one copy - the Quest
+brain keeps its old names as forwards, so no caller changed.
+
+**Built, tested, and deliberately NOT wired yet:** `SoloAiBrain`, the book's five-step decision tree.
+Twelve tests, one per branch. It is not driving units because that needs the action and movement
+resolvers, which is where B16's hero AI cost three wrong guesses - worth its own slice rather than bolting
+it on at the end of this one. Recorded here and in the to-do rather than left implied, because a brain
+nothing calls is easy to mistake for a finished feature.
+
+The Tactician and Strategist are untouched on purpose: they are the #191 challenge ladder, our own
+invention, and they should not be bent toward the book's AI.
+
+Engine 4,086 -> **4,117** (31 tests across the three new fixtures). App 8,750 unchanged. Build **0.31**.
+Sabotage-checked: dropping the distance key, the Shaken filter, or step 3's attended-objective test fails
+six tests between them. A played GF Horde game still runs to round 10.
+
+**Next, in order:** wire the decision tree into the action and movement resolvers; then AI deployment and
+objective placement (3 groups, D3 sections, closest objective, out of bad terrain, 6 squares); then the
+per-rule clauses, including the four that differ between GF and Firefight; then Challenge Bonuses, which
+map neatly onto a difficulty setting. Also newly in the project and unread: both Mission Cards books.
+
 ### 2026-10-31 - a hero-side AI, and three priority calls I got wrong before playing it (B16)
 
 Kai picked this from four options as the next build: "the biggest single lever on how much Claude can
