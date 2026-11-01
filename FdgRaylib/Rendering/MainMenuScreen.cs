@@ -172,7 +172,10 @@ public class MainMenuScreen : IAppScreen
         // they cannot share Star Quest's screen state - a button each is the plain way to say so.
         Tool("AoF Quest Heroes",    () => OnHeroesClicked?.Invoke(EGameSystem.AoFQuest),       4);
         Tool("AoF Quest Campaign",  () => OnCampaignsClicked?.Invoke(EGameSystem.AoFQuest),    5);
-        Tool("Firefight Campaign",  OnStrikeTeamsClicked,      6);
+        // #426: one Campaign entry for all four systems with a Campaign Rules v3.6.0 book (GF,
+        // Firefight, AoF, Skirmish) - the game is picked when the campaign army is created. The two
+        // Quest campaigns above are a different book entirely and keep their own screens.
+        Tool("Campaign",            OnStrikeTeamsClicked,      6);
         Tool("Combat Calculator",   OnCombatCalculatorClicked, 7);
         Tool("Quit",                OnQuitClicked,             8, back: true);
 

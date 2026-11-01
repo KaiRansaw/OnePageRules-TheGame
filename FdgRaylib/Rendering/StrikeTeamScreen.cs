@@ -32,9 +32,19 @@ public sealed class StrikeTeamScreen : IAppScreen
     private enum EView { List, New, Camp, Recruit }
     private EView _view = EView.List;
 
-    private List<(string Path, BuiltArmyFile Army)> _all = new();
-    private List<(string Path, BuiltArmyFile Army)> Teams => _all.Where(a => a.Army.StrikeTeam != null).ToList();
-    private List<(string Path, BuiltArmyFile Army)> Armies => _all.Where(a => a.Army.StrikeTeam == null).ToList();
+    private List<(string Path, BuiltArmyFile Army, EGameSystem System)> _all = new();
+
+    /// <summary>Every campaign army on this computer, across all four systems with a campaign book.</summary>
+    private List<(string Path, BuiltArmyFile Army, EGameSystem System)> Teams =>
+        _all.Where(a => a.Army.StrikeTeam != null).ToList();
+
+    /// <summary>
+    /// The ordinary armies a new campaign may start from. Scoped to the system being created under
+    /// (#426): every mode has its own army-builder stats, so a Firefight list is not a legal start for
+    /// a Grimdark Future campaign even though both folders sit under armies\.
+    /// </summary>
+    private List<(string Path, BuiltArmyFile Army, EGameSystem System)> Armies =>
+        _all.Where(a => a.Army.StrikeTeam == null && a.System == _newSystem).ToList();
     private int _selected = -1;
     private int _unit;
     private bool _confirmDelete;
@@ -44,6 +54,10 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private string _newName = "";
     private int _newArmy = -1;
+    /// <summary>Which game's campaign is being created (#426). Its price list, its armies folder.</summary>
+    private EGameSystem _newSystem = EGameSystem.GrimdarkFuture;
+    /// <summary>#427 - the books' No Permadeath option, picked at creation and fixed afterwards.</summary>
+    private bool _newNoPermadeath;
 
     /// <summary>Recruits waiting to be confirmed: the roster unit id, and whether it is the 5-XP one.</summary>
     private readonly List<string> _cart = new();
@@ -72,7 +86,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void Reload()
     {
         ArmyPaths.EnsureGameTypeFolders();
-        _all = StrikeTeamFiles.LoadAll();
+        _all = StrikeTeamFiles.LoadAllSystems();
         int count = Teams.Count;
         if (_selected >= count) _selected = count - 1;
         if (_selected < 0 && count > 0) _selected = 0;
@@ -80,7 +94,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         _confirmDisband = false;
     }
 
-    private (string Path, BuiltArmyFile Army)? Current
+    private (string Path, BuiltArmyFile Army, EGameSystem System)? Current
     {
         get { var t = Teams; return _selected >= 0 && _selected < t.Count ? t[_selected] : null; }
     }
@@ -143,7 +157,8 @@ public sealed class StrikeTeamScreen : IAppScreen
             StrikeTeamInfo info = cur.Army.StrikeTeam!;
             string head = _view == EView.Recruit ? "RECRUIT - " + info.Name.ToUpperInvariant() : info.Name.ToUpperInvariant();
             return (head,
-                $"{GameSystemInfo.DisplayName(info.GameSystem)}  -  {info.CampaignType} campaign  -  " +
+                $"{GameSystemInfo.DisplayName(info.GameSystem)}  -  {info.CampaignType} campaign" +
+                (info.NoPermadeath ? " (No Permadeath)" : "") + "  -  " +
                 $"{info.Matches} mission(s) played  -  treasury {info.BankedPoints} pts  -  {info.Vp} VP  -  army {cur.Army.TotalPoints} pts");
         }
         return ("CAMPAIGN", "A campaign army keeps its units, XP, traits and injuries from mission to mission.");
@@ -161,7 +176,8 @@ public sealed class StrikeTeamScreen : IAppScreen
         {
             StrikeTeamInfo info = teams[i].Army.StrikeTeam!;
             bool pending = teams[i].Army.Units.Any(u => CampaignRules.Sheet(u)?.Pending.Count > 0);
-            string line = $"{info.Name}\n   {info.Vp} VP - {info.Matches} mission(s) - army {teams[i].Army.TotalPoints} pts - treasury {info.BankedPoints} pts"
+            string line = $"{info.Name}\n   {GameSystemInfo.DisplayName(teams[i].System)} - {info.Vp} VP - "
+                + $"{info.Matches} mission(s) - army {teams[i].Army.TotalPoints} pts - treasury {info.BankedPoints} pts"
                 + (pending ? "   (choices waiting)" : "");
             if (ImGui.Selectable(line + $"##t{i}", i == _selected, ImGuiSelectableFlags.None,
                     new Vector2(0, ImGui.GetTextLineHeightWithSpacing() * 2f)))
@@ -190,7 +206,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void DrawCamp(float x, float y, float w, float h)
     {
         if (Current is not { } cur) { _view = EView.List; return; }
-        (string path, BuiltArmyFile army) = cur;
+        (string path, BuiltArmyFile army, _) = cur;
         CampaignNumbers n = NumbersFor(army);
 
         float gap = 12f;
@@ -230,6 +246,8 @@ public sealed class StrikeTeamScreen : IAppScreen
             string second = sheet == null
                 ? "no campaign sheet"
                 : $"   Lv {sheet.Level} - {sheet.Xp} XP - {unit.ModelCount} model(s) - {unit.PointCost} pts";
+            if (sheet is { MissionsOut: > 0 })
+                second = $"   RECOVERING - out for {sheet.MissionsOut} more mission(s)";
             if (sheet?.Pending.Count > 0) second = "   WAITING ON YOU: pick a trait";
 
             if (ImGui.Selectable($"{unit.Name}{tag}\n{second}##u{i}", i == _unit, ImGuiSelectableFlags.None,
@@ -441,13 +459,29 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.Separator();
 
         // Who is coming
-        var others = Teams.Where(t => t.Path != path).Select(t =>
-            new CampaignEntrant(t.Army.StrikeTeam!.Name, t.Army.TotalPoints, false)).ToList();
+        // Only campaign armies of the SAME game can meet across a table, so only they set the cap
+        // (#426): a 300-pt Skirmish army would otherwise drag a Grimdark Future mission's limit down to
+        // 625 pts, and the two can never play each other.
+        var others = Teams.Where(t => t.Path != path && t.Army.StrikeTeam!.GameSystem == info.GameSystem)
+            .Select(t => new CampaignEntrant(t.Army.StrikeTeam!.Name, t.Army.TotalPoints, false)).ToList();
         int bringing = 0;
         UiText.Colored(TextDim, "Who is coming");
         foreach (UnitFileEntry unit in army.Units)
         {
             if (CampaignRules.Sheet(unit) is not { } sheet) continue;
+
+            // #427: a unit recovering under No Permadeath cannot be taken, and says why rather than
+            // just refusing the click.
+            if (CampaignRules.CannotBringToMission(unit) is { } resting)
+            {
+                ImGui.PushID(sheet.Id);
+                UiText.Disabled($"{unit.Name}  ({unit.PointCost} pts)");
+                ImGui.SameLine();
+                UiText.Colored(Bad, resting);
+                ImGui.PopID();
+                continue;
+            }
+
             bool coming = info.Bringing.Count == 0 || info.Bringing.Contains(sheet.Id);
             bool was = coming;
             ImGui.PushID(sheet.Id);
@@ -463,11 +497,16 @@ public sealed class StrikeTeamScreen : IAppScreen
             if (coming) bringing += unit.PointCost;
         }
 
-        int comingCount = info.Bringing.Count == 0 ? army.Units.Count : info.Bringing.Count;
+        // Recovering units are never counted: StartMission filters them out the same way, so the
+        // number on screen is the number that will actually deploy (#427).
+        int comingCount = army.Units.Count(u => CampaignRules.Sheet(u) is { } sh
+            && CampaignRules.CanBringToMission(u)
+            && (info.Bringing.Count == 0 || info.Bringing.Contains(sh.Id)));
         if (others.Count == 0)
         {
             ImGui.TextUnformatted($"Bringing {bringing} pts in {comingCount} unit(s).");
-            UiText.Disabled("No other campaign army on this computer, so there is no cap to measure against yet.");
+            UiText.Disabled($"No other {GameSystemInfo.DisplayName(info.GameSystem)} campaign army on this computer, "
+                            + "so there is no cap to measure against yet.");
         }
         else
         {
@@ -497,7 +536,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void DrawRecruit(float x, float y, float w, float h)
     {
         if (Current is not { } cur || cur.Army.Book is not { } book) { _view = EView.Camp; return; }
-        (string path, BuiltArmyFile army) = cur;
+        (string path, BuiltArmyFile army, _) = cur;
         CampaignNumbers n = NumbersFor(army);
         StrikeTeamInfo info = army.StrikeTeam!;
 
@@ -615,18 +654,48 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private void DrawNew(float x, float y, float w, float h)
     {
-        var armies = Armies;
-        CampaignNumbers n = CampaignNumbers.Firefight;
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
         ImGui.SetCursorPos(new Vector2(x, y));
         ImGui.BeginChild("##newTeam", new Vector2(w, h), ImGuiChildFlags.Borders);
+
         ImGui.TextUnformatted("Army name");
         ImGui.SetNextItemWidth(Math.Min(420f, w * 0.5f));
         ImGui.InputText("##teamName", ref _newName, 48);
         ImGui.Spacing();
-        UiText.Wrapped($"Starting army (from armies\\GF Firefight). The treasury is {n.Treasury} pts and you must spend " +
-                       $"at least {n.MinimumSpend} of it, with at most one hero. Whatever is left over you keep to spend later.");
+
+        // #426: which game's campaign. Each of the four has its own price list and its own armies
+        // folder, and the two move together - picking a system re-scopes the list below it.
+        UiText.Colored(TextDim, "Game");
+        foreach (EGameSystem system in StrikeTeamFiles.CampaignSystems)
+        {
+            if (ImGui.RadioButton(GameSystemInfo.DisplayName(system), _newSystem == system) && _newSystem != system)
+            {
+                _newSystem = system;
+                _newArmy = -1;
+            }
+            ImGui.SameLine();
+        }
+        ImGui.NewLine();
+        ImGui.Spacing();
+
+        // The books' No Permadeath option, fixed for the life of the campaign (Kai's call, 2026-11-01).
+        UiText.Colored(TextDim, "Losses");
+        UiButton.Checkbox("No Permadeath", ref _newNoPermadeath);
+        UiText.Wrapped(_newNoPermadeath
+            ? "A unit that would be killed survives instead: it loses the XP it earned that mission and "
+              + "sits out the next D3 missions. Nothing is ever lost for good."
+            : "A unit that is killed is gone, with its XP, traits and upgrades. This is the default in "
+              + "the book.");
+        ImGui.Spacing();
+
+        var armies = Armies;
+        UiText.Wrapped($"Starting army (from armies\\{ArmyPaths.FolderNameFor(_newSystem)}). The treasury is " +
+                       $"{n.Treasury} pts and you must spend at least {n.MinimumSpend} of it, with at most one hero. " +
+                       "Whatever is left over you keep to spend later.");
         if (armies.Count == 0)
-            UiText.Disabled("No Firefight armies yet - make one in Army Forge (Game Type GF: Firefight) or put a .fdgarmy file in armies\\GF Firefight.");
+            UiText.Disabled($"No {GameSystemInfo.DisplayName(_newSystem)} armies yet - make one in Army Forge " +
+                            $"(Game Type {GameSystemInfo.DisplayName(_newSystem)}) or put a .fdgarmy file in " +
+                            $"armies\\{ArmyPaths.FolderNameFor(_newSystem)}.");
         for (int i = 0; i < armies.Count; i++)
         {
             BuiltArmyFile a = armies[i].Army;
@@ -645,7 +714,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         if (_newArmy < 0 || _newArmy >= armies.Count) return "Pick a starting army.";
         if (Teams.Any(t => string.Equals(t.Army.StrikeTeam!.Name, _newName.Trim(), StringComparison.OrdinalIgnoreCase)))
             return "A campaign army with that name exists.";
-        return CampaignRules.CannotStart(armies[_newArmy].Army, CampaignNumbers.Firefight);
+        return CampaignRules.CannotStart(armies[_newArmy].Army, CampaignNumbers.For(_newSystem));
     }
 
     private void Create()
@@ -654,8 +723,9 @@ public sealed class StrikeTeamScreen : IAppScreen
         var source = Armies[_newArmy];
         if (StrikeTeamFiles.Load(source.Path) is not { } army) { Say("Couldn't read that army file.", true); return; }
         string name = _newName.Trim();
-        string path = StrikeTeamFiles.NewPath(name);
-        CampaignRules.Start(army, name, path, CampaignNumbers.Firefight, EGameSystem.GFFirefight);
+        string path = StrikeTeamFiles.NewPath(_newSystem, name);
+        CampaignRules.Start(army, name, path, CampaignNumbers.For(_newSystem), _newSystem,
+            ECampaignType.Endless, _newNoPermadeath);
         // Not editable in Army Forge any more: re-compiling it there would wipe the campaign changes.
         // Each unit's own selections were copied onto its sheet by Start, which is what the campaign
         // screen upgrades against, and the book stays attached so there is something to buy from.
@@ -753,11 +823,14 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void StartMission()
     {
         if (Current is not { } cur) return;
-        (string path, BuiltArmyFile army) = cur;
+        (string path, BuiltArmyFile army, _) = cur;
         StrikeTeamInfo info = army.StrikeTeam!;
 
+        // #427: a unit recovering under No Permadeath stays at home even when "the whole army comes"
+        // (an empty Bringing list), which is the state a brand new campaign army is in.
         var coming = army.Units
-            .Where(u => CampaignRules.Sheet(u) is { } sh && (info.Bringing.Count == 0 || info.Bringing.Contains(sh.Id)))
+            .Where(u => CampaignRules.Sheet(u) is { } sh && CampaignRules.CanBringToMission(u)
+                        && (info.Bringing.Count == 0 || info.Bringing.Contains(sh.Id)))
             .ToList();
         if (coming.Count == 0) { Say("Tick at least one unit under \"Who is coming\".", true); return; }
 

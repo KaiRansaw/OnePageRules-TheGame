@@ -804,3 +804,13 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > Recorded because it is the first time today the order was right: detail file and archive entry written
 > first, then the number put into the test's doc comment. After 422 and 424 both went into source
 > comments ahead of the check, this is the cadence the rule asks for.
+
+> **2026-11-01 - numbers 426 and 427, taken in order after 425, and the ordering slip again.** Same
+> `git fetch origin` as 425 (nothing new has landed on either remote since; this session is the only
+> thing pushing), so index items **412-424**, archive real items max **411**, and 425 freshly filed.
+> **426 = the campaign serving all four systems. 427 = No Permadeath.** No collision.
+>
+> Honest note: both numbers went into source comments while the slices were being written, before their
+> detail files existed - the same slip as 422 and 424, even though 425 was done the right way round an
+> hour earlier. Nothing had to be renumbered. The habit that actually works is to file the number the
+> moment the slice has a name, not when it has code.
