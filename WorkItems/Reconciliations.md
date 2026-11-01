@@ -788,3 +788,11 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > (one detail file created so the number resolves, pointing at `WorkItems/420` where the notes already
 > lived); a collision would have cost a renumber across dozens of references, which is exactly what
 > reconciliations 39 and 40 describe.
+
+> **2026-11-01 - number 424 filed clean, and the same ordering mistake as 422.** `git fetch origin`,
+> read from `origin/campaign-360`: index items **412-423**, detail files max **423**, archive real items
+> max **411**. **424 = the official AI's Terrain clause.** No collision.
+>
+> And again the number went into source comments before it was checked - this time before any commit, so
+> nothing was pushed wrong, but the rule in CLAUDE.md says to fetch and file FIRST for a reason. Twice in
+> one day. The check costs one command; the renumber costs a day.
