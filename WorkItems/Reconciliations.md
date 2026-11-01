@@ -839,3 +839,15 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > written, before the detail file existed - the same slip as 422, 424, 426 and 427, and after 431 was
 > done the right way round the same day. Nothing had to be renumbered. The lesson has not changed:
 > file the number the moment the slice has a name, not when it has code.
+
+> **2026-11-01 - numbers 433, 434, 435 and 436, all filed BEFORE the numbers went anywhere.**
+> `git fetch origin`, read from `origin/campaign-360`: index items 412-424, archive real items max
+> **432**, and no `433`-`436` anywhere in either. **433 = per-system campaign event names and amounts.
+> 434 = the Underdog Bonus. 435 = mission difficulty and the Custom Point Ranges toggle. 436 = who
+> outfits the enemy army.** No collision.
+>
+> Right order, and worth saying why it finally stuck: all four slices were NAMED during a design
+> conversation with Kai before any code existed, so there was a natural moment to file them. That is the
+> habit the rule is really asking for - "file the number the moment the slice has a name, not when it has
+> code" - and the reason 422, 424, 426, 427 and 432 all slipped is that each of those started as code and
+> acquired a name afterwards. Five slips, one cause.
