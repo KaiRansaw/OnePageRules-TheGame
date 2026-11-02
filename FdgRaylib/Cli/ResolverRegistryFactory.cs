@@ -40,6 +40,11 @@ public static class ResolverRegistryFactory
             .RegisterResolver(new DerivedRequestAdapter<ChooseMeleeDefenderRequest,
                 CancellableSelectionRequest<UnitData>, CancellableResult<FDG.Data.DataBinding<UnitData>>>(
                 cancelSelectUnitCli))
+            // #439: so does the Command Group pick - a cancellable unit list is exactly what it is, and
+            // its own request type exists only so the AI can tell it apart from a melee defender.
+            .RegisterResolver(new DerivedRequestAdapter<PickCommandGroupUnitRequest,
+                CancellableSelectionRequest<UnitData>, CancellableResult<FDG.Data.DataBinding<UnitData>>>(
+                cancelSelectUnitCli))
             .RegisterResolver(new PlaceObjectsResolver<ModelData>(tableState))
             .RegisterResolver(new PlaceOneTerrainResolver(tableState))
             // The text interface has no shop: a CLI defender keeps its points.
@@ -122,6 +127,12 @@ public static class ResolverRegistryFactory
             .RegisterResolver(selectModel)                                   // GUI
             .RegisterResolver(selectZone)                                    // GUI
             .RegisterResolver(cancelSelectUnit)                              // GUI
+            // #439: the Command Group pick forwards to the SAME canvas click-to-select resolver, so the
+            // overlay's pending/draw state and its cancel button work unchanged - and declining a pick is
+            // a real answer here ("up to 2"), which is why the cancellable picker is the right one.
+            .RegisterResolver(new DerivedRequestAdapter<PickCommandGroupUnitRequest,
+                CancellableSelectionRequest<UnitData>, CancellableResult<FDG.Data.DataBinding<UnitData>>>(
+                cancelSelectUnit))
             // #191 A4-3's split kept: melee-defender has its own resolver, which inherits the canvas
             // picker for 2+ defenders and renders a one-click confirm card for a sole defender (#237).
             .RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<FDG.Data.DataBinding<UnitData>>>(

@@ -867,3 +867,9 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 >
 > Filed at the point the slice had a name and before any of it was written, which is what the rule
 > actually asks for - unlike 422, 424, 426, 427 and 432, which all started as code.
+
+> **2026-11-01 - number 439, filed before any of it was written.** `git fetch origin`, read the index and
+> archive from `origin/campaign-360`: nothing numbered 439 or 441-442 anywhere ("440" matches only a test
+> count in prose on the archived #064 line). **439 = audit finding 1**, the wide Command Group for the
+> four skirmish/adventure games. No collision. Filed straight after Kai answered the one gameplay
+> question it needed, which is the moment the slice had a name.
