@@ -857,3 +857,13 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > per-system rule splits the rules audit found** (Quest AI coherency, Quest shooting targets, Quest
 > mandatory strike-back, and the Horde reinforce range). No collision. 433-436 remain reserved for the
 > campaign work; this is the audit's own slice.
+
+> **2026-11-01 - number 438, filed before the number went anywhere.** `git fetch origin`, then read the
+> index and archive from `origin/campaign-360` (note: this repo's default branch is **`main`**, not the
+> `master` CLAUDE.md names - worth fixing in that file): nothing numbered 438 or 439 anywhere. The only
+> hits for "440" are a test count in prose on an archived #064 line, not a work item. **438 = audit
+> finding 3**, Banner's combat-only morale gate, which grew to carry the Lustbound correction (finding
+> 12, found by the rebake) and the networked-test stall detector. No collision.
+>
+> Filed at the point the slice had a name and before any of it was written, which is what the rule
+> actually asks for - unlike 422, 424, 426, 427 and 432, which all started as code.

@@ -207,25 +207,43 @@ public class BoostRuleCompositionTests
         return sink.Net(action);
     }
 
+    // #438 (2026-11-01): these two cases used to drive "Lustbound" + "Lustbound Boost" and assert
+    // +1/+3 rising to +2/+6. Both halves of that are pre-3.6.0:
+    //
+    //   * Lustbound's own numbers changed. Army Forge serves "Moves +1" when using Advance, and +2" when
+    //     using Rush/Charge" for all six systems today; the shipped definition still said +3 on
+    //     Rush/Charge, and the +3 survived review precisely BECAUSE the boost was authored to add +1 on
+    //     top of it and so landed on the correct published total. The total was right and the base was
+    //     wrong - which is exactly the failure mode this fixture exists to catch, caught here only
+    //     because the base was checked against the book independently.
+    //   * "Lustbound Boost" is gone from Army Forge, replaced by "Enhanced Lustbound". Zero of the 288
+    //     bundled books reference Boost or its Aura any more, so they are dead data pending deletion
+    //     (logged in claude/fdg-todo.md) - and a composition guard standing on a rule no book can reach
+    //     guards nothing.
+    //
+    // So the cases now drive the LIVE pair. The old numbers are named above deliberately, as the record
+    // of what changed: that is documenting a bump, not justifying behaviour from a retired book.
     [Test]
-    public void LustboundBoost_ComposesToThePublishedTotal_NotTheSum()
+    public void EnhancedLustbound_ComposesToThePublishedTotal_NotTheSum()
     {
-        Harness harness = HarnessWith("Lustbound", "Lustbound Boost");
-        IUnit unit = harness.BuildUnit("P1", "Lustbound", "Lustbound Boost");
+        Harness harness = HarnessWith("Lustbound", "Enhanced Lustbound");
+        IUnit unit = harness.BuildUnit("P1", "Lustbound", "Enhanced Lustbound");
 
-        // Lustbound is +1/+3; boosted is "+2 on Advance and +6 on Rush/Charge", not +3/+9.
+        // Army Forge: "If this model has Lustbound, it moves +2" on Advance and +4" on Rush/Charge from
+        // Lustbound (instead of only +1" and +2")." So the increment is +1/+2, never the +2/+4 total.
         Assert.That(NetMovementBonus(harness, unit, EActionType.Advance), Is.EqualTo(2f));
-        Assert.That(NetMovementBonus(harness, unit, EActionType.Rush), Is.EqualTo(6f));
-        Assert.That(NetMovementBonus(harness, unit, EActionType.Charge), Is.EqualTo(6f));
+        Assert.That(NetMovementBonus(harness, unit, EActionType.Rush), Is.EqualTo(4f));
+        Assert.That(NetMovementBonus(harness, unit, EActionType.Charge), Is.EqualTo(4f));
     }
 
     [Test]
     public void LustboundBase_OnItsOwn_IsUnboosted()
     {
-        Harness harness = HarnessWith("Lustbound", "Lustbound Boost");
+        Harness harness = HarnessWith("Lustbound", "Enhanced Lustbound");
         IUnit unit = harness.BuildUnit("P1", "Lustbound");
 
         Assert.That(NetMovementBonus(harness, unit, EActionType.Advance), Is.EqualTo(1f));
-        Assert.That(NetMovementBonus(harness, unit, EActionType.Rush), Is.EqualTo(3f));
+        Assert.That(NetMovementBonus(harness, unit, EActionType.Rush), Is.EqualTo(2f),
+            "Rush +2\", not the pre-3.6.0 +3\".");
     }
 }

@@ -4557,7 +4557,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -4572,7 +4572,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",

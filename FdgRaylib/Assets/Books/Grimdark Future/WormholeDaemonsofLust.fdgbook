@@ -4780,7 +4780,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Rush",
-            "distanceInches": 3,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -4795,7 +4795,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Charge",
-            "distanceInches": 3,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -4806,7 +4806,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves moves \u002B1 inches on Advance and \u002B3 inches on Rush/Charge."
+      "description": "Moves \u002B1 inch on Advance, and \u002B2 inches on Rush/Charge."
     },
     {
       "name": "Strider Aura",
@@ -4836,7 +4836,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -4851,7 +4851,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",
@@ -5382,7 +5382,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Rush",
-            "distanceInches": 1,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -5404,7 +5404,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Charge",
-            "distanceInches": 1,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",

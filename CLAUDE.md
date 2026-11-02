@@ -57,7 +57,7 @@ Long-running engineering tasks are tracked outside this file to keep the context
 - `WorkItemsList.md` (repo root) — index of **open** work only; read it when starting work-item tasks. **Keep entries to <=3 lines** (number, title, one-sentence scope/status, link) — running notes, commit hashes, and test tallies belong in the detail file, never the index.
 - `WorkItems/NNN-slug.md` — per-item working memory: goal, dated notes (newest on top), decisions, outcome. Created when work starts. Template: `WorkItems/README.md`.
 - `WorkItems/Archive.md` — completed/closed items, moved out of the index. When finishing an item: write its Outcome in the detail file, tick the index line, move it to the archive.
-- `WorkItems/Reconciliations.md` — number-collision log. Numbers are permanent and never reused. **`git fetch origin` BEFORE filing a number and take it from `origin/master`'s index + archive, not your local copy** — the number gets copied into source comments, tests, filenames and docs immediately, so a collision costs a renumber across dozens of references (see reconciliations 39 and 40, two sessions that made the same mistake days apart). Then read the log; on a collision the unmerged local item yields. A per-clone pre-push hook (`.git/hooks/pre-push`, not version-controlled — install snippet in `WorkItems/README.md`) blocks duplicate numbers across index + archive, but only at push time, which is far too late.
+- `WorkItems/Reconciliations.md` — number-collision log. Numbers are permanent and never reused. **`git fetch origin` BEFORE filing a number and take it from the index + archive on `origin`'s mainline (the default branch is **`main`** — there is no `master`; check the current working branch too, e.g. `origin/campaign-360`), not your local copy** — the number gets copied into source comments, tests, filenames and docs immediately, so a collision costs a renumber across dozens of references (see reconciliations 39 and 40, two sessions that made the same mistake days apart). Then read the log; on a collision the unmerged local item yields. A per-clone pre-push hook (`.git/hooks/pre-push`, not version-controlled — install snippet in `WorkItems/README.md`) blocks duplicate numbers across index + archive, but only at push time, which is far too late.
 
 This file-based system is for durable, cross-session tracking. The built-in Task tool is still the right place for in-session ad-hoc todos.
 
@@ -167,13 +167,24 @@ books — Star Quest alone rewords nine rules the engine implements:
 |---|---|---|
 | **Scout** | set aside, deploy last, within 9" of the zone, **over 9" from non-Scout enemies**, players alternate | **just** "deploy anywhere fully within 9" of its deployment zone" |
 | **Fear(X)** | enemies count +X wounds for **who won the melee** | counts toward **whether they must take a Morale Test** |
-| **Limited** | once per **game** | once per **mission** |
 | **Blast(X)** | capped at models in the target unit | hits **split evenly between units within range** |
 | **Flying** / **Strider** | no jumping clause | auto-passes jumping / halves jumping dice |
 | **Ambush** | players alternate placing | AI units have their own clause |
 
 Firefight, Age of Fantasy and Skirmish each reword a similar handful (AoF and Skirmish also add Banner,
 Musician, Sergeant, Brace(X) and Parry(X), which GF does not have at all).
+
+**`Limited` was listed here as a Star Quest difference and is NOT one** (removed 2026-11-01). GFSQ v2.1.0
+prints "once per mission" and AoFQ v2.1.0 prints "once per game" - but **a mission IS one game session**,
+so the two phrasings mean the same thing; "mission" is the adventure-game word for it. Kai's call, and the
+engine has only ever implemented once-per-game. Listing it implied a mechanical split that does not exist.
+
+**Four real splits were found by the 2026-11-01 audit and fixed in #437**: both Quest systems cap a unit
+at ONE shooting target (not two), their defenders MUST strike back (not "may"), their AI groups keep a 3"
+chain (not 9"), and Horde's reinforce band is 9" in all four Horde books even where the shop is 6". See
+`claude/rules-audit.md` - and note the framing recorded at the top of that file: **each book is its own
+game, so a difference between books is the design, not a defect.** The only valid test is "does the engine
+match THIS book, for THIS system?"
 
 **So "which rules apply" is a third thing the game system decides**, alongside which book and which
 mode. There is no per-system rule catalog yet — that is a known gap, not a licence to assume GF's
