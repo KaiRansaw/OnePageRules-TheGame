@@ -297,11 +297,17 @@ public sealed class MissionSetupScreen : IAppScreen
                     FillEnemyForce(randomize: false);
                 }
                 if (ImGui.IsItemHovered())
-                    UiText.Tooltip(MissionDifficulty.Describe(option, yours, n));
+                {
+                    UiText.Tooltip(MissionDifficulty.Describe(option, yours, n) + "\n"
+                                   + MissionDifficulty.DescribeReward(option, n));
+                }
             }
             ImGui.EndCombo();
         }
         UiText.Wrapped(MissionDifficulty.Describe(info.Difficulty, yours, n));
+        // What it pays, on screen rather than only in the tooltip: the setting changes the reward as
+        // well as the fight, and choosing one without seeing both is choosing half a decision.
+        UiText.Disabled(MissionDifficulty.DescribeReward(info.Difficulty, n));
 
         if (UiButton.NavigateSmall("Randomize"))
         {

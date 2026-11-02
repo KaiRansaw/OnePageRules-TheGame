@@ -154,11 +154,98 @@ job. The test now uses the widest legal gap (675 vs 1000 = one full cap = exactl
   `SeedFromSlots` is a no-op for that test's ordinary armies (no `StrikeTeam`, so every slot is skipped and
   the entrant count never reaches 2).
 
+### 2026-11-02 (later) - renamed, and the rewards settled
+
+**The names collided with Quest, and that was the whole problem.** The four settings were
+Beginner/Intermediate/Expert/Legendary, borrowed from the Quest Campaign Builder so a player would not
+have to learn two vocabularies. It did the opposite. Kai lost track of which difficulty belonged to which
+game, and said so plainly: *"i think i had multiple idea in my head at once and now im lost."* Reading it
+back, "Legendary" meant **200% waves** in Quest and **one mission cap above you** here - one word for two
+unrelated mechanics, which made them read as one mechanic. Renamed on his call to
+**Easy / Normal / Hard / Brutal**; Quest keeps its published four.
+
+A test now pins that none of the four shares a name with `StarQuestMissionRules.DifficultyNames`, so the
+collision cannot come back by someone "tidying up" the vocabulary.
+
+**Save compatibility was a real hazard, not a theoretical one.** The enum is stored by NAME
+(`RuleJson.Options` carries a `JsonStringEnumConverter`), so a campaign army written by the build pushed
+an hour earlier would have failed to deserialize **entirely** - not lost its difficulty, lost the whole
+file. `MissionDifficultyJsonConverter` reads the old names, the new names and the numbers, and anything
+unrecognised as `Unset` rather than throwing.
+
+**And it had to go on the PROPERTY, not the enum.** System.Text.Json resolves a property-level
+`[JsonConverter]` ahead of `JsonSerializerOptions.Converters`, so the shared `JsonStringEnumConverter` won
+over the type-level attribute and threw anyway. Found by the test failing, not by reasoning about
+precedence - worth recording, because the attribute on the enum *looks* like it is doing the job.
+
+### The rewards, and how two answers pinned each other
+
+Kai's answers, 2026-11-02: **(a)** scale by the setting's level, the way the Quest Campaign Builder does
+(*"Get 5c times the chosen Difficulty level"*); **Normal is the normal payout**, and *"Easy is scaled
+down, so rewards are scaled down as well"*; **the loss payout does not scale**; difficulty stays **per
+mission**; **Challenge Bonuses yes, after the campaign screens**.
+
+Those first two look independent and are not. If Normal is level 2 and pays the book's own figure, then
+one level is worth half of it - so the scale falls out with no number invented anywhere:
+
+| | Win treasury (GF) | VP |
+|---|---|---|
+| Easy | 75 | 1 |
+| **Normal** | **150 - the book's own figure** | **2** |
+| Hard | 225 | 3 |
+| Brutal | 300 | 4 |
+
+So a campaign played on Normal earns exactly what it earned before any of this existed, and an existing
+campaign (difficulty `Unset`) resolves to Normal and is untouched. **Easy is the one setting that pays
+less than the books do**, which is the only place this scale is not purely additive, and it is what Kai
+asked for.
+
+**The loss payout stays flat at every setting**, and the reason is worth keeping: the books pay the loser
+roughly double the winner (300 against 150 in GF) *so that whoever is behind catches up*. Multiply that by
+four on the hardest setting and losing becomes the profitable move - bank 1,200 for being beaten, field a
+far bigger army next mission, and the books' rubber band pulls backwards. `MissionDifficulty.LosePoints`
+exists as a method purely so that reason sits where somebody would otherwise "finish the job".
+
+**Read off the army's own strike-team block, not passed in.** `CampaignRules.AfterGame` already had the
+`StrikeTeamInfo` in hand, so no caller can pay the wrong rate by forgetting an argument - the same
+reasoning as reading the bot flag from the controller rather than from a parameter.
+
+**Left flat deliberately, and flagged rather than guessed:** the special-objective bonus and unit XP. Kai
+specified the win and loss payouts; the objective bonus can be completed in a loss, so scaling it would
+contradict "a loss does not scale", and XP is earned per unit action rather than per mission. Say so
+rather than extend his answer.
+
+### A sabotage check that passed, and a documented guard that was protecting nothing
+
+`WinPoints` multiplies by the level and *then* halves, and the doc comment said why: halving first would
+cost a point per level on a book with an odd payout. **Swapping the order passed every test.** All four
+books print an even win payout (150, 80, 150, 60), so the two orders agree exactly and the "guard" was a
+claim with nothing behind it. There is now a test using a synthetic 75pt book, where multiply-first keeps
+Normal on 75 and halve-first drops it to 74 - the one thing this scale must never do. Third time this
+class of problem has shown up (see B46's diff keys, B47's hero report); the pattern is **a comment
+asserting a property that no test exercises**.
+
+### Verification (second pass)
+
+- Full `dotnet build` clean; engine **4,662 passed**, app **8,804 passed**, headless smoke exits 0.
+- 17 more tests (29 total in `MissionDifficultyTests`): the reward table, Normal matching every book, the
+  flat loss, the odd-payout ordering, the old-name reader, the round trip, the Quest name collision, and
+  **five that drive the real `CampaignRules.AfterGame`** rather than the arithmetic - because a perfect
+  scale that nothing consults is exactly how #434 shipped.
+- **7 sabotage checks, 7 caught** (one after adding the odd-payout test): scale the loss; halve before
+  multiplying; anchor the scale on Easy; ignore difficulty in the payout; drop the VP scaling; drop the
+  old-name reader; reuse a Quest name.
+
 ### Not done, deliberately
 
-- **Rewards do not scale with difficulty yet.** The signed-off scaling has **three** bands (Easy 1 VP / 75
-  win / 150 loss; Normal 2 / 150 / 300; Hard 4 / 300 / 300) and the force settings have **four** names. The
-  spec records this as needing Kai: either a fourth reward row or back to three names. Not guessed.
+- **Challenge Bonuses** - the four modes' own official difficulty, in the Solo & Co-Op Rules v3.6.0 books
+  (the AI activating D3 units; +1 to hit when tied; +1 to hit and +1 Defense when losing). Kai: **yes,
+  after the campaign screens.** It is a *behaviour* buff, so it stacks with the force sizing rather than
+  replacing it. Its own work item when it comes.
+- **Difficulty stays per mission**, not locked per campaign. Kai's call, knowing it is gameable now that
+  rewards scale (play Easy, win, bank the money). Play it first; lock it only if it turns out to matter.
+
+### Not done, deliberately
 - **No campaign-screen panel for the difficulty** — it is set on Mission Setup and remembered on the
   player's `StrikeTeamInfo`, which is where the choice belongs. The campaign screen's right panel (spec
   section 2) is a separate slice.
@@ -169,4 +256,5 @@ job. The test now uses the widest legal gap (675 vs 1000 = one full cap = exactl
 
 ## Outcome
 
-Mission Setup is live and the Underdog Bonus now does something in a played game. Build 0.64.
+Mission Setup is live, the Underdog Bonus does something in a played game, and the four settings now pay
+different rewards under names that do not collide with Quest's. Builds 0.64 and 0.65.
