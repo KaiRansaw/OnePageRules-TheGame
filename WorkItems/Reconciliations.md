@@ -883,3 +883,9 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > test count on the archived #064 line, "442" likewise.) **441 = the Command Group obituary in the battle
 > report** - the lines when a Banner or Musician dies, plus hoverable and pinnable rule names. No
 > collision.
+
+> **2026-11-01 - number 442.** `git fetch origin`, read the index and archive from both `origin/main` and
+> `origin/campaign-360`: no work item numbered 442 anywhere (the bare string "442" appears only in prose
+> on archived lines). **442 = audit finding 11**, the Hold the Line family's distance band and its
+> Enhanced forms' double bonus. No collision. Filed before any code was written, straight after reading
+> the four rules' official text.
