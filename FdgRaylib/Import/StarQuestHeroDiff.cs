@@ -14,7 +14,10 @@ public static class StarQuestHeroDiff
     public static string Report(SqHeroFile? before, SqHeroFile after)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# Star Quest heroes - refresh report");
+        // #444: named for the roster actually imported. It said "Star Quest heroes" for both, which is
+        // the one mistake this file must not make - the two rosters are different datasets behind the
+        // same index slug, and mislabelling a report is how one gets reviewed as the other.
+        sb.AppendLine($"# {RosterName(after)} - refresh report");
         sb.AppendLine();
         sb.AppendLine($"- Source: {after.Source}");
         if (before is null)
@@ -74,8 +77,8 @@ public static class StarQuestHeroDiff
             sb.AppendLine();
         }
 
-        if (body.Length == 0) sb.AppendLine("No hero changed in any faction that exists in both files.");
-        else { sb.AppendLine("## Hero changes"); sb.AppendLine(); sb.Append(body); }
+        if (body.Length == 0) sb.AppendLine("Nothing changed in any faction that exists in both files.");
+        else { sb.AppendLine("## Changes"); sb.AppendLine(); sb.Append(body); }
 
         return sb.ToString();
     }
@@ -131,6 +134,32 @@ public static class StarQuestHeroDiff
             if (!nf.Heroes.Any(n => string.Equals(n.Name, oh.Name, StringComparison.OrdinalIgnoreCase)))
                 lines.Add($"  - GONE {oh.Name} ({oh.Cost}pts)");
 
+        // #444: a faction's own rule and spell TEXT, and its upgrade packages. These were missing, and a
+        // report that says "No hero changed" while five rule descriptions moved underneath it is worse
+        // than no report - it is a green light that did not check. The refresh on 2026-11-02 changed
+        // nothing about any hero and still corrected a Combat Possession description that had shipped
+        // TRUNCATED mid-sentence, plus OPR's "Units" -> "Each unit" clarification on three others.
+        lines.AddRange(TextChanges("rule", of.Rules.Select(r => (r.N, r.D)), nf.Rules.Select(r => (r.N, r.D))));
+        lines.AddRange(TextChanges("spell", of.Spells.Select(s => (s.N, s.D)), nf.Spells.Select(s => (s.N, s.D))));
+
+        // Packages are compared whole, by uid: their shape (which options a hero may buy, and for how
+        // much) is the other half of a hero's cost and nothing else here would notice it moving.
+        var oldPackages = of.Packages.GroupBy(p => p.Uid)
+            .ToDictionary(g => g.Key, g => Describe(g.First()), StringComparer.Ordinal);
+        var newPackages = nf.Packages.GroupBy(p => p.Uid)
+            .ToDictionary(g => g.Key, g => Describe(g.First()), StringComparer.Ordinal);
+        foreach (string uid in newPackages.Keys.Where(k => !oldPackages.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
+            lines.Add($"  + NEW  upgrade package {uid}");
+        foreach (string uid in oldPackages.Keys.Where(k => !newPackages.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
+            lines.Add($"  - GONE upgrade package {uid}");
+        foreach (string uid in newPackages.Keys.Where(oldPackages.ContainsKey).OrderBy(k => k, StringComparer.Ordinal))
+        {
+            if (oldPackages[uid] == newPackages[uid]) continue;
+            lines.Add($"  * upgrade package {uid} changed");
+            lines.Add($"      was: {oldPackages[uid]}");
+            lines.Add($"      now: {newPackages[uid]}");
+        }
+
         if (lines.Count == 0) return "";
         var sb = new StringBuilder();
         sb.AppendLine($"### {nf.Faction}  (v{of.Version} -> v{nf.Version})");
@@ -149,4 +178,63 @@ public static class StarQuestHeroDiff
 
     private static string Rules(SqHero h) =>
         string.Join(", ", h.Rules.OrderBy(x => x, StringComparer.Ordinal));
+
+    /// <summary>
+    /// Which roster this report is about, read off the <c>Source</c> line the importer stamps (e.g.
+    /// "Army Forge, Age of Fantasy: Quest (gameSystem 7), fetched ..."). Falls back to a neutral name
+    /// rather than guessing a system, because naming the wrong one is the failure this replaced.
+    /// </summary>
+    private static string RosterName(SqHeroFile file)
+    {
+        foreach (StarQuestHeroImporter.QuestSystem system in StarQuestHeroImporter.QuestSystem.All)
+        {
+            if ((file.Source ?? "").Contains(system.Qualifier, StringComparison.OrdinalIgnoreCase))
+                return $"{system.Label} heroes";
+        }
+
+        return "Quest heroes";
+    }
+
+    /// <summary>
+    /// #444: named descriptions added, removed, or reworded. Matched by name, since that is what a
+    /// player sees and what the engine resolves a rule by; OPR rewords a description far more often
+    /// than it renames one.
+    /// </summary>
+    private static IEnumerable<string> TextChanges(
+        string what, IEnumerable<(string Name, string? Text)> before, IEnumerable<(string Name, string? Text)> after)
+    {
+        var old = before.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Text ?? "", StringComparer.OrdinalIgnoreCase);
+        var now = after.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Text ?? "", StringComparer.OrdinalIgnoreCase);
+
+        foreach (string name in now.Keys.Where(k => !old.ContainsKey(k)).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            yield return $"  + NEW  {what} {name}";
+        foreach (string name in old.Keys.Where(k => !now.ContainsKey(k)).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            yield return $"  - GONE {what} {name}";
+        foreach (string name in now.Keys.Where(old.ContainsKey).OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(old[name], now[name], StringComparison.Ordinal)) continue;
+            yield return $"  * {what} {name}: text changed";
+            yield return $"      was: {Short(old[name])}";
+            yield return $"      now: {Short(now[name])}";
+        }
+    }
+
+    /// <summary>
+    /// A package's shape as one comparable line: every section, its options and their costs. Compared as
+    /// text rather than field by field because the question this answers is only "did this move", and a
+    /// reader who sees that it did reads the two lines underneath.
+    /// </summary>
+    private static string Describe(SqPackage package) =>
+        string.Join(" | ", package.Sections.Select(s =>
+            $"{s.Label} [{string.Join(", ", s.Opts.Select(o => $"{o.Label} {o.Cost?.ToString() ?? "-"}pts"))}]"));
+
+    /// <summary>
+    /// Keeps a reworded description readable in the report. Long enough that OPR's edits - which are
+    /// usually a clause near the end - are visible rather than cut off, which is the mistake that would
+    /// make this whole addition useless.
+    /// </summary>
+    private static string Short(string text) =>
+        text.Length <= 400 ? text : text[..400] + "...";
 }
