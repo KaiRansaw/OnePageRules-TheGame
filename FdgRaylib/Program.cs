@@ -1379,13 +1379,23 @@ else
         renderer.NavigateTo(renderer.StrikeTeams);
     renderer.StrikeTeams.OnBack = () =>
         renderer.NavigateTo(renderer.MainMenu);
-    // #410: "Play next mission" on the campaign screen. The screen has already recorded which army and
-    // which units (LobbyScreen.PendingCampaignArmy); here we only ask for the right game type, and the
-    // lobby picks the army up once it exists.
-    renderer.StrikeTeams.OnPlay = system =>
+    // #435: "Play next mission" on the campaign screen now opens Mission Setup, which is where the
+    // forces, the difficulty and the map are chosen. The campaign screen only says which campaign.
+    renderer.StrikeTeams.OnPlay = (path, others) =>
+    {
+        renderer.MissionSetup.Open(path, others);
+        renderer.NavigateTo(renderer.MissionSetup);
+    };
+    renderer.MissionSetup.OnBack = () =>
+        renderer.NavigateTo(renderer.StrikeTeams);
+    // #435: Start Mission. Mission Setup has already recorded both armies, the map and the auto-launch
+    // flag on LobbyScreen, so all that is left is a host. Opened silently on the saved settings - the
+    // campaign flow is "straight into the game", with no Host Server dialog and no table screen. If the
+    // port is taken the dialog comes up after all, which is the only recovery there is for that.
+    renderer.MissionSetup.OnStart = system =>
     {
         pendingGameSystem = system;
-        renderer.NavigateTo(renderer.HostModal);
+        if (!renderer.HostModal.TryCreateSilently()) renderer.NavigateTo(renderer.HostModal);
     };
 
     renderer.MainMenu.OnClientClicked = () =>

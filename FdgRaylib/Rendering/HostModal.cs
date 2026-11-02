@@ -179,6 +179,26 @@ public class HostModal : IAppScreen
         return true;
     }
 
+    /// <summary>
+    /// #435 - creates the host without showing the dialog, on the saved settings, for Mission Setup's
+    /// "straight into the game" launch. Returns false when it could not (a port already in use), in
+    /// which case the caller should show the dialog so the player can change the port - the same
+    /// recovery a failed Create offers, just reached differently.
+    /// <para>
+    /// Goes through <see cref="CreateServer"/> rather than repeating it, so the bind-failure check, the
+    /// UPnP mapping, the public listing and the config write stay in one place.
+    /// </para>
+    /// </summary>
+    public bool TryCreateSilently()
+    {
+        Reset();                          // back to the saved config, exactly as opening the dialog does
+        _listPublicly = false;            // a solo campaign mission is nobody else's business
+        if (!Validate()) return false;
+        CreateServer();
+        // CreateServer sets _error and returns without raising OnCreated when the bind fails.
+        return _error.Length == 0;
+    }
+
     private void CreateServer()
     {
         int port = int.Parse(_port.Trim()); // Validated in Validate() before we get here.

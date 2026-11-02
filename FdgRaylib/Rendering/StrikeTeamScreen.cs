@@ -25,9 +25,16 @@ namespace FdgRaylib.Rendering;
 public sealed class StrikeTeamScreen : IAppScreen
 {
     public Action? OnBack;
-    /// <summary>#410 - "Play next mission": asks for a lobby of this game type. The army itself is
-    /// handed over through <see cref="LobbyScreen.PendingCampaignArmy"/>.</summary>
-    public Action<EGameSystem>? OnPlay;
+    /// <summary>
+    /// #435 - "Play next mission": opens Mission Setup for this campaign army. The whole launch - which
+    /// units come, the rival's force, the map, the host - belongs to
+    /// <see cref="MissionSetupScreen"/> now; this screen only says which campaign.
+    /// <para>
+    /// Carries the other campaign armies of the same game alongside the path, because they are what set
+    /// the mission cap (#426) and only this screen has the full list on disk.
+    /// </para>
+    /// </summary>
+    public Action<string, List<CampaignEntrant>>? OnPlay;
 
     private enum EView { List, New, Camp, Recruit }
     private EView _view = EView.List;
@@ -863,8 +870,8 @@ public sealed class StrikeTeamScreen : IAppScreen
             case EView.Camp:
                 if (UiButton.Back("Campaign armies", btn) || esc) _view = EView.List;
                 ImGui.SetCursorPos(new Vector2(rx, by));
-                if (UiButton.Confirm("Play next mission", btn)) StartMission();
-                RightLabel(rx, by, btn, "Opens a lobby with this army already picked", TextDim);
+                if (UiButton.Confirm("Play next mission", btn)) GoToMissionSetup();
+                RightLabel(rx, by, btn, "Opens Mission Setup: your force, theirs, the map", TextDim);
                 DrawMessage(margin, by, btn);
                 break;
 
@@ -898,82 +905,38 @@ public sealed class StrikeTeamScreen : IAppScreen
     // -- Starting the mission -----------------------------------------------------------------------
 
     /// <summary>
-    /// #410 - hands the campaign army to the next lobby and asks for one. When only some of the army is
-    /// coming, a "this mission only" copy is written beside the campaign file holding just those units.
+    /// #435 - hands this campaign to Mission Setup, which owns the launch from here: which units come
+    /// on both sides, the difficulty band that sizes the rival's force, the map, and the host.
+    ///
     /// <para>
-    /// The copy is safe because every unit's sheet keeps its own id and its <c>TeamFile</c>, which is
-    /// what the after-game write-back keys on - so casualties, XP and level ups land on the real
-    /// campaign army, not on the copy. Units left at home simply never reach the table, so they take no
-    /// casualty roll and earn no XP, which is what the book intends.
+    /// This screen used to do all of that itself, in a <c>StartMission</c> that wrote both mission files
+    /// and asked for a lobby. It moved because the choices it was making had nowhere to be shown: the
+    /// rival's force was picked silently at the books' cap (so every mission was played on Legendary),
+    /// and the map was whatever the lobby happened to be set to. Those are the three things Kai's flow
+    /// spec puts on one screen, so they live on that screen.
     /// </para>
-    /// <para>It is written as <c>.fdgmission</c>, not <c>.fdgarmy</c>, so it stays out of the army
-    /// picker, out of the campaign list and out of every folder scan - all of which glob for
-    /// <c>.fdgarmy</c>.</para>
+    ///
+    /// <para>
+    /// The other campaign armies of the SAME game go with it: only campaign armies of one game can meet
+    /// across a table, so only they set the mission cap (#426). A 300-pt Skirmish army would otherwise
+    /// drag a Grimdark Future mission's limit down to 625 pts between two armies that can never play
+    /// each other.
+    /// </para>
     /// </summary>
-    private void StartMission()
+    private void GoToMissionSetup()
     {
         if (Current is not { } cur) return;
         (string path, BuiltArmyFile army, _) = cur;
         StrikeTeamInfo info = army.StrikeTeam!;
 
-        // #427: a unit recovering under No Permadeath stays at home even when "the whole army comes"
-        // (an empty Bringing list), which is the state a brand new campaign army is in.
-        var coming = army.Units
-            .Where(u => CampaignRules.Sheet(u) is { } sh && CampaignRules.CanBringToMission(u)
-                        && (info.Bringing.Count == 0 || info.Bringing.Contains(sh.Id)))
+        List<CampaignEntrant> others = Teams
+            .Where(t => t.Path != path && t.Army.StrikeTeam!.GameSystem == info.GameSystem)
+            .Select(t => new CampaignEntrant(t.Army.StrikeTeam!.Name, t.Army.TotalPoints, false))
             .ToList();
-        if (coming.Count == 0) { Say("Tick at least one unit under \"Who is coming\".", true); return; }
 
-        string play = path;
-        if (coming.Count < army.Units.Count)
-        {
-            if (StrikeTeamFiles.Load(path) is not { } copy) { Say("Couldn't read the campaign army file.", true); return; }
-            var keep = new HashSet<string>(coming.Select(u => CampaignRules.Sheet(u)!.Id), StringComparer.Ordinal);
-            copy.Units.RemoveAll(u => CampaignRules.Sheet(u) is not { } sh || !keep.Contains(sh.Id));
-            play = Path.ChangeExtension(path, ".fdgmission");
-            if (!StrikeTeamFiles.Save(play, copy)) { Say("Couldn't write the mission army file.", true); return; }
-        }
-
-        LobbyScreen.PendingCampaignArmy = play;
-        LobbyScreen.PendingCampaignEnemyArmy = PrepareEnemyForMission(info, coming.Sum(u => u.PointCost));
         // A new mission: the one-new-Hero-per-mission allowance comes back.
         _heroRecruited = false;
-        Say($"Taking {coming.Count} unit(s), {coming.Sum(u => u.PointCost)} pts.");
-        OnPlay?.Invoke(info.GameSystem);
-    }
-
-    /// <summary>
-    /// #428 - the enemy's side of mission setup: it picks what to bring up to the book's cap over what
-    /// the player is bringing, and gets a mission file of its own the same way the player does.
-    /// <para>
-    /// The player chooses first and the cap is measured against their choice, which is the only order
-    /// that terminates - the book's cap is "the lowest army plus N", and with both sides choosing at
-    /// once each one's limit depends on the other's. Choosing second is not an advantage: the cap is the
-    /// same number either way round, it just has to be a number before anyone can obey it.
-    /// </para>
-    /// <para>Returns the path to hand the lobby, or null when this campaign has no standing enemy.</para>
-    /// </summary>
-    private string? PrepareEnemyForMission(StrikeTeamInfo info, int playerPoints)
-    {
-        if (info.EnemyArmyFile is not { } enemyPath) return null;
-        if (StrikeTeamFiles.Load(enemyPath) is not { StrikeTeam: not null } enemy) return null;
-
-        CampaignNumbers n = CampaignNumbers.For(info.GameSystem);
-        int cap = playerPoints + n.ArmyCapOverLowest;
-        var bringing = new HashSet<string>(CampaignBot.PickWhatToBring(enemy, cap), StringComparer.Ordinal);
-        CampaignBot.RollSpecialObjective(enemy, D6);
-        StrikeTeamFiles.Save(enemyPath, enemy);
-
-        if (bringing.Count == 0) return null;
-        if (bringing.Count == enemy.Units.Count) return enemyPath;
-
-        // Only some of it is coming, so the same "this mission only" copy the player's side writes -
-        // every sheet keeps its id and its TeamFile, so the after-game result still lands on the real
-        // campaign army rather than on the copy.
-        if (StrikeTeamFiles.Load(enemyPath) is not { } copy) return null;
-        copy.Units.RemoveAll(u => CampaignRules.Sheet(u) is not { } sh || !bringing.Contains(sh.Id));
-        string play = Path.ChangeExtension(enemyPath, ".fdgmission");
-        return StrikeTeamFiles.Save(play, copy) ? play : null;
+        OnPlay?.Invoke(path, others);
     }
 
     private void DrawMessage(float margin, float by, Vector2 btn)

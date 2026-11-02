@@ -66,6 +66,9 @@ public class RaylibRenderer
     public CampaignScreen AoFCampaigns      { get; } = new(FDG.EGameSystem.AoFQuest);
     public StrikeTeamScreen StrikeTeams   { get; } = new();
 
+    /// <summary>#435 - the campaign's Mission Setup step: your force, their force, the map, go.</summary>
+    public MissionSetupScreen MissionSetup { get; } = new();
+
     private IAppScreen _currentScreen;
 
     private ITableState? _tableState;

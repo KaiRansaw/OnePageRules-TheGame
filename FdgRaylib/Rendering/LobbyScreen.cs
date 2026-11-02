@@ -150,6 +150,11 @@ public class LobbyScreen : IAppScreen
 
         if (_viewModel == null) return;
 
+        // #435: a campaign mission launches itself. Before DrawScaled, so the lobby is never drawn on
+        // the way through - the one frame it would take is still a visible flash of a screen the
+        // campaign flow says is gone.
+        if (TryAutoLaunch()) return;
+
         DrawScaled(screenW, screenH);
 
         // Map maker (Custom Map > Create / Edit): drawn over the whole lobby while open.
@@ -866,6 +871,30 @@ public class LobbyScreen : IAppScreen
     public static string? PendingCampaignEnemyArmy;
 
     /// <summary>
+    /// #435 - the terrain mode Mission Setup chose, applied beside the campaign armies. Null when the
+    /// lobby was reached any other way, in which case the saved host settings decide as before.
+    /// </summary>
+    public static ETerrainPlacementMode? PendingTerrainMode;
+
+    /// <summary>#435 - the custom map Mission Setup chose, for <see cref="PendingTerrainMode"/> =
+    /// <see cref="ETerrainPlacementMode.LoadFromFile"/>. Null for every other mode.</summary>
+    public static string? PendingTerrainLayoutPath;
+
+    /// <summary>
+    /// #435 - set by Mission Setup: launch as soon as the lobby is ready, without drawing it. The
+    /// campaign flow is meant to go from Mission Setup straight into the game ("The Table is gone from
+    /// the campaign flow"), and the lobby is the only place that knows how to launch one - so it is
+    /// still used, just never seen.
+    /// <para>
+    /// Consumed by <see cref="TryAutoLaunch"/> on the first frame the lobby can launch. If the lobby
+    /// finds a real reason not to - a missing army file, a list the gate refuses - the flag is dropped
+    /// and the player is left in the lobby with the greyed LAUNCH button explaining why, which is more
+    /// use than a silent failure back on Mission Setup.
+    /// </para>
+    /// </summary>
+    public static bool PendingAutoLaunch;
+
+    /// <summary>
     /// #410 - gives the host's own slot the campaign army the campaign screen chose, and raises the
     /// points limit to fit it, because a campaign game has no points limit of its own.
     /// <para>
@@ -884,8 +913,14 @@ public class LobbyScreen : IAppScreen
     {
         string? path = PendingCampaignArmy;
         string? enemyPath = PendingCampaignEnemyArmy;
+        // #435: read and cleared with the armies, before any early return, so a campaign army that fails
+        // to load cannot leave a map choice behind to surprise the next lobby.
+        ETerrainPlacementMode? terrainMode = PendingTerrainMode;
+        string? layoutPath = PendingTerrainLayoutPath;
         PendingCampaignArmy = null;
         PendingCampaignEnemyArmy = null;
+        PendingTerrainMode = null;
+        PendingTerrainLayoutPath = null;
         if (path == null || _viewModel == null) return;
         if (LoadArmyFile(path) is not { } army) return;
         if (_viewModel.PlayerInfos.Count == 0) return;
@@ -900,6 +935,14 @@ public class LobbyScreen : IAppScreen
         // #428: the campaign's own enemy, if it has one. Seated as a bot and handed ITS campaign army,
         // so the opponent is the same army that fought the last mission rather than a fresh list rolled
         // from the folder. Added after the host's own row so PlayerInfos[0] stays the host (#405).
+        // #435: the map Mission Setup chose. Applied here rather than in SetViewModel because the saved
+        // host settings are re-applied over the top there (see the note on this method).
+        if (terrainMode is { } mode)
+        {
+            _viewModel.SetTerrainPlacementMode(mode);
+            _viewModel.SetTerrainLayoutPath(mode == ETerrainPlacementMode.LoadFromFile ? layoutPath : null);
+        }
+
         if (enemyPath == null || LoadArmyFile(enemyPath) is not { } enemy) return;
         _viewModel.AddAiPlayer(FDG.Ai.EAiProfile.SoloRules);
         // The bot that was just added is the AI row with no army on it - #402 means a fresh bot arrives
@@ -1669,6 +1712,37 @@ public class LobbyScreen : IAppScreen
         if (!isHost) return "Only the host can launch.";
         if (blockers.Count == 0) return null;
         return "Cannot launch:\n" + string.Join("\n", blockers.Select(p => "  " + p));
+    }
+
+    /// <summary>
+    /// #435 - Mission Setup's "never show the lobby" launch. Returns true while it is still working, so
+    /// the caller skips drawing.
+    ///
+    /// <para>
+    /// The flag is consumed on the first frame either way, so this can never loop: it launches when the
+    /// lobby says it can, and otherwise hands the player the lobby with the greyed LAUNCH button and its
+    /// tooltip, which is the only place that can explain what is wrong with an army.
+    /// </para>
+    /// <para>
+    /// The #153 launch gate is deliberately skipped here. It raises a modal for catalog warnings in a
+    /// Forge army and asks the host to override - and a campaign army was built in this app, from a
+    /// bundled book, and was legal enough to start a campaign with. Stopping a mission on it would mean
+    /// a dialog the campaign flow has no screen for. Hard problems still block: those are
+    /// <see cref="ILobbyViewModel.BlockingLaunchProblems"/>, checked below.
+    /// </para>
+    /// </summary>
+    private bool TryAutoLaunch()
+    {
+        if (!PendingAutoLaunch) return false;
+        PendingAutoLaunch = false;
+
+        if (_viewModel is not { HasHostPrivileges: true } vm) return false;
+        if (vm.BlockingLaunchProblems().Count > 0) return false;
+
+        DoLaunch(vm.IsResumeMode);
+        // A failed launch leaves _lastLaunchError set and nothing started, so fall through to the lobby
+        // where that error is on screen.
+        return _lastLaunchError == null;
     }
 
     private void DoLaunch(bool resume)
