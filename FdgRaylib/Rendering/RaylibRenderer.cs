@@ -976,7 +976,7 @@ public class RaylibRenderer
                     bool toolActive = (_resolverOverlay?.ActiveToolNeedsTable ?? false) || _gameMasterPanel.UsesTable;
                     _view3D.HandleInput(boardRect, mouseFree: !io3.WantCaptureMouse,
                         keysFree: !io3.WantCaptureKeyboard && !_escapeMenu.IsOpen && !_armyListOverlay.IsOpen,
-                        rightDragOrbits: !(_resolverOverlay?.ActiveToolUsesRightClick ?? false) && !_gameMasterPanel.UsesTable,
+                        rightDragPans: !(_resolverOverlay?.ActiveToolUsesRightClick ?? false) && !_gameMasterPanel.UsesTable,
                         plainWheelZooms: !toolActive,
                         letterKeysMove: true);   // letters always drive the camera (panel letter shortcuts are off)
                     var (tablePoint, card) = _view3D.Pick(boardRect, Raylib.GetMousePosition());
@@ -1193,9 +1193,11 @@ public class RaylibRenderer
                 GuiAssignWoundsResolver.Dock = new Vector4(rightX, infoH, rightW, actionsH);
                 if (infoH > 0) DrawUnitInfoPanel(infoUnit, rightX, 0, rightW, infoH);
                 _tooltipOverlay.ShowUnitCard = u => _selectedInfoUnit = u;
+                _tooltipOverlay.ClearSelection = () => _selectedInfoUnit = null;
                 _tooltipOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _tooltipOverlay.Draw(screenW, screenH, _hitTester, _resolverOverlay?.ActiveInteractionHandler,
-                    rollStackBounds, rightClickReserved: _resolverOverlay?.ActiveToolUsesRightClick ?? false);
+                    rollStackBounds, rightClickReserved: _resolverOverlay?.ActiveToolUsesRightClick ?? false,
+                    rightDragMoved: _view3D?.RightDragMoved ?? false);
                 _resolverOverlay?.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 // #280: other players' live previews (ghosts / planned paths) - same background
                 // draw list layer as the local resolver's own ghosts, drawn regardless of what the
@@ -1327,10 +1329,14 @@ public class RaylibRenderer
         float mx = Raylib.GetMouseX(), my = Raylib.GetMouseY();
         bool overViewport = mx < viewportW && my < screenH;
 
-        // Alt + wheel: zoom, keeping the world point under the cursor pinned.
+        // Wheel: zoom, keeping the world point under the cursor pinned. Kai's call, 2026-11-02 - the
+        // plain wheel zooms, where it used to need Alt held. Alt+wheel still works, and has to: holding
+        // Alt brings up the measuring tool, which claims the mouse for ImGui, so the plain-wheel path
+        // below would be gated off exactly when the measuring tool is up (the 3D view does the same).
         bool alt    = Raylib.IsKeyDown(KeyboardKey.LeftAlt) || Raylib.IsKeyDown(KeyboardKey.RightAlt);
         float wheel = Raylib.GetMouseWheelMove();
-        if (overViewport && alt && wheel != 0f)
+        bool wheelOwnedByUi = ImGui.GetIO().WantCaptureMouse;
+        if (overViewport && wheel != 0f && (alt || !wheelOwnedByUi))
         {
             float scaleOld   = fit * _zoom;
             float originXOld = (viewportW - TableWIn * scaleOld) / 2f + _pan.X;
@@ -1453,8 +1459,10 @@ public class RaylibRenderer
         ("Q / E", "Turn the camera (3D)"),
         ("Shift + W / S", "Zoom in / out"),
         ("Shift + Q / E", "Tilt up / down (3D)"),
-        ("Mouse wheel, Alt + wheel", "Zoom"),
-        ("Middle-drag / right-drag", "Pan (2D) / orbit (3D)"),
+        ("Mouse wheel", "Zoom"),
+        ("Middle-drag", "Pan (2D) / change the angle (3D)"),
+        ("Right-drag", "Move the board (3D)"),
+        ("Right-click bare table", "Deselect the unit"),
         ("V or F3", "Switch 2D / 3D"),
         ("Ctrl + S", "Quick save into Saved Games"),
         ("Ctrl + Z / Ctrl + X", "Undo / redo while placing or moving"),
@@ -2465,7 +2473,9 @@ public class RaylibRenderer
             if (unit is UnitData { IsQuestHero: true } questHero)
                 DrawQuestHeroStats(questHero, _tableState?.Progress.Quest);
             UnitStatBlockRenderer.Draw(unit, includeRuleDescriptions: true, descriptionWrapWidth: wrap,
-                quest: _tableState?.Progress.Quest);
+                quest: _tableState?.Progress.Quest,
+                // #420: the rule hovers quote OPR's wording for the game being played, not a summary.
+                systemSlug: _tableState?.Progress is { } p ? GameSystemInfo.Slug(p.GameSystem) : null);
 
             var tokens = TableTooltipOverlay.VisibleTokenNames(unit);
             if (tokens.Count > 0)

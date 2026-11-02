@@ -772,27 +772,13 @@ public sealed class ArmyListOverlay
 
     // Wraps at segment boundaries (ArmyListLayout.WrapSegments), draws each line via
     // RuleHoverText.DrawInline on the window draw list, and raises the hovered rule's tooltip.
-    private static void DrawWrappedSegments(IReadOnlyList<RuleHoverText.Segment> segments, float width)
-    {
-        var lines = ArmyListLayout.WrapSegments(segments, s => ImGui.CalcTextSize(s).X, width);
-        var dl = ImGui.GetWindowDrawList();
-        uint textColor = ImGui.GetColorU32(ImGuiCol.Text);
-        float lineHeight = ImGui.GetTextLineHeightWithSpacing();
-        bool hoverEnabled = ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows);
-
-        string? tooltip = null;
-        foreach (var line in lines)
-        {
-            Vector2 origin = ImGui.GetCursorScreenPos();
-            // Unconditionally, then coalesce: DrawInline draws as well as reporting the hover, and `??=`
-            // would skip the call - and so the line - once a tooltip had been found (#336).
-            string? hovered = RuleHoverText.DrawInline(dl, origin, line, textColor, textColor, hoverEnabled);
-            tooltip ??= hovered;
-            ImGui.Dummy(new Vector2(width, lineHeight));
-        }
-
-        if (tooltip != null) RuleHoverText.ShowTooltip(tooltip);
-    }
+    /// <summary>
+    /// Now a thin call onto <see cref="RuleHoverText.DrawWrapped"/>, which this method became when the
+    /// Selected Unit panel needed the same hoverable list (Kai, 2026-11-02). Kept as a name here because
+    /// it is called from a dozen places in this file.
+    /// </summary>
+    private static void DrawWrappedSegments(IReadOnlyList<RuleHoverText.Segment> segments, float width) =>
+        RuleHoverText.DrawWrapped(segments, width);
 
     private static void CenterNextText(string text)
         => CenterNextText(text, ImGui.GetContentRegionAvail().X);

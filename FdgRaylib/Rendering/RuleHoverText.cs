@@ -128,6 +128,52 @@ public static class RuleHoverText
         return tooltip;
     }
 
+    /// <summary>
+    /// The gold used for a hoverable rule name, matching the Battle Report's highlighted rules (#441) so
+    /// one colour means "there is a rule behind this word" everywhere in the game.
+    /// </summary>
+    public static readonly Vector4 RuleGold = new(1f, 0.84f, 0.42f, 1f);
+
+    /// <summary>
+    /// Draws a segment list as wrapped, hoverable text at the cursor, advancing the cursor past it.
+    ///
+    /// <para>
+    /// Lifted out of the army list overlay (#441 follow-up, Kai 2026-11-02) so the in-game Selected Unit
+    /// panel, the army list and anything else show rule names the same way: <b>gold, underlined, and
+    /// explained on hover</b>. Two copies of this drifting apart is exactly how a player ends up learning
+    /// two vocabularies for one idea, which is what <see cref="RuleHoverText"/> exists to stop.
+    /// </para>
+    /// <para>
+    /// <paramref name="ruleColor"/> defaults to <see cref="RuleGold"/>; pass the body text colour to get
+    /// the older underline-only look.
+    /// </para>
+    /// </summary>
+    public static void DrawWrapped(IReadOnlyList<Segment> segments, float width, Vector4? ruleColor = null)
+    {
+        if (segments.Count == 0) return;
+
+        var lines = ArmyListLayout.WrapSegments(segments, t => ImGui.CalcTextSize(t).X, width);
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        uint textColor = ImGui.GetColorU32(ImGuiCol.Text);
+        uint rules = ImGui.GetColorU32(ruleColor ?? RuleGold);
+        float lineHeight = ImGui.GetTextLineHeightWithSpacing();
+        bool hoverEnabled = ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows);
+
+        string? tooltip = null;
+        foreach (List<Segment> line in lines)
+        {
+            Vector2 origin = ImGui.GetCursorScreenPos();
+            // Called unconditionally and coalesced after, not with "??=": DrawInline DRAWS as well as
+            // reporting the hover, so short-circuiting once a tooltip was found would skip the line
+            // entirely (#336).
+            string? hovered = DrawInline(dl, origin, line, textColor, rules, hoverEnabled);
+            tooltip ??= hovered;
+            ImGui.Dummy(new Vector2(width, lineHeight));
+        }
+
+        if (tooltip != null) ShowTooltip(tooltip);
+    }
+
     /// <summary>Raises a wrapped tooltip. Rule descriptions are full sentences; without a wrap they
     /// render as one very wide tooltip. Same wrap width as the Army Forge's.</summary>
     public static void ShowTooltip(string text)

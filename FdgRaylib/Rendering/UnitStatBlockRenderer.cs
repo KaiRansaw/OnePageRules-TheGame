@@ -24,8 +24,14 @@ public static class UnitStatBlockRenderer
     /// its own content width so long descriptions wrap inside the panel instead of running off it.</param>
     /// <param name="quest">Star Quest progress, when there is one: Crippled and Bad weather halve a
     /// hero's move, and the card has to say so or the ring on the table and the card disagree.</param>
+    /// <param name="systemSlug">
+    /// Which game's wording the rule hovers show (#420). OPR rewords the same rule between systems -
+    /// Star Quest's Fear decides whether you take a Morale Test where Grimdark Future's decides who won
+    /// the melee - so a shared blurb is wrong in most of them. Null falls back to the authored
+    /// description, which is what a caller outside a game (no system to speak of) gets.
+    /// </param>
     public static void Draw(IUnit unit, bool includeRuleDescriptions, float descriptionWrapWidth = 300f,
-        QuestProgress? quest = null)
+        QuestProgress? quest = null, string? systemSlug = null)
     {
         ImGui.TextUnformatted(unit.Name);
 
@@ -42,7 +48,7 @@ public static class UnitStatBlockRenderer
             UiText.Colored(new Vector4(1f, 0.72f, 0.35f, 1f), woundedLine);
         DrawMobility(unit, quest);
 
-        DrawWeaponsAndRules(unit, includeRuleDescriptions, descriptionWrapWidth);
+        DrawWeaponsAndRules(unit, includeRuleDescriptions, descriptionWrapWidth, systemSlug);
     }
 
     // Read-only, non-logging: the move queries ask the rule graph what Fast / Slow / Crippled do, and the
@@ -87,15 +93,47 @@ public static class UnitStatBlockRenderer
             UiText.Colored(new Vector4(1f, 0.72f, 0.35f, 1f), "Move changed by: " + string.Join(", ", reasons));
     }
 
-    private static void DrawWeaponsAndRules(IUnit unit, bool includeRuleDescriptions, float descriptionWrapWidth)
+    /// <summary>
+    /// Weapons and the unit's own special rules, with every rule name <b>gold, underlined and explained
+    /// on hover</b> (Kai, 2026-11-02).
+    ///
+    /// <para>
+    /// Special rules used to print as one line per rule with the description indented underneath, which
+    /// meant two units' worth of rules filled the panel and pushed the tokens off the bottom. They are
+    /// one comma-joined line now - <i>Devout, Regeneration Aura</i> - and the description that used to
+    /// take four lines is a hover away. Same treatment for the rule names inside a weapon's stat line,
+    /// which is where Blast(3) and Reliable live.
+    /// </para>
+    /// <para>
+    /// The hover is <see cref="RuleHoverText"/>, the same thing the army list overlay and the shoot panel
+    /// use, so a gold underlined word means one thing everywhere in the game.
+    /// </para>
+    /// </summary>
+    /// <param name="includeRuleDescriptions">
+    /// Kept for the callers that pass it, but it no longer gates the descriptions - those are on the
+    /// hover now and cost no space, so there is nothing to turn off. It still decides whether rule names
+    /// are <b>hoverable</b> at all: a caller drawing into a context with no live ImGui window to hover
+    /// (a draw-list-only panel) passes false and gets plain text.
+    /// </param>
+    private static void DrawWeaponsAndRules(IUnit unit, bool includeRuleDescriptions,
+        float descriptionWrapWidth, string? systemSlug)
     {
+        float wrap = Math.Max(120f, descriptionWrapWidth);
         var weapons = unit.AllWeapons();
         if (weapons.Count > 0)
         {
             ImGui.Spacing();
             ImGui.TextUnformatted("Weapons:");
             foreach (var grp in weapons.GroupBy(w => w.Name))
-                ImGui.TextUnformatted($"- {grp.First().GetWeaponNameAndStats(grp.Count())}");
+            {
+                IWeapon weapon = grp.First();
+                if (!includeRuleDescriptions)
+                {
+                    ImGui.TextUnformatted($"- {weapon.GetWeaponNameAndStats(grp.Count())}");
+                    continue;
+                }
+                RuleHoverText.DrawWrapped(WeaponLineSegments(weapon, grp.Count(), systemSlug), wrap);
+            }
         }
 
         // Unit-wide special rules (live #042 ResolvedRules), minus the engine-internal Disembark/Embark
@@ -104,22 +142,57 @@ public static class UnitStatBlockRenderer
             .Where(r => r.Definition.Name != CoreRuleCatalog.DisembarkRuleName
                      && r.Definition.Name != CoreRuleCatalog.EmbarkRuleName)
             .ToList();
-        if (rules.Count > 0)
+        if (rules.Count == 0) return;
+
+        ImGui.Spacing();
+        ImGui.TextUnformatted("Special Rules:");
+        if (!includeRuleDescriptions)
         {
-            ImGui.Spacing();
-            ImGui.TextUnformatted("Special Rules:");
-            foreach (var rule in rules)
-            {
-                ImGui.TextUnformatted($"- {rule.RequestedName}");
-                if (includeRuleDescriptions && !string.IsNullOrEmpty(rule.Definition.Description))
-                {
-                    ImGui.Indent();
-                    ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + descriptionWrapWidth);
-                    ImGui.TextDisabled(rule.Definition.Description);
-                    ImGui.PopTextWrapPos();
-                    ImGui.Unindent();
-                }
-            }
+            foreach (ResolvedRule rule in rules) ImGui.TextUnformatted($"- {rule.RequestedName}");
+            return;
         }
+
+        var segments = new List<RuleHoverText.Segment>();
+        foreach (ResolvedRule rule in rules)
+        {
+            if (segments.Count > 0) segments.Add(new RuleHoverText.Segment(", ", null, null));
+            segments.Add(new RuleHoverText.Segment(rule.RequestedName, rule.RequestedName,
+                OfficialRuleText.Display(rule.Definition, systemSlug)));
+        }
+        RuleHoverText.DrawWrapped(segments, wrap);
+    }
+
+    /// <summary>
+    /// A weapon's datasheet line split so its rule names are their own hoverable runs, with the leading
+    /// text byte-identical to <c>GetWeaponNameAndStats</c>'s - so the only visible change is that the
+    /// rule names are gold and underlined.
+    /// </summary>
+    internal static List<RuleHoverText.Segment> WeaponLineSegments(IWeapon weapon, int count,
+        string? systemSlug)
+    {
+        string full = weapon.GetWeaponNameAndStats(count);
+        var ruleNames = weapon.RuleDefinitions
+            .Select(r => r.RequestedName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList();
+
+        var segments = new List<RuleHoverText.Segment> { new("- ", null, null) };
+        int at = 0;
+        // Walked left to right against the printed line rather than rebuilt from the parts: the line's
+        // exact wording belongs to GetWeaponNameAndStats, and reproducing it here would be a second
+        // formatter to keep in step. A rule the formatter chose not to print simply is not found and is
+        // skipped, which is the right answer either way.
+        foreach (string name in ruleNames)
+        {
+            int found = full.IndexOf(name, at, StringComparison.Ordinal);
+            if (found < 0) continue;
+            if (found > at) segments.Add(new RuleHoverText.Segment(full[at..found], null, null));
+            ResolvedRule rule = weapon.RuleDefinitions.First(r => r.RequestedName == name);
+            segments.Add(new RuleHoverText.Segment(name, name,
+                OfficialRuleText.Display(rule.Definition, systemSlug)));
+            at = found + name.Length;
+        }
+        if (at < full.Length) segments.Add(new RuleHoverText.Segment(full[at..], null, null));
+        return segments;
     }
 }

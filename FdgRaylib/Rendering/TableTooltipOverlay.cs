@@ -67,6 +67,12 @@ public class TableTooltipOverlay
 
     /// <summary>Set by the renderer: right-clicking a unit shows it in the Active Unit window.</summary>
     public Action<IUnit>? ShowUnitCard;
+
+    /// <summary>
+    /// Kai's call, 2026-11-02: <i>"when you have a unit selected in ANY game mode, if you right click off
+    /// of a unit, then the unit will be deselected"</i>. Raised on a right-click over bare table.
+    /// </summary>
+    public Action? ClearSelection;
     private const int MaxCards = 8;
 
     public void UpdateLayout(float scale, int originX, int originY, float tableH)
@@ -88,7 +94,8 @@ public class TableTooltipOverlay
     /// unit's info card needs Shift + right-click; otherwise a plain right-click on a unit opens it.</param>
     public void Draw(int screenW, int screenH,
         TableHitTester hitTester, ICanvasInteractionHandler? interactionHandler,
-        Rectangle? rollStackBounds = null, bool rightClickReserved = false)
+        Rectangle? rollStackBounds = null, bool rightClickReserved = false,
+        bool rightDragMoved = false)
     {
         if (_tableState == null) return;
 
@@ -122,6 +129,23 @@ public class TableTooltipOverlay
             if (ShowUnitCard != null) ShowUnitCard(hoveredUnit);
             else OpenCard(hoveredUnit, hoveredModel, screenW, screenH);
             ImGui.GetIO().WantCaptureMouse = true;
+        }
+
+        // Right-click bare table: drop the selection. Deliberately next to the right-click-a-unit case
+        // above, so the two halves of one gesture are decided in one place and cannot drift.
+        //
+        // Three things it must NOT fire on, and each has bitten something before:
+        //  - a right-DRAG that moved the 3D camera. The button comes up over the table and would read as
+        //    a click, so every camera move would also clear the panel. The 3D view reports the drag.
+        //  - a right-click the active tool owns, which is the app-wide undo gesture (#343). Undoing a step
+        //    mid-plan must not also empty the info panel you were reading.
+        //  - anything while the in-game menu is open (#246), or while ImGui has the mouse - a right-click
+        //    on a panel is not a click on the table.
+        if (!EscapeRouter.MenuOpen && hoveredUnit == null && !rightClickReserved && !rightDragMoved
+            && !ImGui.GetIO().WantCaptureMouse
+            && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+        {
+            ClearSelection?.Invoke();
         }
 
         DrawCards();

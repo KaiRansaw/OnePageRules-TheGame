@@ -125,7 +125,7 @@ void main()
     /// would clash).
     /// </summary>
     public void HandleInput(Rectangle viewport, bool mouseFree, bool keysFree,
-        bool rightDragOrbits = true, bool plainWheelZooms = true, bool letterKeysMove = true)
+        bool rightDragPans = true, bool plainWheelZooms = true, bool letterKeysMove = true)
     {
         float dt = MathF.Min(Raylib.GetFrameTime(), 0.05f);
         Vector2 mouse = Raylib.GetMousePosition();
@@ -139,18 +139,28 @@ void main()
 
         if (mouseFree && over)
         {
+            // Kai's call, 2026-11-02: "holding scroll wheel adjusts the map angle, holding right click
+            // will move the map around". So MIDDLE orbits and RIGHT pans - the opposite way round from
+            // how this started, and the way round that matches the 2D view, where right-drag also moves
+            // the board. Shift+middle is kept as a second way to pan so an old habit still works.
             Vector2 delta = Raylib.GetMouseDelta();
             bool middle = Raylib.IsMouseButtonDown(MouseButton.Middle);
-            if ((middle && !shift) || (rightDragOrbits && Raylib.IsMouseButtonDown(MouseButton.Right)))
+            bool rightHeld = Raylib.IsMouseButtonDown(MouseButton.Right);
+
+            if (middle && !shift)
             {
                 _yaw -= delta.X * 0.3f;
                 _pitch = Math.Clamp(_pitch + delta.Y * 0.25f, 8f, 89f);
             }
-            if (middle && shift)
+            if ((rightHeld && rightDragPans) || (middle && shift))
             {
                 float k = _distance * 0.0016f;
                 _target += (-right * delta.X + forward * delta.Y) * k;
+                // A right-drag that actually moved the camera is a camera gesture, not a click, so the
+                // release must not also be read as "right-click on the table" (deselect / unit card).
+                if (rightHeld && (MathF.Abs(delta.X) > 0f || MathF.Abs(delta.Y) > 0f)) RightDragMoved = true;
             }
+            if (!rightHeld) RightDragMoved = false;
         }
 
         // Zoom. Alt+wheel works whenever the pointer is over the board: holding Alt brings up the measuring
@@ -190,6 +200,13 @@ void main()
         _target.Z = Math.Clamp(_target.Z, -_tableH * 0.75f, _tableH * 0.75f);
         _yaw %= 360f;
     }
+
+    /// <summary>
+    /// True while a right-drag is moving the camera, and for as long as the button stays down after it
+    /// did. Read by the table's click handling so a drag that happens to end over a unit is not also
+    /// taken as a right-click on that unit. Cleared the moment the button comes up.
+    /// </summary>
+    public bool RightDragMoved { get; private set; }
 
     /// <summary>The preset-view buttons and controls hint, docked bottom-left of the board (ImGui pass).</summary>
     public void DrawControls(Rectangle viewport)
