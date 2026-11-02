@@ -69,6 +69,17 @@ public class RaylibRenderer
     /// <summary>#435 - the campaign's Mission Setup step: your force, their force, the map, go.</summary>
     public MissionSetupScreen MissionSetup { get; } = new();
 
+    /// <summary>A system's modes: Army vs Army, Horde, Campaign (Kai's mock, 2026-11-02).</summary>
+    public ModeSelectScreen ModeSelect { get; } = new();
+
+    /// <summary>The map editor, given a front door on the main menu.</summary>
+    public MapMakerScreen MapMaker { get; } = new();
+
+    public SettingsScreen Settings { get; } = new();
+
+    /// <summary>A Quest system's doors, until Kai designs its own screen.</summary>
+    public QuestLandingScreen QuestLanding { get; } = new();
+
     private IAppScreen _currentScreen;
 
     private ITableState? _tableState;
@@ -1453,35 +1464,13 @@ public class RaylibRenderer
     // ── F1: controls list ──────────────────────────────────────────────────────────────
     private bool _showControlsHelp;
 
-    private static readonly (string Keys, string What)[] ControlsHelp =
-    {
-        ("WASD / arrows", "Move the camera"),
-        ("Q / E", "Turn the camera (3D)"),
-        ("Shift + W / S", "Zoom in / out"),
-        ("Shift + Q / E", "Tilt up / down (3D)"),
-        ("Mouse wheel", "Zoom"),
-        ("Middle-drag", "Pan (2D) / change the angle (3D)"),
-        ("Right-drag", "Move the board (3D)"),
-        ("Right-click bare table", "Deselect the unit"),
-        ("V or F3", "Switch 2D / 3D"),
-        ("Ctrl + S", "Quick save into Saved Games"),
-        ("Ctrl + Z / Ctrl + X", "Undo / redo while placing or moving"),
-        ("Z / X", "Take Back / Redo an activation"),
-        ("Enter / Space", "Done / confirm"),
-        ("Backspace", "Back / undo a step"),
-        ("Wheel, R / Shift+R", "Rotate while moving or placing"),
-        ("Ctrl + wheel", "Cycle formation (group moves)"),
-        ("G", "Group / single model moves"),
-        ("Alt + drag, M", "Measure"),
-        ("N", "Unit labels"),
-        ("O", "Mission window (objectives, weather, marker key)"),
-        ("T", "Show all tokens"),
-        ("B", "Weapon reach overlay"),
-        ("L", "Army lists"),
-        ("Right-click a unit", "Unit card"),
-        ("Esc", "Menu"),
-        ("F1", "This list"),
-    };
+    /// <summary>
+    /// The F1 list, read from <see cref="ControlsReference"/> rather than held here. The Settings screen
+    /// shows the same list, and two copies of a keybind list go out of step the first time a key moves -
+    /// at which point the list is worse than nothing, because a player trusts it and blames themselves.
+    /// </summary>
+    private static (string Keys, string What)[] ControlsHelp =>
+        ControlsReference.All.Select(c => (c.Keys, c.What)).ToArray();
 
     private void DrawControlsHelp(int screenW, int screenH)
     {

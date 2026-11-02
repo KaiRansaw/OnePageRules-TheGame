@@ -95,6 +95,15 @@ public sealed class StrikeTeamScreen : IAppScreen
     private static readonly Random Rng = new();
     private static int D6() => Rng.Next(1, 7);
 
+    /// <summary>
+    /// Opened from a system's mode screen (Kai's mock, 2026-11-02), so "Campaign" under Grimdark Future
+    /// starts a Grimdark Future campaign rather than whatever was picked last. Only the CREATE default
+    /// is scoped: the list still shows every campaign on the machine, because hiding the others would
+    /// mean a player who picked the wrong tile thinks their campaign is gone. The per-mode campaign
+    /// screens in claude/campaign-flow-spec.md sections 1-4 are the real answer and are not built yet.
+    /// </summary>
+    public void Open(EGameSystem system) => _newSystem = system;
+
     public void OnShown()
     {
         Reload();

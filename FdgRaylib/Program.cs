@@ -1321,12 +1321,70 @@ else
     // has made one. Null means "whatever the lobby defaults to": the campaign screens reach the host
     // dialog on their own terms and must not inherit a tile clicked earlier in the session.
     EGameSystem? pendingGameSystem = null;
+    // Set beside it when the mode-select screen picked a mode (Army vs Army / Horde). Applied to the
+    // lobby in the same place and cleared the same way, so a lobby reached any other way is unaffected.
+    EGameMode? pendingGameMode = null;
 
+    // Kai's mock, 2026-11-02: a system tile opens that system's MODES rather than going straight to a
+    // lobby. The four with a Campaign Rules book get the three-mode screen; the two Quest systems keep
+    // today's path, because their modes are different words entirely (missions, hero building) and he
+    // is designing those screens himself.
     renderer.MainMenu.OnGameTypeClicked = system =>
     {
+        if (system is EGameSystem.GFStarQuest or EGameSystem.AoFQuest)
+        {
+            renderer.QuestLanding.Open(system);
+            renderer.NavigateTo(renderer.QuestLanding);
+            return;
+        }
+        renderer.ModeSelect.Open(system);
+        renderer.NavigateTo(renderer.ModeSelect);
+    };
+
+    renderer.ModeSelect.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.ModeSelect.OnArmyVsArmy = system =>
+    {
         pendingGameSystem = system;
+        pendingGameMode = EGameMode.Standard;
         renderer.NavigateTo(renderer.HostModal);
     };
+    renderer.ModeSelect.OnHorde = system =>
+    {
+        pendingGameSystem = system;
+        pendingGameMode = EGameMode.Horde;
+        renderer.NavigateTo(renderer.HostModal);
+    };
+    renderer.ModeSelect.OnCampaign = system =>
+    {
+        renderer.StrikeTeams.Open(system);
+        renderer.NavigateTo(renderer.StrikeTeams);
+    };
+
+    // The Quest landing's doors are the ones the main menu used to carry directly. Nothing new behind
+    // them - this exists so the Hero Builder and the Quest campaigns stay reachable now that their
+    // buttons have left the main menu.
+    renderer.QuestLanding.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.QuestLanding.OnHeroes = system => renderer.MainMenu.OnHeroesClicked?.Invoke(system);
+    renderer.QuestLanding.OnCampaign = system => renderer.MainMenu.OnCampaignsClicked?.Invoke(system);
+    renderer.QuestLanding.OnMission = system =>
+    {
+        pendingGameSystem = system;
+        // One mission state machine serves both Quest systems; which system is playing decides the book,
+        // the heroes and the wording (#418), and that rides on pendingGameSystem rather than on the mode.
+        pendingGameMode = EGameMode.StarQuestMission;
+        renderer.NavigateTo(renderer.HostModal);
+    };
+    renderer.QuestLanding.OnHorde = system =>
+    {
+        pendingGameSystem = system;
+        pendingGameMode = EGameMode.StarQuestHorde;
+        renderer.NavigateTo(renderer.HostModal);
+    };
+
+    renderer.MainMenu.OnMapMakerClicked = () => renderer.NavigateTo(renderer.MapMaker);
+    renderer.MapMaker.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.MainMenu.OnSettingsClicked = () => renderer.NavigateTo(renderer.Settings);
+    renderer.Settings.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
 
     renderer.MainMenu.OnHostClicked = () =>
     {
@@ -1597,7 +1655,10 @@ else
         // later lobby reached another way keeps its own default.
         if (pendingGameSystem is { } picked)
             LobbyScreen.ApplyGameSystem(lobby, picked);
+        // After ApplyGameSystem, which resets the mode along with the points and the allowed systems.
+        if (pendingGameMode is { } mode) lobby.SetGameMode(mode);
         pendingGameSystem = null;
+        pendingGameMode = null;
         // #410: a campaign army waiting to be played takes the host's own slot, with the points limit
         // raised to fit it. Must follow ApplyGameSystem, which resets the points and the allowed
         // systems, and cannot live in SetViewModel, which clears the auto-army marks and then re-applies

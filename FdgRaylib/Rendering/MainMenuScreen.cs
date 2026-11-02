@@ -36,6 +36,13 @@ public class MainMenuScreen : IAppScreen
     /// <summary>Opens a Quest system's campaign list.</summary>
     public Action<EGameSystem>? OnCampaignsClicked;
     public Action? OnStrikeTeamsClicked;
+
+    /// <summary>Opens the Map Maker (Kai, 2026-11-02: between Army Forge and Settings).</summary>
+    public Action? OnMapMakerClicked;
+
+    /// <summary>Opens Settings.</summary>
+    public Action? OnSettingsClicked;
+
     public Action? OnQuitClicked;
 
     private bool _modalOpen = false;
@@ -164,20 +171,22 @@ public class MainMenuScreen : IAppScreen
             if (clicked) action?.Invoke();
         }
 
-        Tool("Load Game",           OnLoadGameClicked,         0);
-        Tool("Army Forge",          OnArmyForgeClicked,        1);
-        Tool("Star Quest Heroes",   () => OnHeroesClicked?.Invoke(EGameSystem.GFStarQuest),    2);
-        Tool("Star Quest Campaign", () => OnCampaignsClicked?.Invoke(EGameSystem.GFStarQuest), 3);
-        // #418: AoF: Quest's own pair. Its heroes are a different roster with different classes, so
-        // they cannot share Star Quest's screen state - a button each is the plain way to say so.
-        Tool("AoF Quest Heroes",    () => OnHeroesClicked?.Invoke(EGameSystem.AoFQuest),       4);
-        Tool("AoF Quest Campaign",  () => OnCampaignsClicked?.Invoke(EGameSystem.AoFQuest),    5);
-        // #426: one Campaign entry for all four systems with a Campaign Rules v3.6.0 book (GF,
-        // Firefight, AoF, Skirmish) - the game is picked when the campaign army is created. The two
-        // Quest campaigns above are a different book entirely and keep their own screens.
-        Tool("Campaign",            OnStrikeTeamsClicked,      6);
-        Tool("Combat Calculator",   OnCombatCalculatorClicked, 7);
-        Tool("Quit",                OnQuitClicked,             8, back: true);
+        // Kai's mock, 2026-11-02: four tools and the way out, nothing else. Campaign moved INSIDE each
+        // system (a tile leads to Army vs Army / Horde / Campaign), and the Quest systems' heroes and
+        // campaigns moved behind their own tiles, so neither needs a button here any more.
+        //
+        // Deliberately gone, and recorded rather than quietly dropped: the Combat Calculator, and
+        // "Join a Game" - multiplayer is a pass of its own and Kai did not want it half-touched in the
+        // meantime. None of the networking is removed, only unsurfaced.
+        //
+        // Load Game stays. He wants it rebuilt (his question was what resuming a game against another
+        // person should even do), and taking the button away now would strand every save on disk for
+        // the sake of a screen that is going to be redone anyway.
+        Tool("Load Game",           OnLoadGameClicked,       0);
+        Tool("Army Forge",          OnArmyForgeClicked,      1);
+        Tool("Map Maker",           OnMapMakerClicked,       2);
+        Tool("Settings",            OnSettingsClicked,       3);
+        Tool("Close Game",          OnQuitClicked,           4, back: true);
 
         ImGui.EndDisabled();
 
