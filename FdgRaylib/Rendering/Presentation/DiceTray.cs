@@ -53,6 +53,8 @@ public static class DiceTray
         public bool Loud;                  // a headline announcement: drawn with its own accent bar
         public string? LossUnit;           // "X loses N models" lines merge
         public int LossCount;
+        /// <summary>#441: rule names occurring in <see cref="Text"/>, highlighted with a hover.</summary>
+        public IReadOnlyList<string> RuleNames = Array.Empty<string>();
     }
 
     private static readonly List<Entry> Entries = new();   // oldest first; drawn newest first
@@ -72,6 +74,9 @@ public static class DiceTray
         Entries.Clear();
         _open = null;
         _lastRound = null;
+        _pins.Clear();
+        _hoveredRule = null;
+        _hoveredFor = 0f;
     }
 
     /// <summary>A plain message line (game saved, an error...).</summary>
@@ -235,6 +240,9 @@ public static class DiceTray
                 {
                     Kind = Kind.Line, Text = text, Color = From(b.Color),
                     Loud = b.Tier == EBannerTier.Headline,
+                    // #441: the engine names the rules it mentioned; DrawLine highlights them and hovers
+                    // their book wording.
+                    RuleNames = b.ReferencedRules,
                 });
                 break;
             }
@@ -301,6 +309,7 @@ public static class DiceTray
         ImGui.Separator();
         DrawBody();
         ImGui.End();
+        DrawPinnedRuleCards();
     }
 
     /// <summary>The report's lines, newest first, drawn into the current window - the Battle Report tab.</summary>
@@ -336,7 +345,15 @@ public static class DiceTray
         Vector2 start = ImGui.GetCursorScreenPos();
         const float bar = 3f, gap = 7f;
         ImGui.SetCursorScreenPos(start + new Vector2(bar + gap, 0f));
-        Rich(new() { (e.Text, e.Color) }, width - bar - gap);
+
+        // #441: a line that names special rules draws them highlighted, with a hover giving the rule's
+        // own wording from the books. Everything else takes the single-piece path unchanged.
+        List<(string text, Vector4 color)> pieces = SplitOnRuleNames(e, out HashSet<int> hot);
+        var hotRects = hot.Count > 0 ? new List<(Vector2 Min, Vector2 Max)>() : null;
+        Rich(pieces, width - bar - gap, hot.Count > 0 ? hot : null, hotRects);
+
+        if (hotRects is { Count: > 0 }) HoverRuleTooltip(e, hotRects);
+
         float bottom = ImGui.GetCursorScreenPos().Y - ImGui.GetStyle().ItemSpacing.Y;
         dl.AddRectFilled(start, new Vector2(start.X + bar, bottom), U(e.Color), 2f);
         if (e.Loud) dl.AddRectFilled(new Vector2(start.X, bottom - 1f), new Vector2(start.X + width, bottom), U(e.Color), 1f);
@@ -472,15 +489,198 @@ public static class DiceTray
     }
 
     /// <summary>Word-wrapped text made of differently coloured pieces.</summary>
+    /// <summary>The rule-name highlight: the report's gold, the same colour the mission lines use.</summary>
+    private static readonly Vector4 RuleName = new(0.92f, 0.82f, 0.45f, 1f);
+
+    /// <summary>
+    /// #441: how a rule name becomes the wording a player reads. Set once per game by the renderer, which
+    /// is the only thing that knows which system is being played - and the system matters, because OPR
+    /// words the same rule differently per game (Banner is the example this was built for). Null before a
+    /// game starts, and a null ANSWER just means no tooltip for that name.
+    /// </summary>
+    public static Func<string, string?>? RuleTextLookup;
+
+    /// <summary>
+    /// Splits the line into alternating plain and rule-name pieces, reporting which piece indices are
+    /// the rule names. Longest name first, so "Banner Boost" is not split by "Banner" sitting inside it.
+    /// </summary>
+    private static List<(string text, Vector4 color)> SplitOnRuleNames(Entry e, out HashSet<int> hot)
+    {
+        hot = new HashSet<int>();
+        if (e.RuleNames.Count == 0) return new() { (e.Text, e.Color) };
+
+        var pieces = new List<(string text, Vector4 color)>();
+        string rest = e.Text;
+        List<string> names = e.RuleNames
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .OrderByDescending(n => n.Length)
+            .ToList();
+
+        while (rest.Length > 0)
+        {
+            int at = -1;
+            string found = "";
+            foreach (string name in names)
+            {
+                int i = rest.IndexOf(name, StringComparison.OrdinalIgnoreCase);
+                if (i < 0) continue;
+                if (at < 0 || i < at) { at = i; found = name; }
+            }
+
+            if (at < 0) { pieces.Add((rest, e.Color)); break; }
+
+            if (at > 0) pieces.Add((rest[..at], e.Color));
+            hot.Add(pieces.Count);
+            pieces.Add((rest.Substring(at, found.Length), RuleName));
+            rest = rest[(at + found.Length)..];
+        }
+
+        return pieces;
+    }
+
+    // One timer for the whole report: only one rule name can be under the cursor at a time, and resting
+    // on a different one restarts the wait rather than inheriting the last one's.
+    private static string? _hoveredRule;
+    private static float _hoveredFor;
+
+    /// <summary>
+    /// A rule card the player clicked to keep (#441, Kai 2026-11-01): once a hover tooltip is up,
+    /// clicking the highlighted word turns it into a card that stays, so the cursor is free to go and
+    /// raise another one. Several can be open at once, which is the point - comparing two rules means
+    /// reading both at the same time, and a tooltip that dies when the mouse moves cannot do that.
+    /// </summary>
+    private sealed class Pin
+    {
+        public string Name = "";
+        public string Text = "";
+        /// <summary>Where it first appeared - under the word it came from. Draggable after that.</summary>
+        public Vector2 At;
+        /// <summary>Distinct per card so two cards for different rules keep their own window state.</summary>
+        public int Id;
+    }
+
+    private static readonly List<Pin> _pins = new();
+    private static int _nextPinId = 1;
+
+    /// <summary>
+    /// Shows the rule's book wording once the cursor has rested on it, reusing
+    /// <see cref="TableTooltipOverlay.HoverDelaySeconds"/> rather than inventing a second delay - the
+    /// table tooltips already wait exactly this long, and two different waits in one UI reads as a bug.
+    ///
+    /// <para>
+    /// A click while the tooltip is up pins it (see <see cref="Pin"/>); a click on an already-pinned word
+    /// takes the card away again, so the same gesture is both the on and the off.
+    /// </para>
+    /// </summary>
+    private static void HoverRuleTooltip(Entry e, List<(Vector2 Min, Vector2 Max)> rects)
+    {
+        Vector2 mouse = ImGui.GetMousePos();
+        int hit = rects.FindIndex(r => mouse.X >= r.Min.X && mouse.X <= r.Max.X
+            && mouse.Y >= r.Min.Y && mouse.Y <= r.Max.Y);
+        bool over = hit >= 0;
+
+        // The name being hovered: the first the line mentions. A line names one rule in practice - the
+        // obituaries that drove this feature each name exactly one.
+        string? name = e.RuleNames.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+        if (!over || name == null)
+        {
+            if (_hoveredRule == name && !over) { _hoveredRule = null; _hoveredFor = 0f; }
+            return;
+        }
+
+        if (_hoveredRule != name) { _hoveredRule = name; _hoveredFor = 0f; }
+        _hoveredFor += ImGui.GetIO().DeltaTime;
+        if (_hoveredFor < TableTooltipOverlay.HoverDelaySeconds) return;
+
+        string? text = RuleTextLookup?.Invoke(name);
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        // Already pinned: its card is on screen, so a second floating copy beside it would just be in the
+        // way. The click here is the way to dismiss it.
+        int pinned = _pins.FindIndex(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            if (pinned >= 0)
+            {
+                _pins.RemoveAt(pinned);
+            }
+            else
+            {
+                // Just below the word, so the card does not cover the line it came from.
+                _pins.Add(new Pin
+                {
+                    Name = name, Text = text!, Id = _nextPinId++,
+                    At = new Vector2(rects[hit].Min.X, rects[hit].Max.Y + 4f),
+                });
+            }
+
+            return;
+        }
+
+        if (pinned >= 0) return;
+
+        ImGui.BeginTooltip();
+        ImGui.PushTextWrapPos(380f);
+        ImGui.PushStyleColor(ImGuiCol.Text, RuleName);
+        ImGui.TextUnformatted(name);
+        ImGui.PopStyleColor();
+        ImGui.Separator();
+        ImGui.TextUnformatted(text);
+        ImGui.TextDisabled("Click to keep this open.");
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+    }
+
+    /// <summary>
+    /// Draws the pinned rule cards. Called AFTER the report's own window has ended, because each card is
+    /// a top-level window of its own - started inside the report it would be clipped to the panel and
+    /// could not be dragged out of it.
+    /// </summary>
+    public static void DrawPinnedRuleCards()
+    {
+        if (_pins.Count == 0) return;
+
+        for (int i = _pins.Count - 1; i >= 0; i--)
+        {
+            Pin pin = _pins[i];
+            ImGui.SetNextWindowPos(pin.At, ImGuiCond.Appearing);
+            ImGui.SetNextWindowSizeConstraints(new Vector2(240f, 0f), new Vector2(380f, 10000f));
+            bool open = true;
+            if (ImGui.Begin($"{pin.Name}##pinnedrule{pin.Id}", ref open,
+                    ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings
+                    | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoFocusOnAppearing))
+            {
+                ImGui.PushTextWrapPos(360f);
+                ImGui.TextUnformatted(pin.Text);
+                ImGui.PopTextWrapPos();
+            }
+            ImGui.End();
+
+            if (!open) _pins.RemoveAt(i);
+        }
+    }
+
     private static void Rich(List<(string text, Vector4 color)> pieces, float width)
+        => Rich(pieces, width, null, null);
+
+    /// <summary>
+    /// #441: the wrapping renderer, optionally collecting the on-screen rectangles of whichever pieces
+    /// are flagged in <paramref name="hotPieces"/>. It draws straight to the draw list rather than
+    /// emitting ImGui items - which is what makes the wrapping possible - so there is no item to ask
+    /// <c>IsItemHovered</c> about, and a hover has to be hit-tested against rectangles we kept.
+    /// </summary>
+    private static void Rich(List<(string text, Vector4 color)> pieces, float width,
+        HashSet<int>? hotPieces, List<(Vector2 Min, Vector2 Max)>? hotRects)
     {
         ImDrawListPtr dl = ImGui.GetWindowDrawList();
         Vector2 o = ImGui.GetCursorScreenPos();
         float lh = ImGui.GetTextLineHeight();
         float space = ImGui.CalcTextSize(" ").X;
         float x = 0f, y = 0f;
-        foreach (var (text, color) in pieces)
+        for (int pieceIndex = 0; pieceIndex < pieces.Count; pieceIndex++)
         {
+            (string text, Vector4 color) = pieces[pieceIndex];
+            bool hot = hotPieces != null && hotPieces.Contains(pieceIndex);
             uint col = U(color);
             string[] words = text.Split(' ');
             for (int i = 0; i < words.Length; i++)
@@ -503,6 +703,15 @@ public static class DiceTray
                     x = 0f; y += lh;
                 }
                 dl.AddText(o + new Vector2(x, y), col, word);
+                if (hot)
+                {
+                    Vector2 min = o + new Vector2(x, y);
+                    Vector2 max = min + new Vector2(ww, lh);
+                    // Underlined in place, the same treatment #292/#336 gave rule names elsewhere, so the
+                    // highlight does not rely on colour alone.
+                    dl.AddLine(new Vector2(min.X, max.Y - 1f), new Vector2(max.X, max.Y - 1f), col);
+                    hotRects?.Add((min, max));
+                }
                 x += ww;
             }
         }

@@ -324,6 +324,12 @@ public class RaylibRenderer
 
         _tableState         = tableState;
         _colorForPlayer     = colorForPlayer;
+        // #441: the Battle Report highlights rule names it is given and explains them on hover. The text
+        // is OPR's own wording FOR THE SYSTEM BEING PLAYED, the same source and the same reasoning as the
+        // table tooltips (#420) - Banner is worded differently in the four skirmish/adventure games than
+        // in GF and AoF, so a shared summary would be wrong in one of them.
+        Presentation.DiceTray.RuleTextLookup = ruleName => FDG.Rules.Dispatch.OfficialRuleText.Text(
+            ruleName, tableState.Progress is { } p ? GameSystemInfo.Slug(p.GameSystem) : null);
         // Star Quest: downed heroes stay drawn (greyed) so the party can find and revive them.
         PresentationPlayer.IsUnconsciousHero = model => tableState.Units.Objects
             .Any(u => u is UnitData { IsQuestHero: true } && u.Models.Contains(model));
@@ -2281,6 +2287,9 @@ public class RaylibRenderer
             ImGui.EndTabBar();
         }
         ImGui.End();
+        // #441: the rule cards the player clicked to keep. Outside the tab window on purpose - they are
+        // their own draggable windows and must not be clipped to the panel.
+        DiceTray.DrawPinnedRuleCards();
     }
 
     // What used to be the top status strip, gathered each frame for the Mission tab.

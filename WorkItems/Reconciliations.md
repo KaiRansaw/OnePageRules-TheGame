@@ -877,3 +877,9 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **2026-11-01 - number 440.** `git fetch origin`, read the index and archive from `origin/campaign-360`:
 > the only hits for "440" are a test count in prose on the archived #064 line ("suite 424->440"), not a
 > work item. **440 = audit finding 8**, AoF: Quest's Dense and Unstable terrain. No collision.
+
+> **2026-11-01 - number 441.** `git fetch origin`, read the index and archive from both `origin/main` and
+> `origin/campaign-360`: nothing numbered 441 anywhere. (The near hits are prose, not items: "440" is a
+> test count on the archived #064 line, "442" likewise.) **441 = the Command Group obituary in the battle
+> report** - the lines when a Banner or Musician dies, plus hoverable and pinnable rule names. No
+> collision.
