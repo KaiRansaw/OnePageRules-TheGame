@@ -4422,7 +4422,22 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "or",
+              "left": {
+                "kind": "moraleAttackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
+              },
+              "right": {
+                "kind": "unitHasRuleOrGrant",
+                "ruleName": "Enhanced Hold the Line"
+              }
+            }
           },
           "effect": {
             "kind": "rollModifier",
@@ -4437,7 +4452,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit gets \u002B1 to morale test rolls."
+      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9 inches/6 inches away."
     },
     {
       "name": "Precision Shooter Buff",
@@ -4810,22 +4825,7 @@
     },
     {
       "name": "Enhanced Hold the Line",
-      "passive": [
-        {
-          "hookID": "Morale_OnPreMoraleTest",
-          "condition": {
-            "kind": "unitHasRule",
-            "ruleName": "Hold the Line"
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Morale",
-            "delta": 1
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        }
-      ],
+      "passive": [],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,

@@ -31,6 +31,21 @@ public class BookRuleFireLintTests
         // so the lint passes it on its own merits. Only its once-per-army half is a build-time
         // constraint, and that is tracked as outstanding work rather than hidden behind an allowlist.
         ["Ethereal"] = "activated teleport enacted by TeleportStage (routed on Effect.Teleport), not by operations.",
+
+        // #442: the Enhanced forms of the Hold the Line family are MARKERS, like "Unique" was. Their
+        // text - "they always get +1 to Morale Test rolls FROM Hold the Line (instead of only when
+        // shot/charged from over 9"/6" away)" - describes one bonus whose restriction is lifted, not a
+        // second bonus. So the +1 stays on the base rule, whose band condition reads this rule's
+        // presence through Condition.UnitHasRuleOrGrant, and these carry no dispatch entries of their
+        // own. Given a hook they would stack to +2, which is what they shipped as and no book grants.
+        //
+        // An allowlist entry alone would only assert "this does nothing", so the reader is pinned
+        // separately: HoldTheLineShippedDataTests.Supplement_TheEnhancedUnlock_SeesAnAuraGrant proves
+        // the base rule still names this rule, and the grant-aware way. Both must be read together.
+        ["Enhanced Hold the Line"] = "marker read by Hold the Line's band condition " +
+            "(Condition.UnitHasRuleOrGrant); a dispatch entry here would double the bonus.",
+        ["Enhanced Hive Bond"] = "marker read by Hive Bond's band condition " +
+            "(Condition.UnitHasRuleOrGrant); a dispatch entry here would double the bonus.",
     };
 
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");

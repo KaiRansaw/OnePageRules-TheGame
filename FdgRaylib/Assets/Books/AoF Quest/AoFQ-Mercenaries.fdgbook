@@ -3463,7 +3463,15 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "mostModelsHaveThisRule"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "moraleAttackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            }
           },
           "effect": {
             "kind": "rollModifier",
