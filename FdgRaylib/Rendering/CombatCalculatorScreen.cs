@@ -830,7 +830,7 @@ public class CombatCalculatorScreen : IAppScreen
         // The stat subline in the in-game shoot panel's own notation, each rule underlined and hoverable
         // (#292). Drawn on the draw list because a table cell gives no wrapping for SameLine runs.
         uint sub = ImGui.GetColorU32(DimText);
-        uint ruleCol = ImGui.GetColorU32(row.InRange ? ImGuiTheme.RuleBlue : ImGuiTheme.RuleBlueDim);
+        uint ruleCol = ImGui.GetColorU32(row.InRange ? ImGuiTheme.RuleGold : ImGuiTheme.RuleGoldDim);
         float indent = ImGui.GetTextLineHeight();
         string? hovered = RuleHoverText.DrawInline(ImGui.GetWindowDrawList(),
             ImGui.GetCursorScreenPos() + new Vector2(indent, 0f),

@@ -129,10 +129,11 @@ public static class RuleHoverText
     }
 
     /// <summary>
-    /// The gold used for a hoverable rule name, matching the Battle Report's highlighted rules (#441) so
-    /// one colour means "there is a rule behind this word" everywhere in the game.
+    /// The gold a hoverable rule name is painted in - <see cref="ImGuiTheme.RuleGold"/>, not a second
+    /// copy of it. Kept as a name here because this class is the one the in-game panels call, and the
+    /// whole point of the colour is that there is exactly one of it.
     /// </summary>
-    public static readonly Vector4 RuleGold = new(1f, 0.84f, 0.42f, 1f);
+    public static Vector4 RuleGold => ImGuiTheme.RuleGold;
 
     /// <summary>
     /// Draws a segment list as wrapped, hoverable text at the cursor, advancing the cursor past it.

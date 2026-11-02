@@ -171,10 +171,11 @@ public static class UnitStatBlockRenderer
         string? systemSlug)
     {
         string full = weapon.GetWeaponNameAndStats(count);
-        var ruleNames = weapon.RuleDefinitions
-            .Select(r => r.RequestedName)
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .ToList();
+        var byName = new Dictionary<string, ResolvedRule>(StringComparer.Ordinal);
+        foreach (ResolvedRule rule in weapon.RuleDefinitions)
+        {
+            if (!string.IsNullOrWhiteSpace(rule.RequestedName)) byName[rule.RequestedName] = rule;
+        }
 
         var segments = new List<RuleHoverText.Segment> { new("- ", null, null) };
         int at = 0;
@@ -182,16 +183,34 @@ public static class UnitStatBlockRenderer
         // exact wording belongs to GetWeaponNameAndStats, and reproducing it here would be a second
         // formatter to keep in step. A rule the formatter chose not to print simply is not found and is
         // skipped, which is the right answer either way.
-        foreach (string name in ruleNames)
+        //
+        // Each step takes the EARLIEST remaining match, and the LONGEST among any that start together.
+        // Sorting the names by length up front and walking them in that order looks equivalent and is
+        // not: the cursor only moves forward, so consuming a long name late in the line strands every
+        // shorter name that appeared before it. Earliest-then-longest is what the Battle Report's
+        // splitter does, for the same reason.
+        while (at < full.Length)
         {
-            int found = full.IndexOf(name, at, StringComparison.Ordinal);
-            if (found < 0) continue;
-            if (found > at) segments.Add(new RuleHoverText.Segment(full[at..found], null, null));
-            ResolvedRule rule = weapon.RuleDefinitions.First(r => r.RequestedName == name);
-            segments.Add(new RuleHoverText.Segment(name, name,
-                OfficialRuleText.Display(rule.Definition, systemSlug)));
-            at = found + name.Length;
+            int bestAt = -1;
+            string bestName = "";
+            foreach (string name in byName.Keys)
+            {
+                int found = full.IndexOf(name, at, StringComparison.Ordinal);
+                if (found < 0) continue;
+                if (bestAt < 0 || found < bestAt || (found == bestAt && name.Length > bestName.Length))
+                {
+                    bestAt = found;
+                    bestName = name;
+                }
+            }
+            if (bestAt < 0) break;
+
+            if (bestAt > at) segments.Add(new RuleHoverText.Segment(full[at..bestAt], null, null));
+            segments.Add(new RuleHoverText.Segment(bestName, bestName,
+                OfficialRuleText.Display(byName[bestName].Definition, systemSlug)));
+            at = bestAt + bestName.Length;
         }
+
         if (at < full.Length) segments.Add(new RuleHoverText.Segment(full[at..], null, null));
         return segments;
     }

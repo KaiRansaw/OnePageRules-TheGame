@@ -624,8 +624,13 @@ public sealed class StrikeTeamScreen : IAppScreen
         WeaponFileEntry? melee = roster.Weapons.Where(wp => wp.RangeInches == 0).OrderByDescending(wp => wp.Attacks).FirstOrDefault();
         UiText.Disabled(ranged != null ? "Ranged: " + Describe(ranged) : "Ranged: none");
         UiText.Disabled(melee != null ? "Melee: " + Describe(melee) : "Melee: none");
-        string rules = string.Join(", ", roster.Rules.Select(r => r.PrintableName).Take(4));
-        UiText.Wrapped(rules.Length > 0 ? rules : "No special rules");
+        // Kai, 2026-11-02: every rule name in the game is gold, underlined and hoverable, so the recruit
+        // card's rule list goes through the Forge's flow rather than printing plain text.
+        var shown = roster.Rules.Take(4).ToList();
+        if (shown.Count > 0)
+            RuleTextFlow.Draw(RuleTextFlow.RuleList(shown), RuleGlossary.Build(book), ImGuiCol.TextDisabled);
+        else
+            UiText.Wrapped("No special rules");
 
         ImGui.TextUnformatted($"{roster.BasePointCost} pts");
 

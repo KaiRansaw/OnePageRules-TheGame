@@ -370,7 +370,7 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
 
         (UnitFileEntry unit, List<ItemEntry> items) = ListCompiler.CompileUnitDetailed(_book!, edit.Unit);
         int price = PriceOf(edit);
-        UiText.Colored(edit.Changed ? (price > 0 ? ImGuiTheme.PointsBlue : ImGuiTheme.HeroGold) : ImGuiTheme.RuleBlueDim,
+        UiText.Colored(edit.Changed ? (price > 0 ? ImGuiTheme.PointsBlue : ImGuiTheme.HeroGold) : ImGuiTheme.RuleGoldDim,
             edit.Changed
                 ? $"New cost {unit.PointCost} - current {edit.Info.PointCost} = {Signed(price)} pts" + (price < 0 ? " (you get points back)" : "")
                 : "No changes yet.");

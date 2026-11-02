@@ -74,11 +74,22 @@ public static class ImGuiTheme
     // used to be this blue in the middle column, white in the side columns' weapon table and grey in
     // their rule lists - three colours for one kind of thing, so nothing taught the reader that an
     // underlined blue word is a rule they can hover.
-    public static readonly Vector4 RuleBlue = new(0.45f, 0.80f, 0.90f, 1f);
+    /// <summary>
+    /// <b>The</b> colour of a rule name, everywhere one appears: the Forge, the army viewers, the
+    /// calculator, the in-game panels and the Battle Report. Kai, 2026-11-02: <i>"in ANY instance of ANY
+    /// rule being referenced, all of them are gold, underscored and highlighted"</i>.
+    /// <para>
+    /// It was a blue (#398) and is now the Battle Report's gold, which is where he first saw the
+    /// treatment and asked for it everywhere. The point of the constant is unchanged and is the reason
+    /// not to hard-code a colour next to a rule name: a gold underlined word has to mean exactly one
+    /// thing, or nothing teaches the reader it can be hovered.
+    /// </para>
+    /// </summary>
+    public static readonly Vector4 RuleGold = new(0.92f, 0.82f, 0.45f, 1f);
 
-    /// <summary>The same blue for a rule on something switched off - an out-of-range weapon. Darkened
+    /// <summary>The same gold for a rule on something switched off - an out-of-range weapon. Darkened
     /// rather than greyed, so it still reads as a rule name.</summary>
-    public static readonly Vector4 RuleBlueDim = new(0.28f, 0.50f, 0.58f, 1f);
+    public static readonly Vector4 RuleGoldDim = new(0.52f, 0.46f, 0.25f, 1f);
 
     // Button colours by ACTION CLASS, pushed by UiButton so the class a call site picked is visible on
     // screen: neutral grey undoes (Back, Cancel, Quit), muted blue goes somewhere (Choose unit, Load

@@ -101,15 +101,55 @@ public class UnitPanelRuleHoverTests
     [Test]
     public void OneRuleNameInsideAnotherStillSegmentsCleanly()
     {
+        // Attached shortest-first on purpose: the segmenter has to sort, not trust the order it is given.
         Weapon weapon = WeaponWith("Odd Gun", 18f, 2, 1,
-            Rule("Blast(3)", "Hits x3."),
-            Rule("Blast", "Hits are multiplied."));
+            Rule("Blast", "Hits are multiplied."),
+            Rule("Blast(3)", "Hits x3."));
 
         List<RuleHoverText.Segment> segments =
             UnitStatBlockRenderer.WeaponLineSegments(weapon, 1, systemSlug: null);
 
         Assert.That(Flatten(segments), Is.EqualTo("- " + weapon.GetWeaponNameAndStats(1)),
             "whatever the overlap does to the highlighting, the text must survive intact.");
+
+        // And the longer name wins: "Blast" matching first would highlight three characters and leave
+        // "(3)" as plain text beside them, which reads as a rule the player cannot hover.
+        string printed = weapon.GetWeaponNameAndStats(1);
+        if (printed.Contains("Blast(3)", StringComparison.Ordinal))
+        {
+            Assert.That(segments.Any(s => s.RuleName == "Blast(3)"), Is.True,
+                "the longer rule name must be the one that matched.");
+        }
+    }
+
+    /// <summary>
+    /// The ordering trap, pinned on its own because a sabotage walked straight into it.
+    ///
+    /// <para>
+    /// The obvious fix for "one name inside another" is to sort the names longest-first and walk them in
+    /// that order. It is wrong, and the failure is silent: the cursor only moves forward, so consuming a
+    /// long name that appears LATE in the line strands every shorter name before it, and those just stop
+    /// being hoverable. Here Disintegrate is the longest and appears last, so sorting by length drops
+    /// Blast(3) entirely.
+    /// </para>
+    /// </summary>
+    [Test]
+    public void ALongRuleNameLateInTheLineDoesNotStrandShorterOnesBeforeIt()
+    {
+        Weapon weapon = WeaponWith("Blessed Flamer", 12f, 1, 0,
+            Rule("Blast(3)", "Hits are multiplied by 3."),
+            Rule("Disintegrate", "Ignores Regeneration."),
+            Rule("Reliable", "Attacks hit on 2+."));
+        string printed = weapon.GetWeaponNameAndStats(1);
+        if (!printed.Contains("Blast(3)", StringComparison.Ordinal)) Assert.Pass("formatter omits rules.");
+
+        var names = UnitStatBlockRenderer.WeaponLineSegments(weapon, 1, systemSlug: null)
+            .Where(s => s.IsRule).Select(s => s.RuleName).ToList();
+
+        Assert.That(names, Does.Contain("Blast(3)"),
+            "Blast(3) comes first in the line and must still be found after the longer Disintegrate.");
+        Assert.That(names, Does.Contain("Disintegrate"));
+        Assert.That(names, Does.Contain("Reliable"));
     }
 
     /// <summary>
@@ -135,16 +175,29 @@ public class UnitPanelRuleHoverTests
     }
 
     /// <summary>
-    /// The colour is one shared constant rather than a literal per screen, so "gold underlined word" can
-    /// only ever mean one thing. Sabotage: give the unit panel its own colour and this is what notices.
+    /// Kai, 2026-11-02: <i>"in ANY instance of ANY rule being referenced ... all of them are gold,
+    /// underscored and highlighted"</i>. That only holds if there is literally ONE colour - the two
+    /// families of rule display (<see cref="RuleHoverText"/> for live rules in play,
+    /// <c>RuleTextFlow</c> for army-file entries in the builders) used different ones, which is how the
+    /// game ended up with a blue rule name in the Forge and a gold one in the Battle Report.
+    ///
+    /// <para>Sabotage: give either family its own literal and this fails.</para>
     /// </summary>
     [Test]
-    public void TheRuleGoldIsOneSharedColour()
+    public void EveryRuleDisplayUsesTheSameGold()
     {
-        Assert.That(RuleHoverText.RuleGold.W, Is.EqualTo(1f), "fully opaque.");
-        Assert.That(RuleHoverText.RuleGold.X, Is.GreaterThan(RuleHoverText.RuleGold.Z),
+        Assert.That(RuleHoverText.RuleGold, Is.EqualTo(ImGuiTheme.RuleGold),
+            "the in-game panels and the theme must be the same constant, not two copies.");
+
+        Assert.That(ImGuiTheme.RuleGold.W, Is.EqualTo(1f), "fully opaque.");
+        Assert.That(ImGuiTheme.RuleGold.X, Is.GreaterThan(ImGuiTheme.RuleGold.Z),
             "gold: more red than blue.");
-        Assert.That(RuleHoverText.RuleGold.Y, Is.GreaterThan(RuleHoverText.RuleGold.Z),
+        Assert.That(ImGuiTheme.RuleGold.Y, Is.GreaterThan(ImGuiTheme.RuleGold.Z),
             "gold: more green than blue.");
+
+        // The dim variant is the same hue for a rule on something switched off - darkened, not greyed,
+        // so it still reads as a rule name rather than as disabled text.
+        Assert.That(ImGuiTheme.RuleGoldDim.X, Is.GreaterThan(ImGuiTheme.RuleGoldDim.Z));
+        Assert.That(ImGuiTheme.RuleGoldDim.X, Is.LessThan(ImGuiTheme.RuleGold.X), "and darker.");
     }
 }

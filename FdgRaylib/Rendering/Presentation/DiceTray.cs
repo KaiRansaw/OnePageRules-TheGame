@@ -490,7 +490,12 @@ public static class DiceTray
 
     /// <summary>Word-wrapped text made of differently coloured pieces.</summary>
     /// <summary>The rule-name highlight: the report's gold, the same colour the mission lines use.</summary>
-    private static readonly Vector4 RuleName = new(0.92f, 0.82f, 0.45f, 1f);
+    /// <summary>
+    /// Where this gold started (#441). The literal moved to <see cref="ImGuiTheme.RuleGold"/> on
+    /// 2026-11-02 when Kai asked for the same treatment on every rule name in the game, so the report
+    /// and every other screen cannot drift apart.
+    /// </summary>
+    private static Vector4 RuleName => ImGuiTheme.RuleGold;
 
     /// <summary>
     /// #441: how a rule name becomes the wording a player reads. Set once per game by the renderer, which

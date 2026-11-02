@@ -21,6 +21,15 @@ public class ArmyBuilderScreen : IAppScreen
 
     private readonly ArmyListFile _army = new() { PointsLimit = DefaultPointsLimit };
 
+    /// <summary>
+    /// Rule descriptions for the hovers, from the open army's embedded (#059) definitions. Rebuilt when
+    /// the list changes rather than per frame - RuleGlossary.Build walks the whole core catalog and the
+    /// baked official text, which is not work to repeat sixty times a second for a list that only moves
+    /// when somebody clicks something.
+    /// </summary>
+    private RuleGlossary Glossary => _glossary ??= RuleGlossary.Build(_army.RuleDefinitions, _army.GameSystem);
+    private RuleGlossary? _glossary;
+
     // #236: whether the currently loaded file carried an Army Forge block (BuiltArmyFile.Book/Selections).
     // Saving from this freeform screen writes a plain ArmyListFile, which strips that block - how
     // "Battle Brothers 2k" silently lost its book (2026-07-15). Save therefore gates on an explicit
@@ -186,6 +195,7 @@ public class ArmyBuilderScreen : IAppScreen
         // round-trips them (without these, a loaded caster army would lose its spells on save).
         _army.RuleDefinitions.AddRange(loaded.RuleDefinitions);
         _army.Spells.AddRange(loaded.Spells);
+        _glossary = null;   // a different army's rules: rebuild the hovers from THIS one's definitions
     }
 
     private void DrawToolbar()
@@ -215,6 +225,7 @@ public class ArmyBuilderScreen : IAppScreen
                 _army.Name    = "";
                 _army.Faction = "";
                 _army.PointsLimit = DefaultPointsLimit;
+                _glossary = null;         // emptied: the hovers fall back to the core catalog
                 _loadedForgeArmy = false; // fresh freeform army - nothing to detach
                 ImGui.CloseCurrentPopup();
             }
@@ -381,11 +392,17 @@ public class ArmyBuilderScreen : IAppScreen
         UiText.Disabled(pts);
 
         ImGui.Indent();
+        // Weapon rules get the same gold-and-hoverable treatment as the unit's own (Kai, 2026-11-02);
+        // WeaponSummary stays as the flat string, which other code still measures and compares against.
         foreach (WeaponFileEntry weapon in unit.Weapons)
-            TextColoredUnformatted(HintColor, WeaponSummary(weapon));
+            RuleTextFlow.Draw(RuleTextFlow.WeaponLine(weapon), Glossary, ImGuiCol.TextDisabled);
+        // Kai, 2026-11-02: gold, underlined and hoverable wherever a rule is named. This screen has no
+        // book - it edits army files directly - so the glossary is built from the army's own embedded
+        // definitions, which also folds in the core catalog and OPR's per-system wording. That covers
+        // essentially every rule a list can carry; a hand-authored file with none still gets the core
+        // catalog, and anything genuinely unknown says so on hover rather than doing nothing.
         if (unit.SpecialRules.Count > 0)
-            TextColoredUnformatted(HintColor,
-                string.Join(", ", unit.SpecialRules.Select(r => r.PrintableName)));
+            RuleTextFlow.Draw(RuleTextFlow.RuleList(unit.SpecialRules), Glossary, ImGuiCol.TextDisabled);
         ImGui.Unindent();
     }
 

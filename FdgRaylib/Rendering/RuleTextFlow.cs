@@ -223,10 +223,10 @@ public static class RuleTextFlow
     /// </summary>
     /// <param name="color">Colour for the PLAIN runs - the weapon name, the brackets, the commas.</param>
     /// <param name="ruleColor">#398: colour for the rule NAMES, defaulting to the one rule blue
-    /// (<see cref="ImGuiTheme.RuleBlue"/>). A rule used to take the colour of whatever line it happened to
+    /// (<see cref="ImGuiTheme.RuleGold"/>). A rule used to take the colour of whatever line it happened to
     /// sit in - white in a weapon table, grey in a rule list, blue in the calculator - so nothing taught
     /// the reader that an underlined blue word is a thing they can hover. Pass
-    /// <see cref="ImGuiTheme.RuleBlueDim"/> for a rule on something switched off.</param>
+    /// <see cref="ImGuiTheme.RuleGoldDim"/> for a rule on something switched off.</param>
     public static void Draw(IReadOnlyList<RuleSegment> segments, RuleGlossary glossary, ImGuiCol color,
         Vector4? ruleColor = null)
     {
@@ -237,7 +237,7 @@ public static class RuleTextFlow
         float lineHeight = ImGui.GetTextLineHeight();
         float lineAdvance = ImGui.GetTextLineHeightWithSpacing();
         uint textColor = ImGui.GetColorU32(color);
-        uint ruleTint = ImGui.GetColorU32(ruleColor ?? ImGuiTheme.RuleBlue);
+        uint ruleTint = ImGui.GetColorU32(ruleColor ?? ImGuiTheme.RuleGold);
         int lines = placed.Count == 0 ? 1 : placed[^1].Line + 1;
 
         ImDrawListPtr drawList = ImGui.GetWindowDrawList();
