@@ -889,3 +889,7 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > on archived lines). **442 = audit finding 11**, the Hold the Line family's distance band and its
 > Enhanced forms' double bonus. No collision. Filed before any code was written, straight after reading
 > the four rules' official text.
+
+> **2026-11-01 - number 443.** `git fetch origin`, read the index and archive from both `origin/main` and
+> `origin/campaign-360`: nothing numbered 443 anywhere. **443 = the first audit of our army data against
+> the live official Army Forge**, which became reachable from the workspace this session. No collision.
