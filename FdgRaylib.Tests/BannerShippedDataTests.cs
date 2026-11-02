@@ -130,9 +130,16 @@ public class BannerShippedDataTests
 
     /// <summary>
     /// And the rebaked books carry it. Lust Disciples is picked because it ships in all six systems and
-    /// takes the plain supplement definition - the four books whose per-book override redefines
-    /// Lustbound are deliberately excluded here and recorded in the to-do list instead, because
-    /// overwriting authored curation is Kai's call, not a test's.
+    /// takes the plain supplement definition.
+    ///
+    /// <para>
+    /// This used to carry a caveat: four books redefined Lustbound through a per-book override and were
+    /// excluded, pending a check against the official builder. That check happened on 2026-11-01 - the
+    /// official Army Forge API became reachable from the workspace - and all three books that print
+    /// Lustbound in either system agree word for word: <i>"Moves +1" when using Advance, and +2" when
+    /// using Rush/Charge."</i> No shooting range anywhere. The overrides were authored fiction, so they
+    /// are gone and every book is covered by the all-books test below.
+    /// </para>
     /// </summary>
     [TestCase("LustDisciples")]
     [TestCase("GFF-LustDisciples")]
@@ -148,6 +155,49 @@ public class BannerShippedDataTests
             $"{bookFileName}: the rebaked book must carry Rush +2\", not the old +3\".");
         Assert.That(rule.Passive.Any(e => e.HookID == EHookID.Shooting_OnRangeCheck), Is.False,
             $"{bookFileName}: Lustbound is not a shooting rule.");
+    }
+
+    /// <summary>
+    /// Every bundled book that ships Lustbound, not a chosen six. This is the assertion that would have
+    /// caught the four override-driven books: the six above were correct for weeks while those four
+    /// granted +4" of shooting range and +8" with the Enhanced form, because a per-book override is
+    /// applied LAST and wins (#375 C9), so a correct supplement proves nothing about a book that
+    /// redefines the rule.
+    /// </summary>
+    [Test]
+    public void EveryShippedLustbound_IsPurelyMovement()
+    {
+        var offenders = new List<string>();
+        int carriers = 0;
+
+        foreach (string path in ShippedBooks.AllPaths())
+        {
+            BookFile book = JsonSerializer.Deserialize<BookFile>(
+                File.ReadAllText(path), RuleJson.Options)!;
+
+            SpecialRuleDefinition? rule = book.RuleDefinitions
+                .FirstOrDefault(r => string.Equals(r.Name, "Lustbound", StringComparison.OrdinalIgnoreCase));
+            if (rule is null) continue;
+
+            carriers++;
+            string name = Path.GetFileNameWithoutExtension(path);
+
+            if (rule.Passive.Any(e => e.HookID == EHookID.Shooting_OnRangeCheck))
+                offenders.Add($"{name}: grants shooting range");
+            if (MovementBonus(rule, EActionType.Advance) != 1f)
+                offenders.Add($"{name}: Advance {MovementBonus(rule, EActionType.Advance)}\" not 1\"");
+            if (MovementBonus(rule, EActionType.Rush) != 2f)
+                offenders.Add($"{name}: Rush {MovementBonus(rule, EActionType.Rush)}\" not 2\"");
+            if (MovementBonus(rule, EActionType.Charge) != 2f)
+                offenders.Add($"{name}: Charge {MovementBonus(rule, EActionType.Charge)}\" not 2\"");
+        }
+
+        Assert.That(offenders, Is.Empty,
+            "Army Forge, verified live for every book that prints it: \"Moves +1\" when using Advance, "
+            + $"and +2\" when using Rush/Charge.\" Offenders: {string.Join("; ", offenders.Take(12))}");
+        Assert.That(carriers, Is.EqualTo(14),
+            $"expected Lustbound in 14 bundled books, found {carriers}. A different number means the "
+            + "book set changed and this fixture's population needs re-checking, not that the rule broke.");
     }
 
     private static float MovementBonus(SpecialRuleDefinition rule, EActionType actionType) =>
