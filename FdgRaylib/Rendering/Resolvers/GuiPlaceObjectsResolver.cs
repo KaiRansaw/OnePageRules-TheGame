@@ -522,9 +522,18 @@ public class GuiPlaceObjectsResolver<T>
 
         bool dragging = _dragStroke != null && StrokeLength(_dragStroke) >= MinDragInches;
 
-        // Centroid follows the cursor (over table); otherwise preview at the zone's forward-centre.
+        // Where the unit stands. Normally the cursor; while AIMING, the spot you pressed.
+        //
+        // Deployment has no "before" to push from, so the gesture is place-then-aim: pressing puts the
+        // unit down and dragging turns it. If it kept chasing the cursor you could not aim it without
+        // also dragging it away from where you wanted it, which is the same fight the old scroll-to-
+        // rotate had.
         Position centroid;
-        if (mouseHere)
+        if (dragging)
+        {
+            centroid = _dragStroke![0];
+        }
+        else if (mouseHere)
         {
             var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             centroid = new Position(mx, mz);
@@ -536,43 +545,37 @@ public class GuiPlaceObjectsResolver<T>
             centroid = new Position(b.CenterX, cz);
         }
 
-        float cos = MathF.Cos(_groupRotationDeploy), sin = MathF.Sin(_groupRotationDeploy);
-        var facings = new Float2[n];
-        var positions = new Position[n];
-
-        // Dragging replaces the formation entirely: the models space themselves along the path drawn,
-        // each facing out along its own part of it. The picked formation still decides the order they
-        // stand in, which is why a drag and a click hand you the same unit arranged two ways rather
-        // than two different units.
-        PathFormation.Placement[]? drawn = null;
+        // The unit keeps the shape it is in; the drag says only WHERE it goes and WHICH WAY it faces.
+        //
+        // Kai, 2026-11-02, after playing the first version: "I don't like how the line can just keep
+        // going and the unit will follow the line, the models will overlap each other easily." Laying
+        // models out along a drawn path is more control than the job needs, and it never settles while
+        // you are drawing. A rigid formation cannot collide with itself, which is the other half of
+        // what he was seeing.
+        //
+        // So the drag's DIRECTION becomes the formation's facing, on top of any wheel rotation. Press
+        // where you are, drag the way you want them looking, release.
+        float dragAngle = 0f;
         if (dragging)
         {
-            var widths = new float[n];
-            var depths = new float[n];
-            for (int i = 0; i < n; i++)
-            {
-                widths[i] = halfXs[i] * 2f;
-                depths[i] = halfZs[i] * 2f;
-            }
-            Float2 forward = RotateFloat2(baseFacing, _groupRotationDeploy);
-            drawn = PathFormation.Along(_dragStroke!, widths, depths, forward);
+            Position from = _dragStroke![0], to = _dragStroke[^1];
+            float ddx = to.x - from.x, ddz = to.z - from.z;
+            if (ddx * ddx + ddz * ddz > 0.0001f)
+                dragAngle = MathF.Atan2(ddz, ddx) - MathF.Atan2(baseFacing.Y, baseFacing.X);
         }
+        float rot = _groupRotationDeploy + dragAngle;
+
+        float cos = MathF.Cos(rot), sin = MathF.Sin(rot);
+        var facings = new Float2[n];
+        var positions = new Position[n];
 
         bool allValid = true;
         for (int i = 0; i < n; i++)
         {
-            if (drawn != null)
-            {
-                positions[i] = drawn[i].At;
-                facings[i] = drawn[i].Facing;
-            }
-            else
-            {
             float dx = offsets[i].dx, dz = offsets[i].dz;
             float rx = dx * cos - dz * sin, rz = dx * sin + dz * cos;
             positions[i] = new Position(centroid.x + rx, centroid.z + rz);
-            facings[i] = RotateFloat2(baseFacings[i], _groupRotationDeploy);
-            }
+            facings[i] = RotateFloat2(baseFacings[i], rot);
             bool valid = IsGroupSlotValid(positions[i], radii[i], GetBaseShape(models[i].GetValue()), facings[i],
                 zone, enemies, minEnemyDist, StartPositionOf(models[i].GetValue()), request.MaxDistanceFromStartInches);
             DrawGhost(dl, GetBaseShape(models[i].GetValue()), ToPixelVec(positions[i]), _scale, valid, facings[i]);
@@ -580,8 +583,8 @@ public class GuiPlaceObjectsResolver<T>
             if (!valid) allValid = false;
         }
 
-        // The stroke you are drawing, under the ghosts, so you can see the line you are laying them on.
-        if (dragging) DrawStroke(dl, _dragStroke!, allValid);
+        // The aiming line, so the direction you are setting is visible while you set it.
+        if (dragging) DrawAimLine(dl, _dragStroke!, allValid);
 
         // Commit on RELEASE rather than on click: a drag does not know its shape until the button comes
         // up, and committing on the press would place the unit before the gesture had happened. A plain
@@ -599,7 +602,7 @@ public class GuiPlaceObjectsResolver<T>
                 // #343: recorded with the ghost rotation so an undo brings the formation ghost back
                 // oriented as it was dropped (a drop always starts from an empty placed list — this
                 // handler only runs while _placed.Count == 0).
-                _history.RecordGroupDrop(_groupRotationDeploy);
+                _history.RecordGroupDrop(rot);
                 _placed.Clear();
                 for (int i = 0; i < n; i++) _placed.Add(new PlacedObjectEntry<T>(models[i], positions[i], facings[i]));
                 _groupRotationDeploy = 0f;
@@ -632,26 +635,31 @@ public class GuiPlaceObjectsResolver<T>
     }
 
     /// <summary>
-    /// The line being drawn. Shown while the button is held so the gesture has an answer on screen -
-    /// without it, a drag that is about to produce an illegal formation looks identical to one that
-    /// is not until you let go.
+    /// The aiming line: from where the unit was put down to where the cursor is, which is the way it
+    /// will face. A straight line from the two ends, NOT the path the cursor wandered - the wander is
+    /// not part of the gesture any more, and drawing it would say it was.
     /// </summary>
-    private void DrawStroke(ImDrawListPtr dl, List<Position> stroke, bool valid)
+    private void DrawAimLine(ImDrawListPtr dl, List<Position> stroke, bool valid)
     {
         if (stroke.Count < 2) return;
         uint col = valid
             ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.85f, 1f, 0.75f))
             : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.35f, 0.3f, 0.8f));
 
-        for (int i = 1; i < stroke.Count; i++)
-        {
-            var (ax, ay) = InchesToPixel(stroke[i - 1].x, stroke[i - 1].z);
-            var (bx, by) = InchesToPixel(stroke[i].x, stroke[i].z);
-            dl.AddLine(new Vector2(ax, ay), new Vector2(bx, by), col, 2f);
-        }
+        var (ax, ay) = InchesToPixel(stroke[0].x, stroke[0].z);
+        var (bx, by) = InchesToPixel(stroke[^1].x, stroke[^1].z);
+        var a = new Vector2(ax, ay); var b = new Vector2(bx, by);
 
-        var (sx, sy) = InchesToPixel(stroke[0].x, stroke[0].z);
-        dl.AddCircleFilled(new Vector2(sx, sy), 4f, col, 12);
+        dl.AddLine(a, b, col, 2f);
+        dl.AddCircleFilled(a, 4f, col, 12);
+
+        // An arrowhead, because a bare line says "between these two points" where this means "toward".
+        Vector2 d = b - a;
+        float len = MathF.Sqrt(d.X * d.X + d.Y * d.Y);
+        if (len < 12f) return;
+        d /= len;
+        var perp = new Vector2(-d.Y, d.X);
+        dl.AddTriangleFilled(b, b - d * 12f + perp * 6f, b - d * 12f - perp * 6f, col);
     }
 
     private Vector2 ToPixelVec(Position p)

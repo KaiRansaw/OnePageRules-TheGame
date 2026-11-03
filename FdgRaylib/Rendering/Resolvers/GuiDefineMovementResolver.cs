@@ -1131,43 +1131,24 @@ public class GuiDefineMovementResolver
 
         bool dragging = _dragStroke != null && StrokeLength(_dragStroke) >= MinDragInches;
 
-        // A drag names where every model should END UP, so the stroke becomes the shape the unit is
-        // moving into and the translation is already in it. PlanGroupMove then does what it always
-        // does - measure each model's travel from its REAL start and report whether it fits the budget
-        // - so a line drawn further than the unit can move shows red rather than cheating.
-        if (dragging)
-        {
-            var widths = new float[models.Count];
-            var depths = new float[models.Count];
-            for (int i = 0; i < models.Count; i++)
-            {
-                (float hx, float hz) = BaseShapeGeometry.FootprintHalfExtents(
-                    models[i].BaseShape, models[i].Facing);
-                widths[i] = hx * 2f;
-                depths[i] = hz * 2f;
-            }
-
-            // Forward is the direction of travel: from where the unit is to where the stroke starts,
-            // falling back to the stroke's own direction when it begins on top of the unit.
-            Position here = GroupFormationUtilities.Centroid(lastPositions);
-            Position aim = _dragStroke![^1];
-            var forward = new Float2(aim.x - here.x, aim.z - here.z);
-            if (forward.X * forward.X + forward.Y * forward.Y < 0.01f)
-                forward = new Float2(aim.x - _dragStroke[0].x, aim.z - _dragStroke[0].z);
-
-            var drawn = PathFormation.Along(_dragStroke, widths, depths, forward);
-            var alongStroke = new Position[models.Count];
-            for (int i = 0; i < models.Count; i++) alongStroke[i] = drawn[i].At;
-            basePositions = alongStroke;
-        }
+        // The unit moves as the block it already is. Kai, 2026-11-02, after playing the first version:
+        // "I don't like how the line can just keep going and the unit will follow the line, the models
+        // will overlap each other easily." He is right, and the reason is that laying a unit out along
+        // a drawn path hands you far more control than the job needs - you are drawing a sixty-point
+        // squiggle to say "squad goes there, facing that way", and it re-flows the whole time so it
+        // never settles. The shape is a separate decision (Ctrl+Wheel), and the drag says only WHERE
+        // and WHICH WAY.
+        //
+        // So basePositions stays the unit's own shape and the move is rigid, which is also why models
+        // cannot collide with each other any more: a rigid transform of a legal formation is a legal
+        // formation.
 
         Position pivot = GroupFormationUtilities.Centroid(basePositions);
         float cos = MathF.Cos(_groupRotation), sin = MathF.Sin(_groupRotation);
 
-        // Desired translation moves the centroid under the cursor (none when the mouse is off-table,
-        // and none while dragging - the stroke already says where everybody stands).
+        // Desired translation moves the centroid under the cursor (none when the mouse is off-table).
         float desiredTx = 0f, desiredTz = 0f;
-        if (mouseHere && !dragging)
+        if (mouseHere)
         {
             var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             desiredTx = mx - pivot.x;
@@ -1468,8 +1449,8 @@ public class GuiDefineMovementResolver
             }
         }
 
-        // The stroke being drawn, so the line you are laying them on is visible while you draw it.
-        if (dragging) DrawStroke(dl, _dragStroke!, allValid && plan.WithinBudget && !terrainBlocked);
+        // Where the push started from.
+        if (dragging) DrawAimLine(dl, _dragStroke!, allValid && plan.WithinBudget && !terrainBlocked);
 
         // Commit on RELEASE rather than on click: a drag does not know its shape until the button comes
         // up. A plain click presses and releases in one spot, so it still commits on the way up and
@@ -3072,21 +3053,17 @@ public class GuiDefineMovementResolver
     }
 
     /// <summary>
-    /// The line being drawn. Shown while the button is held because without it a drag that is about to
-    /// be refused looks exactly like one that is not, right up until you let go.
+    /// Where the drag started, so a push has a visible origin. Straight from the press point to the
+    /// cursor - the wander on the way is not part of the gesture, so it is not drawn.
     /// </summary>
-    private void DrawStroke(ImDrawListPtr dl, List<Position> stroke, bool ok)
+    private void DrawAimLine(ImDrawListPtr dl, List<Position> stroke, bool ok)
     {
         if (stroke.Count < 2) return;
         uint col = ok ? StrokeCol : StrokeBadCol;
-        for (int i = 1; i < stroke.Count; i++)
-        {
-            var (ax, ay) = InchesToPixel(stroke[i - 1].x, stroke[i - 1].z);
-            var (bx, by) = InchesToPixel(stroke[i].x, stroke[i].z);
-            dl.AddLine(new Vector2(ax, ay), new Vector2(bx, by), col, 2f);
-        }
-        var (sx, sy) = InchesToPixel(stroke[0].x, stroke[0].z);
-        dl.AddCircleFilled(new Vector2(sx, sy), 4f, col, 12);
+        var (ax, ay) = InchesToPixel(stroke[0].x, stroke[0].z);
+        var (bx, by) = InchesToPixel(stroke[^1].x, stroke[^1].z);
+        dl.AddLine(new Vector2(ax, ay), new Vector2(bx, by), col, 1.5f);
+        dl.AddCircleFilled(new Vector2(ax, ay), 4f, col, 12);
     }
 
     /// <summary>
