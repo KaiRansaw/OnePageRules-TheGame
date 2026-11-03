@@ -911,3 +911,7 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > which is this session's own. The two `446` hits in `WorkItems/191-tactician-agent.md` were checked and
 > are incidental - a PID (`31446`) and a commit hash (`d8d8446`), not item numbers.
 > **446 = the campaign detail panel and the win/loss record behind it.** No collision.
+
+> **2026-11-03 - number 447.** `git fetch origin` earlier this session; highest filed is 446, this
+> session's own. **447 = campaign armies kept out of ordinary games, and given their own folder** -
+> raised by Kai while answering a question about campaign creation. No collision.
