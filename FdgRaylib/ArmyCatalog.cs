@@ -117,6 +117,7 @@ public sealed class ArmyCatalog
             string? gameSystem = null;
             int points = 0;
             int unitCount = 0;
+            bool isCampaignArmy = false;
 
             // Each iteration consumes one whole top-level property, so the next Read() is always either
             // the next property name or the closing brace - no depth arithmetic needed.
@@ -132,11 +133,27 @@ public sealed class ArmyCatalog
                     case "gameSystem":           gameSystem = reader.GetString();    break;
                     case "unattributedPoints":   points += reader.GetInt32();        break;
                     case "units":                points += SumUnitPoints(ref reader, out unitCount); break;
+                    // #447 - a campaign army. Noted rather than returned on at once, because the
+                    // property can appear anywhere in the object and bailing here would leave the
+                    // reader mid-document for no gain.
+                    case "strikeTeam":
+                        isCampaignArmy = reader.TokenType != JsonTokenType.Null;
+                        reader.Skip();
+                        break;
                     default:                     reader.Skip();                      break;
                 }
             }
 
             if (unitCount == 0) return null;
+            // #447 - campaign armies are not ordinary armies and must never be offered as one. They
+            // carry XP, levels, injuries and a treasury, so a one-off game would field a list the book
+            // never priced, and handing one to a bot would quietly level it up in somebody's campaign.
+            //
+            // Judged on the file's CONTENTS, not on where it sits. Campaign armies have their own
+            // folder (ArmyPaths.CampaignFolderNameFor) but that folder is organisation; this is the
+            // guarantee, and it covers the ones already on disk in the old location as well as any that
+            // get moved by hand.
+            if (isCampaignArmy) return null;
             return new ArmyCatalogEntry(path, name, faction, points, gameSystem);
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)

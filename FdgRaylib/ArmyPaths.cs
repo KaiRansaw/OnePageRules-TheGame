@@ -68,6 +68,43 @@ public static class ArmyPaths
         _ => "GDF",
     };
 
+    /// <summary>
+    /// #447 - the folder campaign armies live in, as a subfolder of <c>armies/</c>: campaign armies go
+    /// in <c>armies/Campaigns/&lt;Game Type&gt;/</c> and ordinary armies stay in
+    /// <c>armies/&lt;Game Type&gt;/</c>.
+    ///
+    /// <para>
+    /// Kai, 2026-11-03: <i>"I want to have the Campaign Armies in a different folder... so NO Campaign
+    /// armies will show up in any other game modes, and vice versa."</i> He is right, and it is a
+    /// correctness point rather than tidiness: a campaign army carries XP, levels, injuries and a
+    /// treasury, so dropping it into a one-off game plays a list the book never priced, and an ordinary
+    /// army cannot be used mid-campaign because it has no sheets.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>The folder is the organisation, not the guarantee.</b> A campaign army is kept out of ordinary
+    /// games by its own contents - <see cref="ArmyCatalog.ReadEntry"/> rejects any file with a
+    /// <c>strikeTeam</c> block - so one sitting in an old location, or moved by hand, is still invisible
+    /// to the lobby. Relying on the path alone would have made every campaign army already on disk a
+    /// bug that fixed itself only if the player tidied up.
+    /// </para>
+    ///
+    /// <para>
+    /// Standard and Horde deliberately SHARE a game's ordinary folder. Horde is a mode, not a system,
+    /// and shares that mode's army-builder stats (CLAUDE.md), so a GF army is legal in both - splitting
+    /// them would force every army to be built twice for no rules reason.
+    /// </para>
+    /// </summary>
+    public const string CampaignsDirectoryName = "Campaigns";
+
+    /// <summary>
+    /// A Game Type's campaign-army subfolder, relative to <see cref="FolderPath"/> - e.g.
+    /// <c>Campaigns/GDF</c>. Keeps each campaign system's armies apart from every other's, which is the
+    /// second half of what Kai asked for: a Grimdark Future campaign must not list an AoF campaign army.
+    /// </summary>
+    public static string CampaignFolderNameFor(FDG.EGameSystem system) =>
+        Path.Combine(CampaignsDirectoryName, FolderNameFor(system));
+
     /// <summary>Makes any missing Game Type folder under armies/, so there's an obvious place to put
     /// each game's lists. Silently does nothing when there is no armies folder or it can't be written.</summary>
     public static void EnsureGameTypeFolders()
@@ -76,6 +113,12 @@ public static class ArmyPaths
         foreach (FDG.EGameSystem system in Enum.GetValues<FDG.EGameSystem>())
         {
             try { Directory.CreateDirectory(Path.Combine(root, FolderNameFor(system))); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+
+            // #447 - and the campaign subfolder, so the split is visible on disk before a campaign is
+            // ever created rather than appearing the first time one is saved.
+            if (!FDG.Campaign.CampaignNumbers.HasCampaignBook(system)) continue;
+            try { Directory.CreateDirectory(Path.Combine(root, CampaignFolderNameFor(system))); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }

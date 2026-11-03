@@ -31,9 +31,37 @@ public static class StrikeTeamFiles
     public static IReadOnlyList<EGameSystem> CampaignSystems { get; } =
         Enum.GetValues<EGameSystem>().Where(CampaignNumbers.HasCampaignBook).ToList();
 
-    /// <summary>A game system's armies folder, or null when there is no armies folder at all.</summary>
+    /// <summary>A game system's ORDINARY armies folder, or null when there is no armies folder at all.
+    /// This is where lists built in the Army Forge live, and where a campaign's starting army is picked
+    /// from. Campaign armies go in <see cref="CampaignFolderFor"/>.</summary>
     public static string? FolderFor(EGameSystem system) =>
         ArmyPaths.FolderPath is { } root ? Path.Combine(root, ArmyPaths.FolderNameFor(system)) : null;
+
+    /// <summary>
+    /// #447 - a game system's CAMPAIGN armies folder (<c>armies/Campaigns/&lt;Game Type&gt;/</c>), where
+    /// new campaign armies are written. See <see cref="ArmyPaths.CampaignsDirectoryName"/> for why they
+    /// are kept apart.
+    /// </summary>
+    public static string? CampaignFolderFor(EGameSystem system) =>
+        ArmyPaths.FolderPath is { } root ? Path.Combine(root, ArmyPaths.CampaignFolderNameFor(system)) : null;
+
+    /// <summary>
+    /// Both folders a campaign army of this system may be in: its own folder, and the system's ordinary
+    /// folder, which is where every campaign army created before #447 still sits.
+    ///
+    /// <para>
+    /// <b>Nothing is moved.</b> Campaigns already on disk keep working exactly where they are - they are
+    /// read from the old location and only new ones are written to the new one. Auto-moving a player's
+    /// files to tidy the layout is not worth the risk of doing it to the wrong file, and the behaviour
+    /// Kai actually asked for (campaign armies staying out of other modes) is delivered by
+    /// <see cref="ArmyCatalog.ReadEntry"/> regardless of where a file sits.
+    /// </para>
+    /// </summary>
+    private static IEnumerable<string> CampaignSearchFolders(EGameSystem system)
+    {
+        if (CampaignFolderFor(system) is { } own) yield return own;
+        if (FolderFor(system) is { } legacy) yield return legacy;
+    }
 
     public static BuiltArmyFile? Load(string path)
     {
@@ -47,13 +75,32 @@ public static class StrikeTeamFiles
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
     }
 
-    /// <summary>Every army file in one system's folder: campaign armies and ordinary armies alike.</summary>
+    /// <summary>
+    /// Every army file belonging to one system: campaign armies and ordinary armies alike, from both the
+    /// campaign folder and the system's ordinary one (#447). The caller separates them by whether the
+    /// file has a <c>StrikeTeam</c> block, which it has always done.
+    ///
+    /// <para>
+    /// De-duplicated by full path, because the two search folders are nested under the same root and a
+    /// future layout change could overlap them - listing one army twice would offer it twice as a
+    /// starting army and create two campaigns from one file.
+    /// </para>
+    /// </summary>
     public static List<(string Path, BuiltArmyFile Army)> LoadAll(EGameSystem system)
     {
         var list = new List<(string, BuiltArmyFile)>();
-        if (FolderFor(system) is not { } dir || !Directory.Exists(dir)) return list;
-        foreach (string file in Directory.EnumerateFiles(dir, "*.fdgarmy", SearchOption.AllDirectories).OrderBy(f => f))
-            if (Load(file) is { } army) list.Add((file, army));
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string dir in CampaignSearchFolders(system))
+        {
+            if (!Directory.Exists(dir)) continue;
+            foreach (string file in Directory.EnumerateFiles(dir, "*.fdgarmy", SearchOption.AllDirectories)
+                         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!seen.Add(Path.GetFullPath(file))) continue;
+                if (Load(file) is { } army) list.Add((file, army));
+            }
+        }
         return list;
     }
 
@@ -77,10 +124,13 @@ public static class StrikeTeamFiles
         return list;
     }
 
-    /// <summary>A file name for a new campaign army of this system that isn't taken yet.</summary>
+    /// <summary>
+    /// A file name for a new campaign army of this system that isn't taken yet, in that system's own
+    /// campaign folder (#447) rather than beside its ordinary armies.
+    /// </summary>
     public static string NewPath(EGameSystem system, string teamName)
     {
-        string dir = FolderFor(system) ?? Directory.GetCurrentDirectory();
+        string dir = CampaignFolderFor(system) ?? Directory.GetCurrentDirectory();
         Directory.CreateDirectory(dir);
         string safe = string.Concat(teamName.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch)).Trim();
         if (safe.Length == 0) safe = "Campaign Army";
@@ -100,11 +150,17 @@ public static class StrikeTeamFiles
     /// </summary>
     public static EGameSystem SystemForPath(string path, StrikeTeamInfo? info)
     {
+        // #447 - BOTH of a system's folders, its own campaign folder included. Checking only the
+        // ordinary folder would leave every campaign army written under the new layout falling through
+        // to the fallback below, and a campaign army with no GameSystem block would then be paid
+        // Firefight's rewards for a Grimdark Future mission - which is exactly the bug #426 fixed.
         foreach (EGameSystem system in CampaignSystems)
         {
-            if (FolderFor(system) is not { } folder) continue;
-            string full = Path.GetFullPath(folder) + Path.DirectorySeparatorChar;
-            if (Path.GetFullPath(path).StartsWith(full, StringComparison.OrdinalIgnoreCase)) return system;
+            foreach (string folder in CampaignSearchFolders(system))
+            {
+                string full = Path.GetFullPath(folder) + Path.DirectorySeparatorChar;
+                if (Path.GetFullPath(path).StartsWith(full, StringComparison.OrdinalIgnoreCase)) return system;
+            }
         }
         return info?.GameSystem ?? EGameSystem.GFFirefight;
     }
