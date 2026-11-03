@@ -34,6 +34,65 @@ public class PlacementHistoryTests
         Assert.That(placed, Has.Count.EqualTo(1));
     }
 
+    /// <summary>
+    /// Kai's box-select, 2026-11-02: grab part of a placed unit and move it. Moving five models is ONE
+    /// gesture, so it has to undo as one - five separate undos to put back what one drag did would be
+    /// its own small punishment for changing your mind.
+    /// </summary>
+    [Test]
+    public void UndoSelectionMove_PutsEveryMovedModelBackInOneStep()
+    {
+        var history = new PlacementHistory<int>();
+        var placed = new List<PlacedObjectEntry<int>>
+        {
+            Entry(10f, 10f), Entry(11f, 10f), Entry(12f, 10f), Entry(13f, 10f),
+        };
+
+        // Models 1 and 3 are dragged away together.
+        var before = new Dictionary<int, Position>
+        {
+            [1] = placed[1].Position,
+            [3] = placed[3].Position,
+        };
+        history.RecordSelectionMove(before);
+        placed[1] = new PlacedObjectEntry<int>(null!, new Position(30f, 25f), placed[1].Facing);
+        placed[3] = new PlacedObjectEntry<int>(null!, new Position(31f, 25f), placed[3].Facing);
+
+        Assert.That(history.TryUndo(placed, out float? rotation), Is.True);
+        Assert.That(rotation, Is.Null, "a selection move has no formation ghost to hand back.");
+
+        Assert.That(placed[1].Position.x, Is.EqualTo(11f).Within(0.001f));
+        Assert.That(placed[3].Position.x, Is.EqualTo(13f).Within(0.001f));
+        Assert.That(placed[0].Position.x, Is.EqualTo(10f).Within(0.001f), "untouched models stay put.");
+        Assert.That(placed[2].Position.x, Is.EqualTo(12f).Within(0.001f));
+
+        Assert.That(history.CanUndo, Is.False, "it was one gesture, so it was one undo.");
+    }
+
+    /// <summary>
+    /// The recorded positions are COPIED, not aliased. The resolver reuses its origins dictionary
+    /// across drags, so a history holding a reference to it would quietly rewrite its own past every
+    /// time the player dragged again.
+    /// </summary>
+    [Test]
+    public void UndoSelectionMove_IsNotAffectedByLaterChangesToTheCallersDictionary()
+    {
+        var history = new PlacementHistory<int>();
+        var placed = new List<PlacedObjectEntry<int>> { Entry(10f, 10f), Entry(11f, 10f) };
+
+        var origins = new Dictionary<int, Position> { [1] = new Position(11f, 10f) };
+        history.RecordSelectionMove(origins);
+
+        // The caller reuses the dictionary for the next drag.
+        origins[1] = new Position(99f, 99f);
+        placed[1] = new PlacedObjectEntry<int>(null!, new Position(50f, 50f), null);
+
+        history.TryUndo(placed, out _);
+
+        Assert.That(placed[1].Position.x, Is.EqualTo(11f).Within(0.001f),
+            "undo restored the position the caller later overwrote, not the original.");
+    }
+
     [Test]
     public void UndoPlace_RemovesTheLastEntry()
     {

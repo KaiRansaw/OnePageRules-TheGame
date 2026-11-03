@@ -78,7 +78,14 @@ public class ControlsReferenceTests
         string What(string keys) => ControlsReference.All
             .First(c => c.Keys.Equals(keys, StringComparison.Ordinal)).What;
 
-        Assert.That(What("Mouse wheel"), Is.EqualTo("Zoom"));
+        // Kai, 2026-11-02: "make it so that the ONLY way to zoom in 2d is to hold Alt+scroll." The
+        // plain wheel is the unit's rotation control, so the screen that teaches the controls has to
+        // say which is which - a player who reads "Mouse wheel: Zoom" and then watches their unit spin
+        // concludes the game is broken.
+        Assert.That(What("Alt + mouse wheel"), Does.Contain("Zoom"));
+        Assert.That(What("Alt + mouse wheel"), Does.Contain("2D"));
+        Assert.That(What("Mouse wheel"), Does.Contain("turn"),
+            "the plain wheel turns the unit being placed; only Alt+wheel zooms in 2D.");
         Assert.That(What("Middle-drag"), Does.Contain("angle"), "middle-drag changes the 3D angle.");
         Assert.That(What("Right-drag"), Does.Contain("Move"), "right-drag moves the board.");
         Assert.That(What("Right-click bare table"), Does.Contain("Deselect"));

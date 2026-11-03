@@ -1343,14 +1343,21 @@ public class RaylibRenderer
         float mx = Raylib.GetMouseX(), my = Raylib.GetMouseY();
         bool overViewport = mx < viewportW && my < screenH;
 
-        // Wheel: zoom, keeping the world point under the cursor pinned. Kai's call, 2026-11-02 - the
-        // plain wheel zooms, where it used to need Alt held. Alt+wheel still works, and has to: holding
-        // Alt brings up the measuring tool, which claims the mouse for ImGui, so the plain-wheel path
-        // below would be gated off exactly when the measuring tool is up (the 3D view does the same).
+        // ALT+WHEEL ZOOMS, AND NOTHING ELSE DOES. Kai's call, 2026-11-02, replacing the plain wheel he
+        // had asked for earlier the same day: "make it so that the ONLY way to zoom in 2d is to hold
+        // Alt+scroll."
+        //
+        // This is what unties the knot the plain wheel created. The wheel is the unit's rotation
+        // control during deployment and movement, and Ctrl+Wheel cycles the formation - so a plain
+        // wheel that also zoomed meant the camera moved every time you turned a unit. Putting zoom
+        // behind Alt leaves the plain wheel to rotation and Ctrl+Wheel to formations, with no overlap
+        // anywhere.
+        //
+        // Alt also raises the measuring tool, which claims the mouse for ImGui - so the WantCaptureMouse
+        // gate cannot apply to the zoom path, or zooming would stop working exactly when Alt is held.
         bool alt    = Raylib.IsKeyDown(KeyboardKey.LeftAlt) || Raylib.IsKeyDown(KeyboardKey.RightAlt);
         float wheel = Raylib.GetMouseWheelMove();
-        bool wheelOwnedByUi = ImGui.GetIO().WantCaptureMouse;
-        if (overViewport && wheel != 0f && (alt || !wheelOwnedByUi))
+        if (overViewport && wheel != 0f && alt)
         {
             float scaleOld   = fit * _zoom;
             float originXOld = (viewportW - TableWIn * scaleOld) / 2f + _pan.X;

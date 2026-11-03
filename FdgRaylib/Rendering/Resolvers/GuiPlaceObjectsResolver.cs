@@ -44,6 +44,28 @@ public class GuiPlaceObjectsResolver<T>
     // Index into _placed of the model currently being re-placed by drag (single mode); null = none.
     private int? _dragIndex;
 
+    /// <summary>
+    /// Which already-placed models are selected, by their index in <see cref="_placed"/>.
+    ///
+    /// <para>
+    /// Kai, 2026-11-02: "you can drag to highlight a boxed area, and after you set a unit down, you can
+    /// drag around part of the unit and place them somewhere else." Which is a much better answer than
+    /// anything we had been trying - put the unit down roughly, then grab the two models that ended up
+    /// behind the building and shift them. The whole-unit gestures could never express that.
+    /// </para>
+    /// </summary>
+    private readonly HashSet<int> _selected = new();
+
+    /// <summary>Where a box-selection drag started, in table inches, or null when not boxing.</summary>
+    private Position? _boxStart;
+
+    /// <summary>
+    /// Where a move-the-selection drag started, and each selected model's position when it began -
+    /// so the whole selection slides rigidly with the cursor and a cancelled drag puts it all back.
+    /// </summary>
+    private Position? _moveStart;
+    private Dictionary<int, Position>? _moveOrigins;
+
     // #269 — the models THIS request is placing, by reference. They are excluded from the on-table occupancy
     // scan: a reposition placement (Teleport / Fanatic / reposition-at-activation) starts with every model
     // still standing at its old spot, and PlacedObjectEntry defers the writes until the whole placement is
@@ -226,6 +248,10 @@ public class GuiPlaceObjectsResolver<T>
             // A stroke half-drawn when the previous request ended must not carry into this one and
             // place the next unit along a line nobody drew for it.
             _dragStroke = null;
+            _selected.Clear();
+            _boxStart = null;
+            _moveStart = null;
+            _moveOrigins = null;
             _groupRotationDeploy = 0f;
             _singleRotationDeploy = 0f;
             _formationCycle = null;
@@ -297,6 +323,14 @@ public class GuiPlaceObjectsResolver<T>
         if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
         {
             if (_dragIndex.HasValue) { _dragIndex = null; _errorMessage = null; }
+            else if (_selected.Count > 0 || _boxStart.HasValue || _moveStart.HasValue)
+            {
+                // Right-click is the app-wide "never mind". With models selected it drops the
+                // selection rather than undoing the last placement, which would be a surprising
+                // amount of destruction for a gesture the player meant as "deselect".
+                ClearSelection();
+                _errorMessage = null;
+            }
             else UndoLastAction();
         }
 
@@ -357,6 +391,12 @@ public class GuiPlaceObjectsResolver<T>
     {
         var (mouseInX, mouseInZ) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
         bool clicked = overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+
+        // Box-select and move-a-subset run before everything else and swallow the click when they are
+        // active, so they never fight the single-model pick-up below.
+        if (HandleSelection(dl, io, request, zone, enemies, minEnemyDist, overTable,
+                            mouseInX, mouseInZ, ref clicked))
+            return;
 
         // Rotation input rotates the facing of the one model being placed / dragged (#150); the pending
         // rotation persists across placements (place several facing the same way) and resets on Resolve.
@@ -662,6 +702,200 @@ public class GuiPlaceObjectsResolver<T>
         dl.AddTriangleFilled(b, b - d * 12f + perp * 6f, b - d * 12f - perp * 6f, col);
     }
 
+
+    // ── Grabbing part of a placed unit (Kai, 2026-11-02) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Box-select some of the placed models, then drag that selection somewhere else.
+    ///
+    /// <para>
+    /// The gesture, in full: drag on bare table to draw a box, and everything inside it is selected.
+    /// Drag starting ON a selected model and the whole selection slides with the cursor. Click bare
+    /// table to clear. Everything else - clicking a single model to pick it up, placing the ones still
+    /// to place - works exactly as it did, which is why this runs first and reports whether it took
+    /// the click.
+    /// </para>
+    ///
+    /// <para>
+    /// This only makes sense because cohesion moved to the Done gate. Moving three models out of five
+    /// necessarily passes through arrangements the old per-click check refused, so the two changes are
+    /// one change: Kai asked for both in the same breath - "as long as all of the models in that unit
+    /// are within coherency range when you click done, that's all that matters."
+    /// </para>
+    /// </summary>
+    /// <returns>True when this handled the frame and the caller should do nothing else.</returns>
+    private bool HandleSelection(ImDrawListPtr dl, ImGuiIOPtr io, PlaceObjectsRequest<T> request,
+        IBoundedZone zone, List<Position> enemies, float minEnemyDist, bool overTable,
+        float mouseInX, float mouseInZ, ref bool clicked)
+    {
+        // Nothing to select until models are down, and a single-model pick-up owns the mouse while it
+        // is in progress.
+        if (_placed.Count == 0 || _dragIndex.HasValue) { ClearSelection(); return false; }
+
+        bool usable = overTable && !io.WantCaptureMouse;
+        var mouse = new Position(mouseInX, mouseInZ);
+
+        DrawSelectionHighlight(dl);
+
+        // ── Moving the selection ──────────────────────────────────────────────────────────────────
+        if (_moveStart.HasValue)
+        {
+            float dx = mouseInX - _moveStart.Value.x, dz = mouseInZ - _moveStart.Value.z;
+            var proposed = new Dictionary<int, Position>(_moveOrigins!.Count);
+            foreach ((int idx, Position from) in _moveOrigins!)
+                proposed[idx] = new Position(from.x + dx, from.z + dz);
+
+            bool allOk = true;
+            foreach ((int idx, Position at) in proposed)
+            {
+                T v = _placed[idx].Binding.GetValue();
+                IBaseShape shape = GetBaseShape(v);
+                Float2 facing = _placed[idx].Facing ?? (v is ModelData md ? md.Facing : new Float2(0f, 1f));
+                bool ok = IsPlacementValid(at, GetBaseRadius(v), shape, facing, zone, enemies, minEnemyDist,
+                    idx, StartPositionOf(v), request.MaxDistanceFromStartInches, out _)
+                    && !OverlapsAnotherSelected(idx, at, shape, facing, proposed);
+                if (!ok) allOk = false;
+                DrawGhost(dl, shape, ToPixelVec(at), _scale, ok, facing);
+                _ghostSnapshot[idx] = (at, facing);
+            }
+
+            if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+            {
+                if (allOk)
+                {
+                    _history.RecordSelectionMove(_moveOrigins!);
+                    foreach ((int idx, Position at) in proposed)
+                        _placed[idx] = new PlacedObjectEntry<T>(_placed[idx].Binding, at, _placed[idx].Facing);
+                    _errorMessage = null;
+                }
+                else
+                {
+                    _errorMessage = "Some of those models can't go there - bases overlap, or they'd be "
+                                  + "outside the deployment zone.";
+                    _errorExpiry = ImGui.GetTime() + 2.5;
+                }
+                _moveStart = null;
+                _moveOrigins = null;
+            }
+            clicked = false;
+            return true;
+        }
+
+        // ── Drawing a selection box ───────────────────────────────────────────────────────────────
+        if (_boxStart.HasValue)
+        {
+            DrawSelectionBox(dl, _boxStart.Value, mouse);
+            if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+            {
+                SelectWithin(_boxStart.Value, mouse);
+                _boxStart = null;
+            }
+            clicked = false;
+            return true;
+        }
+
+        if (!usable || !ImGui.IsMouseClicked(ImGuiMouseButton.Left)) return false;
+
+        // A press on a SELECTED model starts moving the selection; the single-model pick-up still owns
+        // a press on any other model, so clicking one thing to nudge it is unchanged.
+        int hit = HitTestPlaced(mouseInX, mouseInZ);
+        if (hit >= 0 && _selected.Contains(hit))
+        {
+            _moveStart = mouse;
+            _moveOrigins = new Dictionary<int, Position>(_selected.Count);
+            foreach (int idx in _selected) _moveOrigins[idx] = _placed[idx].Position;
+            clicked = false;
+            return true;
+        }
+
+        // A press on bare table starts a box. It only BECOMES a box once the cursor travels far
+        // enough; until then this frame does nothing and a plain click falls through to clear the
+        // selection, so clicking empty table still means "never mind".
+        if (hit < 0)
+        {
+            _boxStart = mouse;
+            ClearSelection();
+            clicked = false;
+            return true;
+        }
+
+        // A press on an unselected model: hand it to the single-model pick-up, selection cleared.
+        ClearSelection();
+        return false;
+    }
+
+    /// <summary>
+    /// Whether a model being moved would land on another model in the same selection. The ordinary
+    /// overlap check compares against where models ARE, and every selected model is about to be
+    /// somewhere else - so without this a selection could be dropped on top of itself.
+    /// </summary>
+    private bool OverlapsAnotherSelected(int index, Position at, IBaseShape shape, Float2 facing,
+        Dictionary<int, Position> proposed)
+    {
+        foreach ((int other, Position otherAt) in proposed)
+        {
+            if (other == index) continue;
+            T v = _placed[other].Binding.GetValue();
+            IBaseShape otherShape = GetBaseShape(v);
+            Float2 otherFacing = _placed[other].Facing ?? (v is ModelData md ? md.Facing : new Float2(0f, 1f));
+            if (BaseShapeGeometry.SurfaceGap2D(shape, at, facing, otherShape, otherAt, otherFacing) < 0f)
+                return true;
+        }
+        return false;
+    }
+
+    private void ClearSelection()
+    {
+        _selected.Clear();
+        _boxStart = null;
+        _moveStart = null;
+        _moveOrigins = null;
+    }
+
+    /// <summary>Selects every placed model whose base falls inside the dragged box.</summary>
+    private void SelectWithin(Position a, Position b)
+    {
+        float left = MathF.Min(a.x, b.x), right = MathF.Max(a.x, b.x);
+        float bottom = MathF.Min(a.z, b.z), top = MathF.Max(a.z, b.z);
+
+        // A box small enough to be a stray click selects nothing, rather than whatever one model
+        // happened to be under the cursor - that is what clicking the model itself is for.
+        if (right - left < 0.5f && top - bottom < 0.5f) { _selected.Clear(); return; }
+
+        _selected.Clear();
+        for (int i = 0; i < _placed.Count; i++)
+        {
+            Position p = _placed[i].Position;
+            if (p.x >= left && p.x <= right && p.z >= bottom && p.z <= top) _selected.Add(i);
+        }
+    }
+
+    private void DrawSelectionBox(ImDrawListPtr dl, Position a, Position b)
+    {
+        var (ax, ay) = InchesToPixel(a.x, a.z);
+        var (bx, by) = InchesToPixel(b.x, b.z);
+        var p0 = new Vector2(MathF.Min(ax, bx), MathF.Min(ay, by));
+        var p1 = new Vector2(MathF.Max(ax, bx), MathF.Max(ay, by));
+        dl.AddRectFilled(p0, p1, ImGui.ColorConvertFloat4ToU32(new Vector4(0.45f, 0.70f, 1f, 0.15f)));
+        dl.AddRect(p0, p1, ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.80f, 1f, 0.9f)), 0f,
+            ImDrawFlags.None, 1.5f);
+    }
+
+    /// <summary>A ring round every selected model, so "these are the ones that will move" is visible.</summary>
+    private void DrawSelectionHighlight(ImDrawListPtr dl)
+    {
+        if (_selected.Count == 0) return;
+        uint col = ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.80f, 1f, 0.95f));
+        foreach (int idx in _selected)
+        {
+            if (idx >= _placed.Count) continue;
+            Position p = _placed[idx].Position;
+            float r = GetBaseRadius(_placed[idx].Binding.GetValue()) * _scale + 3f;
+            var (px, py) = InchesToPixel(p.x, p.z);
+            dl.AddCircle(new Vector2(px, py), r, col, 24, 2f);
+        }
+    }
+
     private Vector2 ToPixelVec(Position p)
     {
         var (px, py) = InchesToPixel(p.x, p.z);
@@ -697,14 +931,17 @@ public class GuiPlaceObjectsResolver<T>
         string? overlap = CheckOverlap(cand, shape, facing, excludeIndex);
         if (overlap != null) { reason = $"Bases overlap ({overlap})."; return false; }
 
-        // #269: a reposition placement checks cohesion once over the FINISHED formation (the Done gate), not
-        // per click. Gating each click on "within 1in of an already-placed model" forces the unit to be
-        // rebuilt in list order and confines every model after the first to a thin band around model 1,
-        // however much of its own reach ring is free — which is what made Teleport feel broken. Deployment
-        // keeps the incremental check: there the unit is built from nothing and the running feedback is the
-        // only cohesion signal a player gets.
-        if (maxFromStart <= 0f && !IsInCohesion(cand, shape, facing, excludeIndex))
-        { reason = $"Outside cohesion - must be within {GameWideConstants.MAX_MODEL_DISTANCE_FROM_ANY_OTHER_MODEL_INCHES}\" base-to-base of a placed model."; return false; }
+        // Cohesion is checked once over the FINISHED formation, at the Done gate - never per click.
+        //
+        // #269 did this for repositions; Kai extended it to deployment on 2026-11-02 when he asked to
+        // be able to grab part of a placed unit and move it elsewhere: "as long as all of the models in
+        // that unit are within coherency range when you click done, that's all that matters." Both
+        // halves of that are necessary. Gating each click forces the unit to be rebuilt in list order
+        // and confines every model after the first to a thin band around model 1 however much of its
+        // own reach is free - and it makes moving three models out of five simply impossible, because
+        // every route there passes through a state the gate refuses.
+        //
+        // The Done gate is what enforces it now: see FinalCohesion.
 
         // #197 P22: the shared authority folds the flat minimum, Repel keep-out discs and Beacon
         // waivers together; TooCloseToEnemy is kept only to word the reason for the common case.
@@ -1171,8 +1408,27 @@ public class GuiPlaceObjectsResolver<T>
     /// </summary>
     private PlacementCohesion.Report FinalCohesion(PlaceObjectsRequest<T> request)
     {
-        if (request.MaxDistanceFromStartInches <= 0f || _placed.Count != request.ModelsToPlace.Count)
+        // Still mid-placement: a half-built formation would raise a warning about a state the player
+        // is in the middle of fixing.
+        if (_placed.Count != request.ModelsToPlace.Count)
             return new PlacementCohesion.Report(0, 0, 0f);
+
+        // A DEPLOYMENT is judged strictly against the rule - it has no prior scatter to be lenient
+        // about. This is the only cohesion check deployment gets now (Kai, 2026-11-02): the per-click
+        // gate is gone, because it makes grabbing part of a placed unit and moving it impossible -
+        // you cannot get there without passing through a state the per-click gate refuses.
+        if (request.MaxDistanceFromStartInches <= 0f)
+        {
+            var footprints = new List<PlacementCohesion.Footprint>(_placed.Count);
+            foreach (PlacedObjectEntry<T> entry in _placed)
+            {
+                T v = entry.Binding.GetValue();
+                IBaseShape shape = GetBaseShape(v);
+                Float2 fallback = v is ModelData md ? md.Facing : new Float2(0f, 1f);
+                footprints.Add(new PlacementCohesion.Footprint(entry.Position, shape, entry.Facing ?? fallback));
+            }
+            return PlacementCohesion.EvaluateStrict(footprints);
+        }
 
         var before = new List<PlacementCohesion.Footprint>(_placed.Count);
         var after  = new List<PlacementCohesion.Footprint>(_placed.Count);

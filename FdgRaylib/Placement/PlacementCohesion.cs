@@ -80,6 +80,46 @@ internal static class PlacementCohesion
         return new Report(stranded, scattered, worstNearest);
     }
 
+    /// <summary>
+    /// Cohesion of a freshly DEPLOYED unit, judged against the rule itself with no leniency.
+    ///
+    /// <para>
+    /// The "not worsened" half of <see cref="Evaluate"/> exists so a unit that casualties have already
+    /// scattered is not trapped - it may not get worse, but it need not be perfect. A unit being
+    /// deployed has no such history: it is being put on the table for the first time, so there is no
+    /// prior gap to be lenient about and the rule applies as written.
+    /// </para>
+    ///
+    /// <para>
+    /// Kai asked for this on 2026-11-02, alongside being able to grab part of a placed unit and move
+    /// it: "as long as all of the models in that unit are within coherency range when you click done,
+    /// that's all that matters." Deployment used to gate every single click on cohesion instead, which
+    /// makes moving three models out of five impossible - you cannot get there without passing
+    /// through a state the per-click gate refuses.
+    /// </para>
+    /// </summary>
+    internal static Report EvaluateStrict(IReadOnlyList<Footprint> placed)
+    {
+        int count = placed.Count;
+        if (count <= 1) return new Report(0, 0, 0f);
+
+        ComputeExtents(placed, out float[] nearest, out float[] farthest);
+
+        int stranded = 0, scattered = 0;
+        float worstNearest = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            if (nearest[i] > GameWideConstants.MAX_MODEL_DISTANCE_FROM_ANY_OTHER_MODEL_INCHES + EpsilonInches)
+            {
+                stranded++;
+                worstNearest = MathF.Max(worstNearest, nearest[i]);
+            }
+            if (farthest[i] > GameWideConstants.MAX_MODEL_DISTANCE_FROM_ALL_OTHER_MODELS_INCHES + EpsilonInches)
+                scattered++;
+        }
+        return new Report(stranded, scattered, worstNearest);
+    }
+
     /// <summary>A one-line description of what is wrong, or null when the placement is acceptable.</summary>
     internal static string? Describe(Report report)
     {

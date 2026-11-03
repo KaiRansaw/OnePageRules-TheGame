@@ -31,7 +31,8 @@ public static class ControlsReference
     public static readonly (string Keys, string What, string Group)[] All =
     {
         ("WASD / arrows",          "Move the camera",                          Camera),
-        ("Mouse wheel",            "Zoom",                                     Camera),
+        ("Alt + mouse wheel",      "Zoom (2D)",                                Camera),
+        ("Mouse wheel",            "Zoom (3D) / turn the unit you are placing", Camera),
         ("Middle-drag",            "Pan (2D) / change the angle (3D)",         Camera),
         ("Right-drag",             "Move the board (3D)",                      Camera),
         ("Q / E",                  "Turn the camera (3D)",                     Camera),

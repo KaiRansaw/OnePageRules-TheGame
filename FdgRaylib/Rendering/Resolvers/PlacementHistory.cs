@@ -1,3 +1,4 @@
+using FDG;
 using FDG.StageResolution.Requests;
 
 namespace FdgRaylib.Rendering.Resolvers;
@@ -25,6 +26,13 @@ public class PlacementHistory<T>
     private sealed record GroupDrop(float RotationRadians) : Step;
     private sealed record Restart(List<PlacedObjectEntry<T>> Entries) : Step;
 
+    /// <summary>
+    /// A box-selected group of placed models moved together (Kai, 2026-11-02). Keeps each one's
+    /// position from BEFORE the drag, by index, so undo puts the whole selection back where it was -
+    /// a gesture that moved five models has to undo as one action, not five.
+    /// </summary>
+    private sealed record SelectionMove(Dictionary<int, Position> Before) : Step;
+
     private readonly List<Step> _steps = new();
 
     public bool CanUndo => _steps.Count > 0;
@@ -40,6 +48,10 @@ public class PlacementHistory<T>
     /// <paramref name="rotationRadians"/> is the ghost rotation the drop was made with, captured before
     /// the resolver resets it.</summary>
     public void RecordGroupDrop(float rotationRadians) => _steps.Add(new GroupDrop(rotationRadians));
+
+    /// <summary>Records where each selected model stood before a selection drag moved them all.</summary>
+    public void RecordSelectionMove(IReadOnlyDictionary<int, Position> before) =>
+        _steps.Add(new SelectionMove(new Dictionary<int, Position>(before)));
 
     /// <summary>Restart pressed: everything cleared. Snapshots <paramref name="cleared"/> (copy, not
     /// reference — the caller clears the live list right after).</summary>
@@ -77,6 +89,14 @@ public class PlacementHistory<T>
             case Restart restart:
                 placed.Clear();
                 placed.AddRange(restart.Entries);
+                break;
+            case SelectionMove move:
+                foreach ((int index, Position before) in move.Before)
+                {
+                    if (index < placed.Count)
+                        placed[index] = new PlacedObjectEntry<T>(placed[index].Binding, before,
+                                                                 placed[index].Facing);
+                }
                 break;
         }
         return true;
