@@ -78,6 +78,19 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// <summary>#427 - the books' No Permadeath option, picked at creation and fixed afterwards.</summary>
     private bool _newNoPermadeath;
 
+    /// <summary>
+    /// #445 - the end condition for the campaign being created. Only Endless and PointLimited are
+    /// offered (campaign-flow-spec section 3a); the book's mission- and week-limited types are
+    /// deliberately left out.
+    /// </summary>
+    private ECampaignType _newType = ECampaignType.PointLimited;
+
+    /// <summary>
+    /// #445 - the VP target, when the type is PointLimited. Starts at 7, the top of the book's own
+    /// D3+4 range, because a target is the default choice and 7 is the longest of the three.
+    /// </summary>
+    private int _newVpTarget = 7;
+
     /// <summary>Recruits waiting to be confirmed: the roster unit id, and whether it is the 5-XP one.</summary>
     private readonly List<string> _cart = new();
     private bool _cartVeteran;
@@ -204,7 +217,18 @@ public sealed class StrikeTeamScreen : IAppScreen
         {
             StrikeTeamInfo info = teams[i].Army.StrikeTeam!;
             bool pending = teams[i].Army.Units.Any(u => CampaignRules.Sheet(u)?.Pending.Count > 0);
-            string line = $"{info.Name}\n   {GameSystemInfo.DisplayName(teams[i].System)} - {info.Vp} VP - "
+            // #445 - a finished campaign says so here as well as on its camp screen. Without it the
+            // list is a row of campaigns that all look playable and one of them silently is not.
+            CampaignPreGame.CampaignStanding standing = StandingOf(teams[i].Army);
+            string vp = standing.HasTarget ? $"{info.Vp}/{standing.VpTarget} VP" : $"{info.Vp} VP";
+            string result = standing.Outcome switch
+            {
+                ECampaignOutcome.YouWon => "   WON",
+                ECampaignOutcome.RivalWon => "   LOST",
+                ECampaignOutcome.Draw => "   DRAWN",
+                _ => "",
+            };
+            string line = $"{info.Name}{result}\n   {GameSystemInfo.DisplayName(teams[i].System)} - {vp} - "
                 + $"{info.Matches} mission(s) - army {teams[i].Army.TotalPoints} pts - treasury {info.BankedPoints} pts"
                 + (pending ? "   (choices waiting)" : "");
             if (ImGui.Selectable(line + $"##t{i}", i == _selected, ImGuiSelectableFlags.None,
@@ -457,9 +481,57 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     // Column 3 ---------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// #445 - where this campaign stands. One helper rather than two call sites working it out, because
+    /// the mission column and the "Play next mission" button must never disagree about whether the
+    /// campaign is finished.
+    /// </summary>
+    private CampaignPreGame.CampaignStanding StandingOf(BuiltArmyFile army)
+    {
+        StrikeTeamInfo info = army.StrikeTeam!;
+        return CampaignPreGame.Standing(info, EnemyOf(info)?.Army.StrikeTeam);
+    }
+
     private void DrawNextMission(string path, BuiltArmyFile army, CampaignNumbers n)
     {
         StrikeTeamInfo info = army.StrikeTeam!;
+        CampaignPreGame.CampaignStanding standing = StandingOf(army);
+
+        // #445 - the campaign scoreboard, above the mission. A campaign is a rivalry, so both totals
+        // belong together and in the same place every time: reading your own VP without theirs says
+        // nothing about whether you are winning.
+        UiText.Colored(TextDim, "CAMPAIGN");
+        ImGui.Separator();
+        UiText.Colored(standing.HasTarget ? Accent : TextDim, standing.Describe());
+        string rivalName = EnemyOf(info)?.Army.StrikeTeam?.Name ?? "No enemy yet";
+        ImGui.TextUnformatted($"{info.Name}: {standing.YourVp} VP");
+        UiText.Colored(TextDim, $"{rivalName}: {standing.RivalVp} VP");
+        UiText.Disabled($"Mission {info.Matches + 1} - {info.Matches} played");
+
+        if (standing.IsOver)
+        {
+            ImGui.Separator();
+            UiText.Colored(standing.Outcome == ECampaignOutcome.YouWon ? Good : Bad,
+                standing.Outcome switch
+                {
+                    ECampaignOutcome.YouWon => "CAMPAIGN WON",
+                    ECampaignOutcome.RivalWon => "CAMPAIGN LOST",
+                    _ => "CAMPAIGN DRAWN",
+                });
+            UiText.Wrapped(standing.Outcome switch
+            {
+                ECampaignOutcome.YouWon =>
+                    $"{info.Name} reached {standing.VpTarget} VP. Nothing more to play - start a new "
+                    + "campaign, or keep this one around as the record of it.",
+                ECampaignOutcome.RivalWon =>
+                    $"{rivalName} reached {standing.VpTarget} VP first.",
+                _ => $"Both armies reached {standing.VpTarget} VP in the same mission on equal VP. The "
+                     + "book has no tiebreak for that, so it stands as a draw.",
+            });
+            // Everything below is about a mission that is not going to happen.
+            return;
+        }
+
         UiText.Colored(TextDim, "NEXT MISSION");
         ImGui.Separator();
 
@@ -737,6 +809,37 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.NewLine();
         ImGui.Spacing();
 
+        // #445 - how the campaign ends. Asked before the army, which is the order the spec puts it in:
+        // it is the one choice that decides what the whole campaign is for.
+        UiText.Colored(TextDim, "How it ends");
+        if (ImGui.RadioButton("Race to a VP target", _newType == ECampaignType.PointLimited))
+            _newType = ECampaignType.PointLimited;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Endless", _newType == ECampaignType.Endless))
+            _newType = ECampaignType.Endless;
+
+        if (_newType == ECampaignType.PointLimited)
+        {
+            ImGui.SetNextItemWidth(110f);
+            ImGui.InputInt("VP to win", ref _newVpTarget);
+            _newVpTarget = Math.Clamp(_newVpTarget, 1, 999);
+            ImGui.SameLine();
+            // The book's own way of setting it. Offered as a button beside a free field rather than
+            // forced, which is the house rule recorded in claude/house-rules.md.
+            if (UiButton.NavigateSmall("Roll it (D3+4)"))
+                _newVpTarget = CampaignPreGame.RollCampaignLength(D6);
+            UiText.Wrapped($"The first army to {_newVpTarget} VP wins the campaign. A won mission pays 1-4 VP "
+                           + "depending on the difficulty you play it at, so that is roughly "
+                           + $"{Math.Max(2, (_newVpTarget + 1) / 2)}-{_newVpTarget} missions. The book rolls "
+                           + "this as D3+4; you can pick any number.");
+        }
+        else
+        {
+            UiText.Wrapped("The campaign never ends. VP pile up as a running score and you stop whenever "
+                           + "you like.");
+        }
+        ImGui.Spacing();
+
         // The books' No Permadeath option, fixed for the life of the campaign (Kai's call, 2026-11-01).
         UiText.Colored(TextDim, "Losses");
         UiButton.Checkbox("No Permadeath", ref _newNoPermadeath);
@@ -784,7 +887,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         string name = _newName.Trim();
         string path = StrikeTeamFiles.NewPath(_newSystem, name);
         CampaignRules.Start(army, name, path, CampaignNumbers.For(_newSystem), _newSystem,
-            ECampaignType.Endless, _newNoPermadeath);
+            _newType, _newNoPermadeath, vpTarget: _newVpTarget);
         // Not editable in Army Forge any more: re-compiling it there would wipe the campaign changes.
         // Each unit's own selections were copied onto its sheet by Start, which is what the campaign
         // screen upgrades against, and the book stays attached so there is something to buy from.
@@ -834,8 +937,11 @@ public sealed class StrikeTeamScreen : IAppScreen
 
         string enemyName = $"{pick.Army.Name} (enemy of {playerArmyName})";
         string enemyPath = StrikeTeamFiles.NewPath(_newSystem, enemyName);
-        CampaignRules.Start(enemy, enemyName, enemyPath, n, _newSystem, ECampaignType.Endless,
-            _newNoPermadeath, isBot: true);
+        // The same type and target as the player's army: the end condition belongs to the campaign, not
+        // to one side of it, and two files that disagreed would make whichever one a reader opened the
+        // wrong answer (see StrikeTeamInfo.VpTarget).
+        CampaignRules.Start(enemy, enemyName, enemyPath, n, _newSystem, _newType,
+            _newNoPermadeath, isBot: true, vpTarget: _newVpTarget);
         enemy.Selections = null;
         if (!StrikeTeamFiles.Save(enemyPath, enemy)) return null;
 
@@ -884,8 +990,15 @@ public sealed class StrikeTeamScreen : IAppScreen
             case EView.Camp:
                 if (UiButton.Back("Campaign armies", btn) || esc) _view = EView.List;
                 ImGui.SetCursorPos(new Vector2(rx, by));
+                // #445 - a decided campaign has no next mission. Disabled rather than hidden, so the
+                // button does not move and the label can say why it is out.
+                bool decided = Current is { } camp && StandingOf(camp.Army).IsOver;
+                ImGui.BeginDisabled(decided);
                 if (UiButton.Confirm("Play next mission", btn)) GoToMissionSetup();
-                RightLabel(rx, by, btn, "Opens Mission Setup: your force, theirs, the map", TextDim);
+                ImGui.EndDisabled();
+                RightLabel(rx, by, btn, decided
+                    ? "This campaign is over - see the result on the right"
+                    : "Opens Mission Setup: your force, theirs, the map", TextDim);
                 DrawMessage(margin, by, btn);
                 break;
 
