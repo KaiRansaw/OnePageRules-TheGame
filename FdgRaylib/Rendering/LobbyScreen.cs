@@ -1576,7 +1576,8 @@ public class LobbyScreen : IAppScreen
     /// the layout is known before the game), deployment zones and fixed objectives.</summary>
     private void DrawMapPreview()
     {
-        (float tw, float th) = FDG.GameWideConstants.TableSizeFor(_viewModel!.GameSystem);
+        (float gameW, float gameH) = FDG.GameWideConstants.TableSizeFor(_viewModel!.GameSystem);
+        float tw = gameW, th = gameH;
         bool horde = GameSystemInfo.IsHordeLike(_viewModel!.GameMode);
 
         FDG.SaveLoad.TerrainLayoutFile? layout = null;
@@ -1596,6 +1597,19 @@ public class LobbyScreen : IAppScreen
                 }
                 layout = _previewLayout;
                 terrainNote = layout != null ? $"map: {(string.IsNullOrWhiteSpace(layout.Name) ? Path.GetFileNameWithoutExtension(_previewLayoutPath) : layout.Name)}" : "no map chosen";
+                // Draw the map's own table. A map drawn for another size is still playable - the game
+                // sets the table from the SYSTEM, not the map - but previewing it at the game's size
+                // would show a board that is not the one that was drawn.
+                if (layout is { TableWidthInches: > 0f, TableHeightInches: > 0f })
+                {
+                    tw = layout.TableWidthInches;
+                    th = layout.TableHeightInches;
+                    if (MathF.Abs(tw - gameW) > 0.01f || MathF.Abs(th - gameH) > 0.01f)
+                    {
+                        terrainNote += $"  -  drawn for {tw / 12f:0.#}' x {th / 12f:0.#}',"
+                            + $" this game is {gameW / 12f:0.#}' x {gameH / 12f:0.#}'";
+                    }
+                }
                 break;
             default:
                 terrainNote = "terrain placed by the players";

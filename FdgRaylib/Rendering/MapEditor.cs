@@ -27,8 +27,40 @@ public sealed class MapEditor
     /// <summary>Called with the saved file's path after a successful save.</summary>
     public Action<string>? OnSaved;
 
-    private const float TW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
-    private const float TH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
+    /// <summary>
+    /// The table being drawn on, in inches. A FIELD, not a constant (Kai, 2026-11-02): the games are
+    /// not all played on the same table - Firefight, Skirmish and both Quest systems use 4' x 4' where
+    /// Grimdark Future and Age of Fantasy use 6' x 4' - and a map drawn at the wrong size is terrain
+    /// hanging off the edge of the board.
+    /// </summary>
+    private float TW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
+    private float TH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
+
+    /// <summary>
+    /// The sizes a map can be drawn at. Both come from the engine rather than being typed here:
+    /// whatever <see cref="GameWideConstants.TableSizeFor"/> says a system plays on is what this
+    /// offers, so adding a system with a new table size cannot leave the map maker behind.
+    ///
+    /// <para>
+    /// Bigger tables for bigger games are a separate conversation Kai has parked - no current book
+    /// prints a table over 6' x 4', so any size above that is a house rule and the number is his.
+    /// </para>
+    /// </summary>
+    private static readonly (float W, float H)[] TableSizes =
+        Enum.GetValues<EGameSystem>()
+            .Select(GameWideConstants.TableSizeFor)
+            .Distinct()
+            .OrderByDescending(t => t.Width * t.Height)
+            .Select(t => (t.Width, t.Height))
+            .ToArray();
+
+    private static string TableSizeLabel(float w, float h) => $"{w / 12f:0.#}' x {h / 12f:0.#}'";
+
+    /// <summary>Which systems play on a given table, for the picker's hint line.</summary>
+    internal static string SystemsOnTable(float w, float h) => string.Join(", ",
+        Enum.GetValues<EGameSystem>()
+            .Where(sys => GameWideConstants.TableSizeFor(sys) == (w, h))
+            .Select(GameSystemInfo.DisplayName));
     private const float Snap = 0.5f;
     private const float ObjectivePickRadius = 1.5f;
 
@@ -78,13 +110,23 @@ public sealed class MapEditor
     private readonly List<Piece> _pieces = new();
     private readonly List<Vector2> _objectives = new();   // X = table x, Y = table z
     private readonly List<Zone> _zones = new();
+
+    /// <summary>
+    /// Model bases dropped on the board purely as size references (Kai, 2026-11-02): can a unit
+    /// actually get through that gap? Saved with the map so they survive a reopen, and ignored by the
+    /// game entirely - they are not terrain and block nothing.
+    /// </summary>
+    private readonly List<MapBaseMarkerEntry> _baseMarkers = new();
     private string _name = "";
     private string? _path;
     private string _status = "";
 
+    /// <summary>Set when the editor opens, cleared after one frame. See the note in Draw.</summary>
+    private bool _focusWanted;
+
     // ── Tools and selection ───────────────────────────────────────────────────────────────────────────
-    private enum ETool { Select, Place, Objective, DeployZone }
-    private enum ESel { None, Piece, Objective, Zone }
+    private enum ETool { Select, Place, Objective, DeployZone, BaseMarker }
+    private enum ESel { None, Piece, Objective, Zone, BaseMarker }
     private ETool _tool = ETool.Select;
     private Preset? _preset;
     private ESel _selKind = ESel.None;
@@ -92,6 +134,39 @@ public sealed class MapEditor
     private bool _dragging;
     private Vector2 _dragOffset;
     private Vector2? _zoneStart;
+    private BasePreset _basePreset = BasePresets[1];
+
+    /// <summary>
+    /// A base you can drop on the map as a size reference. Sizes are in MILLIMETRES because that is
+    /// how bases are sold and how everybody talks about them, converted to inches here because that is
+    /// the table's unit.
+    ///
+    /// <para>
+    /// 28mm is first among equals - it is <see cref="BaseShapeDefaults.CircleDiameterInches"/>, what a
+    /// model gets when its army list says nothing - and the 25 x 50mm rectangle is the engine's own
+    /// default rectangular base. The rest are the common sizes a model might be on. These are
+    /// references for judging whether a unit fits through a gap, not a rule: OPR does not mandate base
+    /// sizes.
+    /// </para>
+    /// </summary>
+    private sealed record BasePreset(string Label, float Wmm, float Hmm)
+    {
+        public bool Circle => Hmm <= 0f;
+        public float DiameterInches => Wmm / 25.4f;
+        public float WidthInches => Wmm / 25.4f;
+        public float HeightInches => Hmm / 25.4f;
+    }
+
+    private static readonly BasePreset[] BasePresets =
+    {
+        new("25mm", 25f, 0f),
+        new("28mm", 28f, 0f),
+        new("32mm", 32f, 0f),
+        new("40mm", 40f, 0f),
+        new("50mm", 50f, 0f),
+        new("60mm", 60f, 0f),
+        new("25x50", 25f, 50f),
+    };
 
     // ── Opening ───────────────────────────────────────────────────────────────────────────────────────
     public void OpenNew()
@@ -116,12 +191,18 @@ public sealed class MapEditor
         Reset();
         _path = path;
         _name = string.IsNullOrWhiteSpace(layout.Name) ? Path.GetFileNameWithoutExtension(path) : layout.Name;
+        // A map drawn before table sizes existed defaults to 6' x 4', which is the size it was in fact
+        // drawn at - so nothing shifts under an existing map.
+        if (layout.TableWidthInches > 0f) TW = layout.TableWidthInches;
+        if (layout.TableHeightInches > 0f) TH = layout.TableHeightInches;
         foreach (TerrainPieceEntry e in layout.Pieces)
             if (e.Shape != null) _pieces.Add(FromEntry(e));
         foreach (MapObjectiveEntry o in layout.Objectives ?? new())
             _objectives.Add(new Vector2(o.X, o.Z));
         foreach (MapDeploymentZoneEntry z in layout.DeploymentZones ?? new())
             _zones.Add(new Zone { L = z.Left, R = z.Right, B = z.Bottom, T = z.Top });
+        foreach (MapBaseMarkerEntry m in layout.BaseMarkers ?? new())
+            _baseMarkers.Add(m);
         IsOpen = true;
     }
 
@@ -130,12 +211,16 @@ public sealed class MapEditor
         _boardZoom = 1f; _boardPan = Vector2.Zero;
         _pieces.Clear(); _objectives.Clear(); _zones.Clear();
         _path = null; _status = "";
+        _focusWanted = true;
+        TW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
+        TH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
+        _baseMarkers.Clear();
         _tool = ETool.Select; _preset = null;
         _selKind = ESel.None; _selIndex = -1;
         _dragging = false; _zoneStart = null;
     }
 
-    private static Piece FromEntry(TerrainPieceEntry e)
+    private Piece FromEntry(TerrainPieceEntry e)
     {
         var p = new Piece { Name = e.Name ?? "", Type = e.TerrainType, Height = e.HeightInches, Points = Math.Max(1, e.Points) };
         switch (e.Shape)
@@ -170,7 +255,7 @@ public sealed class MapEditor
         return pivot + new Vector2(d.X * cos - d.Y * sin, d.X * sin + d.Y * cos);
     }
 
-    private static Vector2 ShapeCenter(IZone shape)
+    private Vector2 ShapeCenter(IZone shape)
     {
         if (shape is IBoundedZone b)
         {
@@ -184,6 +269,19 @@ public sealed class MapEditor
     private TerrainLayoutFile BuildLayout() => new()
     {
         Name = _name.Trim(),
+        TableWidthInches = TW,
+        TableHeightInches = TH,
+        BaseMarkers = _baseMarkers.Select(m => new MapBaseMarkerEntry
+        {
+            X = m.X, Z = m.Z, Label = m.Label,
+            Base = new BaseFileEntry
+            {
+                Shape = m.Base.Shape,
+                DiameterInches = m.Base.DiameterInches,
+                WidthInches = m.Base.WidthInches,
+                HeightInches = m.Base.HeightInches,
+            },
+        }).ToList(),
         Pieces = _pieces.Select(p => new TerrainPieceEntry
         {
             Name = p.Name,
@@ -237,7 +335,18 @@ public sealed class MapEditor
 
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
-        ImGui.SetNextWindowFocus();
+        // Focus ONCE, when the editor opens - not every frame.
+        //
+        // This is why Clear Board did nothing (Kai, 2026-11-02). A modal popup is its own window, and
+        // ImGui closes a modal that loses focus. Calling SetNextWindowFocus unconditionally put focus
+        // back on the editor the very frame after the confirm box opened, so the box was created and
+        // destroyed before it ever drew - the button looked dead. Any future dialog in here would have
+        // had the same problem.
+        if (_focusWanted)
+        {
+            ImGui.SetNextWindowFocus();
+            _focusWanted = false;
+        }
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.08f, 0.09f, 0.11f, 1f));
         ImGui.Begin("##MapEditor", ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
                                    ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar |
@@ -276,6 +385,9 @@ public sealed class MapEditor
         ImGui.InputText("##mapName", ref _name, 64);
         ImGui.Spacing();
 
+        DrawTableSizePicker();
+        ImGui.Spacing();
+
         // Tools.
         ImGui.TextDisabled("Tools  (right-click the board to go back to Select)");
         float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
@@ -285,7 +397,27 @@ public sealed class MapEditor
         if (ToolButton("Objective", _tool == ETool.Objective, btn)) SetTool(ETool.Objective);
         if (ToolButton("Deploy Zone", _tool == ETool.DeployZone, btn)) SetTool(ETool.DeployZone);
         ImGui.SameLine();
+        if (ToolButton("Model Base", _tool == ETool.BaseMarker, btn)) SetTool(ETool.BaseMarker);
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Drop a model's base on the table to see how big things really are -\n" +
+                           "whether a squad fits through that gap, how much of the board a\n" +
+                           "unit covers. Saved with the map; the game ignores them entirely.");
         if (ToolButton("Clear Board", false, btn)) ImGui.OpenPopup("Clear the whole board?");
+
+        if (_tool == ETool.BaseMarker)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Base size  (click the board to place)");
+            float third = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2f) / 3f;
+            for (int i = 0; i < BasePresets.Length; i++)
+            {
+                if (i % 3 != 0) ImGui.SameLine();
+                if (ToolButton(BasePresets[i].Label, _basePreset == BasePresets[i], new Vector2(third, 0f)))
+                    _basePreset = BasePresets[i];
+            }
+            UiText.Colored(new Vector4(0.62f, 0.63f, 0.66f, 1f),
+                "28mm is what a model gets unless its army list says otherwise.");
+        }
 
         ImGui.Spacing();
         ImGui.TextDisabled("Terrain  (click the board to place)");
@@ -305,7 +437,8 @@ public sealed class MapEditor
 
         // Counts + hints.
         ImGui.Separator();
-        ImGui.TextDisabled($"{_pieces.Count} terrain, {_objectives.Count} objectives, {_zones.Count} deploy zones");
+        ImGui.TextDisabled($"{_pieces.Count} terrain, {_objectives.Count} objectives, {_zones.Count} deploy zones"
+            + (_baseMarkers.Count > 0 ? $", {_baseMarkers.Count} base refs" : ""));
         if (_objectives.Count == 0)
             ImGui.TextWrapped("No objectives: the game rolls D3+2 and places them as usual.");
         if (_zones.Count == 0)
@@ -329,17 +462,90 @@ public sealed class MapEditor
         // Confirm popup for Clear Board.
         if (ImGui.BeginPopupModal("Clear the whole board?", ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.TextUnformatted("Remove all terrain, objectives and deployment zones?");
+            ImGui.TextUnformatted("Remove all terrain, objectives, deployment zones and base refs?");
             if (UiButton.Back("No", new Vector2(120, 0))) ImGui.CloseCurrentPopup();
             ImGui.SameLine();
             if (UiButton.Confirm("Yes, clear", new Vector2(120, 0)))
             {
-                _pieces.Clear(); _objectives.Clear(); _zones.Clear();
+                _pieces.Clear(); _objectives.Clear(); _zones.Clear(); _baseMarkers.Clear();
                 Deselect();
                 ImGui.CloseCurrentPopup();
             }
             ImGui.EndPopup();
         }
+    }
+
+
+    /// <summary>
+    /// What table this map is drawn on. The games do not all share one: Firefight, Skirmish and both
+    /// Quest systems play on 4' x 4', Grimdark Future and Age of Fantasy on 6' x 4'. A map drawn at the
+    /// wrong size has terrain off the edge of the board.
+    ///
+    /// <para>
+    /// Changing it to a SMALLER table is the dangerous direction, because anything past the new edge
+    /// would be stranded - present but unreachable, and invisible once the board is redrawn. Rather
+    /// than silently deleting or silently keeping it, the pieces are pulled back inside and the panel
+    /// says how many moved.
+    /// </para>
+    /// </summary>
+    private void DrawTableSizePicker()
+    {
+        ImGui.TextUnformatted("Table size");
+        float w = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X
+                   * (TableSizes.Length - 1)) / TableSizes.Length;
+
+        for (int i = 0; i < TableSizes.Length; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            (float tw, float th) = TableSizes[i];
+            bool active = Nearly(TW, tw) && Nearly(TH, th);
+            if (ToolButton(TableSizeLabel(tw, th), active, new Vector2(w, 0f)) && !active)
+                SetTableSize(tw, th);
+            if (ImGui.IsItemHovered())
+                UiText.Tooltip($"{TableSizeLabel(tw, th)} - {SystemsOnTable(tw, th)}");
+        }
+    }
+
+    private static bool Nearly(float a, float b) => MathF.Abs(a - b) < 0.01f;
+
+    /// <summary>Re-sizes the board, dragging anything now outside it back in.</summary>
+    private void SetTableSize(float width, float height)
+    {
+        TW = width; TH = height;
+
+        int moved = 0;
+        foreach (Piece p in _pieces)
+        {
+            float x = Math.Clamp(p.X, 0f, TW), z = Math.Clamp(p.Z, 0f, TH);
+            if (!Nearly(x, p.X) || !Nearly(z, p.Z)) moved++;
+            p.X = x; p.Z = z;
+        }
+        for (int i = 0; i < _objectives.Count; i++)
+        {
+            Vector2 o = _objectives[i];
+            Vector2 c = new(Math.Clamp(o.X, 0f, TW), Math.Clamp(o.Y, 0f, TH));
+            if (!Nearly(c.X, o.X) || !Nearly(c.Y, o.Y)) moved++;
+            _objectives[i] = c;
+        }
+        foreach (Zone z in _zones)
+        {
+            float l = Math.Clamp(z.L, 0f, TW), r = Math.Clamp(z.R, 0f, TW);
+            float b = Math.Clamp(z.B, 0f, TH), t = Math.Clamp(z.T, 0f, TH);
+            if (!Nearly(l, z.L) || !Nearly(r, z.R) || !Nearly(b, z.B) || !Nearly(t, z.T)) moved++;
+            z.L = l; z.R = r; z.B = b; z.T = t;
+        }
+        foreach (MapBaseMarkerEntry m in _baseMarkers)
+        {
+            float x = Math.Clamp(m.X, 0f, TW), z = Math.Clamp(m.Z, 0f, TH);
+            if (!Nearly(x, m.X) || !Nearly(z, m.Z)) moved++;
+            m.X = x; m.Z = z;
+        }
+
+        _boardZoom = 1f; _boardPan = Vector2.Zero;
+        _status = moved > 0
+            ? $"Table is now {TableSizeLabel(TW, TH)}. {moved} thing(s) were outside it and have been "
+              + "moved back onto the board - check them."
+            : "";
     }
 
     private static bool ToolButton(string label, bool active, Vector2 size)
@@ -376,6 +582,7 @@ public sealed class MapEditor
             case ESel.Piece when _selIndex < _pieces.Count: _pieces.RemoveAt(_selIndex); break;
             case ESel.Objective when _selIndex < _objectives.Count: _objectives.RemoveAt(_selIndex); break;
             case ESel.Zone when _selIndex < _zones.Count: _zones.RemoveAt(_selIndex); break;
+            case ESel.BaseMarker when _selIndex < _baseMarkers.Count: _baseMarkers.RemoveAt(_selIndex); break;
         }
         Deselect();
     }
@@ -448,6 +655,26 @@ public sealed class MapEditor
                 ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Bottom", ref z.B, 0.25f, 0f, TH, "%.1f in");
                 ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Top", ref z.T, 0.25f, 0f, TH, "%.1f in");
                 ImGui.TextDisabled("Zone 1 goes to the first team to pick, and so on.");
+                if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
+                break;
+            }
+            case ESel.BaseMarker when _selIndex >= 0 && _selIndex < _baseMarkers.Count:
+            {
+                MapBaseMarkerEntry m = _baseMarkers[_selIndex];
+                ImGui.TextUnformatted("Selected base reference");
+                ImGui.TextDisabled("A size reference only - the game ignores it.");
+
+                float x = m.X, z = m.Z;
+                ImGui.SetNextItemWidth(-90);
+                if (ImGui.DragFloat("X##bx", ref x, 0.25f, 0f, TW, "%.1f in")) m.X = x;
+                ImGui.SetNextItemWidth(-90);
+                if (ImGui.DragFloat("Y##bz", ref z, 0.25f, 0f, TH, "%.1f in")) m.Z = z;
+
+                float across = m.Base.Shape == EBaseShapeKind.Rectangle
+                    ? MathF.Max(m.Base.WidthInches, m.Base.HeightInches)
+                    : m.Base.DiameterInches;
+                ImGui.TextDisabled($"{m.Label}  -  {across:0.##} in across ({across * 25.4f:0} mm)");
+
                 if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
                 break;
             }
@@ -542,8 +769,54 @@ public sealed class MapEditor
             (Color fill, Color outline) = TerrainColors.For(pr.Type);
             ZoneRenderer.DrawFilled(ghost.ToZone(), dl, scale, ox, oy, TH, U32(fill, 0.5f), U32(outline, 0.8f), 1.5f);
         }
+        // Base references: drawn LAST of the real content so they sit on top of the terrain they are
+        // being measured against, and in a flat grey-blue so nobody mistakes one for a piece of the map.
+        for (int i = 0; i < _baseMarkers.Count; i++)
+        {
+            MapBaseMarkerEntry m = _baseMarkers[i];
+            bool sel = _selKind == ESel.BaseMarker && _selIndex == i;
+            uint fill = U32(150, 170, 200, sel ? 190 : 130);
+            uint line = sel ? U32(255, 255, 255, 255) : U32(220, 230, 245, 200);
+
+            if (m.Base.Shape == EBaseShapeKind.Rectangle)
+            {
+                Vector2 h = new(m.Base.WidthInches / 2f, m.Base.HeightInches / 2f);
+                Vector2 a = P(m.X - h.X, m.Z + h.Y), b = P(m.X + h.X, m.Z - h.Y);
+                dl.AddRectFilled(a, b, fill);
+                dl.AddRect(a, b, line, 0f, ImDrawFlags.None, sel ? 2.5f : 1.5f);
+            }
+            else
+            {
+                float r = MathF.Max(2f, m.Base.DiameterInches / 2f * scale);
+                dl.AddCircleFilled(P(m.X, m.Z), r, fill, 28);
+                dl.AddCircle(P(m.X, m.Z), r, line, 28, sel ? 2.5f : 1.5f);
+            }
+
+            // The label only once the base is big enough on screen to hold it; below that it is a smear.
+            if (m.Label.Length > 0 && m.Base.DiameterInches * scale > 26f)
+            {
+                Vector2 ts = ImGui.CalcTextSize(m.Label);
+                dl.AddText(P(m.X, m.Z) - ts / 2f, U32(20, 25, 35, 230), m.Label);
+            }
+        }
+
         if (hovered && _tool == ETool.Objective)
             dl.AddCircle(P(snapped.X, snapped.Y), MathF.Max(8f, 0.7f * scale), U32(255, 255, 255, 160), 24, 2f);
+        if (hovered && _tool == ETool.BaseMarker)
+        {
+            // Ghost of the base about to be placed, at its real size.
+            if (_basePreset.Circle)
+            {
+                float r = MathF.Max(2f, _basePreset.DiameterInches / 2f * scale);
+                dl.AddCircle(P(snapped.X, snapped.Y), r, U32(255, 255, 255, 170), 28, 2f);
+            }
+            else
+            {
+                Vector2 h = new(_basePreset.WidthInches / 2f, _basePreset.HeightInches / 2f);
+                dl.AddRect(P(snapped.X - h.X, snapped.Y + h.Y), P(snapped.X + h.X, snapped.Y - h.Y),
+                    U32(255, 255, 255, 170), 0f, ImDrawFlags.None, 2f);
+            }
+        }
         if (_zoneStart is Vector2 zs)
         {
             Vector2 a = P(MathF.Min(zs.X, snapped.X), MathF.Max(zs.Y, snapped.Y));
@@ -620,6 +893,21 @@ public sealed class MapEditor
                 _selKind = ESel.Objective; _selIndex = _objectives.Count - 1;
                 break;
 
+            case ETool.BaseMarker when pressed:
+                _baseMarkers.Add(new MapBaseMarkerEntry
+                {
+                    X = snapped.X, Z = snapped.Y, Label = _basePreset.Label,
+                    Base = new BaseFileEntry
+                    {
+                        Shape = _basePreset.Circle ? EBaseShapeKind.Circle : EBaseShapeKind.Rectangle,
+                        DiameterInches = _basePreset.DiameterInches,
+                        WidthInches = _basePreset.WidthInches,
+                        HeightInches = _basePreset.HeightInches,
+                    },
+                });
+                _selKind = ESel.BaseMarker; _selIndex = _baseMarkers.Count - 1;
+                break;
+
             case ETool.DeployZone:
                 if (pressed) _zoneStart = snapped;
                 else if (_zoneStart is Vector2 start && !down)
@@ -658,6 +946,14 @@ public sealed class MapEditor
     /// top), then deployment zones.</summary>
     private void PickAt(Vector2 m)
     {
+        for (int i = _baseMarkers.Count - 1; i >= 0; i--)
+        {
+            MapBaseMarkerEntry b = _baseMarkers[i];
+            // Picked by a generous radius rather than the exact footprint: a 25mm base is a quarter of
+            // an inch of screen at default zoom, and an exact hit test would make it unclickable.
+            float r = MathF.Max(BasePickRadius, BaseRadiusInches(b));
+            if (Vector2.Distance(new Vector2(b.X, b.Z), m) <= r) { _selKind = ESel.BaseMarker; _selIndex = i; return; }
+        }
         for (int i = _objectives.Count - 1; i >= 0; i--)
             if (Vector2.Distance(_objectives[i], m) <= ObjectivePickRadius) { _selKind = ESel.Objective; _selIndex = i; return; }
         for (int i = _pieces.Count - 1; i >= 0; i--)
@@ -671,10 +967,19 @@ public sealed class MapEditor
         Deselect();
     }
 
+    /// <summary>Half the widest dimension of a base, in inches.</summary>
+    private static float BaseRadiusInches(MapBaseMarkerEntry m) =>
+        m.Base.Shape == EBaseShapeKind.Rectangle
+            ? MathF.Max(m.Base.WidthInches, m.Base.HeightInches) / 2f
+            : m.Base.DiameterInches / 2f;
+
+    private const float BasePickRadius = 1.0f;
+
     private Vector2 SelectedAnchor() => _selKind switch
     {
         ESel.Piece => new Vector2(_pieces[_selIndex].X, _pieces[_selIndex].Z),
         ESel.Objective => _objectives[_selIndex],
+        ESel.BaseMarker => new Vector2(_baseMarkers[_selIndex].X, _baseMarkers[_selIndex].Z),
         ESel.Zone => new Vector2(MathF.Min(_zones[_selIndex].L, _zones[_selIndex].R), MathF.Min(_zones[_selIndex].B, _zones[_selIndex].T)),
         _ => Vector2.Zero,
     };
@@ -688,6 +993,9 @@ public sealed class MapEditor
                 break;
             case ESel.Objective:
                 _objectives[_selIndex] = t;
+                break;
+            case ESel.BaseMarker:
+                _baseMarkers[_selIndex].X = t.X; _baseMarkers[_selIndex].Z = t.Y;
                 break;
             case ESel.Zone:
                 Zone z = _zones[_selIndex];

@@ -48,6 +48,7 @@ public sealed class MapPickerScreen : IAppScreen
 
     private static readonly Vector4 Dim = new(0.62f, 0.63f, 0.66f, 1f);
     private static readonly Vector4 Accent = new(0.45f, 0.68f, 1f, 1f);
+    private static readonly Vector4 Warn = new(0.95f, 0.78f, 0.3f, 1f);
 
     /// <summary>
     /// Opened from the lobby, which knows the table this picker is choosing for. The system decides the
@@ -99,6 +100,27 @@ public sealed class MapPickerScreen : IAppScreen
             : Path.GetFileNameWithoutExtension(path);
     }
 
+    /// <summary>A map's own table, falling back to the game's for a map written before sizes existed.</summary>
+    private static (float W, float H) TableOf(TerrainLayoutFile? layout, float fallbackW, float fallbackH) =>
+        layout is { TableWidthInches: > 0f, TableHeightInches: > 0f }
+            ? (layout.TableWidthInches, layout.TableHeightInches)
+            : (fallbackW, fallbackH);
+
+    /// <summary>
+    /// Whether this map was drawn for the table the game being set up plays on. Maps that were not are
+    /// shown anyway and marked, rather than hidden: a map is somebody's work, and silently omitting it
+    /// from the grid looks like the game lost it.
+    /// </summary>
+    private bool FitsThisGame(string path)
+    {
+        (float gw, float gh) = GameWideConstants.TableSizeFor(_system);
+        (float mw, float mh) = TableOf(Layout(path), gw, gh);
+        return MathF.Abs(mw - gw) < 0.01f && MathF.Abs(mh - gh) < 0.01f;
+    }
+
+    private static string SizeLabel(TerrainLayoutFile layout) =>
+        $"{layout.TableWidthInches / 12f:0.#}' x {layout.TableHeightInches / 12f:0.#}'";
+
     public void Draw(int screenW, int screenH)
     {
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.11f, 0.11f, 0.11f, 1f));
@@ -136,7 +158,8 @@ public sealed class MapPickerScreen : IAppScreen
             TerrainLayoutFile? layout = Layout(path);
             string sub = layout == null
                 ? "Could not be read."
-                : $"{layout.Pieces.Count} pieces, {layout.Objectives.Count} objectives";
+                : $"{SizeLabel(layout)}   -   {layout.Pieces.Count} pieces, "
+                  + $"{layout.Objectives.Count} objectives";
             DrawTile(ref index, path, NameOf(path), sub, tileW, tileH, labelH, columns);
         }
         ImGui.EndChild();
@@ -191,7 +214,12 @@ public sealed class MapPickerScreen : IAppScreen
         }
         else
         {
-            MapThumbnail.Draw(dl, at, new Vector2(tileW, tileH), tw, th, Layout(path), _background,
+            // The MAP's table, not the lobby's: a 4'x4' map drawn into a 6'x4' frame would be stretched
+            // into a shape it is not, and the one thing a thumbnail has to get right is the shape of
+            // the table.
+            TerrainLayoutFile? layout = Layout(path);
+            (float mw, float mh) = TableOf(layout, tw, th);
+            MapThumbnail.Draw(dl, at, new Vector2(tileW, tileH), mw, mh, layout, _background,
                 _horde ? MapThumbnail.EFallbackZones.Horde : MapThumbnail.EFallbackZones.Standard);
         }
 
@@ -201,6 +229,18 @@ public sealed class MapPickerScreen : IAppScreen
         dl.AddRect(at, at + new Vector2(tileW, tileH), border, 3f, ImDrawFlags.None, chosen ? 3f : 1.5f);
 
         dl.AddText(at + new Vector2(4f, tileH + 2f), ImGui.GetColorU32(ImGuiCol.Text), name);
+
+        // A map drawn for another table is still shown - it is a real map and Kai may want it - but it
+        // is marked, because playing a 4'x4' map as a 6'x4' game leaves two feet of empty board.
+        if (path != null && !FitsThisGame(path))
+        {
+            Vector2 badge = at + new Vector2(4f, 4f);
+            string text = "WRONG SIZE";
+            Vector2 ts = ImGui.CalcTextSize(text);
+            dl.AddRectFilled(badge, badge + ts + new Vector2(8f, 4f), ImGui.GetColorU32(Warn), 3f);
+            dl.AddText(badge + new Vector2(4f, 2f), ImGui.GetColorU32(new Vector4(0.1f, 0.08f, 0f, 1f)), text);
+        }
+
         if (ImGui.IsItemHovered()) UiText.Tooltip($"{name}\n{subtitle}");
 
         ImGui.PopID();

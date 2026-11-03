@@ -25,6 +25,15 @@ public sealed class MapMakerScreen : IAppScreen
 
     private readonly MapEditor _editor = new();
     private IReadOnlyList<string> _maps = Array.Empty<string>();
+
+    /// <summary>
+    /// Each map's contents, read once per Reload. The list shows a map's OWN name, not its filename -
+    /// renaming a map used to change nothing anybody could see (Kai, 2026-11-02), because this list
+    /// read the filename and saving never renamed the file. Both halves are fixed; this is the half
+    /// that decides what the list says.
+    /// </summary>
+    private readonly Dictionary<string, FDG.SaveLoad.TerrainLayoutFile?> _layouts =
+        new(StringComparer.OrdinalIgnoreCase);
     private string? _selected;
     private string? _pendingDelete;
     private string _message = "";
@@ -37,8 +46,26 @@ public sealed class MapMakerScreen : IAppScreen
     private void Reload()
     {
         _maps = FdgRaylib.SaveLoad.MapPaths.List();
+        _layouts.Clear();
         if (_selected != null && !_maps.Contains(_selected)) _selected = null;
         _selected ??= _maps.Count > 0 ? _maps[0] : null;
+    }
+
+    private FDG.SaveLoad.TerrainLayoutFile? Layout(string path)
+    {
+        if (_layouts.TryGetValue(path, out FDG.SaveLoad.TerrainLayoutFile? cached)) return cached;
+        FDG.SaveLoad.TerrainLayoutFile? loaded = FDG.SaveLoad.TerrainLayoutLoader.TryLoadFromFile(path, out _);
+        _layouts[path] = loaded;
+        return loaded;
+    }
+
+    /// <summary>What a map is called: its own name if it has one, else the file's.</summary>
+    private string NameOf(string path)
+    {
+        FDG.SaveLoad.TerrainLayoutFile? layout = Layout(path);
+        return layout != null && !string.IsNullOrWhiteSpace(layout.Name)
+            ? layout.Name
+            : Path.GetFileNameWithoutExtension(path);
     }
 
     public void Draw(int screenW, int screenH)
@@ -73,8 +100,18 @@ public sealed class MapMakerScreen : IAppScreen
         }
         foreach (string path in _maps)
         {
-            string name = Path.GetFileNameWithoutExtension(path);
-            if (ImGui.Selectable($"{name}##{path}", path == _selected)) _selected = path;
+            FDG.SaveLoad.TerrainLayoutFile? layout = Layout(path);
+            if (ImGui.Selectable($"{NameOf(path)}##{path}", path == _selected)) _selected = path;
+            if (layout == null)
+            {
+                ImGui.SameLine();
+                UiText.Colored(new Vector4(1f, 0.45f, 0.4f, 1f), "  could not be read");
+                continue;
+            }
+            ImGui.SameLine();
+            UiText.Colored(Dim, $"   {layout.TableWidthInches / 12f:0.#}' x {layout.TableHeightInches / 12f:0.#}'"
+                + $"   -   {layout.Pieces.Count} terrain, {layout.Objectives.Count} objectives,"
+                + $" {layout.DeploymentZones.Count} zones");
         }
         ImGui.EndChild();
 
@@ -84,7 +121,9 @@ public sealed class MapMakerScreen : IAppScreen
         ImGui.SetCursorPos(new Vector2(margin, by));
         if (UiButton.Confirm("New Map", btn))
         {
-            _editor.OnSaved ??= _ => { Reload(); _message = "Map saved."; };
+            // Take the path the save ACTUALLY landed at: renaming a map now renames its file, so the
+            // old path is gone and Reload would otherwise drop the selection to whatever sorts first.
+            _editor.OnSaved ??= saved => { Reload(); _selected = saved; _message = "Map saved."; };
             _editor.OpenNew();
         }
 
@@ -92,7 +131,9 @@ public sealed class MapMakerScreen : IAppScreen
         ImGui.BeginDisabled(_selected == null);
         if (UiButton.Navigate("Edit", btn))
         {
-            _editor.OnSaved ??= _ => { Reload(); _message = "Map saved."; };
+            // Take the path the save ACTUALLY landed at: renaming a map now renames its file, so the
+            // old path is gone and Reload would otherwise drop the selection to whatever sorts first.
+            _editor.OnSaved ??= saved => { Reload(); _selected = saved; _message = "Map saved."; };
             _editor.OpenExisting(_selected!);
         }
         ImGui.SetCursorPos(new Vector2(margin + (btn.X + 12f) * 2f, by));
