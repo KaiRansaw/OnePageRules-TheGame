@@ -905,3 +905,9 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > `origin/campaign-360` (the working branch): highest anywhere was 444, nothing numbered 445.
 > **445 = the campaign end condition** - a VP target that can actually be won, the first slice of
 > campaign-flow-spec sections 1-4. No collision.
+
+> **2026-11-03 - number 446.** `git fetch origin` again (same session as 445, but re-fetched rather than
+> trusting the earlier read): highest filed on `origin/main` is 408 and on `origin/campaign-360` is 445,
+> which is this session's own. The two `446` hits in `WorkItems/191-tactician-agent.md` were checked and
+> are incidental - a PID (`31446`) and a commit hash (`d8d8446`), not item numbers.
+> **446 = the campaign detail panel and the win/loss record behind it.** No collision.
