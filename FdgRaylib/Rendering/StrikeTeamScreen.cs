@@ -207,7 +207,28 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     // -- The list of campaign armies ----------------------------------------------------------------
 
+    /// <summary>
+    /// campaign-flow-spec section 2: the list on the left, the selected campaign on the right. The
+    /// detail panel is the campaign's scoreboard - both armies, both scores, both treasuries - which is
+    /// what makes a campaign read as a rivalry instead of a filename.
+    /// </summary>
     private void DrawList(float x, float y, float w, float h)
+    {
+        float gap = 12f;
+        float listW = w * 0.44f;
+
+        DrawTeamList(x, y, listW, h);
+
+        ImGui.SetCursorPos(new Vector2(x + listW + gap, y));
+        ImGui.BeginChild("##campaignDetail", new Vector2(w - listW - gap, h), ImGuiChildFlags.Borders);
+        if (Current is { } sel) DrawCampaignDetail(sel.Army);
+        else UiText.Disabled(Teams.Count == 0
+            ? "No campaigns yet. \"New Campaign Army\" starts one."
+            : "Pick a campaign on the left.");
+        ImGui.EndChild();
+    }
+
+    private void DrawTeamList(float x, float y, float w, float h)
     {
         var teams = Teams;
         ImGui.SetCursorPos(new Vector2(x, y));
@@ -241,6 +262,103 @@ public sealed class StrikeTeamScreen : IAppScreen
             if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) OpenCamp(i);
         }
         ImGui.EndChild();
+    }
+
+    /// <summary>
+    /// The selected campaign, as campaign-flow-spec section 2 asks for it: both army names, both VP
+    /// against the target, both treasuries INCLUDING the unspent balance, the next mission number, the
+    /// win/loss record, and who is sitting out injured.
+    ///
+    /// <para>
+    /// The rival's unspent balance is on here because the spec is emphatic about it, and the reason is
+    /// worth keeping: the bot earns treasury by the book whether or not it is spent, so without the
+    /// number on screen it banks quietly and then one mission the difficulty jumps for no visible
+    /// reason.
+    /// </para>
+    /// </summary>
+    private void DrawCampaignDetail(BuiltArmyFile army)
+    {
+        StrikeTeamInfo info = army.StrikeTeam!;
+        var foe = EnemyOf(info);
+        StrikeTeamInfo? foeInfo = foe?.Army.StrikeTeam;
+        CampaignPreGame.CampaignStanding standing = StandingOf(army);
+
+        // A campaign is a rivalry, so the heading is both names - "Iron Reavers vs The Hollow Choir",
+        // not "Campaign 3".
+        UiText.Colored(TextBright, foeInfo != null ? $"{info.Name}  vs  {foeInfo.Name}" : info.Name);
+        UiText.Disabled($"{GameSystemInfo.DisplayName(info.GameSystem)}"
+                        + (info.NoPermadeath ? " - No Permadeath" : ""));
+        ImGui.Separator();
+
+        // -- The scoreboard --
+        UiText.Colored(standing.HasTarget ? Accent : TextDim, standing.Describe());
+        if (standing.IsOver)
+            UiText.Colored(standing.Outcome == ECampaignOutcome.YouWon ? Good : Bad,
+                standing.Outcome switch
+                {
+                    ECampaignOutcome.YouWon => "WON",
+                    ECampaignOutcome.RivalWon => "LOST",
+                    _ => "DRAWN",
+                });
+
+        (int wins, int losses) = CampaignRules.RecordOf(info);
+        ScoreRow(info.Name, standing.YourVp, info.BankedPoints, army.TotalPoints, wins, losses, Gold);
+        if (foeInfo != null && foe is { } f)
+        {
+            (int foeWins, int foeLosses) = CampaignRules.RecordOf(foeInfo);
+            ScoreRow(foeInfo.Name, standing.RivalVp, foeInfo.BankedPoints, f.Army.TotalPoints,
+                foeWins, foeLosses, TextDim);
+        }
+        else
+        {
+            UiText.Disabled("No standing enemy, so there is nobody else scoring - add another army of "
+                            + "this game and start a new campaign to get one.");
+        }
+
+        ImGui.Separator();
+        if (standing.IsOver)
+            UiText.Disabled($"{info.Matches} mission(s) played. This campaign is finished.");
+        else
+            UiText.Disabled($"Next up: mission {info.Matches + 1}. {info.Matches} played.");
+
+        // -- Who cannot fight --
+        // Only under No Permadeath does a unit come back at all; with permadeath on, a killed unit is
+        // simply gone and there is never anything to list.
+        var resting = army.Units
+            .Select(u => (Unit: u, Sheet: CampaignRules.Sheet(u)))
+            .Where(p => p.Sheet is { MissionsOut: > 0 })
+            .ToList();
+        ImGui.Separator();
+        UiText.Colored(TextDim, "SITTING OUT");
+        if (resting.Count == 0) UiText.Disabled("Nobody - the whole army can field.");
+        else
+            foreach (var (unit, sheet) in resting)
+                UiText.Colored(Bad, $"{unit.Name} - out for {sheet!.MissionsOut} more mission(s)");
+
+        var waiting = army.Units.Where(u => CampaignRules.Sheet(u)?.Pending.Count > 0).ToList();
+        if (waiting.Count > 0)
+        {
+            ImGui.Separator();
+            UiText.Colored(Accent, $"{waiting.Count} unit(s) are waiting on you to pick a trait.");
+            UiText.Disabled("Open the campaign to deal with them.");
+        }
+
+        if (info.History.Count > 0)
+        {
+            ImGui.Separator();
+            UiText.Colored(TextDim, "LATELY");
+            foreach (string line in Enumerable.Reverse(info.History).Take(4)) UiText.Wrapped(line);
+        }
+    }
+
+    /// <summary>One army's line on the campaign scoreboard. Both sides get the same shape.</summary>
+    private static void ScoreRow(string name, int vp, int treasury, int armyPoints, int wins, int losses,
+                                 Vector4 nameColour)
+    {
+        ImGui.Spacing();
+        UiText.Colored(nameColour, name);
+        ImGui.TextUnformatted($"   {vp} VP   -   {wins}W / {losses}L");
+        UiText.Disabled($"   Army {armyPoints} pts, unspent treasury {treasury} pts");
     }
 
     private void OpenCamp(int index)
