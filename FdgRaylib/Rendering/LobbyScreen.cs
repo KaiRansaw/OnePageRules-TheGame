@@ -1650,9 +1650,12 @@ public class LobbyScreen : IAppScreen
         {
             for (int k = 0; k < layout!.DeploymentZones.Count; k++)
             {
-                FDG.SaveLoad.MapDeploymentZoneEntry z = layout.DeploymentZones[k];
-                dl.AddRectFilled(P(MathF.Min(z.Left, z.Right), MathF.Max(z.Bottom, z.Top)),
-                    P(MathF.Max(z.Left, z.Right), MathF.Min(z.Bottom, z.Top)), k % 2 == 0 ? zoneA : zoneB);
+                // Every piece - a zone may be an L or a T, and the preview has to be the map.
+                foreach (FDG.SaveLoad.MapZoneRect r in layout.DeploymentZones[k].AllParts())
+                {
+                    dl.AddRectFilled(P(MathF.Min(r.Left, r.Right), MathF.Max(r.Bottom, r.Top)),
+                        P(MathF.Max(r.Left, r.Right), MathF.Min(r.Bottom, r.Top)), k % 2 == 0 ? zoneA : zoneB);
+                }
             }
         }
         else

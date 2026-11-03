@@ -72,9 +72,13 @@ public static class MapThumbnail
         {
             for (int k = 0; k < mapZones.Count; k++)
             {
-                MapDeploymentZoneEntry z = mapZones[k];
-                dl.AddRectFilled(P(MathF.Min(z.Left, z.Right), MathF.Max(z.Bottom, z.Top)),
-                    P(MathF.Max(z.Left, z.Right), MathF.Min(z.Bottom, z.Top)), k % 2 == 0 ? zoneA : zoneB);
+                // Every piece: a zone can be an L or a T, and drawing only its first rectangle would
+                // show a tile that disagrees with the map it is a picture of.
+                foreach (MapZoneRect r in mapZones[k].AllParts())
+                {
+                    dl.AddRectFilled(P(MathF.Min(r.Left, r.Right), MathF.Max(r.Bottom, r.Top)),
+                        P(MathF.Max(r.Left, r.Right), MathF.Min(r.Bottom, r.Top)), k % 2 == 0 ? zoneA : zoneB);
+                }
             }
         }
         else if (fallbackZones == EFallbackZones.Horde)

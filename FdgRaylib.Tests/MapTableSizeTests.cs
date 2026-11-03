@@ -150,6 +150,64 @@ namespace FdgRaylib.Tests
         }
 
         /// <summary>
+        /// An L-shaped deployment zone (Kai, 2026-11-02) survives a save and reload. Written as one
+        /// rectangle plus extras so a map from before odd shapes existed is still a valid zone, and so
+        /// anything reading only the four edges gets a sensible rectangle rather than nothing.
+        /// </summary>
+        [Test]
+        public void AnLShapedDeploymentZoneRoundTrips()
+        {
+            var original = new TerrainLayoutFile
+            {
+                Name = "L zone",
+                DeploymentZones =
+                {
+                    new MapDeploymentZoneEntry
+                    {
+                        Left = 0f, Right = 20f, Bottom = 0f, Top = 6f,
+                        ExtraParts = { new MapZoneRect { Left = 0f, Right = 6f, Bottom = 6f, Top = 20f } },
+                    },
+                    new MapDeploymentZoneEntry { Left = 0f, Right = 72f, Bottom = 36f, Top = 48f },
+                },
+            };
+
+            TerrainLayoutFile? back = RoundTrip(original, out string? error);
+
+            Assert.That(back, Is.Not.Null, error);
+            Assert.That(back!.DeploymentZones, Has.Count.EqualTo(2));
+
+            MapDeploymentZoneEntry lshape = back.DeploymentZones[0];
+            Assert.That(lshape.ExtraParts, Has.Count.EqualTo(1));
+            Assert.That(lshape.ExtraParts[0].Top, Is.EqualTo(20f));
+            Assert.That(lshape.AllParts().Count(), Is.EqualTo(2), "the main rectangle plus the arm.");
+
+            Assert.That(back.DeploymentZones[1].ExtraParts, Is.Empty,
+                "an ordinary rectangular zone stays ordinary.");
+            Assert.That(back.DeploymentZones[1].AllParts().Count(), Is.EqualTo(1));
+        }
+
+        /// <summary>
+        /// A zone saved before odd shapes existed has no ExtraParts field at all, and must come back as
+        /// a plain one-rectangle zone rather than one with a null list that AllParts would throw on.
+        /// </summary>
+        [Test]
+        public void AZoneWrittenBeforeOddShapesIsStillOneRectangle()
+        {
+            const string json = """
+                {"Name":"Old","Pieces":[],"Objectives":[],
+                 "DeploymentZones":[{"Left":0.0,"Right":72.0,"Bottom":0.0,"Top":12.0}]}
+                """;
+
+            TerrainLayoutFile? layout = LoadFromText(json, out string? error);
+
+            Assert.That(layout, Is.Not.Null, error);
+            Assert.That(layout!.DeploymentZones, Has.Count.EqualTo(1));
+            Assert.That(layout.DeploymentZones[0].AllParts().Count(), Is.EqualTo(1));
+            Assert.That(layout.DeploymentZones[0].ExtraParts, Is.Not.Null,
+                "AllParts must not throw on a file that never had the field.");
+        }
+
+        /// <summary>
         /// Writes the layout and reads it back the way the game does - through a real file. There is no
         /// deserialize-from-string on the app's loader, and going through disk is the path that
         /// actually runs when a map is saved and reopened, so this is the honest round trip rather

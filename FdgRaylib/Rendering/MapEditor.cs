@@ -89,7 +89,37 @@ public sealed class MapEditor
         public Piece Clone() => (Piece)MemberwiseClone();
     }
 
-    private sealed class Zone { public float L, R, B, T; }
+    /// <summary>
+    /// A deployment zone being drawn: one rectangle, or several joined into an L, a T or any other
+    /// rectilinear shape (Kai, 2026-11-02 - "what if I wanted to do an L shaped deployment zone?").
+    /// </summary>
+    private sealed class Zone
+    {
+        public readonly List<ZoneRect> Parts = new();
+
+        /// <summary>The first rectangle, which is the one the properties panel edits.</summary>
+        public ZoneRect Main => Parts[0];
+
+        public float L => Parts.Min(p => MathF.Min(p.L, p.R));
+        public float R => Parts.Max(p => MathF.Max(p.L, p.R));
+        public float B => Parts.Min(p => MathF.Min(p.B, p.T));
+        public float T => Parts.Max(p => MathF.Max(p.B, p.T));
+
+        public bool Contains(float x, float z)
+        {
+            foreach (ZoneRect r in Parts)
+            {
+                if (x >= MathF.Min(r.L, r.R) && x <= MathF.Max(r.L, r.R)
+                    && z >= MathF.Min(r.B, r.T) && z <= MathF.Max(r.B, r.T)) return true;
+            }
+            return false;
+        }
+
+        public static Zone Of(float l, float r, float b, float t) =>
+            new() { Parts = { new ZoneRect { L = l, R = r, B = b, T = t } } };
+    }
+
+    private sealed class ZoneRect { public float L, R, B, T; }
 
     private sealed record Preset(string Label, string Name, ETerrainType Type, bool Circle,
         float W, float D, float R, float Height, int Points);
@@ -175,8 +205,8 @@ public sealed class MapEditor
         _name = "New Map";
         // Start from the standard long-edge deployment zones so a new map is playable straight away.
         float d = GameWideConstants.DEPLOYMENT_DISTANCE_INCHES;
-        _zones.Add(new Zone { L = 0, R = TW, B = 0, T = d });
-        _zones.Add(new Zone { L = 0, R = TW, B = TH - d, T = TH });
+        _zones.Add(Zone.Of(0, TW, 0, d));
+        _zones.Add(Zone.Of(0, TW, TH - d, TH));
         IsOpen = true;
     }
 
@@ -200,7 +230,12 @@ public sealed class MapEditor
         foreach (MapObjectiveEntry o in layout.Objectives ?? new())
             _objectives.Add(new Vector2(o.X, o.Z));
         foreach (MapDeploymentZoneEntry z in layout.DeploymentZones ?? new())
-            _zones.Add(new Zone { L = z.Left, R = z.Right, B = z.Bottom, T = z.Top });
+        {
+            var zone = new Zone();
+            foreach (MapZoneRect r in z.AllParts())
+                zone.Parts.Add(new ZoneRect { L = r.Left, R = r.Right, B = r.Bottom, T = r.Top });
+            _zones.Add(zone);
+        }
         foreach (MapBaseMarkerEntry m in layout.BaseMarkers ?? new())
             _baseMarkers.Add(m);
         IsOpen = true;
@@ -291,10 +326,22 @@ public sealed class MapEditor
             Points = p.Points,
         }).ToList(),
         Objectives = _objectives.Select(o => new MapObjectiveEntry { X = o.X, Z = o.Y }).ToList(),
-        DeploymentZones = _zones.Select(z => new MapDeploymentZoneEntry
+        DeploymentZones = _zones.Select(z =>
         {
-            Left = MathF.Min(z.L, z.R), Right = MathF.Max(z.L, z.R),
-            Bottom = MathF.Min(z.B, z.T), Top = MathF.Max(z.B, z.T),
+            // The first piece goes in the four plain fields, the rest in ExtraParts - so an ordinary
+            // one-rectangle zone writes exactly the file it always did, and anything reading only the
+            // four edges still gets a sensible rectangle.
+            ZoneRect first = z.Main;
+            return new MapDeploymentZoneEntry
+            {
+                Left = MathF.Min(first.L, first.R), Right = MathF.Max(first.L, first.R),
+                Bottom = MathF.Min(first.B, first.T), Top = MathF.Max(first.B, first.T),
+                ExtraParts = z.Parts.Skip(1).Select(r => new MapZoneRect
+                {
+                    Left = MathF.Min(r.L, r.R), Right = MathF.Max(r.L, r.R),
+                    Bottom = MathF.Min(r.B, r.T), Top = MathF.Max(r.B, r.T),
+                }).ToList(),
+            };
         }).ToList(),
     };
 
@@ -529,10 +576,13 @@ public sealed class MapEditor
         }
         foreach (Zone z in _zones)
         {
-            float l = Math.Clamp(z.L, 0f, TW), r = Math.Clamp(z.R, 0f, TW);
-            float b = Math.Clamp(z.B, 0f, TH), t = Math.Clamp(z.T, 0f, TH);
-            if (!Nearly(l, z.L) || !Nearly(r, z.R) || !Nearly(b, z.B) || !Nearly(t, z.T)) moved++;
-            z.L = l; z.R = r; z.B = b; z.T = t;
+            foreach (ZoneRect part in z.Parts)
+            {
+                float l = Math.Clamp(part.L, 0f, TW), r = Math.Clamp(part.R, 0f, TW);
+                float b = Math.Clamp(part.B, 0f, TH), t = Math.Clamp(part.T, 0f, TH);
+                if (!Nearly(l, part.L) || !Nearly(r, part.R) || !Nearly(b, part.B) || !Nearly(t, part.T)) moved++;
+                part.L = l; part.R = r; part.B = b; part.T = t;
+            }
         }
         foreach (MapBaseMarkerEntry m in _baseMarkers)
         {
@@ -650,10 +700,23 @@ public sealed class MapEditor
             {
                 Zone z = _zones[_selIndex];
                 ImGui.TextUnformatted($"Selected deploy zone {_selIndex + 1}");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Left", ref z.L, 0.25f, 0f, TW, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Right", ref z.R, 0.25f, 0f, TW, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Bottom", ref z.B, 0.25f, 0f, TH, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Top", ref z.T, 0.25f, 0f, TH, "%.1f in");
+                ZoneRect main = z.Main;
+                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Left", ref main.L, 0.25f, 0f, TW, "%.1f in");
+                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Right", ref main.R, 0.25f, 0f, TW, "%.1f in");
+                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Bottom", ref main.B, 0.25f, 0f, TH, "%.1f in");
+                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Top", ref main.T, 0.25f, 0f, TH, "%.1f in");
+
+                if (z.Parts.Count > 1)
+                {
+                    ImGui.TextDisabled($"Plus {z.Parts.Count - 1} more piece(s) - an L or T shape.");
+                    if (UiButton.NavigateSmall("Remove last piece") && z.Parts.Count > 1)
+                        z.Parts.RemoveAt(z.Parts.Count - 1);
+                }
+                else
+                {
+                    ImGui.TextDisabled("Shift+drag to add another piece and make an L shape.");
+                }
+
                 ImGui.TextDisabled("Zone 1 goes to the first team to pick, and so on.");
                 if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
                 break;
@@ -724,11 +787,19 @@ public sealed class MapEditor
         for (int i = 0; i < _zones.Count; i++)
         {
             Zone z = _zones[i];
-            Vector2 a = P(MathF.Min(z.L, z.R), MathF.Max(z.B, z.T)), b = P(MathF.Max(z.L, z.R), MathF.Min(z.B, z.T));
-            dl.AddRectFilled(a, b, ZoneFill[i % ZoneFill.Length]);
-            dl.AddRect(a, b, ZoneLine[i % ZoneLine.Length], 0f, ImDrawFlags.None, 2f);
-            dl.AddText(a + new Vector2(6, 4), ZoneLine[i % ZoneLine.Length], $"Deploy {i + 1}");
-            if (_selKind == ESel.Zone && _selIndex == i) dl.AddRect(a, b, SelectColor, 0f, ImDrawFlags.None, 3f);
+            // Every piece of the zone, so an L draws as an L. Each is filled and outlined in the
+            // zone's own colour; the pieces sharing a colour is what reads them as one zone.
+            foreach (ZoneRect r in z.Parts)
+            {
+                Vector2 pa = P(MathF.Min(r.L, r.R), MathF.Max(r.B, r.T));
+                Vector2 pb = P(MathF.Max(r.L, r.R), MathF.Min(r.B, r.T));
+                dl.AddRectFilled(pa, pb, ZoneFill[i % ZoneFill.Length]);
+                dl.AddRect(pa, pb, ZoneLine[i % ZoneLine.Length], 0f, ImDrawFlags.None, 2f);
+                if (_selKind == ESel.Zone && _selIndex == i)
+                    dl.AddRect(pa, pb, SelectColor, 0f, ImDrawFlags.None, 3f);
+            }
+            Vector2 label = P(MathF.Min(z.L, z.R), MathF.Max(z.B, z.T));
+            dl.AddText(label + new Vector2(6, 4), ZoneLine[i % ZoneLine.Length], $"Deploy {i + 1}");
         }
 
         // Terrain.
@@ -914,12 +985,29 @@ public sealed class MapEditor
                 {
                     if (MathF.Abs(snapped.X - start.X) >= 1f && MathF.Abs(snapped.Y - start.Y) >= 1f)
                     {
-                        _zones.Add(new Zone
+                        var rect = new ZoneRect
                         {
                             L = MathF.Min(start.X, snapped.X), R = MathF.Max(start.X, snapped.X),
                             B = MathF.Min(start.Y, snapped.Y), T = MathF.Max(start.Y, snapped.Y),
-                        });
-                        _selKind = ESel.Zone; _selIndex = _zones.Count - 1;
+                        };
+
+                        // Shift+drag JOINS this rectangle to the selected zone, which is how an L (or a
+                        // T, or anything else rectilinear) gets drawn: block out the long band, then
+                        // shift-drag the arm. Kai, 2026-11-02. Without Shift it is a new zone, which is
+                        // what the tool always did.
+                        bool addToSelected = ImGui.IsKeyDown(ImGuiKey.LeftShift)
+                                          || ImGui.IsKeyDown(ImGuiKey.RightShift);
+                        if (addToSelected && _selKind == ESel.Zone && _selIndex >= 0 && _selIndex < _zones.Count)
+                        {
+                            _zones[_selIndex].Parts.Add(rect);
+                        }
+                        else
+                        {
+                            var zone = new Zone();
+                            zone.Parts.Add(rect);
+                            _zones.Add(zone);
+                            _selKind = ESel.Zone; _selIndex = _zones.Count - 1;
+                        }
                     }
                     _zoneStart = null;
                 }
@@ -960,9 +1048,9 @@ public sealed class MapEditor
             if (_pieces[i].ToZone().IsPointWithinZone(new Float2(m.X, m.Y))) { _selKind = ESel.Piece; _selIndex = i; return; }
         for (int i = _zones.Count - 1; i >= 0; i--)
         {
-            Zone z = _zones[i];
-            if (m.X >= MathF.Min(z.L, z.R) && m.X <= MathF.Max(z.L, z.R) && m.Y >= MathF.Min(z.B, z.T) && m.Y <= MathF.Max(z.B, z.T))
-            { _selKind = ESel.Zone; _selIndex = i; return; }
+            // Any piece of the zone selects it - clicking the arm of an L must select the L, and the
+            // notch must select nothing, which the bounding box would get wrong both ways.
+            if (_zones[i].Contains(m.X, m.Y)) { _selKind = ESel.Zone; _selIndex = i; return; }
         }
         Deselect();
     }
@@ -998,11 +1086,20 @@ public sealed class MapEditor
                 _baseMarkers[_selIndex].X = t.X; _baseMarkers[_selIndex].Z = t.Y;
                 break;
             case ESel.Zone:
+            {
+                // The whole zone moves as one, pieces and all - dragging an L must not leave its arm
+                // behind.
                 Zone z = _zones[_selIndex];
-                float w = MathF.Abs(z.R - z.L), h = MathF.Abs(z.T - z.B);
+                float w = z.R - z.L, h = z.T - z.B;
                 float l = Math.Clamp(t.X, 0f, TW - w), b = Math.Clamp(t.Y, 0f, TH - h);
-                z.L = l; z.R = l + w; z.B = b; z.T = b + h;
+                float dx = l - z.L, dz = b - z.B;
+                foreach (ZoneRect part in z.Parts)
+                {
+                    part.L += dx; part.R += dx;
+                    part.B += dz; part.T += dz;
+                }
                 break;
+            }
         }
     }
 }
