@@ -1381,6 +1381,20 @@ else
         renderer.NavigateTo(renderer.HostModal);
     };
 
+    // The lobby's Select Map button. The picker is its own screen rather than a dropdown because a
+    // map is a picture - a name in a list says nothing about the table you are about to fight on.
+    renderer.LobbyScreen.OnSelectMapRequested = (system, background, horde, current) =>
+    {
+        renderer.MapPicker.Open(system, background, horde, current);
+        renderer.NavigateTo(renderer.MapPicker);
+    };
+    renderer.MapPicker.OnBack = () => renderer.NavigateTo(renderer.LobbyScreen);
+    renderer.MapPicker.OnChosen = path =>
+    {
+        renderer.LobbyScreen.SetMap(path);
+        renderer.NavigateTo(renderer.LobbyScreen);
+    };
+
     renderer.MainMenu.OnMapMakerClicked = () => renderer.NavigateTo(renderer.MapMaker);
     renderer.MapMaker.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
     renderer.MainMenu.OnSettingsClicked = () => renderer.NavigateTo(renderer.Settings);

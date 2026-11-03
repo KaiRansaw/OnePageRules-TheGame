@@ -221,7 +221,12 @@ public class LobbyScreen : IAppScreen
         float midW         = MathF.Max(240f, screenW - leftW - rightW - margin * 4f);
         float headerW      = screenW - margin * 2f;
         float contentY     = margin + headerH + margin;
-        float contentH     = MathF.Max(80f, screenH - contentY - margin - actionH - margin);
+        // The right column runs to the bottom margin, because LAUNCH lives inside it now (under the
+        // map preview) rather than in a full-width bar below everything. The left and middle columns
+        // stop short of the bottom to leave the "can't launch yet" line its own band - the one thing
+        // still worth the full width, since a blocker can be a sentence long.
+        float contentH     = MathF.Max(80f, screenH - contentY - margin);
+        float columnsH     = MathF.Max(80f, contentH - actionH - margin);
 
         // ── Header ────────────────────────────────────────────────────────────
         ImGui.SetCursorPos(new Vector2(margin, margin));
@@ -258,7 +263,7 @@ public class LobbyScreen : IAppScreen
 
         // ── Left column: settings ─────────────────────────────────────────────
         ImGui.SetCursorPos(new Vector2(margin, contentY));
-        ImGui.BeginChild("##settings", new Vector2(leftW, contentH),
+        ImGui.BeginChild("##settings", new Vector2(leftW, columnsH),
             ImGuiChildFlags.Borders, ImGuiWindowFlags.AlwaysVerticalScrollbar);
         ImGui.SetWindowFontScale(panelScale);  // settings fields ~50% bigger than the rest of the lobby
         DrawSettings(leftW);
@@ -268,32 +273,40 @@ public class LobbyScreen : IAppScreen
         // ── Middle column: players and their armies ───────────────────────────
         float midX = margin * 2f + leftW;
         ImGui.SetCursorPos(new Vector2(midX, contentY));
-        ImGui.BeginChild("##players", new Vector2(midW, contentH), ImGuiChildFlags.Borders);
+        ImGui.BeginChild("##players", new Vector2(midW, columnsH), ImGuiChildFlags.Borders);
         ImGui.SetWindowFontScale(panelScale);  // rows + font ~50% bigger than the rest of the lobby
         DrawPlayerList(midW, panelScale);
         ImGui.EndChild();
 
-        // ── Right column: map preview (2D) ────────────────────────────────────
+        // ── Right column: map preview, with LAUNCH directly under it ──────────
+        // Kai's mock, 2026-11-02: "put it as a button below Map Preview". The two belong together -
+        // the map is the last thing you look at before starting, so the button that starts it sits
+        // under the picture rather than across the bottom of the whole screen.
         float rightX = margin * 3f + leftW + midW;
+        float previewH = MathF.Max(80f, contentH - actionH - margin);
         ImGui.SetCursorPos(new Vector2(rightX, contentY));
-        ImGui.BeginChild("##mappreview", new Vector2(rightW, contentH), ImGuiChildFlags.Borders,
+        ImGui.BeginChild("##mappreview", new Vector2(rightW, previewH), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         ImGui.SetWindowFontScale(panelScale * 0.8f);
         DrawMapPreview();
         ImGui.EndChild();
 
-        // ── Action bar: why LAUNCH is greyed, then LAUNCH ─────────────────────
+        ImGui.SetCursorPos(new Vector2(rightX, contentY + previewH + margin));
+        // No border on the launch child - the button itself fills the panel and provides the visual edge.
+        ImGui.BeginChild("##launch", new Vector2(rightW, actionH), ImGuiChildFlags.None);
+        ImGui.SetWindowFontScale(panelScale);  // match the other panels
+        DrawLaunch(rightW, actionH);
+        ImGui.EndChild();
+
+        // ── Why LAUNCH is greyed, along the bottom under the other two columns ─
         IReadOnlyList<string> launchBlockers = _viewModel.HasHostPrivileges && !_viewModel.IsResumeMode
             ? _viewModel.BlockingLaunchProblems()
             : Array.Empty<string>();
 
-        float actionY  = screenH - margin - actionH;
-        float launchW  = MathF.Max(leftW, screenW * 0.22f);
-        float blockerW = screenW - margin * 2f - launchW - margin;
-
+        float blockerW = leftW + midW + margin;
         if (launchBlockers.Count > 0 && blockerW > 0f)
         {
-            ImGui.SetCursorPos(new Vector2(margin, actionY));
+            ImGui.SetCursorPos(new Vector2(margin, screenH - margin - actionH));
             ImGui.BeginChild("##blockers", new Vector2(blockerW, actionH), ImGuiChildFlags.None,
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
             ImGui.SetWindowFontScale(panelScale * 0.8f);
@@ -304,158 +317,344 @@ public class LobbyScreen : IAppScreen
             ImGui.EndChild();
         }
 
-        ImGui.SetCursorPos(new Vector2(screenW - margin - launchW, actionY));
-        // No border on the launch child — the button itself fills the panel and provides the visual edge.
-        ImGui.BeginChild("##launch", new Vector2(launchW, actionH), ImGuiChildFlags.None);
-        ImGui.SetWindowFontScale(panelScale);  // match the other panels
-        DrawLaunch(launchW, actionH);
-        ImGui.EndChild();
-
         ImGui.End();
         ImGui.PopStyleVar(5);
     }
 
+    /// <summary>
+    /// The seats, as Kai's mock has them (2026-11-02, screen "1.21"): a 2x2 grid with one player per
+    /// square, rather than the table of rows that was here before.
+    ///
+    /// <para>
+    /// <b>Four seats, two of them switchable.</b> Seats 1 and 2 are always there - a game needs two
+    /// sides - and seats 3 and 4 carry an Active switch, so turning both off gives a 1v1 and turning
+    /// one on gives a three-player game. A seat can only be switched off while it is the LAST one,
+    /// because the engine's roster is a list and dropping the middle of it would slide seat 4 up into
+    /// seat 3's square while you were looking at it.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>The columns are the two sides.</b> On a 2x2 that is what a column reads as, so the headers
+    /// name the teams and the 2v2 button pairs seats down the columns (1+3 against 2+4). The per-seat
+    /// Team control stays underneath it: 2v2 and FFA are two presets of the same thing, and keeping the
+    /// real control visible is what makes 1v2 - which Kai asked about and parked - a setting rather than
+    /// a rewrite.
+    /// </para>
+    ///
+    /// <para>
+    /// Deliberately plain under the working agreement: squares, labels and existing controls moved into
+    /// them. What is NOT throwaway is which seat shows what, and that every seat - the host's own
+    /// included - can be handed to a bot.
+    /// </para>
+    /// </summary>
     private void DrawPlayerList(float panelW, float panelScale)
     {
         AutoArmyNewSlots();
+        EnsureTwoSeats();
 
         IReadOnlyList<LobbyPlayerInfoSummary> players = _viewModel!.PlayerInfos;
 
-        // Rows 50% taller: the extra height comes from cell padding (applied top+bottom each row).
-        Vector2 cellPad = ImGui.GetStyle().CellPadding;
-        float rowH = ImGui.GetTextLineHeight() + cellPad.Y * 2f;
-        ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, new Vector2(cellPad.X, cellPad.Y + rowH * 0.25f));
-
-        // #221: effective colour per row this frame, resolved from the SYNCED picks (ColorIndex rides
+        // #221: effective colour per seat this frame, resolved from the SYNCED picks (ColorIndex rides
         // LobbyPlayerInfoSummary through the lobby protocol, so every machine computes the same result) -
-        // explicit picks win, unpicked rows fill with the free defaults in palette order.
+        // explicit picks win, unpicked seats fill with the free defaults in palette order.
         var chosen = new int?[players.Count];
         for (int i = 0; i < players.Count; i++)
             chosen[i] = players[i].ColorIndex >= 0 ? players[i].ColorIndex : null;
         int[] effectiveColor = PlayerColorOptions.ResolveIndices(chosen);
 
-        if (ImGui.BeginTable("##ptable", 7,
-            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
+        DrawTeamPresets(players);
+
+        // Two columns of squares. The grid is sized from what is left of the panel so the four cards
+        // fill it; a short panel scrolls rather than squashing the cards into illegibility.
+        float gap = 10f;
+        float availW = ImGui.GetContentRegionAvail().X;
+        float availH = ImGui.GetContentRegionAvail().Y;
+        float cardW = MathF.Max(150f, (availW - gap) / 2f);
+        float headerH = ImGui.GetTextLineHeightWithSpacing() + 4f;
+        // A card needs: header, name, army button, faction/points, team, actions - six lines plus
+        // padding. Below that floor the grid scrolls instead of clipping a card's buttons away.
+        float cardH = MathF.Max(ImGui.GetTextLineHeightWithSpacing() * 6.4f + 24f,
+                                (availH - headerH - gap * 2f) / 2f);
+
+        // Column headers - the thing Kai asked for above the lists.
+        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
+        ImGui.TextUnformatted(ColumnHeader(players, column: 0));
+        ImGui.SameLine(cardW + gap);
+        ImGui.TextUnformatted(ColumnHeader(players, column: 1));
+        ImGui.PopStyleColor();
+
+        for (int seat = 0; seat < SeatGridSize; seat++)
         {
-            ImGui.TableSetupColumn("Name",    ImGuiTableColumnFlags.WidthStretch, 0.17f);
-            ImGui.TableSetupColumn("Army",    ImGuiTableColumnFlags.WidthStretch, 0.32f);
-            ImGui.TableSetupColumn("Faction", ImGuiTableColumnFlags.WidthStretch, 0.13f);
-            ImGui.TableSetupColumn("Pts",     ImGuiTableColumnFlags.WidthStretch, 0.055f);
-            ImGui.TableSetupColumn("Team",    ImGuiTableColumnFlags.WidthStretch, 0.12f);
-            ImGui.TableSetupColumn("Color",   ImGuiTableColumnFlags.WidthStretch, 0.12f);
-            // #372: every row now carries Load Army AND Random Army, so Actions takes the width back
-            // from Army/Faction (both of which wrap gracefully; a clipped button does not).
-            // #405: Remove makes it three buttons on most rows, hence the extra width. The weights are
-            // normalized by SizingStretchProp, so raising this one narrows the rest proportionally.
-            ImGui.TableSetupColumn("",        ImGuiTableColumnFlags.WidthStretch, 0.09f);
-            ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
-            ImGui.TableHeadersRow();
-            ImGui.PopStyleColor();
-
-            for (int i = 0; i < players.Count; i++)
-            {
-                LobbyPlayerInfoSummary info = players[i];
-                ImGui.TableNextRow();
-
-                ImGui.TableNextColumn();
-                TextFitted(info.PlayerName, panelScale);
-                if (info.PlayerType != EPlayerType.Local)
-                {
-                    // The old Type column, folded into a small tag after the name.
-                    ImGui.SameLine();
-                    ImGui.SetWindowFontScale(panelScale * 0.65f);
-                    UiText.Disabled(PlayerTypeLabel(info.PlayerType).ToUpperInvariant());
-                    ImGui.SetWindowFontScale(panelScale);
-                }
-
-                ImGui.TableNextColumn();
-                DrawArmyPicker(i, info, panelScale);
-
-                ImGui.TableNextColumn();
-                DrawFactionCell(info.ArmyListSummary, _viewModel.AllowedGameSystems, panelScale);
-
-                ImGui.TableNextColumn();
-                DrawPointsCell(info.ArmyListSummary, GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
-
-                ImGui.TableNextColumn();
-                DrawTeamCell(i, info, players.Count);
-
-                ImGui.TableNextColumn();
-                DrawColorCell(i, info, players, effectiveColor);
-
-                ImGui.TableNextColumn();
-                if (_viewModel.IsResumeMode)
-                {
-                    // Re-crew a saved slot. Host only; Local/bots today (networked client assignment TBD).
-                    ImGui.BeginDisabled(!_viewModel.HasHostPrivileges);
-                    if (UiButton.NavigateSmall($"Local##{i}"))
-                        _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.Local);
-                    ImGui.SameLine();
-                    if (UiButton.NavigateSmall($"Tactician##{i}"))
-                        _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Tactician);
-                    ImGui.SameLine();
-                    if (UiButton.NavigateSmall($"Strategist##{i}"))
-                        _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Strategist);
-                    ImGui.SameLine();
-                    if (UiButton.NavigateSmall($"DerpBot##{i}"))
-                        _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.SoloRules);
-                    ImGui.EndDisabled();
-                }
-                else
-                {
-                    // Armies are picked from the Army column's dropdown (the Game Type's folder).
-                    // #405: drop the slot entirely. Shown only where it is actually allowed rather than
-                    // greyed out - unlike Random Army, an absent Remove needs no explaining, and a
-                    // disabled one on the host's OWN row would read as a bug. The engine owns the policy
-                    // (CheckCanRemovePlayer): not the host's own row, not a connected client, never in a
-                    // resumed or launched lobby, and never on a client's screen.
-                    //
-                    // Removing mid-loop is safe: RemovePlayer publishes a NEW list, so `players` - the
-                    // snapshot this frame is iterating - is unaffected, and the row simply vanishes next
-                    // frame.
-                    if (_viewModel.CheckCanRemovePlayer(info.PlayerID))
-                    {
-                        if (UiButton.NavigateSmall($"Remove##{i}"))
-                            _viewModel.RemovePlayer(info.PlayerID);
-                        if (ImGui.IsItemHovered())
-                            UiText.Tooltip($"Remove {info.PlayerName} from the lobby.");
-                    }
-                }
-            }
-
-            ImGui.EndTable();
+            if (seat % 2 == 1) ImGui.SameLine(0f, gap);
+            DrawSeatCard(seat, players, effectiveColor, new Vector2(cardW, cardH), panelScale);
         }
 
-        ImGui.PopStyleVar(); // CellPadding (taller rows)
-
-        // Slots are fixed when resuming a saved game, so no add/remove there.
-        if (_viewModel.HasHostPrivileges && !_viewModel.IsResumeMode)
+        // Anything beyond four seats keeps working - the engine has no four-player cap and a loaded
+        // save or a networked lobby can hold more - it just has no square of its own, so it is listed
+        // under the grid rather than silently hidden.
+        if (players.Count > SeatGridSize)
         {
             ImGui.Spacing();
-            if (UiButton.Navigate("Add Local Player"))
-                _viewModel.AddLocalPlayer();
-            // #405: what each of these four actually gets you. The bot rungs in particular were
-            // indistinguishable from their names alone - "Tactician" and "Strategist" say nothing about
-            // which is harder, or that one of them thinks for a while before it moves.
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip(LocalPlayerTooltip);
-            ImGui.SameLine();
-
-            // #419, Kai's call on 2026-10-31: the game runs the OFFICIAL OPR AI and the lobby offers
-            // nothing else. One button, and which official AI it adds depends on the rules family being
-            // played - the Quest systems print their own flowchart in their core rules, everything else
-            // uses Solo & Co-Op Rules v3.6.0.
-            //
-            // The house bots (Strategist, Tactician, the frozen DerpBot baseline, Gunline) are NOT gone:
-            // they stay selectable with --ai-profile, which is what plan G4 requires ("selectable behind
-            // flags forever"). Hiding them from the menu is allowed; deleting them is not, and they are
-            // still the only yardstick for telling whether the official bot is improving.
-            bool quest = GameSystemInfo.IsQuest(_viewModel.GameSystem);
-            if (UiButton.Navigate("Add AI Player"))
-                _viewModel.AddAiPlayer(quest ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip(quest ? QuestAiTooltip : OfficialAiTooltip);
+            ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
+            ImGui.TextUnformatted($"ALSO PLAYING ({players.Count - SeatGridSize})");
+            ImGui.PopStyleColor();
+            for (int seat = SeatGridSize; seat < players.Count; seat++)
+                DrawSeatCard(seat, players, effectiveColor, new Vector2(cardW * 2f + gap, cardH), panelScale);
         }
+    }
+
+    /// <summary>How many seats get a square of their own.</summary>
+    internal const int SeatGridSize = 4;
+
+    /// <summary>
+    /// Whether seat <paramref name="seat"/> (0-based) may be switched OFF, given how many seats the
+    /// lobby currently holds.
+    ///
+    /// <para>
+    /// Two rules, and both of them are there because of something that would otherwise look like a
+    /// bug rather than a rule. Seats 1 and 2 never switch off: a game needs two sides. And only the
+    /// LAST seat switches off, because the engine's roster is a list - dropping seat 3 of four would
+    /// slide seat 4 up into seat 3's square, so the card you clicked would stay filled (with somebody
+    /// else) and the card you never touched would empty.
+    /// </para>
+    /// </summary>
+    internal static bool SeatCanSwitchOff(int seat, int seatCount) =>
+        seat >= 2 && seat == seatCount - 1;
+
+    /// <summary>
+    /// Whether the empty square for seat <paramref name="seat"/> may be switched ON. Seats fill from the
+    /// left: switching on seat 4 while 3 is off would put the new player in seat 3, leaving the switch
+    /// you actually clicked still off - a button that visibly does the wrong thing.
+    /// </summary>
+    internal static bool SeatCanSwitchOn(int seat, int seatCount) =>
+        seat == seatCount && seat < SeatGridSize;
+
+    /// <summary>
+    /// A game needs two sides, so the lobby opens with two seats whether or not anything added the
+    /// second one. The new seat is a bot, which is the thing somebody opening a lobby alone almost
+    /// always wants, and the Player/Bot switch on its card changes that in one click.
+    /// </summary>
+    private void EnsureTwoSeats()
+    {
+        if (!_viewModel!.HasHostPrivileges || _viewModel.IsResumeMode) return;
+        if (_viewModel.PlayerInfos.Count >= 2) return;
+        _viewModel.AddAiPlayer(GameSystemInfo.IsQuest(_viewModel.GameSystem)
+            ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
+    }
+
+    /// <summary>What a column of the grid is called. In 2v2 the column IS a team, which is the whole
+    /// reason the preset pairs down the columns; in a free-for-all a column means nothing, so it says
+    /// so rather than labelling it with one seat's team.</summary>
+    private string ColumnHeader(IReadOnlyList<LobbyPlayerInfoSummary> players, int column)
+    {
+        var inColumn = new List<int>();
+        for (int seat = column; seat < Math.Min(players.Count, SeatGridSize); seat += 2)
+            inColumn.Add((int)players[seat].TeamNumber);
+
+        if (inColumn.Count == 0) return "";
+        if (inColumn.Distinct().Count() == 1)
+            return TeamLabel(inColumn[0], players.Count).ToUpperInvariant();
+        return "FREE-FOR-ALL";
+    }
+
+    /// <summary>
+    /// 2v2 and FFA: two presets over the per-seat Team control, not a replacement for it. 2v2 pairs the
+    /// grid's columns (seats 1+3 against 2+4) because that is what a column of a 2x2 reads as; FFA
+    /// gives every seat its own team number.
+    /// </summary>
+    private void DrawTeamPresets(IReadOnlyList<LobbyPlayerInfoSummary> players)
+    {
+        bool canEdit = _viewModel!.HasHostPrivileges && !_viewModel.IsResumeMode;
+        ImGui.BeginDisabled(!canEdit || players.Count < 3);
+
+        if (UiButton.NavigateSmall("2v2"))
+        {
+            for (int seat = 0; seat < players.Count; seat++)
+                _viewModel.SetPlayerTeam(players[seat].PlayerID, (ETeamOption)(seat % 2 + 1));
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Two sides: the grid's left column against its right column.\n" +
+                           "Needs at least three seats.");
+
+        ImGui.SameLine();
+        if (UiButton.NavigateSmall("Free-for-all"))
+        {
+            for (int seat = 0; seat < players.Count; seat++)
+                _viewModel.SetPlayerTeam(players[seat].PlayerID,
+                    (ETeamOption)Math.Min(seat + 1, TeamOptions.MaxTeamNumber));
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Everyone for themselves - each seat on its own team.\n" +
+                           "Needs at least three seats.");
+
+        ImGui.EndDisabled();
+
+        // Each seat still carries its own Team control below, so anything the two presets do not cover
+        // - 1v2, or three players with two of them allied - is set seat by seat.
+        ImGui.SameLine();
+        UiText.Disabled("  (or set a seat's team on its card)");
+    }
+
+    /// <summary>One square of the grid: who is in the seat, what they are bringing, and their side.</summary>
+    private void DrawSeatCard(int seat, IReadOnlyList<LobbyPlayerInfoSummary> players,
+        int[] effectiveColor, Vector2 size, float panelScale)
+    {
+        ImGui.PushID($"seat{seat}");
+
+        if (seat >= players.Count)
+        {
+            DrawEmptySeatCard(seat, size);
+            ImGui.PopID();
+            return;
+        }
+
+        LobbyPlayerInfoSummary info = players[seat];
+        ImGui.BeginChild($"##card", size, ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        // ── Header: which seat, who is holding the controls, and the Active switch ──
+        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
+        ImGui.TextUnformatted($"SEAT {seat + 1}");
+        ImGui.PopStyleColor();
+
+        ImGui.SameLine();
+        DrawSeatCrewToggle(info, panelScale);
+
+        bool canSwitchOff = SeatCanSwitchOff(seat, players.Count);
+        if (seat >= 2 && _viewModel!.CheckCanRemovePlayer(info.PlayerID))
+        {
+            string label = "Active";
+            float switchW = ImGui.CalcTextSize(label).X + ImGui.GetFrameHeight() + 14f;
+            ImGui.SameLine(MathF.Max(0f, ImGui.GetContentRegionAvail().X + ImGui.GetCursorPosX() - switchW));
+            ImGui.BeginDisabled(!canSwitchOff);
+            bool active = true;
+            if (UiButton.Checkbox(label, ref active) && !active)
+                _viewModel.RemovePlayer(info.PlayerID);
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered())
+                UiText.Tooltip(canSwitchOff
+                    ? "Switch this seat off to play with fewer players."
+                    : $"Switch seat {players.Count} off first - seats come off the end.");
+        }
+
+        ImGui.Separator();
+
+        // ── Who they are ──
+        TextFitted(info.PlayerName, panelScale);
+
+        // ── What they are bringing ──
+        DrawArmyPicker(seat, info, panelScale);
+
+        // Faction and points on one line: both are facts about the army above, and the points number is
+        // the one that turns red and blocks the launch.
+        DrawFactionCell(info.ArmyListSummary, _viewModel!.AllowedGameSystems, panelScale);
+        ImGui.SameLine();
+        UiText.Disabled("-");
+        ImGui.SameLine();
+        DrawPointsCell(info.ArmyListSummary,
+            GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
+
+        // ── Side and colour ──
+        ImGui.Spacing();
+        float half = MathF.Max(60f, (ImGui.GetContentRegionAvail().X - 8f) * 0.5f);
+        ImGui.PushItemWidth(half);
+        DrawTeamCell(seat, info, players.Count);
+        ImGui.PopItemWidth();
+        ImGui.SameLine();
+        ImGui.PushItemWidth(half);
+        DrawColorCell(seat, info, players, effectiveColor);
+        ImGui.PopItemWidth();
+
+        // ── Re-crewing a resumed save keeps its old four buttons: a save's seats are fixed in number
+        // but not in who plays them, and the house bots are still selectable there.
+        if (_viewModel.IsResumeMode)
+        {
+            ImGui.Spacing();
+            ImGui.BeginDisabled(!_viewModel.HasHostPrivileges);
+            if (UiButton.NavigateSmall("Local"))
+                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.Local);
+            ImGui.SameLine();
+            if (UiButton.NavigateSmall("Tactician"))
+                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Tactician);
+            ImGui.SameLine();
+            if (UiButton.NavigateSmall("Strategist"))
+                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Strategist);
+            ImGui.SameLine();
+            if (UiButton.NavigateSmall("DerpBot"))
+                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.SoloRules);
+            ImGui.EndDisabled();
+        }
+
+        ImGui.EndChild();
+        ImGui.PopID();
+    }
+
+    /// <summary>
+    /// Player or Bot, for this seat. Offered on EVERY seat including the host's own (Kai, 2026-11-02):
+    /// hand them all to bots and you watch the two armies fight, with nothing asked of you.
+    ///
+    /// <para>A connected network player's seat shows what it is and offers no switch - taking a remote
+    /// player's controls away is a kick, which the engine refuses from here.</para>
+    /// </summary>
+    private void DrawSeatCrewToggle(LobbyPlayerInfoSummary info, float panelScale)
+    {
+        if (_viewModel!.IsResumeMode || !_viewModel.CheckCanSetPlayerType(info.PlayerID))
+        {
+            ImGui.SetWindowFontScale(panelScale * 0.65f);
+            UiText.Disabled(PlayerTypeLabel(info.PlayerType).ToUpperInvariant());
+            ImGui.SetWindowFontScale(panelScale);
+            return;
+        }
+
+        bool isBot = info.PlayerType == EPlayerType.AI;
+        if (UiButton.NavigateSmall(isBot ? "Bot" : "Player"))
+        {
+            if (isBot) _viewModel.SetPlayerType(info.PlayerID, EPlayerType.Local);
+            else
+                _viewModel.SetPlayerType(info.PlayerID, EPlayerType.AI,
+                    GameSystemInfo.IsQuest(_viewModel.GameSystem)
+                        ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip(isBot
+                ? "A bot is playing this seat. Click to take it yourself.\n" + OfficialAiTooltip
+                : "You are playing this seat. Click to hand it to a bot.\n" +
+                  "Hand every seat to a bot to watch the game play itself.");
+    }
+
+    /// <summary>An off seat: the switch that turns it on, and nothing else to read.</summary>
+    private void DrawEmptySeatCard(int seat, Vector2 size)
+    {
+        ImGui.BeginChild("##card", size, ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        UiText.Disabled($"SEAT {seat + 1}");
+        ImGui.Separator();
+
+        bool canAdd = _viewModel!.HasHostPrivileges && !_viewModel.IsResumeMode;
+        bool isNextSeat = SeatCanSwitchOn(seat, _viewModel.PlayerInfos.Count);
+
+        ImGui.BeginDisabled(!canAdd || !isNextSeat);
+        bool active = false;
+        if (UiButton.Checkbox("Active", ref active) && active)
+        {
+            _viewModel.AddAiPlayer(GameSystemInfo.IsQuest(_viewModel.GameSystem)
+                ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
+        }
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip(isNextSeat
+                ? "Switch this seat on to add a player. It arrives as a bot;\n" +
+                  "the Player/Bot button on its card changes that."
+                : $"Switch seat {_viewModel.PlayerInfos.Count + 1} on first - seats fill in order.");
+
+        if (canAdd && isNextSeat)
+        {
+            ImGui.Spacing();
+            UiText.Disabled("Off - not in the game.");
+        }
+
+        ImGui.EndChild();
     }
 
     // #372/#388 ---------------------------------------------------------------------------------------
@@ -1222,59 +1421,16 @@ public class LobbyScreen : IAppScreen
 
         if (Section("Table"))
         {
-        DrawEnumCombo("Terrain Mode",  _viewModel.TerrainPlacementMode, _viewModel.SetTerrainPlacementMode,
-            debugLast: new[] { ETerrainPlacementMode.AutoFromLayout },
-            // #301: explicit order keeps the two Alternating modes adjacent (the enum appends
-            // AlternatingPoints after LoadFromFile to keep the wire/save values stable).
-            explicitOrder: new[]
-            {
-                ETerrainPlacementMode.AutoFromLayout,
-                ETerrainPlacementMode.Alternating,
-                ETerrainPlacementMode.AlternatingPoints,
-                ETerrainPlacementMode.LoadFromFile,
-            },
-            displayName: TerrainModeLabel,
-            tooltip: "How terrain is put on the board.\n" +
-                     "Alternating: One Per: players take turns placing one piece at a time\n" +
-                     "(set the count below).\n" +
-                     "Alternating: Points: pieces cost 1-3 points by size; players take turns\n" +
-                     "spending a per-turn allowance from a shared total (set both below), so one\n" +
-                     "big piece or several small ones per turn.\n" +
-                     "Custom Map: pick a saved map, or Create / Edit one in the map maker\n" +
-                     "(terrain, objectives and deployment zones).\n" +
-                     "Auto From Layout: the server places a built-in default pool (fast, for testing).");
-
-        // Conditional sub-options under Terrain Mode.
-        switch (_viewModel.TerrainPlacementMode)
-        {
-            case ETerrainPlacementMode.Alternating:
-                DrawTerrainCountSlider(_viewModel.TerrainCount, _viewModel.SetTerrainCount);
-                break;
-            case ETerrainPlacementMode.AlternatingPoints:
-                DrawTerrainPointsSliders(_viewModel);
-                break;
-            case ETerrainPlacementMode.LoadFromFile:
-                DrawMapPicker();
-                break;
-        }
-
-        // Horde Mode always uses its five fixed markers (centre + each table quarter), so the
-        // placement choice does nothing there - shown greyed out rather than hidden, so the panel
-        // doesn't jump around when the mode changes.
-        bool hordeMode = GameSystemInfo.IsHordeLike(_viewModel.GameMode);
-        ImGui.BeginDisabled(hordeMode);
-        DrawEnumCombo("Objective Mode", _viewModel.ObjectivePlacementMode, _viewModel.SetObjectivePlacementMode,
-            debugLast: new[] { EObjectivePlacementMode.AutoPlaced },
-            displayName: ObjectiveModeLabel,
-            tooltip: hordeMode
-                ? "Horde Mode always places five objectives: one at the table centre and\n" +
-                  "one at the centre of each table quarter."
-                : "Where the objective markers go. Objectives decide the winner.\n" +
-                  "Auto-Placed: the server places them in balanced spots, no input needed.\n" +
-                  "Player-Placed: players take turns placing markers.");
-        ImGui.EndDisabled();
-
-        ImGui.EndDisabled();
+        // Kai's mock, 2026-11-02: one Select Map button where Terrain Mode, its sub-options and
+        // Objective Mode used to be. The picker is the whole decision now - a map carries its terrain,
+        // its objective markers and its deployment zones, so three settings collapse into one choice.
+        //
+        // HOUSE RULE, recorded in claude/house-rules.md: this drops the books' alternating terrain
+        // placement and alternating objective placement, which are real pre-game steps in all four
+        // books. Kai's call, knowingly: a drawn map is a better table than one two people assemble by
+        // clicking, and that placement is the slowest part of starting a game. Nothing is deleted - the
+        // modes still exist in the engine and a saved game resumes onto whatever it was launched with.
+        DrawMapChoice();
 
         // #265 table surface: cosmetic only, but a synced lobby setting so everyone sees one board.
         // Host-gated only - being cosmetic is exactly why a resumed game may still re-pick it.
@@ -1336,6 +1492,21 @@ public class LobbyScreen : IAppScreen
                              "another unit when charging - friendly units included.\n" +
                              "On by default because the written rule is painful in Star Quest and\n" +
                              "Quest, where every hero is its own unit and a party can never close up.");
+        }
+
+        // Kai's mock, 2026-11-02, had "Rules" and "Advanced Rules" as two buttons. The first one is
+        // the section above - these ARE the house rules we made, and they were already a working panel
+        // here, so they stayed a panel instead of becoming a screen. The second is a real book that
+        // isn't in the project yet: GF Advanced Rules 3.6.0 is one of the two gaps the 2026-11-01
+        // version ruling created (only 3.5.1 is on hand, and an outdated book may not justify
+        // anything). So the button exists, says what it is waiting for, and does nothing.
+        if (Section("Advanced Rules", defaultOpen: false))
+        {
+            UiText.Wrapped("Not in yet. These are OPR's optional extras - the Advanced Rules book.");
+            ImGui.Spacing();
+            ImGui.BeginDisabled(true);
+            UiButton.Navigate("Advanced Rules...");
+            ImGui.EndDisabled();
         }
 
         ImGui.EndDisabled();
@@ -1927,6 +2098,72 @@ public class LobbyScreen : IAppScreen
             UiText.Tooltip("How many terrain points each player spends on their turn - one big piece\n" +
                              "or several small ones. A piece costing more than this can still open a\n" +
                              "turn; the difference comes out of the player's next turn.");
+    }
+
+    /// <summary>
+    /// Raised when the lobby's Select Map button is pressed. Program.cs opens
+    /// <see cref="MapPickerScreen"/> and hands the answer back through <see cref="SetMap"/>.
+    /// </summary>
+    public Action<EGameSystem, ETableBackground, bool, string?>? OnSelectMapRequested;
+
+    /// <summary>
+    /// The chosen map applied to the lobby. Null is Random - which is <c>AutoFromLayout</c>, the mode
+    /// that has the server lay a table out, and the reason the picker is useful before any map exists.
+    /// </summary>
+    public void SetMap(string? path)
+    {
+        if (_viewModel == null) return;
+        if (string.IsNullOrEmpty(path))
+        {
+            _viewModel.SetTerrainPlacementMode(ETerrainPlacementMode.AutoFromLayout);
+            _viewModel.SetTerrainLayoutPath(null);
+        }
+        else
+        {
+            _viewModel.SetTerrainPlacementMode(ETerrainPlacementMode.LoadFromFile);
+            _viewModel.SetTerrainLayoutPath(path);
+        }
+        _previewLayoutPath = null;   // force the preview to re-read
+    }
+
+    /// <summary>
+    /// The map row: what is chosen, and the button that opens the picker. The map's own objectives and
+    /// deployment zones come with it - CustomMapRules.FixedObjectives is already what the objective
+    /// stages read - so there is nothing else to set here.
+    /// </summary>
+    private void DrawMapChoice()
+    {
+        string? current = _viewModel!.TerrainLayoutPath;
+        bool isMap = _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile
+                     && !string.IsNullOrEmpty(current);
+
+        ImGui.TextUnformatted("Map");
+        ImGui.SameLine();
+        FillRowItemWidth();
+        if (UiButton.Navigate(isMap ? MapDisplayName(current!) : "Random", new Vector2(-1f, 0f)))
+        {
+            OnSelectMapRequested?.Invoke(_viewModel.GameSystem, _viewModel.TableBackground,
+                GameSystemInfo.IsHordeLike(_viewModel.GameMode), isMap ? current : null);
+        }
+        if (ImGui.IsItemHovered())
+        {
+            UiText.Tooltip("The table you will fight on.\n"
+                + "Random: the game lays out terrain when the mission starts.\n"
+                + "A map: its terrain, objective markers and deployment zones, exactly as drawn.\n"
+                + "Make maps in Map Maker, on the main menu.");
+        }
+    }
+
+    /// <summary>A map's own name when it has one, else the file's - the same answer the picker gives.</summary>
+    private string MapDisplayName(string path)
+    {
+        if (_previewLayoutPath != path)
+        {
+            _previewLayoutPath = path;
+            _previewLayout = FDG.SaveLoad.TerrainLayoutLoader.TryLoadFromFile(path, out _);
+        }
+        return _previewLayout is { Name: { Length: > 0 } name } ? name
+            : Path.GetFileNameWithoutExtension(path);
     }
 
     /// <summary>Custom Map picker: a dropdown of saved maps (with "Create new map" and "Browse for a

@@ -404,6 +404,9 @@ public class UserConfigTests
         public IReadOnlyList<string> ValidateArmiesForLaunch() => throw new NotSupportedException();
         public void SetSavedSlotPlayerType(PlayerID slotPlayerID, EPlayerType playerType,
             EAiProfile aiProfile = EAiProfile.SoloRules) => throw new NotSupportedException();
+        public void SetPlayerType(PlayerID playerID, EPlayerType playerType,
+            EAiProfile aiProfile = EAiProfile.SoloRules) => throw new NotSupportedException();
+        public bool CheckCanSetPlayerType(PlayerID playerID) => false;
         public bool TryResumeGame(out string? failReason) => throw new NotSupportedException();
     }
     [Test]

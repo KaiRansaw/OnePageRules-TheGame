@@ -80,6 +80,9 @@ public class RaylibRenderer
     /// <summary>A Quest system's doors, until Kai designs its own screen.</summary>
     public QuestLandingScreen QuestLanding { get; } = new();
 
+    /// <summary>The table you will fight on, picked from thumbnails.</summary>
+    public MapPickerScreen MapPicker { get; } = new();
+
     private IAppScreen _currentScreen;
 
     private ITableState? _tableState;
