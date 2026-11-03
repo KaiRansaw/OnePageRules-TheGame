@@ -900,3 +900,8 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 
 > **2026-11-02 - number 434 was already filed**; this session only created its detail file, which is what
 > `WorkItems/README.md` says to do when work starts on an indexed item. No number was taken.
+
+> **2026-11-03 - number 445.** `git fetch origin`, read the index and archive from both `origin/main` and
+> `origin/campaign-360` (the working branch): highest anywhere was 444, nothing numbered 445.
+> **445 = the campaign end condition** - a VP target that can actually be won, the first slice of
+> campaign-flow-spec sections 1-4. No collision.
