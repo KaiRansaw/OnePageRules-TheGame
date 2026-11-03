@@ -1432,6 +1432,12 @@ public class LobbyScreen : IAppScreen
         // modes still exist in the engine and a saved game resumes onto whatever it was launched with.
         DrawMapChoice();
 
+        // Out of the `locked` gate. The terrain block that used to be here ended it before the
+        // battlefield's own host-only gate, and deleting that block took this line with it - so the
+        // Table section pushed one disabled level every frame and never popped it, and ImGui asserted
+        // "Missing EndDisabled()" the moment the lobby drew. Guarded by DisabledScopeBalanceTests.
+        ImGui.EndDisabled();
+
         // #265 table surface: cosmetic only, but a synced lobby setting so everyone sees one board.
         // Host-gated only - being cosmetic is exactly why a resumed game may still re-pick it.
         ImGui.BeginDisabled(!isHost);
@@ -1510,10 +1516,6 @@ public class LobbyScreen : IAppScreen
         }
 
         ImGui.EndDisabled();
-
-        // Placeholder for optional OPR Advanced Rules - nothing in it yet.
-        if (Section("Advanced Rules"))
-            UiText.Disabled("Nothing here yet.");
     }
 
     private bool _resetSections = true;
