@@ -52,6 +52,27 @@ public class GuiPlaceObjectsResolver<T>
     // A no-op for deployment, where the models to place sit at the unplaced (0,0) sentinel and are skipped
     // anyway. Assigned under _lock in Resolve, alongside _request.
     private HashSet<object> _selfModels = new(ReferenceEqualityComparer.Instance);
+    /// <summary>
+    /// The path the cursor has traced since the left button went down over the table, in table inches.
+    /// Null when nothing is being dragged.
+    ///
+    /// <para>
+    /// Kai's gesture (2026-11-02): press where the first model goes, drag to where the last goes,
+    /// release - and the drag may curve, in which case the unit curves with it. A plain CLICK is still
+    /// a click: a stroke shorter than <see cref="MinDragInches"/> falls back to dropping the picked
+    /// formation on the cursor, exactly as before, so nobody has to learn a new way to do the old
+    /// thing.
+    /// </para>
+    /// </summary>
+    private List<Position>? _dragStroke;
+
+    /// <summary>
+    /// How far the cursor must travel before a press counts as a drag rather than a click. Generous on
+    /// purpose: a click with a twitch in it should still be a click, because landing in the wrong one
+    /// of two very different behaviours is far worse than having to drag a little further.
+    /// </summary>
+    private const float MinDragInches = 1.5f;
+
     // Group-mode pending rotation (radians) about the formation centroid; reset on drop and on Resolve.
     private float _groupRotationDeploy;
     // Single-mode pending facing rotation (radians) applied to the model being placed / dragged (#150).
@@ -202,6 +223,9 @@ public class GuiPlaceObjectsResolver<T>
             _placed.Clear();
             _history.Clear();
             _dragIndex = null;
+            // A stroke half-drawn when the previous request ended must not carry into this one and
+            // place the next unit along a line nobody drew for it.
+            _dragStroke = null;
             _groupRotationDeploy = 0f;
             _singleRotationDeploy = 0f;
             _formationCycle = null;
@@ -475,9 +499,32 @@ public class GuiPlaceObjectsResolver<T>
             for (int i = 0; i < n; i++) baseFacings[i] = baseFacing;
         }
 
+        // ── Drag-to-deploy: record the cursor's path while the button is held ──────────────────────
+        bool mouseHere = overTable && !io.WantCaptureMouse;
+        if (mouseHere && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            var (sx, sz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
+            _dragStroke = new List<Position> { new Position(sx, sz) };
+        }
+        else if (_dragStroke != null && ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        {
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
+            Position last = _dragStroke[^1];
+            // Only record real movement. A still cursor would otherwise pile up thousands of identical
+            // points, and the segments between them carry no direction to face along.
+            if ((mx - last.x) * (mx - last.x) + (mz - last.z) * (mz - last.z) > 0.01f)
+                _dragStroke.Add(new Position(mx, mz));
+        }
+        else if (!ImGui.IsMouseDown(ImGuiMouseButton.Left) && !ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
+            _dragStroke = null;
+        }
+
+        bool dragging = _dragStroke != null && StrokeLength(_dragStroke) >= MinDragInches;
+
         // Centroid follows the cursor (over table); otherwise preview at the zone's forward-centre.
         Position centroid;
-        if (overTable && !io.WantCaptureMouse)
+        if (mouseHere)
         {
             var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             centroid = new Position(mx, mz);
@@ -492,13 +539,40 @@ public class GuiPlaceObjectsResolver<T>
         float cos = MathF.Cos(_groupRotationDeploy), sin = MathF.Sin(_groupRotationDeploy);
         var facings = new Float2[n];
         var positions = new Position[n];
+
+        // Dragging replaces the formation entirely: the models space themselves along the path drawn,
+        // each facing out along its own part of it. The picked formation still decides the order they
+        // stand in, which is why a drag and a click hand you the same unit arranged two ways rather
+        // than two different units.
+        PathFormation.Placement[]? drawn = null;
+        if (dragging)
+        {
+            var widths = new float[n];
+            var depths = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                widths[i] = halfXs[i] * 2f;
+                depths[i] = halfZs[i] * 2f;
+            }
+            Float2 forward = RotateFloat2(baseFacing, _groupRotationDeploy);
+            drawn = PathFormation.Along(_dragStroke!, widths, depths, forward);
+        }
+
         bool allValid = true;
         for (int i = 0; i < n; i++)
         {
+            if (drawn != null)
+            {
+                positions[i] = drawn[i].At;
+                facings[i] = drawn[i].Facing;
+            }
+            else
+            {
             float dx = offsets[i].dx, dz = offsets[i].dz;
             float rx = dx * cos - dz * sin, rz = dx * sin + dz * cos;
             positions[i] = new Position(centroid.x + rx, centroid.z + rz);
             facings[i] = RotateFloat2(baseFacings[i], _groupRotationDeploy);
+            }
             bool valid = IsGroupSlotValid(positions[i], radii[i], GetBaseShape(models[i].GetValue()), facings[i],
                 zone, enemies, minEnemyDist, StartPositionOf(models[i].GetValue()), request.MaxDistanceFromStartInches);
             DrawGhost(dl, GetBaseShape(models[i].GetValue()), ToPixelVec(positions[i]), _scale, valid, facings[i]);
@@ -506,7 +580,13 @@ public class GuiPlaceObjectsResolver<T>
             if (!valid) allValid = false;
         }
 
-        if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        // The stroke you are drawing, under the ghosts, so you can see the line you are laying them on.
+        if (dragging) DrawStroke(dl, _dragStroke!, allValid);
+
+        // Commit on RELEASE rather than on click: a drag does not know its shape until the button comes
+        // up, and committing on the press would place the unit before the gesture had happened. A plain
+        // click releases in the same spot it pressed, so it still commits immediately on the way up.
+        if (mouseHere && ImGui.IsMouseReleased(ImGuiMouseButton.Left) && _dragStroke != null)
         {
             // #029: an edge-constrained placement (Aircraft redeploy) must have at least one base touching a
             // table edge — the formation's leading row, in practice.
@@ -529,10 +609,49 @@ public class GuiPlaceObjectsResolver<T>
             {
                 _errorMessage = allValid
                     ? "Must come on touching a table edge - move the formation to an edge."
-                    : "Some models are in an invalid spot - rotate or reposition the formation.";
+                    : dragging
+                        ? "Some models landed somewhere they can't go - try a longer line, or a "
+                          + "different one."
+                        : "Some models are in an invalid spot - rotate or reposition the formation.";
                 _errorExpiry = ImGui.GetTime() + 2.5;
             }
+            _dragStroke = null;
         }
+    }
+
+    /// <summary>Total length of a traced stroke, in table inches.</summary>
+    private static float StrokeLength(List<Position> stroke)
+    {
+        float total = 0f;
+        for (int i = 1; i < stroke.Count; i++)
+        {
+            float dx = stroke[i].x - stroke[i - 1].x, dz = stroke[i].z - stroke[i - 1].z;
+            total += MathF.Sqrt(dx * dx + dz * dz);
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// The line being drawn. Shown while the button is held so the gesture has an answer on screen -
+    /// without it, a drag that is about to produce an illegal formation looks identical to one that
+    /// is not until you let go.
+    /// </summary>
+    private void DrawStroke(ImDrawListPtr dl, List<Position> stroke, bool valid)
+    {
+        if (stroke.Count < 2) return;
+        uint col = valid
+            ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.85f, 1f, 0.75f))
+            : ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.35f, 0.3f, 0.8f));
+
+        for (int i = 1; i < stroke.Count; i++)
+        {
+            var (ax, ay) = InchesToPixel(stroke[i - 1].x, stroke[i - 1].z);
+            var (bx, by) = InchesToPixel(stroke[i].x, stroke[i].z);
+            dl.AddLine(new Vector2(ax, ay), new Vector2(bx, by), col, 2f);
+        }
+
+        var (sx, sy) = InchesToPixel(stroke[0].x, stroke[0].z);
+        dl.AddCircleFilled(new Vector2(sx, sy), 4f, col, 12);
     }
 
     private Vector2 ToPixelVec(Position p)

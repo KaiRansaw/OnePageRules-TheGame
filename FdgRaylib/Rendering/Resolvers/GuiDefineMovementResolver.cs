@@ -349,6 +349,22 @@ public class GuiDefineMovementResolver
     // #155: a path that crosses Dangerous terrain draws solid red (overriding its band colour); one that
     // crosses Difficult terrain draws dotted gray. Dangerous wins when a path crosses both.
     private static readonly uint DangerPathCol    = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.20f, 0.20f, 0.95f));
+    /// <summary>The dot at each waypoint on the unit's single path line - pale, so it reads as a
+    /// marker on the line rather than another thing on the table.</summary>
+    /// <summary>
+    /// The path the cursor has traced since the left button went down, in table inches. Same gesture
+    /// as deployment (Kai, 2026-11-02, asked for both): drag a line and the unit arranges itself along
+    /// it, curve included. A stroke shorter than <see cref="MinDragInches"/> is a click, and clicks
+    /// still place a waypoint exactly as they always did.
+    /// </summary>
+    private List<Position>? _dragStroke;
+
+    private const float MinDragInches = 1.5f;
+
+    private static readonly uint StrokeCol        = ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.85f, 1.00f, 0.75f));
+    private static readonly uint StrokeBadCol     = ImGui.ColorConvertFloat4ToU32(new Vector4(1.00f, 0.35f, 0.30f, 0.80f));
+
+    private static readonly uint UnitPathNodeCol  = ImGui.ColorConvertFloat4ToU32(new Vector4(0.90f, 0.92f, 0.96f, 0.85f));
     private static readonly uint DifficultPathCol = ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.62f, 0.62f, 0.95f));
     // #317: the difficult-terrain shortfall phantom - where the move WOULD have reached but for the clamp.
     // Deliberately the palest thing on the table (and no band hue), so it reads as "not where you're going";
@@ -445,6 +461,9 @@ public class GuiDefineMovementResolver
             _groupRotation = 0f;
             _groupFacingAngle = 0f;
             _groupGhostPositions = null;
+            // A stroke left half-drawn when the last request ended must not move the next unit along
+            // a line nobody drew for it.
+            _dragStroke = null;
             _manualOffsets.Clear();
             _formationCycle = null;
             _panelHoveredModel = null;
@@ -538,6 +557,11 @@ public class GuiDefineMovementResolver
         RebuildStandoffBands(request, pt, paths);
         DrawStandoffBands(dl);
 
+        // Group mode: the unit's own committed path, as ONE line through the centroid of each step.
+        // Drawn before the per-model circles so the ghosts sit on top of it rather than being cut by it.
+        if (group) DrawUnitCentrePath(dl, paths, committedCrossedDangerous, committedCrossedDifficult,
+                                      maxAdvance, maxRush, hasChargeBand);
+
         // 1) Draw each model's start circle + committed path lines + final ghost circle
         foreach (var kvp in paths)
         {
@@ -564,23 +588,34 @@ public class GuiDefineMovementResolver
 
             // Path lines. #155: a model whose committed path crosses Dangerous terrain draws its whole path
             // solid red; crossing Difficult draws dotted gray; otherwise the per-segment band colour.
+            //
+            // GROUP MODE draws ONE line for the whole unit instead (Kai, 2026-11-02: "can we condense
+            // that to a single line that connects to the center of the unit?"). Five models moving
+            // together drew five near-parallel lines that said the same thing five times and hid the
+            // table underneath. The unit's centroid is what the player is actually steering, so that
+            // is the line. Nothing is lost: the per-model GHOSTS still show exactly where each model
+            // lands, and a model whose own path crosses bad ground gets a warning ring below, so
+            // "which model is the problem" is still answerable at a glance.
             if (pathPoints.Count > 0)
             {
                 bool danger = committedCrossedDangerous.Contains(model);
                 bool diff   = !danger && committedCrossedDifficult.Contains(model);
-                Position prev = start;
-                float cum = 0f;
-                for (int i = 0; i < pathPoints.Count; i++)
+                if (!group)
                 {
-                    var cur = pathPoints[i];
-                    var (px, py) = InchesToPixel(prev.x, prev.z);
-                    var (cx, cy) = InchesToPixel(cur.x, cur.z);
-                    var a = new Vector2(px, py); var b = new Vector2(cx, cy);
-                    if      (danger) dl.AddLine(a, b, DangerPathCol, 2.5f);
-                    else if (diff)   AddDottedLine(dl, a, b, DifficultPathCol, 2.5f);
-                    else             dl.AddLine(a, b, LineColorFor(ClassifyBand(cum, maxAdvance, maxRush, hasChargeBand)), 2f);
-                    cum += Position.GetDistance3D(prev, cur);
-                    prev = cur;
+                    Position prev = start;
+                    float cum = 0f;
+                    for (int i = 0; i < pathPoints.Count; i++)
+                    {
+                        var cur = pathPoints[i];
+                        var (px, py) = InchesToPixel(prev.x, prev.z);
+                        var (cx, cy) = InchesToPixel(cur.x, cur.z);
+                        var a = new Vector2(px, py); var b = new Vector2(cx, cy);
+                        if      (danger) dl.AddLine(a, b, DangerPathCol, 2.5f);
+                        else if (diff)   AddDottedLine(dl, a, b, DifficultPathCol, 2.5f);
+                        else             dl.AddLine(a, b, LineColorFor(ClassifyBand(cum, maxAdvance, maxRush, hasChargeBand)), 2f);
+                        cum += Position.GetDistance3D(prev, cur);
+                        prev = cur;
+                    }
                 }
 
                 // Final position ghost (true shape) + heading (#150): the direction of travel into the last
@@ -591,6 +626,12 @@ public class GuiDefineMovementResolver
                 var (lx, ly) = InchesToPixel(last.x, last.z);
                 ModelBaseRenderer.DrawFilledImGui(dl, model.BaseShape, new Vector2(lx, ly), _scale, FinalGhostCol, outline, thick, finalFacing);
                 ModelBaseRenderer.DrawHeadingImGui(dl, model.BaseShape, new Vector2(lx, ly), _scale, finalFacing, outline);
+
+                // The one line cannot say WHICH model is wading through bad ground, so the model says
+                // it: a ring in the same colour its path used to be. Group mode only - in single mode
+                // the model's own coloured path is still right there.
+                if (group && (danger || diff))
+                    DrawTerrainWarningRing(dl, model, new Vector2(lx, ly), danger);
             }
         }
 
@@ -1069,12 +1110,64 @@ public class GuiDefineMovementResolver
                 GameWideConstants.MAX_MODEL_DISTANCE_FROM_ALL_OTHER_MODELS_INCHES);
         }
 
+        // ── Drag-to-move: record the cursor's path while the button is held ───────────────────────
+        bool mouseHere = overTable && !io.WantCaptureMouse;
+        if (mouseHere && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            var (sx, sz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
+            _dragStroke = new List<Position> { new Position(sx, sz) };
+        }
+        else if (_dragStroke != null && ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        {
+            var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
+            Position lastPt = _dragStroke[^1];
+            if ((mx - lastPt.x) * (mx - lastPt.x) + (mz - lastPt.z) * (mz - lastPt.z) > 0.01f)
+                _dragStroke.Add(new Position(mx, mz));
+        }
+        else if (!ImGui.IsMouseDown(ImGuiMouseButton.Left) && !ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
+            _dragStroke = null;
+        }
+
+        bool dragging = _dragStroke != null && StrokeLength(_dragStroke) >= MinDragInches;
+
+        // A drag names where every model should END UP, so the stroke becomes the shape the unit is
+        // moving into and the translation is already in it. PlanGroupMove then does what it always
+        // does - measure each model's travel from its REAL start and report whether it fits the budget
+        // - so a line drawn further than the unit can move shows red rather than cheating.
+        if (dragging)
+        {
+            var widths = new float[models.Count];
+            var depths = new float[models.Count];
+            for (int i = 0; i < models.Count; i++)
+            {
+                (float hx, float hz) = BaseShapeGeometry.FootprintHalfExtents(
+                    models[i].BaseShape, models[i].Facing);
+                widths[i] = hx * 2f;
+                depths[i] = hz * 2f;
+            }
+
+            // Forward is the direction of travel: from where the unit is to where the stroke starts,
+            // falling back to the stroke's own direction when it begins on top of the unit.
+            Position here = GroupFormationUtilities.Centroid(lastPositions);
+            Position aim = _dragStroke![^1];
+            var forward = new Float2(aim.x - here.x, aim.z - here.z);
+            if (forward.X * forward.X + forward.Y * forward.Y < 0.01f)
+                forward = new Float2(aim.x - _dragStroke[0].x, aim.z - _dragStroke[0].z);
+
+            var drawn = PathFormation.Along(_dragStroke, widths, depths, forward);
+            var alongStroke = new Position[models.Count];
+            for (int i = 0; i < models.Count; i++) alongStroke[i] = drawn[i].At;
+            basePositions = alongStroke;
+        }
+
         Position pivot = GroupFormationUtilities.Centroid(basePositions);
         float cos = MathF.Cos(_groupRotation), sin = MathF.Sin(_groupRotation);
 
-        // Desired translation moves the centroid under the cursor (none when the mouse is off-table).
+        // Desired translation moves the centroid under the cursor (none when the mouse is off-table,
+        // and none while dragging - the stroke already says where everybody stands).
         float desiredTx = 0f, desiredTz = 0f;
-        if (overTable && !io.WantCaptureMouse)
+        if (mouseHere && !dragging)
         {
             var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
             desiredTx = mx - pivot.x;
@@ -1302,10 +1395,21 @@ public class GuiDefineMovementResolver
                     labelRadius, groupHint.Header, groupHint.Detail, ShortfallTextCol);
         }
 
-        // Pending ghost: line from each model's last spot to its new spot + a base circle, band-coloured
-        // (red when that phantom is blocked or the rotation alone busts the move budget). #155: a phantom
-        // whose path crosses Dangerous terrain draws solid red, one crossing Difficult draws dotted gray -
-        // but a blocked/over-budget phantom keeps its overlap-red so the "can't place here" signal wins.
+        // Pending ghost: a base circle per model, band-coloured (red when that phantom is blocked or the
+        // rotation alone busts the move budget), plus ONE line for the unit - from where its centre is
+        // now to where this step would put it. The per-model lines this used to draw are gone (Kai,
+        // 2026-11-02); a model that is blocked or wading through bad ground still says so with its own
+        // ghost colour and a warning ring.
+        bool pendingBad = false, pendingDanger = false, pendingDiff = false;
+        float lastCx = 0f, lastCz = 0f, newCx = 0f, newCz = 0f;
+        for (int i = 0; i < models.Count; i++)
+        {
+            lastCx += lastPositions[i].x; lastCz += lastPositions[i].z;
+            newCx  += newPositions[i].x;  newCz  += newPositions[i].z;
+        }
+        lastCx /= models.Count; lastCz /= models.Count;
+        newCx  /= models.Count; newCz  /= models.Count;
+
         for (int i = 0; i < models.Count; i++)
         {
             float stepDist = Position.GetDistance2D(lastPositions[i], newPositions[i]);
@@ -1326,19 +1430,51 @@ public class GuiDefineMovementResolver
 
             var (sx, sy) = InchesToPixel(lastPositions[i].x, lastPositions[i].z);
             var (nx, ny) = InchesToPixel(newPositions[i].x, newPositions[i].z);
-            var pa = new Vector2(sx, sy); var pb = new Vector2(nx, ny);
-            if      (bad)          dl.AddLine(pa, pb, OverlapFill, 2f);
-            else if (danger)       dl.AddLine(pa, pb, DangerPathCol, 2.5f);
-            else if (diff)         AddDottedLine(dl, pa, pb, DifficultPathCol, 2.5f);
-            else                   dl.AddLine(pa, pb, LineColorFor(band), 2f);
+            var pb = new Vector2(nx, ny);
+
+            // No per-model line here either: this is the pending step of a GROUP move, so the one
+            // unit line drawn below says where the unit is going. A model that is individually
+            // blocked, or whose own step crosses bad ground, still says so - the ghost turns red for
+            // blocked, and a ring marks bad ground.
+            if (bad || danger || diff)
+                DrawTerrainWarningRing(dl, models[i], pb, danger || bad);
+
+            // Worst case across the unit, for the one line.
+            pendingBad    |= bad;
+            pendingDanger |= danger;
+            pendingDiff   |= diff;
             // Heading (#150): the step's direction of travel, rotated by the accumulated group offset (computed above).
             Float2 groupFacing = groupFacings[i];
             ModelBaseRenderer.DrawFilledImGui(dl, models[i].BaseShape, new Vector2(nx, ny), _scale, fill, GhostOutline, 1.5f, groupFacing);
             ModelBaseRenderer.DrawHeadingImGui(dl, models[i].BaseShape, new Vector2(nx, ny), _scale, groupFacing, GhostOutline);
         }
 
-        // Commit on left-click when every phantom is legal and something actually moves.
-        if (overTable && !io.WantCaptureMouse && ImGui.IsMouseClicked(ImGuiMouseButton.Left)
+        // The unit's pending step, as one line. Drawn after the ghosts would hide it under them, so it
+        // goes down here but reads as the continuation of the committed path above.
+        {
+            var (ux, uy) = InchesToPixel(lastCx, lastCz);
+            var (vx, vy) = InchesToPixel(newCx, newCz);
+            var ua = new Vector2(ux, uy); var ub = new Vector2(vx, vy);
+            float unitStep = Position.GetDistance2D(new Position(lastCx, lastCz), new Position(newCx, newCz));
+            if (unitStep > 0.01f)
+            {
+                MoveBand unitBand = ClassifyBand(
+                    (models.Count > 0 ? pt.GetTotalDistanceMoved(models[0]) : 0f) + unitStep,
+                    maxAdvance, maxRush, hasChargeBand);
+                if      (pendingBad)    dl.AddLine(ua, ub, OverlapFill, 2.5f);
+                else if (pendingDanger) dl.AddLine(ua, ub, DangerPathCol, 3f);
+                else if (pendingDiff)   AddDottedLine(dl, ua, ub, DifficultPathCol, 3f);
+                else                    dl.AddLine(ua, ub, LineColorFor(unitBand), 2.5f);
+            }
+        }
+
+        // The stroke being drawn, so the line you are laying them on is visible while you draw it.
+        if (dragging) DrawStroke(dl, _dragStroke!, allValid && plan.WithinBudget && !terrainBlocked);
+
+        // Commit on RELEASE rather than on click: a drag does not know its shape until the button comes
+        // up. A plain click presses and releases in one spot, so it still commits on the way up and
+        // feels no different from before.
+        if (mouseHere && ImGui.IsMouseReleased(ImGuiMouseButton.Left)
             && allValid && anyMovement)
         {
             RecordPlanChange(pt);
@@ -1348,6 +1484,7 @@ public class GuiDefineMovementResolver
             // #277: the committed step baked the picked shape into the waypoints — it IS the current
             // shape now, so further dragging is rigid until the player cycles again.
             _formationCycle?.Reset();
+            _dragStroke = null;
         }
 
         // Right-click clears the last group waypoint (one per model), if any — mirrors single mode,
@@ -2920,6 +3057,125 @@ public class GuiDefineMovementResolver
         dl.AddText(new Vector2(px - headerSize.X * 0.5f, top), color, header);
         dl.AddText(new Vector2(px - detailSize.X * 0.5f, top + lineH), color, detail);
     }
+
+
+    /// <summary>Total length of a traced stroke, in table inches.</summary>
+    private static float StrokeLength(List<Position> stroke)
+    {
+        float total = 0f;
+        for (int i = 1; i < stroke.Count; i++)
+        {
+            float dx = stroke[i].x - stroke[i - 1].x, dz = stroke[i].z - stroke[i - 1].z;
+            total += MathF.Sqrt(dx * dx + dz * dz);
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// The line being drawn. Shown while the button is held because without it a drag that is about to
+    /// be refused looks exactly like one that is not, right up until you let go.
+    /// </summary>
+    private void DrawStroke(ImDrawListPtr dl, List<Position> stroke, bool ok)
+    {
+        if (stroke.Count < 2) return;
+        uint col = ok ? StrokeCol : StrokeBadCol;
+        for (int i = 1; i < stroke.Count; i++)
+        {
+            var (ax, ay) = InchesToPixel(stroke[i - 1].x, stroke[i - 1].z);
+            var (bx, by) = InchesToPixel(stroke[i].x, stroke[i].z);
+            dl.AddLine(new Vector2(ax, ay), new Vector2(bx, by), col, 2f);
+        }
+        var (sx, sy) = InchesToPixel(stroke[0].x, stroke[0].z);
+        dl.AddCircleFilled(new Vector2(sx, sy), 4f, col, 12);
+    }
+
+    /// <summary>
+    /// The unit's committed path as a single line: from where the unit's centre started, through the
+    /// centre of each step, to where it is now.
+    ///
+    /// <para>
+    /// Kai, 2026-11-02: "there's a line that follows every model on the unit when moving a unit - can
+    /// we condense that to a single line that connects to the center of the unit?" Five models moving
+    /// together drew five near-parallel lines saying the same thing five times, over the terrain he
+    /// needs to see. The centroid is what a player steers when they move a unit, so that is the line.
+    /// </para>
+    ///
+    /// <para>
+    /// Coloured by the WORST thing any model's path does, because that is the thing a player has to
+    /// decide about: red if any model crosses Dangerous ground, dotted grey if any crosses Difficult,
+    /// otherwise the move band of the unit's own travelled distance. Which model it was is on the
+    /// model, as a ring (see <see cref="DrawTerrainWarningRing"/>).
+    /// </para>
+    ///
+    /// <para>
+    /// Steps are matched up by index across models: every model in a group move gets one waypoint per
+    /// step, so step k's centroid is the average of every model's k-th waypoint. A model with fewer
+    /// waypoints than the longest (it can happen when a model is clamped short by Difficult ground)
+    /// contributes its last known position rather than dropping out, which would make the centroid
+    /// lurch toward whoever is left.
+    /// </para>
+    /// </summary>
+    private void DrawUnitCentrePath(ImDrawListPtr dl,
+        IReadOnlyDictionary<IModel, IReadOnlyList<Position>> paths,
+        HashSet<IModel> crossedDangerous, HashSet<IModel> crossedDifficult,
+        float maxAdvance, float maxRush, bool hasChargeBand)
+    {
+        if (paths.Count == 0) return;
+
+        int steps = 0;
+        foreach (var kvp in paths) steps = Math.Max(steps, kvp.Value.Count);
+        if (steps == 0) return;
+
+        // Step -1 is the unit's starting centre; 0..steps-1 are the committed waypoints.
+        var centres = new Position[steps + 1];
+        for (int step = -1; step < steps; step++)
+        {
+            float cx = 0f, cz = 0f;
+            foreach (var kvp in paths)
+            {
+                Position p = step < 0
+                    ? kvp.Key.Position
+                    : kvp.Value.Count > step ? kvp.Value[step]
+                    : kvp.Value.Count > 0 ? kvp.Value[^1]
+                    : kvp.Key.Position;
+                cx += p.x; cz += p.z;
+            }
+            centres[step + 1] = new Position(cx / paths.Count, cz / paths.Count);
+        }
+
+        bool danger = crossedDangerous.Count > 0;
+        bool diff   = !danger && crossedDifficult.Count > 0;
+
+        float cum = 0f;
+        for (int i = 1; i < centres.Length; i++)
+        {
+            var (ax, ay) = InchesToPixel(centres[i - 1].x, centres[i - 1].z);
+            var (bx, by) = InchesToPixel(centres[i].x, centres[i].z);
+            var a = new Vector2(ax, ay); var b = new Vector2(bx, by);
+
+            if      (danger) dl.AddLine(a, b, DangerPathCol, 3f);
+            else if (diff)   AddDottedLine(dl, a, b, DifficultPathCol, 3f);
+            else             dl.AddLine(a, b, LineColorFor(ClassifyBand(cum, maxAdvance, maxRush, hasChargeBand)), 2.5f);
+
+            cum += Position.GetDistance2D(centres[i - 1], centres[i]);
+
+            // A dot at each waypoint, so a path with several steps reads as several decisions rather
+            // than one bent line.
+            if (i < centres.Length - 1) dl.AddCircleFilled(b, 3f, UnitPathNodeCol, 10);
+        }
+    }
+
+    /// <summary>
+    /// A ring around a model whose own path crosses bad ground. With the per-model lines gone in group
+    /// mode, this is what still answers "which of them is the problem" - the unit line says only that
+    /// somebody is.
+    /// </summary>
+    private void DrawTerrainWarningRing(ImDrawListPtr dl, IModel model, Vector2 at, bool dangerous)
+    {
+        float r = model.BaseShape.CircumscribedRadiusInches * _scale + 3f;
+        dl.AddCircle(at, r, dangerous ? DangerPathCol : DifficultPathCol, 20, dangerous ? 2.5f : 2f);
+    }
+
 
     private static void AddDottedLine(ImDrawListPtr dl, Vector2 a, Vector2 b, uint color, float thickness,
         float dashLen = 5f, float gapLen = 4f)
