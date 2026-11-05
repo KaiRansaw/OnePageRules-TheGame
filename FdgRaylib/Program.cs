@@ -1451,6 +1451,20 @@ else
         renderer.NavigateTo(renderer.StrikeTeams);
     renderer.StrikeTeams.OnBack = () =>
         renderer.NavigateTo(renderer.MainMenu);
+    // #452: a campaign army is built in the locked Army Forge. The build's own callbacks update the
+    // campaign screen's wizard; routing them back to that screen happens here, where the screen graph
+    // lives, so neither screen has to know about the other's navigation.
+    renderer.StrikeTeams.OnBuildArmy = build =>
+    {
+        var routed = build with
+        {
+            OnContinue = army => { build.OnContinue(army); renderer.NavigateTo(renderer.StrikeTeams); },
+            OnCancel = () => { build.OnCancel(); renderer.NavigateTo(renderer.StrikeTeams); },
+        };
+        if (!renderer.ArmyForge.BeginCampaignBuild(routed)) return false;
+        renderer.NavigateTo(renderer.ArmyForge);
+        return true;
+    };
     // #435: "Play next mission" on the campaign screen now opens Mission Setup, which is where the
     // forces, the difficulty and the map are chosen. The campaign screen only says which campaign.
     renderer.StrikeTeams.OnPlay = (path, others) =>

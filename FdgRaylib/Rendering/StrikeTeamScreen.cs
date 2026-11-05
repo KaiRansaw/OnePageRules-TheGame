@@ -36,7 +36,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// </summary>
     public Action<string, List<CampaignEntrant>>? OnPlay;
 
-    private enum EView { List, New, Camp, Recruit, Journal }
+    internal enum EView { List, New, Camp, Recruit, Journal }
 
     // #448 - the journal's edit buffers. Kept apart from the campaign file and only committed through
     // CampaignJournal when a box loses focus, the mission changes or the view is left - committing on
@@ -127,6 +127,13 @@ public sealed class StrikeTeamScreen : IAppScreen
     public void OnShown()
     {
         Reload();
+        // #452: back from the Army Forge in the middle of making a campaign - stay in the wizard.
+        if (_returningFromForge)
+        {
+            _returningFromForge = false;
+            _view = EView.New;
+            return;
+        }
         _view = EView.List;
         _message = "";
     }
@@ -199,8 +206,15 @@ public sealed class StrikeTeamScreen : IAppScreen
     private (string, string) HeaderText()
     {
         if (_view == EView.New)
-            return ("NEW CAMPAIGN ARMY",
-                "Pick an army inside the treasury, and name it. Whatever is left over becomes points you can spend between missions.");
+            return _newStep switch
+            {
+                ENewStep.NameYours => ("NEW CAMPAIGN - YOUR ARMY",
+                    $"{GameSystemInfo.DisplayName(_newSystem)}. Name your army, then choose your enemy."),
+                ENewStep.NameEnemy => ("NEW CAMPAIGN - YOUR ENEMY",
+                    $"{GameSystemInfo.DisplayName(_newSystem)}. Name the enemy army, then Finish to start the campaign."),
+                _ => ("NEW CAMPAIGN",
+                    $"{GameSystemInfo.DisplayName(_newSystem)}. How it ends, how losses work, the story, and your army."),
+            };
         if (Current is { } cur && _view is EView.Camp or EView.Recruit or EView.Journal)
         {
             StrikeTeamInfo info = cur.Army.StrikeTeam!;
@@ -1069,16 +1083,72 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     // -- New campaign army --------------------------------------------------------------------------
 
+    // -- New campaign (#452) ------------------------------------------------------------------------
+    //
+    // campaign-flow-spec sections 3a-3c, with Kai's answers of 2026-11-03:
+    //   - your army is either BUILT in the locked Army Forge or started from one you already have;
+    //   - the enemy is built by you too, or "Pick one for me" takes an army from the folder at random;
+    //   - the campaign's opening journal note is asked for here, and may be skipped.
+    // The player's army is always made first (the spec: "non-negotiable").
+
+    internal enum ENewStep { Setup, NameYours, NameEnemy }
+    private ENewStep _newStep = ENewStep.Setup;
+
+    /// <summary>True: build the army in the locked Army Forge. False: start from one in the folder.</summary>
+    private bool _newBuildFresh = true;
+    private string _newOpeningNote = "";
+
+    /// <summary>The armies chosen so far, not yet written anywhere. Nothing touches the disk until Finish.</summary>
+    private BuiltArmyFile? _draftYours;
+    private BuiltArmyFile? _draftEnemy;
+
+    /// <summary>The folder army the player's draft was copied from, so "Pick one for me" never hands the
+    /// enemy the very same list. Null when the player's army was built fresh.</summary>
+    private string? _draftYoursSource;
+    private string _enemyName = "";
+
+    /// <summary>
+    /// Set by the Army Forge callbacks just before the renderer brings this screen back. OnShown normally
+    /// returns to the list, which would throw away a campaign that is half made; this keeps the wizard.
+    /// </summary>
+    private bool _returningFromForge;
+
+    /// <summary>
+    /// Opens the locked Army Forge for a campaign army. Wired in Program.cs, which routes the build's
+    /// callbacks back to this screen. False when that game has no books to build from.
+    /// </summary>
+    public Func<ArmyForgeScreen.CampaignBuild, bool>? OnBuildArmy;
+
+    internal void StartNew()
+    {
+        _view = EView.New;
+        _newStep = ENewStep.Setup;
+        _newName = "";
+        _newArmy = -1;
+        _newOpeningNote = "";
+        _draftYours = _draftEnemy = null;
+        _draftYoursSource = null;
+        _enemyName = "";
+        Reload();
+        _message = "";
+    }
+
     private void DrawNew(float x, float y, float w, float h)
     {
-        CampaignNumbers n = CampaignNumbers.For(_newSystem);
         ImGui.SetCursorPos(new Vector2(x, y));
         ImGui.BeginChild("##newTeam", new Vector2(w, h), ImGuiChildFlags.Borders);
+        switch (_newStep)
+        {
+            case ENewStep.Setup: DrawNewSetup(w); break;
+            case ENewStep.NameYours: DrawNameYours(w); break;
+            case ENewStep.NameEnemy: DrawNameEnemy(w); break;
+        }
+        ImGui.EndChild();
+    }
 
-        ImGui.TextUnformatted("Army name");
-        ImGui.SetNextItemWidth(Math.Min(420f, w * 0.5f));
-        ImGui.InputText("##teamName", ref _newName, 48);
-        ImGui.Spacing();
+    private void DrawNewSetup(float w)
+    {
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
 
         // #426: which game's campaign. Each of the four has its own price list and its own armies
         // folder, and the two move together - picking a system re-scopes the list below it.
@@ -1136,108 +1206,208 @@ public sealed class StrikeTeamScreen : IAppScreen
               + "the book.");
         ImGui.Spacing();
 
-        var armies = Armies;
-        UiText.Wrapped($"Starting army (from armies\\{ArmyPaths.FolderNameFor(_newSystem)}). The treasury is " +
-                       $"{n.Treasury} pts and you must spend at least {n.MinimumSpend} of it, with at most one hero. " +
-                       "Whatever is left over you keep to spend later.");
-        if (armies.Count == 0)
-            UiText.Disabled($"No {GameSystemInfo.DisplayName(_newSystem)} armies yet - make one in Army Forge " +
-                            $"(Game Type {GameSystemInfo.DisplayName(_newSystem)}) or put a .fdgarmy file in " +
-                            $"armies\\{ArmyPaths.FolderNameFor(_newSystem)}.");
-        for (int i = 0; i < armies.Count; i++)
+        // #452 - the campaign's opening journal note (Kai: "Yes, and let me skip it").
+        UiText.Colored(TextDim, "The story (optional)");
+        UiText.Disabled("Why these two armies are fighting. Skip it if you like - it is the first page of "
+                        + "the campaign's Journal and can be written any time.");
+        ImGui.InputTextMultiline("##openingNote", ref _newOpeningNote, CampaignJournal.MaxNoteLength,
+            new Vector2(Math.Min(720f, w - 24f), ImGui.GetTextLineHeight() * 5f));
+        ImGui.Spacing();
+
+        UiText.Colored(TextDim, "Your army");
+        UiText.Wrapped($"The treasury is {n.Treasury} pts: spend at least {n.MinimumSpend}, with at most one "
+                       + "hero. Whatever is left over you keep to spend between missions.");
+        if (ImGui.RadioButton("Build a new army in the Army Forge", _newBuildFresh)) _newBuildFresh = true;
+        if (ImGui.RadioButton("Start from an army I already have", !_newBuildFresh)) _newBuildFresh = false;
+
+        if (!_newBuildFresh)
         {
-            BuiltArmyFile a = armies[i].Army;
-            string? why = CampaignRules.CannotStart(a, n);
-            if (ImGui.Selectable($"{a.Name}   ({a.Faction}, {a.TotalPoints} pts, {a.Units.Count} units)##a{i}", i == _newArmy))
-                _newArmy = i;
-            if (why != null) { ImGui.SameLine(); UiText.Colored(Bad, why); }
+            var armies = Armies;
+            if (armies.Count == 0)
+                UiText.Disabled($"No {GameSystemInfo.DisplayName(_newSystem)} armies in "
+                                + $"armies\\{ArmyPaths.FolderNameFor(_newSystem)} yet - build one instead.");
+            for (int i = 0; i < armies.Count; i++)
+            {
+                BuiltArmyFile a = armies[i].Army;
+                string? why = CampaignRules.CannotStart(a, n);
+                if (ImGui.Selectable($"{a.Name}   ({a.Faction}, {a.TotalPoints} pts, {a.Units.Count} units)##a{i}", i == _newArmy))
+                    _newArmy = i;
+                if (why != null) { ImGui.SameLine(); UiText.Colored(Bad, why); }
+            }
         }
-        ImGui.EndChild();
     }
 
-    private string? NewProblem()
+    /// <summary>What an army is, in a few lines - shown while it is being named.</summary>
+    private static void ArmySummary(BuiltArmyFile army, CampaignNumbers n)
     {
+        ImGui.TextUnformatted($"{army.Faction} - {army.Units.Count} unit(s), {army.TotalPoints} pts, "
+                              + $"{army.Units.Count(CampaignRules.IsHero)} hero(es)");
+        UiText.Disabled($"{Math.Max(0, n.Treasury - army.TotalPoints)} pts left in the treasury to spend later.");
+        foreach (UnitFileEntry unit in army.Units.Take(12))
+            UiText.Disabled($"   {unit.Name}  ({unit.ModelCount} model(s), {unit.PointCost} pts)");
+        if (army.Units.Count > 12) UiText.Disabled($"   ...and {army.Units.Count - 12} more");
+    }
+
+    private void DrawNameYours(float w)
+    {
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
+        UiText.Colored(TextBright, "NAME YOUR ARMY");
+        ImGui.SetNextItemWidth(Math.Min(420f, w * 0.5f));
+        ImGui.InputText("##teamName", ref _newName, 48);
+        ImGui.Spacing();
+        if (_draftYours != null) ArmySummary(_draftYours, n);
+
+        ImGui.Separator();
+        UiText.Colored(TextDim, "YOUR ENEMY");
+        UiText.Wrapped("Build the enemy's army yourself, or let the game pick one of your "
+                       + $"{GameSystemInfo.DisplayName(_newSystem)} armies for you. Either way it plays under "
+                       + "the same treasury rules, and the bot runs it at the table.");
+    }
+
+    private void DrawNameEnemy(float w)
+    {
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
+        UiText.Colored(TextBright, "NAME ENEMY ARMY");
+        ImGui.SetNextItemWidth(Math.Min(420f, w * 0.5f));
+        ImGui.InputText("##enemyName", ref _enemyName, 48);
+        ImGui.Spacing();
+        if (_draftEnemy != null) ArmySummary(_draftEnemy, n);
+
+        ImGui.Separator();
+        UiText.Disabled($"Your army: {_newName.Trim()}" + (_draftYours != null ? $" ({_draftYours.Faction}, {_draftYours.TotalPoints} pts)" : ""));
+        UiText.Disabled(_newType == ECampaignType.PointLimited ? $"First to {_newVpTarget} VP wins." : "Endless campaign.");
+    }
+
+    private string? SetupProblem()
+    {
+        if (_newBuildFresh) return null;
         var armies = Armies;
-        if (_newName.Trim().Length == 0) return "Name the army.";
         if (_newArmy < 0 || _newArmy >= armies.Count) return "Pick a starting army.";
-        if (Teams.Any(t => string.Equals(t.Army.StrikeTeam!.Name, _newName.Trim(), StringComparison.OrdinalIgnoreCase)))
-            return "A campaign army with that name exists.";
         return CampaignRules.CannotStart(armies[_newArmy].Army, CampaignNumbers.For(_newSystem));
     }
 
-    private void Create()
+    internal string? YourNameProblem()
     {
-        // A fresh copy of the army file, so the original list stays as it was.
-        var source = Armies[_newArmy];
-        if (StrikeTeamFiles.Load(source.Path) is not { } army) { Say("Couldn't read that army file.", true); return; }
         string name = _newName.Trim();
-        string path = StrikeTeamFiles.NewPath(_newSystem, name);
-        CampaignRules.Start(army, name, path, CampaignNumbers.For(_newSystem), _newSystem,
-            _newType, _newNoPermadeath, vpTarget: _newVpTarget);
-        // Not editable in Army Forge any more: re-compiling it there would wipe the campaign changes.
-        // Each unit's own selections were copied onto its sheet by Start, which is what the campaign
-        // screen upgrades against, and the book stays attached so there is something to buy from.
-        army.Selections = null;
-        if (!StrikeTeamFiles.Save(path, army)) { Say("Couldn't save the campaign army file.", true); return; }
+        if (name.Length == 0) return "Name your army.";
+        if (Teams.Any(t => string.Equals(t.Army.StrikeTeam!.Name, name, StringComparison.OrdinalIgnoreCase)))
+            return "A campaign army with that name exists.";
+        return null;
+    }
 
-        // #428: the enemy this campaign is fought against, created with it and kept for its whole life.
-        // Without a persistent opponent the campaign has no arc - every mission would be a fresh army
-        // list that never levels, never recruits and never remembers losing.
-        string? enemyNote = CreateEnemy(name, path);
+    internal string? EnemyNameProblem()
+    {
+        string name = _enemyName.Trim();
+        if (name.Length == 0) return "Name the enemy army.";
+        if (string.Equals(name, _newName.Trim(), StringComparison.OrdinalIgnoreCase))
+            return "Give the enemy a different name from yours.";
+        return null;
+    }
 
-        Reload();
-        _selected = Teams.FindIndex(t => t.Path == path);
-        OpenCamp(_selected);
-        Say($"{name} created, with {army.StrikeTeam!.BankedPoints} pts left in the treasury."
-            + (enemyNote != null ? " " + enemyNote : ""));
+    /// <summary>Ordinary armies of this game that could start a campaign as the enemy.</summary>
+    private List<(string Path, BuiltArmyFile Army, EGameSystem System)> EnemyCandidates()
+    {
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
+        return Armies.Where(a => a.Path != _draftYoursSource && CampaignRules.CannotStart(a.Army, n) == null).ToList();
+    }
+
+    private ArmyForgeScreen.CampaignBuild ForgeBuild(string title, Action<BuiltArmyFile> took) =>
+        new(_newSystem, title, CampaignNumbers.For(_newSystem),
+            army => { took(army); _returningFromForge = true; },
+            () => _returningFromForge = true);
+
+    internal void ContinueFromSetup()
+    {
+        if (_newBuildFresh)
+        {
+            bool opened = OnBuildArmy?.Invoke(ForgeBuild("Your Army", army =>
+            {
+                _draftYours = army;
+                _draftYoursSource = null;
+                _newName = army.Name;
+                _newStep = ENewStep.NameYours;
+            })) ?? false;
+            if (!opened) Say($"There are no {GameSystemInfo.DisplayName(_newSystem)} army books to build from.", true);
+            return;
+        }
+
+        var source = Armies[_newArmy];
+        // A fresh copy of the file, so the original list stays exactly as it was.
+        if (StrikeTeamFiles.Load(source.Path) is not { } copy) { Say("Couldn't read that army file.", true); return; }
+        _draftYours = copy;
+        _draftYoursSource = source.Path;
+        _newName = copy.Name;
+        _newStep = ENewStep.NameYours;
+    }
+
+    internal void BuildEnemy()
+    {
+        bool opened = OnBuildArmy?.Invoke(ForgeBuild("Enemy Army", army =>
+        {
+            _draftEnemy = army;
+            _enemyName = army.Name;
+            _newStep = ENewStep.NameEnemy;
+        })) ?? false;
+        if (!opened) Say($"There are no {GameSystemInfo.DisplayName(_newSystem)} army books to build from.", true);
     }
 
     /// <summary>
-    /// #428 - creates this campaign's enemy army: another army from the same game's folder, started
-    /// with the same treasury under the same rules, marked as the bot's.
-    /// <para>
-    /// It is a campaign army in its own right, which is what makes the arc work - the existing
-    /// after-game write-back finds it by its units' own sheets and pays it, levels it and injures it
-    /// exactly like the player's. <see cref="CampaignBot"/> then spends its treasury for it.
-    /// </para>
-    /// <para>
-    /// Returns a line to append to the creation message, or null when there was no second army to
-    /// use - in which case the campaign still works, it just has no persistent opponent until the
-    /// player puts another army in the folder, and the lobby rolls a fresh enemy each mission as before.
-    /// </para>
+    /// Kai's "pick one for me" - an army from this game's folder at random, the way #428 always chose the
+    /// enemy. Taken at random so two campaigns started from the same folder do not face the same list.
     /// </summary>
-    private string? CreateEnemy(string playerArmyName, string playerPath)
+    internal void PickEnemyForMe()
     {
-        CampaignNumbers n = CampaignNumbers.For(_newSystem);
-        // Any other army of this game that could legally start a campaign. Taken at random so two
-        // campaigns started on the same folder do not face the same enemy.
-        var candidates = Armies
-            .Where(a => a.Path != Armies[_newArmy].Path && CampaignRules.CannotStart(a.Army, n) == null)
-            .ToList();
-        if (candidates.Count == 0)
-            return "No second army in that folder, so this campaign has no standing enemy yet - "
-                   + "add another army and start a new campaign to get one.";
-
+        var candidates = EnemyCandidates();
+        if (candidates.Count == 0) return;
         var pick = candidates[Rng.Next(candidates.Count)];
-        if (StrikeTeamFiles.Load(pick.Path) is not { } enemy) return null;
+        if (StrikeTeamFiles.Load(pick.Path) is not { } copy) { Say("Couldn't read that army file.", true); return; }
+        _draftEnemy = copy;
+        _enemyName = string.Equals(copy.Name, _newName.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? copy.Name + " (rival)" : copy.Name;
+        _newStep = ENewStep.NameEnemy;
+    }
 
-        string enemyName = $"{pick.Army.Name} (enemy of {playerArmyName})";
+    /// <summary>
+    /// Writes both campaign armies. The enemy is saved first and the player's last, carrying the link to
+    /// it, so a failure part way never leaves a player campaign pointing at an enemy file that does not
+    /// exist - and a failed player save removes the enemy it would have orphaned.
+    /// </summary>
+    internal void Finish()
+    {
+        if (_draftYours is not { } yours || _draftEnemy is not { } enemy) return;
+        CampaignNumbers n = CampaignNumbers.For(_newSystem);
+        string name = _newName.Trim();
+        string enemyName = _enemyName.Trim();
+
         string enemyPath = StrikeTeamFiles.NewPath(_newSystem, enemyName);
         // The same type and target as the player's army: the end condition belongs to the campaign, not
         // to one side of it, and two files that disagreed would make whichever one a reader opened the
         // wrong answer (see StrikeTeamInfo.VpTarget).
         CampaignRules.Start(enemy, enemyName, enemyPath, n, _newSystem, _newType,
             _newNoPermadeath, isBot: true, vpTarget: _newVpTarget);
+        // Not editable in Army Forge any more: re-compiling would wipe the campaign changes. Each unit's
+        // own selections were copied onto its sheet by Start, which is what upgrades work against.
         enemy.Selections = null;
-        if (!StrikeTeamFiles.Save(enemyPath, enemy)) return null;
+        if (!StrikeTeamFiles.Save(enemyPath, enemy)) { Say("Couldn't save the enemy army file.", true); return; }
 
-        // Remember which enemy belongs to this campaign, so "Play next mission" can find it again.
-        if (StrikeTeamFiles.Load(playerPath) is { StrikeTeam: not null } saved)
+        string path = StrikeTeamFiles.NewPath(_newSystem, name);
+        CampaignRules.Start(yours, name, path, n, _newSystem,
+            _newType, _newNoPermadeath, vpTarget: _newVpTarget);
+        yours.Selections = null;
+        yours.StrikeTeam!.EnemyArmyFile = enemyPath;
+        CampaignJournal.SetCampaignNote(yours.StrikeTeam, _newOpeningNote);
+        if (!StrikeTeamFiles.Save(path, yours))
         {
-            saved.StrikeTeam.EnemyArmyFile = enemyPath;
-            StrikeTeamFiles.Save(playerPath, saved);
+            try { File.Delete(enemyPath); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            Say("Couldn't save the campaign army file.", true);
+            return;
         }
-        return $"Your enemy this campaign is {pick.Army.Name}.";
+
+        _draftYours = _draftEnemy = null;
+        Reload();
+        _selected = Teams.FindIndex(t => t.Path == path);
+        OpenCamp(_selected);
+        Say($"{name} vs {enemyName} - campaign started, with {yours.StrikeTeam.BankedPoints} pts left in your treasury.");
     }
 
     private void Delete(string path)
@@ -1248,6 +1418,72 @@ public sealed class StrikeTeamScreen : IAppScreen
     }
 
     // -- Bottom bar ---------------------------------------------------------------------------------
+
+    // #452 test seams: the wizard's state, readable and settable without drawing a frame. The wizard writes
+    // files to the player's disk, so it is driven end to end in CampaignCreationFlowTests rather than
+    // trusted by eye.
+    internal EView ViewForTest => _view;
+    internal ENewStep NewStepForTest => _newStep;
+    internal string NewNameForTest { get => _newName; set => _newName = value; }
+    internal string EnemyNameForTest { get => _enemyName; set => _enemyName = value; }
+    internal string OpeningNoteForTest { get => _newOpeningNote; set => _newOpeningNote = value; }
+    internal bool BuildFreshForTest { get => _newBuildFresh; set => _newBuildFresh = value; }
+    internal void SetEndForTest(ECampaignType type, int vpTarget) { _newType = type; _newVpTarget = vpTarget; }
+    internal string? CurrentPathForTest => Current?.Path;
+
+    /// <summary>#452 - the new-campaign wizard's buttons, one set per step.</summary>
+    private void DrawNewBar(float rx, float by, Vector2 btn, bool esc, float margin)
+    {
+        float gap = 10f;
+        switch (_newStep)
+        {
+            case ENewStep.Setup:
+            {
+                if (UiButton.Back("Cancel", btn) || esc) _view = EView.List;
+                ImGui.SetCursorPos(new Vector2(rx, by));
+                string? problem = SetupProblem();
+                ImGui.BeginDisabled(problem != null);
+                if (UiButton.Confirm("Continue", btn)) ContinueFromSetup();
+                ImGui.EndDisabled();
+                RightLabel(rx, by, btn, problem ?? (_newBuildFresh
+                    ? "Opens the Army Forge to build your army"
+                    : "Next: name your army"), TextDim);
+                break;
+            }
+            case ENewStep.NameYours:
+            {
+                if (UiButton.Back("Back", btn) || esc) { _newStep = ENewStep.Setup; _draftYours = null; _draftYoursSource = null; }
+                string? problem = YourNameProblem();
+                bool canPick = EnemyCandidates().Count > 0;
+
+                ImGui.SetCursorPos(new Vector2(rx, by));
+                ImGui.BeginDisabled(problem != null);
+                if (UiButton.Confirm("Build Enemy Army", btn)) BuildEnemy();
+                ImGui.EndDisabled();
+
+                ImGui.SetCursorPos(new Vector2(rx - btn.X - gap, by));
+                ImGui.BeginDisabled(problem != null || !canPick);
+                if (UiButton.Navigate("Pick one for me", btn)) PickEnemyForMe();
+                ImGui.EndDisabled();
+
+                RightLabel(rx - btn.X - gap, by, btn, problem ?? (canPick ? "Your enemy next"
+                    : $"No other {GameSystemInfo.DisplayName(_newSystem)} army in the folder fits the treasury - build one"), TextDim);
+                break;
+            }
+            case ENewStep.NameEnemy:
+            {
+                if (UiButton.Back("Back", btn) || esc) { _newStep = ENewStep.NameYours; _draftEnemy = null; }
+                ImGui.SetCursorPos(new Vector2(rx, by));
+                string? problem = EnemyNameProblem();
+                ImGui.BeginDisabled(problem != null);
+                if (UiButton.Confirm("Finish", btn)) Finish();
+                ImGui.EndDisabled();
+                RightLabel(rx, by, btn, problem ?? "Starts the campaign", TextDim);
+                break;
+            }
+        }
+        DrawMessage(margin, by, btn);
+    }
 
     private void DrawBottomBar(int screenW, int screenH, float margin, float barH)
     {
@@ -1260,13 +1496,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         switch (_view)
         {
             case EView.New:
-                if (UiButton.Back("Cancel", btn) || esc) _view = EView.List;
-                ImGui.SetCursorPos(new Vector2(rx, by));
-                string? problem = NewProblem();
-                ImGui.BeginDisabled(problem != null);
-                if (UiButton.Confirm("Create", btn)) Create();
-                ImGui.EndDisabled();
-                if (problem != null) RightLabel(rx, by, btn, problem, TextDim);
+                DrawNewBar(rx, by, btn, esc, margin);
                 break;
 
             case EView.Recruit:
@@ -1301,14 +1531,7 @@ public sealed class StrikeTeamScreen : IAppScreen
             default:
                 if (UiButton.Back("Back", btn) || esc) OnBack?.Invoke();
                 ImGui.SetCursorPos(new Vector2(rx, by));
-                if (UiButton.Confirm("New Campaign Army", btn))
-                {
-                    _view = EView.New;
-                    _newName = "";
-                    _newArmy = -1;
-                    Reload();
-                    _message = "";
-                }
+                if (UiButton.Confirm("New Campaign", btn)) StartNew();
                 if (Current is { } cur)
                 {
                     ImGui.SetCursorPos(new Vector2(rx - btn.X - 10f, by));

@@ -59,6 +59,25 @@ public class ArmyForgeScreen : IAppScreen
 {
     public Action? OnBack;
 
+    /// <summary>
+    /// #451 - a campaign army being built in this screen. campaign-flow-spec section 3b: "A locked Army
+    /// Forge screen. Everything the normal one does, minus the things that do not apply" - no points-limit
+    /// field, no game-system dropdown, no "Army Forge" title, a header naming the mode and showing the
+    /// treasury as a wallet, and Continue in place of Save.
+    /// </summary>
+    /// <param name="System">The campaign's game. Fixed for the whole build - only its books are offered.</param>
+    /// <param name="Title">"Your Army" or "Enemy Army".</param>
+    /// <param name="Numbers">That game's campaign numbers: the treasury, the minimum spend.</param>
+    /// <param name="OnContinue">Handed the finished army when Continue is pressed.</param>
+    /// <param name="OnCancel">Called when the build is abandoned with Back.</param>
+    public sealed record CampaignBuild(EGameSystem System, string Title, FDG.Campaign.CampaignNumbers Numbers,
+                                       Action<BuiltArmyFile> OnContinue, Action OnCancel);
+
+    private CampaignBuild? _campaign;
+
+    /// <summary>True while a campaign army is being built (#451).</summary>
+    internal bool InCampaignBuild => _campaign != null;
+
     private const int DefaultPointsLimit = 1000;
 
     private static readonly Vector4 RedText    = new(0.90f, 0.40f, 0.40f, 1f);
@@ -757,6 +776,134 @@ public class ArmyForgeScreen : IAppScreen
         return true;
     }
 
+    // ── Campaign build (#451) ───────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens the screen to build a campaign army: locked to <see cref="CampaignBuild.System"/>'s books, an
+    /// empty list, and the treasury as the points limit. Returns false - and changes nothing - when that
+    /// game has no books in the library, so the caller can say so instead of opening a Forge full of
+    /// another game's books (CLAUDE.md: serving one mode's book to another is wrong data, not a fallback).
+    /// </summary>
+    public bool BeginCampaignBuild(CampaignBuild build)
+    {
+        EnsureLibrary();
+        string? slug = GameSystems.CampaignBookSlug(build.System);
+        if (slug == null) return false;
+        int sys = Array.FindIndex(Systems, s => GameSystems.SameSystem(s.Slug, slug));
+        if (sys < 0 || !_library.Any(b => GameSystems.SameSystem(b.GameSystem, slug))) return false;
+
+        _campaign = build;
+        _systemIndex = sys;
+        RebuildVisible();
+        SwitchBook(_visibleBooks[0]);
+        _list.PointsLimit = build.Numbers.Treasury;
+        _statusHint = null;
+        ClearPendingSave();
+        ClearPendingReopen();
+        return true;
+    }
+
+    /// <summary>
+    /// Why Continue is not available yet, or null when it is. The campaign's own start rule
+    /// (<see cref="FDG.Campaign.CampaignRules.CannotStart"/>) is the authority - the same check the
+    /// "start from an army you have" path uses - so the two ways of making a campaign army can never
+    /// disagree about what is allowed.
+    /// </summary>
+    internal string? CampaignContinueProblem(BuiltArmyFile compiled) =>
+        _campaign == null ? "Not building a campaign army." : FDG.Campaign.CampaignRules.CannotStart(compiled, _campaign.Numbers);
+
+    /// <summary>Hands the finished army to the campaign screen and returns this screen to normal.</summary>
+    internal void CampaignContinue()
+    {
+        if (_campaign is not { } build) return;
+        BuiltArmyFile compiled = Compile();
+        if (CampaignContinueProblem(compiled) != null) return;
+        EndCampaignBuild();
+        build.OnContinue(compiled);
+    }
+
+    internal void CampaignCancel()
+    {
+        if (_campaign is not { } build) return;
+        EndCampaignBuild();
+        build.OnCancel();
+    }
+
+    /// <summary>
+    /// Leaves campaign mode with a fresh list at the normal default limit, so the next ordinary visit to
+    /// the Forge does not open on half a campaign army with a treasury for a points limit. A new list
+    /// object rather than a cleared one: the army just handed over still references the old one through
+    /// its <c>Selections</c>.
+    /// </summary>
+    private void EndCampaignBuild()
+    {
+        _campaign = null;
+        _list = new BuilderList { PointsLimit = DefaultPointsLimit, BookName = _book.Name };
+        _selectedListIndex = null;
+        _selectedRosterId = null;
+    }
+
+    /// <summary>
+    /// The locked header: "Your Army - Grimdark Future - 640 / 750 pts spent - minimum 600 - Heroes 1/1".
+    /// The game's name matters BECAUSE the system dropdown is gone - nothing else on screen would say which
+    /// game this army is for. Game text, so ASCII only.
+    /// </summary>
+    internal static string CampaignHeader(CampaignBuild build, BuiltArmyFile compiled) =>
+        $"{build.Title}  -  {GameSystemInfo.DisplayName(build.System)}  -  "
+        + $"{compiled.TotalPoints} / {build.Numbers.Treasury} pts spent  -  minimum {build.Numbers.MinimumSpend}  -  "
+        + $"Heroes {compiled.Units.Count(FDG.Campaign.CampaignRules.IsHero)}/1";
+
+    private void DrawCampaignToolbar(BuiltArmyFile compiled, IReadOnlyList<ListIssue> issues, CampaignBuild build)
+    {
+        float rowH = UiChrome.ButtonSize("Back").Y;
+        if (UiButton.Back("Back", UiChrome.ButtonSize("Back"))) { CampaignCancel(); return; }
+
+        // The faction is still the player's choice; only the game is fixed.
+        ImGui.SameLine();
+        CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
+        ImGui.SetNextItemWidth(UiChrome.Em(12f));
+        int visPos = Math.Max(0, Array.IndexOf(_visibleBooks, _bookIndex));
+        if (ImGui.Combo("##forge-book", ref visPos, _visibleNames, _visibleNames.Length)
+            && _visibleBooks[visPos] != _bookIndex)
+        {
+            int bi = _visibleBooks[visPos];
+            if (_list.Units.Count == 0) { SwitchBook(bi); _list.PointsLimit = build.Numbers.Treasury; }
+            else { _pendingBookIndex = bi; ImGui.OpenPopup("Switch book?"); }
+        }
+        DrawSwitchBookConfirm();
+        _list.PointsLimit = build.Numbers.Treasury;   // a confirmed book switch keeps the old limit
+
+        ImGui.SameLine();
+        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
+        string? problem = CampaignContinueProblem(compiled);
+        UiText.Colored(problem == null ? GreenText : WhiteText, CampaignHeader(build, compiled));
+
+        int errors = issues.Count(i => i.Severity == ListIssueSeverity.Error);
+        int warnings = issues.Count(i => i.Severity == ListIssueSeverity.Warning);
+        ImGui.SameLine();
+        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
+        if (errors > 0) UiText.Colored(RedText, $"[{errors} error{(errors == 1 ? "" : "s")}]");
+        else if (warnings > 0) UiText.Colored(YellowText, $"[{warnings} warning{(warnings == 1 ? "" : "s")}]");
+    }
+
+    /// <summary>The strip under the panes: why Continue is unavailable, and Continue itself, bottom right.</summary>
+    private void DrawCampaignFooter(BuiltArmyFile compiled, float footerH)
+    {
+        string? problem = CampaignContinueProblem(compiled);
+        Vector2 btn = UiChrome.ButtonSize("  Continue  ");
+        float y = ImGui.GetCursorPosY() + MathF.Max(0f, (footerH - btn.Y) * 0.5f);
+        float x = ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - btn.X;
+
+        ImGui.SetCursorPos(new Vector2(ImGui.GetStyle().WindowPadding.X, y + (btn.Y - ImGui.GetTextLineHeight()) * 0.5f));
+        if (problem != null) UiText.Colored(YellowText, problem);
+        else UiText.Colored(GreenText, "Ready. Anything you don't spend stays in the treasury.");
+
+        ImGui.SetCursorPos(new Vector2(x, y));
+        ImGui.BeginDisabled(problem != null);
+        if (UiButton.Confirm("Continue", btn)) CampaignContinue();
+        ImGui.EndDisabled();
+    }
+
     // ── Draw ────────────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>#403: every entry into the Forge leads with the importer.</summary>
@@ -777,12 +924,29 @@ public class ArmyForgeScreen : IAppScreen
 
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
-        ImGui.Begin("Army Forge",
-            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse);
+        // #451: a campaign build has no "Army Forge" title bar - the spec removes it, and the header says
+        // which army and which game instead.
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse;
+        if (_campaign != null) flags |= ImGuiWindowFlags.NoTitleBar;
+        ImGui.Begin("Army Forge", flags);
 
-        DrawToolbar(compiled, issues);
-        ImGui.Separator();
-        DrawPanes(compiled, rows, issues);
+        if (_campaign is { } build)
+        {
+            DrawCampaignToolbar(compiled, issues, build);
+            if (_campaign == null) { ImGui.End(); return; }   // Back was pressed this frame
+            ImGui.Separator();
+            float footerH = UiChrome.ButtonSize("Continue").Y + ImGui.GetStyle().ItemSpacing.Y * 2f;
+            ImGui.BeginChild("##forge-campaign-panes", new Vector2(0, -footerH), ImGuiChildFlags.None);
+            DrawPanes(compiled, rows, issues);
+            ImGui.EndChild();
+            DrawCampaignFooter(compiled, footerH);
+        }
+        else
+        {
+            DrawToolbar(compiled, issues);
+            ImGui.Separator();
+            DrawPanes(compiled, rows, issues);
+        }
 
         ImGui.End();
     }
