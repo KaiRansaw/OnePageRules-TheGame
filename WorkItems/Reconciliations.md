@@ -915,3 +915,6 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **2026-11-03 - number 447.** `git fetch origin` earlier this session; highest filed is 446, this
 > session's own. **447 = campaign armies kept out of ordinary games, and given their own folder** -
 > raised by Kai while answering a question about campaign creation. No collision.
+
+> **2026-11-05 - number 448.** `git fetch origin` at the start of the session: nothing new on origin,
+> highest filed is 447 (this project's own, 2026-11-03). **448 = the campaign journal.** No collision.
