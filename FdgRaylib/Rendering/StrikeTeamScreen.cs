@@ -420,6 +420,33 @@ public sealed class StrikeTeamScreen : IAppScreen
     }
 
     /// <summary>
+    /// #450 - writes the whole journal to a plain text file beside the campaign's own file, named after
+    /// it, and says where. Overwrites the last export: it is a snapshot of the journal as it stands, and a
+    /// folder filling up with dated copies is not something Kai asked for.
+    /// </summary>
+    private void ExportJournal()
+    {
+        CommitJournal();
+        if (Current is not { } cur) return;
+        (string path, BuiltArmyFile army, _) = cur;
+        StrikeTeamInfo info = army.StrikeTeam!;
+
+        string text = CampaignJournal.Export(info, EnemyOf(info)?.Army.StrikeTeam,
+            GameSystemInfo.DisplayName(info.GameSystem));
+        string file = Path.Combine(Path.GetDirectoryName(path) ?? "",
+            Path.GetFileNameWithoutExtension(path) + " - Journal.txt");
+        try
+        {
+            File.WriteAllText(file, text.Replace("\n", Environment.NewLine));
+            Say($"Journal saved to {file}");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Say("Couldn't write the journal file: " + e.Message, true);
+        }
+    }
+
+    /// <summary>
     /// The journal: the campaign's own page on the left, the missions on the right with the selected
     /// one's page beside them. Deliberately the cheapest version that works - Kai said he was unsure how
     /// he wants to write these, so this is something to react to in play, not a design.
@@ -469,11 +496,29 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.BeginChild("##journalMission", new Vector2(pageW, h), ImGuiChildFlags.Borders);
         bool played = CampaignJournal.IsPlayed(info, _journalMission);
         UiText.Colored(TextDim, $"MISSION {_journalMission}" + (played ? "" : " - NOT PLAYED YET"));
+
+        // #450 - the game's own record, above the player's words and not editable: it is the facts, and
+        // the page below is the story told about them.
+        IReadOnlyList<string> record = CampaignJournal.RecordFor(info, _journalMission);
+        float recordH = 0f;
+        if (record.Count > 0)
+        {
+            recordH = Math.Min(h * 0.38f, ImGui.GetTextLineHeightWithSpacing() * (record.Count + 2.5f));
+            ImGui.BeginChild("##missionRecord", new Vector2(-1f, recordH), ImGuiChildFlags.Borders);
+            UiText.Colored(Accent, "WHAT HAPPENED");
+            foreach (string line in record) UiText.Wrapped("- " + line);
+            ImGui.EndChild();
+        }
+        else if (played)
+        {
+            UiText.Disabled("No record - this mission was played before the game kept one.");
+        }
+
         UiText.Disabled(played
-            ? "What happened - the account of the battle."
+            ? "Your account - the story of the battle."
             : "The briefing - what the army expects, before it is fought.");
         ImGui.InputTextMultiline("##missionNote", ref _journalMissionBuf, CampaignJournal.MaxNoteLength,
-            new Vector2(-1f, boxH));
+            new Vector2(-1f, Math.Max(ImGui.GetTextLineHeight() * 4f, boxH - recordH)));
         if (ImGui.IsItemDeactivatedAfterEdit()) CommitJournal();
         ImGui.EndChild();
     }
@@ -1232,6 +1277,9 @@ public sealed class StrikeTeamScreen : IAppScreen
                 // Escape is not taken while a text box has the keyboard - it would throw away the
                 // paragraph being typed rather than leave the page.
                 if (UiButton.Back("Back to camp", btn) || esc) { CommitJournal(); _view = EView.Camp; }
+                ImGui.SetCursorPos(new Vector2(rx, by));
+                if (UiButton.Navigate("Export journal", btn)) ExportJournal();
+                RightLabel(rx, by, btn, "Saves the whole journal as a text file you can read anywhere", TextDim);
                 DrawMessage(margin, by, btn);
                 break;
 

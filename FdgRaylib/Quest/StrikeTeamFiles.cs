@@ -196,6 +196,10 @@ public static class StrikeTeamFiles
             .DefaultIfEmpty(0)
             .Max();
 
+        // #450 - every campaign army's name, so each one's journal can say who the mission was fought
+        // against. Read before anything is written, like rivalValue above.
+        var names = groups.ToDictionary(g => g.Key, g => Load(g.Key)?.StrikeTeam?.Name ?? "");
+
         foreach (var group in groups)
         {
             if (Load(group.Key) is not { StrikeTeam: not null } team) continue;
@@ -207,6 +211,14 @@ public static class StrikeTeamFiles
             // offered Firefight - the write-back could not have served anything else correctly.
             CampaignNumbers n = CampaignNumbers.For(SystemForPath(group.Key, team.StrikeTeam));
             List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7));
+
+            // #450 - who this mission was against, at the top of its journal record. Only campaign
+            // armies are named: a one-off opponent the lobby rolled has no campaign file to name it by.
+            int mission = team.StrikeTeam.Matches;
+            var against = names.Where(kv => kv.Key != group.Key && kv.Value.Length > 0).Select(kv => kv.Value).ToList();
+            CampaignJournal.AddToRecord(team.StrikeTeam, mission,
+                against.Count > 0 ? $"Fought against {string.Join(" and ", against)}." : "Fought a one-off opponent.",
+                first: true);
 
             // #430: the special objective it rolled before the mission, finally scored. Before this it
             // was shown to the player and then never checked, so the bonus could not be earned at all.
@@ -224,6 +236,7 @@ public static class StrikeTeamFiles
                 // anything added after it needs its own entry - otherwise the player would never see the
                 // verdict, which is the whole point of scoring it.
                 team.StrikeTeam.History.Add(line);
+                CampaignJournal.AddToRecord(team.StrikeTeam, mission, line);
                 // A new objective is rolled before the next mission, so this one is done either way.
                 team.StrikeTeam.SpecialObjective = "";
             }
