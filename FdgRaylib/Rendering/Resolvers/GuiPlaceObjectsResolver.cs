@@ -58,6 +58,8 @@ public class GuiPlaceObjectsResolver<T>
 
     /// <summary>Where a box-selection drag started, in table inches, or null when not boxing.</summary>
     private Position? _boxStart;
+    // True when the box in progress was started with Ctrl held: released in place it toggles one model.
+    private bool _boxByCtrl;
 
     /// <summary>
     /// Where a move-the-selection drag started, and each selected model's position when it began -
@@ -787,8 +789,17 @@ public class GuiPlaceObjectsResolver<T>
             DrawSelectionBox(dl, _boxStart.Value, mouse);
             if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
             {
-                SelectWithin(_boxStart.Value, mouse);
+                if (BoxSelection.IsBox(_boxStart.Value, mouse))
+                    SelectWithin(_boxStart.Value, mouse);
+                else if (_boxByCtrl)
+                {
+                    // Ctrl + click: add the model under the cursor to the selection, or take it out.
+                    int toggled = HitTestPlaced(mouseInX, mouseInZ);
+                    if (toggled >= 0 && !_selected.Remove(toggled)) _selected.Add(toggled);
+                }
+                else _selected.Clear();
                 _boxStart = null;
+                _boxByCtrl = false;
             }
             clicked = false;
             return true;
@@ -799,6 +810,18 @@ public class GuiPlaceObjectsResolver<T>
         // A press on a SELECTED model starts moving the selection; the single-model pick-up still owns
         // a press on any other model, so clicking one thing to nudge it is unchanged.
         int hit = HitTestPlaced(mouseInX, mouseInZ);
+        bool ctrl = io.KeyCtrl || ImGui.IsKeyDown(ImGuiKey.LeftCtrl) || ImGui.IsKeyDown(ImGuiKey.RightCtrl);
+
+        // Ctrl + press always starts a box (or, released in place, a Ctrl+click toggle), keeping the
+        // current selection until the gesture ends so a Ctrl+click can add to it.
+        if (ctrl)
+        {
+            _boxStart = mouse;
+            _boxByCtrl = true;
+            clicked = false;
+            return true;
+        }
+
         if (hit >= 0 && _selected.Contains(hit))
         {
             _moveStart = mouse;
@@ -811,12 +834,22 @@ public class GuiPlaceObjectsResolver<T>
         // A press on bare table starts a box. It only BECOMES a box once the cursor travels far
         // enough; until then this frame does nothing and a plain click falls through to clear the
         // selection, so clicking empty table still means "never mind".
-        if (hit < 0)
+        //
+        // Kai, 2026-11-05: while models are still to place, a plain click on bare table PLACES the next
+        // one - it used to start a box here too and swallow the click, so in single mode only the first
+        // model could ever be put down by clicking.
+        bool allPlaced = _placed.Count >= request.ModelsToPlace.Count;
+        if (BoxSelection.DeploymentPressStartsBox(ctrlHeld: false, allPlaced, pressedOnModel: hit >= 0))
         {
+            ClearSelection();       // resets the box fields too, so it goes first
             _boxStart = mouse;
-            ClearSelection();
             clicked = false;
             return true;
+        }
+        if (hit < 0)
+        {
+            ClearSelection();
+            return false;
         }
 
         // A press on an unselected model: hand it to the single-model pick-up, selection cleared.
@@ -848,6 +881,7 @@ public class GuiPlaceObjectsResolver<T>
     {
         _selected.Clear();
         _boxStart = null;
+        _boxByCtrl = false;
         _moveStart = null;
         _moveOrigins = null;
     }
@@ -1100,8 +1134,9 @@ public class GuiPlaceObjectsResolver<T>
         string statusText = _errorMessage ??
             (dropping              ? "Position the unit in the blue zone. Wheel / R rotate, Ctrl+Wheel changes formation. Click drops the whole unit." :
              _dragIndex.HasValue   ? "Click to drop the picked-up model. Wheel / R rotate. R-click puts it back." :
-             _placed.Count < total ? "Click empty space to place the next model, or click a placed model to move it. Wheel / R rotate. R-click undoes." :
-                                     "Click any placed model to pick it up and move it. R-click undoes.");
+             _selected.Count > 0   ? $"{_selected.Count} selected - drag one of them to move them together. Ctrl+click adds or removes a model. R-click clears." :
+             _placed.Count < total ? "Click empty space to place the next model, or click a placed model to move it. Ctrl+drag selects several. Wheel / R rotate. R-click undoes." :
+                                     "Click a placed model to move it, or drag a box to select several and move them together. R-click undoes.");
         Vector4 statusColor = _errorMessage != null
             ? new Vector4(1f, 0.4f, 0.4f, 1f)
             : new Vector4(0.6f, 0.6f, 0.6f, 1f);

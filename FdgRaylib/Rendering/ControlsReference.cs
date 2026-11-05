@@ -45,6 +45,7 @@ public static class ControlsReference
         ("Wheel, R / Shift+R",     "Rotate while moving or placing",           Doing),
         ("Ctrl + wheel",           "Cycle formation (group moves)",            Doing),
         ("G",                      "Group / single model moves",               Doing),
+        ("Ctrl + drag / click",    "Pick some models to move together",        Doing),
         ("Ctrl + Z / Ctrl + X",    "Undo / redo while placing or moving",      Doing),
         ("Z / X",                  "Take Back / Redo a whole activation",      Doing),
         ("Right-click a unit",     "Unit card",                                Doing),

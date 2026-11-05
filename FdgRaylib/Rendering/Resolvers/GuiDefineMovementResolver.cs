@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using FDG;
 using FDG.Data;
 using FDG.StageResolution;
@@ -41,6 +41,12 @@ public class GuiDefineMovementResolver
     // Built lazily on the first group frame; reset each Resolve, and back to "current" on each commit
     // (a committed step bakes the picked shape into the unit's real waypoints).
     private FormationCycle? _formationCycle;
+
+    // Ctrl + drag box-select (Kai, 2026-11-05 - see BoxSelection). When any models are selected the move
+    // works like Group mode on just those models, whatever G is set to: the rest of the unit stays put
+    // and cohesion is checked at Done, the same rule deployment uses.
+    private readonly HashSet<IModel> _boxSelected = new();
+    private Position? _boxStart;
 
     // Rotates an existing facing (unit normal) by `radians`, same matrix as the rigid position rotation.
     private static Float2 RotateFloat2(Float2 f, float radians)
@@ -466,6 +472,8 @@ public class GuiDefineMovementResolver
             _dragStroke = null;
             _manualOffsets.Clear();
             _formationCycle = null;
+            _boxSelected.Clear();
+            _boxStart = null;
             _panelHoveredModel = null;
             _donePopupOpen = false;
             _undoPlans.Clear();
@@ -495,7 +503,14 @@ public class GuiDefineMovementResolver
         // WantCaptureMouse would cover the clicks, but the table gate below says so explicitly too.
         bool wantInput = !io.WantCaptureMouse && !io.WantCaptureKeyboard && !_donePopupOpen;
         bool advanceOnly = _stayInAdvance || ImGui.IsKeyDown(ImGuiKey.LeftShift) || ImGui.IsKeyDown(ImGuiKey.RightShift);
-        bool group = _formationMode.IsGroup;
+
+        // Box-select runs first and owns the mouse while it is in progress (and on the frame a right-click
+        // clears it), so the press/release that draws a box never also places a waypoint or commits a
+        // group step underneath it.
+        _boxSelected.RemoveWhere(m => !paths.ContainsKey(m));
+        if (HandleBoxSelect(dl, io, pt, paths, overTable && !_donePopupOpen))
+            overTable = false;
+        bool group = _formationMode.IsGroup || _boxSelected.Count > 0;
 
         // #295: in single mode, clicking a model on the table also switches to it. Hit-test the pointer once
         // here so the same answer both paints the hover highlight and drives the click -- a highlight that
@@ -1018,6 +1033,95 @@ public class GuiDefineMovementResolver
     /// above these lines already shows that clicking a row does it; clicking the model on the table still
     /// works and is advertised on the roster header's tooltip and in Esc -> Options.
     /// </summary>
+    /// <summary>
+    /// Ctrl + drag draws a box and selects the unit's models inside it (by where each one is PLANNED to
+    /// be, so a model that has already been moved is caught where it now stands); Ctrl + click toggles
+    /// one model; right-click drops the selection. See <see cref="BoxSelection"/> for why Ctrl.
+    /// </summary>
+    /// <returns>True when this frame's mouse belongs to the box, so nothing else may act on it.</returns>
+    private bool HandleBoxSelect(ImDrawListPtr dl, ImGuiIOPtr io, PathTemplate pt,
+        IReadOnlyDictionary<IModel, IReadOnlyList<Position>> paths, bool overTable)
+    {
+        var (mx, mz) = PixelToInches(TableInput.MousePos.X, TableInput.MousePos.Y);
+        var mouse = new Position(mx, mz);
+        var poses = paths.Select(kvp => PlannedPose(pt, kvp.Key, kvp.Value)).ToList();
+
+        DrawBoxSelectionHighlight(dl, poses);
+
+        if (_boxStart.HasValue)
+        {
+            DrawMovementSelectionBox(dl, _boxStart.Value, mouse);
+            if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            {
+                if (BoxSelection.IsBox(_boxStart.Value, mouse))
+                {
+                    _boxSelected.Clear();
+                    foreach (int i in BoxSelection.Within(_boxStart.Value, mouse, poses.Select(p => p.at).ToList()))
+                        _boxSelected.Add(poses[i].model);
+                }
+                else if (ModelPicker.HitTest(poses, mx, mz) is { } hit && !_boxSelected.Remove(hit))
+                {
+                    _boxSelected.Add(hit);
+                }
+                _boxStart = null;
+                SelectionChanged();
+            }
+            return true;
+        }
+
+        bool usable = overTable && !io.WantCaptureMouse;
+        if (!usable) return false;
+
+        // Right-click with a selection drops it - the app-wide "never mind", as in deployment. It does
+        // not also undo a step: with nothing selected, right-click undoes as it always has.
+        if (_boxSelected.Count > 0 && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+        {
+            _boxSelected.Clear();
+            SelectionChanged();
+            return true;
+        }
+
+        bool ctrl = io.KeyCtrl || ImGui.IsKeyDown(ImGuiKey.LeftCtrl) || ImGui.IsKeyDown(ImGuiKey.RightCtrl);
+        if (ctrl && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            _boxStart = mouse;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>A different set of models is moving now: the group ghost starts over from their shape.</summary>
+    private void SelectionChanged()
+    {
+        _formationCycle = null;
+        _groupRotation = 0f;
+        _dragStroke = null;
+    }
+
+    private void DrawMovementSelectionBox(ImDrawListPtr dl, Position a, Position b)
+    {
+        var (ax, ay) = InchesToPixel(a.x, a.z);
+        var (bx, by) = InchesToPixel(b.x, b.z);
+        var p0 = new Vector2(MathF.Min(ax, bx), MathF.Min(ay, by));
+        var p1 = new Vector2(MathF.Max(ax, bx), MathF.Max(ay, by));
+        dl.AddRectFilled(p0, p1, ImGui.ColorConvertFloat4ToU32(new Vector4(0.45f, 0.70f, 1f, 0.15f)));
+        dl.AddRect(p0, p1, ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.80f, 1f, 0.9f)), 0f,
+            ImDrawFlags.None, 1.5f);
+    }
+
+    /// <summary>A ring round every selected model where it currently stands in the plan.</summary>
+    private void DrawBoxSelectionHighlight(ImDrawListPtr dl, List<(IModel model, Position at, Float2 facing)> poses)
+    {
+        if (_boxSelected.Count == 0) return;
+        uint col = ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.80f, 1f, 0.95f));
+        foreach (var (model, at, _) in poses)
+        {
+            if (!_boxSelected.Contains(model)) continue;
+            var (px, py) = InchesToPixel(at.x, at.z);
+            dl.AddCircle(new Vector2(px, py), model.BaseShape.CircumscribedRadiusInches * _scale + 3f, col, 24, 2f);
+        }
+    }
+
     private static void DrawSingleModeHints()
     {
         ImGui.TextDisabled($"{ResolverHotkeys.CycleHint}: pick model   L-click: place waypoint");
@@ -1042,7 +1146,9 @@ public class GuiDefineMovementResolver
         HashSet<IModel> committedCrossedDifficult, HashSet<IModel> committedCrossedDangerous,
         Dictionary<IModel, DataBinding<ModelData>> bindings)
     {
-        var models = paths.Keys.ToList();
+        var models = _boxSelected.Count > 0
+            ? paths.Keys.Where(_boxSelected.Contains).ToList()
+            : paths.Keys.ToList();
         if (models.Count == 0) return;
 
         // Rotation input: wheel both ways; R clockwise, Shift+R counter-clockwise. Ctrl+Wheel cycles
@@ -1340,6 +1446,27 @@ public class GuiDefineMovementResolver
         // rotation-invariant and never showed it, which is why it read as a jetbike bug.
         (Position at, float radiusInches)? selfOverlapAnchor = MarkGroupSelfOverlaps(
             models, pt, paths, lastPositions, newPositions, groupFacings, blocked, ref allValid);
+
+        // Moving PART of the unit: the models left behind are obstacles like anything else. The self-
+        // overlap pass above only compares the models that are moving with each other.
+        if (_boxSelected.Count > 0)
+        {
+            foreach (var (other, otherPath) in paths)
+            {
+                if (_boxSelected.Contains(other)) continue;
+                var (_, otherAt, otherFacing) = PlannedPose(pt, other, otherPath);
+                for (int i = 0; i < models.Count; i++)
+                {
+                    if (blocked[i]) continue;
+                    if (BaseShapeGeometry.SurfaceGap2D(models[i].BaseShape, newPositions[i], groupFacings[i],
+                            other.BaseShape, otherAt, otherFacing) < 0f)
+                    {
+                        blocked[i] = true;
+                        allValid = false;
+                    }
+                }
+            }
+        }
         // One label for the unit, not one per flagged model - a copy over every phantom of a stacked
         // rank buries the formation in text, the same reason the difficult-terrain shortfall shows one.
         if (selfOverlapAnchor is { } stack)
@@ -1591,7 +1718,19 @@ public class GuiDefineMovementResolver
             ImGui.PopStyleColor();
         }
 
-        bool group = _formationMode.IsGroup;
+        bool group = _formationMode.IsGroup || _boxSelected.Count > 0;
+
+        if (_boxSelected.Count > 0)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.80f, 1f, 1f));
+            ImGui.TextWrapped($"{_boxSelected.Count} of {pt.CurrentPaths.Count} models selected - they move together, "
+                + "the rest stay put. Ctrl+click adds or removes one. R-click clears.");
+            ImGui.PopStyleColor();
+        }
+        else
+        {
+            ImGui.TextDisabled("Ctrl+drag: select some models to move together");
+        }
 
         if (_moreOptions)
         {
