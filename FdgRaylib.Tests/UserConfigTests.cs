@@ -331,6 +331,9 @@ public class UserConfigTests
         public bool CoverProximityExceptions { get; set; } = true;
         public bool SeeThroughFriendlyUnits { get; set; }
         public bool UnlimitedSplitFire { get; set; }
+        public bool FastPlayMovement { get; set; }
+        public bool FastPlayMelee { get; set; }
+        public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }
         public ETableBackground TableBackground { get; set; }
@@ -352,6 +355,10 @@ public class UserConfigTests
         public void SetCoverProximityExceptions(bool enabled) => CoverProximityExceptions = enabled;
         public void SetSeeThroughFriendlyUnits(bool enabled) => SeeThroughFriendlyUnits = enabled;
         public void SetUnlimitedSplitFire(bool enabled) => UnlimitedSplitFire = enabled;
+        public void SetFastPlay(bool movement, bool melee, bool shooting)
+        {
+            FastPlayMovement = movement; FastPlayMelee = melee; FastPlayShooting = shooting;
+        }
 
         public void SetFriendlyUnitsMayOverlap(bool enabled) => FriendlyUnitsMayOverlap = enabled;
         public void SetTableBackground(ETableBackground background) => TableBackground = background;

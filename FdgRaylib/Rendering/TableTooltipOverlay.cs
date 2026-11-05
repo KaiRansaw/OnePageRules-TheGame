@@ -318,6 +318,9 @@ public class TableTooltipOverlay
         ImGui.PopFont();
         // #454: a renamed campaign unit's type, small under its name - "Vargas Squad" / Assault Grunts.
         if (unit is UnitData { CampaignTypeIfRenamed: { } type }) UiText.Disabled(type);
+        // #456: under Fast-Play, which model leads - everything is measured from it and it dies last.
+        if (unit.LeaderModelId is { } leaderId && unit.Models.FirstOrDefault(m => m.ID.Equals(leaderId)) is { } leader)
+            UiText.Disabled("Leader: " + FastPlay.Describe(unit, leader) + (leader.GetIsAlive() ? "" : " (fallen)"));
 
         ImGui.Separator();
         ImGui.TextUnformatted($"Qua {unit.Quality}+   Def {unit.Defense}+");
@@ -757,6 +760,9 @@ public class TableTooltipOverlay
         ImGui.PopFont();
         // #454: a renamed campaign unit's type, small under its name - "Vargas Squad" / Assault Grunts.
         if (unit is UnitData { CampaignTypeIfRenamed: { } type }) UiText.Disabled(type);
+        // #456: under Fast-Play, which model leads - everything is measured from it and it dies last.
+        if (unit.LeaderModelId is { } leaderId && unit.Models.FirstOrDefault(m => m.ID.Equals(leaderId)) is { } leader)
+            UiText.Disabled("Leader: " + FastPlay.Describe(unit, leader) + (leader.GetIsAlive() ? "" : " (fallen)"));
 
         if (HasActivated(unit)) ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated");
         if (IsShaken(unit)) ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");

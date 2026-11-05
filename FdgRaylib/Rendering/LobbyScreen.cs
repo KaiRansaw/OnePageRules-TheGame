@@ -1500,19 +1500,42 @@ public class LobbyScreen : IAppScreen
                              "Quest, where every hero is its own unit and a party can never close up.");
         }
 
-        // Kai's mock, 2026-11-02, had "Rules" and "Advanced Rules" as two buttons. The first one is
-        // the section above - these ARE the house rules we made, and they were already a working panel
-        // here, so they stayed a panel instead of becoming a screen. The second is a real book that
-        // isn't in the project yet: GF Advanced Rules 3.6.0 is one of the two gaps the 2026-11-01
-        // version ruling created (only 3.5.1 is on hand, and an outdated book may not justify
-        // anything). So the button exists, says what it is waiting for, and does nothing.
+        // #456: the Advanced Rules section is live now that the 3.6.0 Advanced books are in the project
+        // (2026-11-02). It holds the Fast-Play rules - the only Advanced rules built so far - and says plainly
+        // when the game being set up does not have them (Firefight, Skirmish and the Quests: their books do
+        // not print Fast-Play).
         if (Section("Advanced Rules", defaultOpen: false))
         {
-            UiText.Wrapped("Not in yet. These are OPR's optional extras - the Advanced Rules book.");
-            ImGui.Spacing();
-            ImGui.BeginDisabled(true);
-            UiButton.Navigate("Advanced Rules...");
-            ImGui.EndDisabled();
+            EGameSystem system = _viewModel.GameSystem;
+            UiText.Colored(ImGuiTheme.HeaderAccent, "Fast-Play");
+            if (!FastPlay.BooksHaveIt(system))
+            {
+                UiText.Wrapped($"{GameSystemInfo.DisplayName(system)} doesn't have the Fast-Play rules - only "
+                               + "Grimdark Future and Age of Fantasy do.");
+            }
+            else
+            {
+                int from = FastPlay.RecommendedFromPoints(system) ?? 0;
+                UiText.Wrapped($"Speeds up big games: each unit is measured from one leader model. OPR "
+                               + $"recommends these from {from} pts. Every unit gets a leader you can change "
+                               + "before the game, and the leader is always the last of its models to die.");
+                bool move = _viewModel.FastPlayMovement, melee = _viewModel.FastPlayMelee,
+                     shoot = _viewModel.FastPlayShooting;
+                bool changed = false;
+                changed |= UiButton.Checkbox("Leader-Based Shooting", ref shoot);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip("Range and line of sight are measured from the leader only. If the leader can\n"
+                                   + "see the target, every weapon in range of it from the leader's spot may fire.");
+                // Movement and melee are the next two slices of #456 and are shown, greyed, so the set reads
+                // as the book prints it rather than as a mystery subset.
+                ImGui.BeginDisabled(true);
+                UiButton.Checkbox("Leader-Based Melee (coming next)", ref melee);
+                UiButton.Checkbox("Leader-Based Movement (coming next)", ref move);
+                bool terrain = false;
+                UiButton.Checkbox("Simplified Terrain (later)", ref terrain);
+                ImGui.EndDisabled();
+                if (changed) _viewModel.SetFastPlay(move, melee, shoot);
+            }
         }
 
         ImGui.EndDisabled();

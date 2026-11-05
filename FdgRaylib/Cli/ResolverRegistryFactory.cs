@@ -43,6 +43,7 @@ public static class ResolverRegistryFactory
             // #439: the Command Group picks are a multi-select with a confirm, which no existing
             // request is, so they get their own stdin resolver.
             .RegisterResolver(new PickCommandGroupUnitsResolver())
+            .RegisterResolver(new PickUnitLeadersResolver())   // #456
             .RegisterResolver(new PlaceObjectsResolver<ModelData>(tableState))
             .RegisterResolver(new PlaceOneTerrainResolver(tableState))
             // The text interface has no shop: a CLI defender keeps its points.
@@ -95,6 +96,7 @@ public static class ResolverRegistryFactory
         var placeTerrain   = new GuiPlaceOneTerrainResolver(tableState);
         var hordeShop      = new GuiHordeShopResolver();
         var commandGroupPicks = new GuiPickCommandGroupUnitsResolver();   // #439
+        var unitLeaders = new GuiPickUnitLeadersResolver();               // #456
         overlay.Register(yesNo);
         overlay.Register(selectUnit);
         overlay.Register(selectModel);
@@ -116,6 +118,7 @@ public static class ResolverRegistryFactory
         overlay.Register(placeTerrain);
         overlay.Register(hordeShop);
         overlay.Register(commandGroupPicks);
+        overlay.Register(unitLeaders);
 
         var registry = new StageResolverRegistry()
             .RegisterResolver(yesNo)                                         // GUI
@@ -131,6 +134,9 @@ public static class ResolverRegistryFactory
             // get their own GUI resolver rather than riding the single-unit canvas picker.
             .RegisterResolver<PickCommandGroupUnitsRequest,
                 CancellableResult<List<FDG.Data.DataBinding<UnitData>>>>(commandGroupPicks)
+            // #456: Fast-Play unit leaders - one panel, a drop-down per unit, Confirm.
+            .RegisterResolver<PickUnitLeadersRequest,
+                CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(unitLeaders)
             // #191 A4-3's split kept: melee-defender has its own resolver, which inherits the canvas
             // picker for 2+ defenders and renders a one-click confirm card for a sole defender (#237).
             .RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<FDG.Data.DataBinding<UnitData>>>(

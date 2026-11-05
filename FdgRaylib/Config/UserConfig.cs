@@ -192,6 +192,11 @@ public sealed class HostGameSettings
     public bool SeeThroughFriendlyUnits { get; set; }
     public bool UnlimitedSplitFire { get; set; }
 
+    // #456 Fast-Play rules, remembered like the other rules toggles.
+    public bool FastPlayMovement { get; set; }
+    public bool FastPlayMelee { get; set; }
+    public bool FastPlayShooting { get; set; }
+
     public bool FriendlyUnitsMayOverlap { get; set; }
 
     /// <summary>The engine's own defaults - one source of truth for what a fresh config holds.</summary>
@@ -216,6 +221,9 @@ public sealed class HostGameSettings
         CoverProximityExceptions = settings.CoverProximityExceptionsEnabled,
         SeeThroughFriendlyUnits = settings.SeeThroughFriendlyUnits,
         UnlimitedSplitFire     = settings.UnlimitedSplitFire,
+        FastPlayMovement       = settings.FastPlayMovement,
+        FastPlayMelee          = settings.FastPlayMelee,
+        FastPlayShooting       = settings.FastPlayShooting,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
@@ -239,6 +247,9 @@ public sealed class HostGameSettings
         CoverProximityExceptions = viewModel.CoverProximityExceptions,
         SeeThroughFriendlyUnits = viewModel.SeeThroughFriendlyUnits,
         UnlimitedSplitFire     = viewModel.UnlimitedSplitFire,
+        FastPlayMovement       = viewModel.FastPlayMovement,
+        FastPlayMelee          = viewModel.FastPlayMelee,
+        FastPlayShooting       = viewModel.FastPlayShooting,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
@@ -269,6 +280,7 @@ public sealed class HostGameSettings
         viewModel.SetCoverProximityExceptions(CoverProximityExceptions);
         viewModel.SetSeeThroughFriendlyUnits(SeeThroughFriendlyUnits);
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
+        viewModel.SetFastPlay(FastPlayMovement, FastPlayMelee, FastPlayShooting);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }
