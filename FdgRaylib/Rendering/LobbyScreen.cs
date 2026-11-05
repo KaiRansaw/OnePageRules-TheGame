@@ -111,6 +111,7 @@ public class LobbyScreen : IAppScreen
     {
         _viewModel?.Dispose();
         _viewModel = viewModel;
+        _launchStarted = false;
         _chatInput = "";
         _pendingGame = null;
 
@@ -1912,7 +1913,9 @@ public class LobbyScreen : IAppScreen
         IReadOnlyList<string> blockers = isHost && !resume
             ? _viewModel.BlockingLaunchProblems()
             : Array.Empty<string>();
-        bool canLaunch = isHost && blockers.Count == 0;
+        // Greyed once this lobby has launched: the engine refuses a second launch anyway (it used to start a
+        // second game on the same bus), and a button that still looks live invites the double click.
+        bool canLaunch = isHost && blockers.Count == 0 && !_launchStarted;
 
         Vector2 avail = ImGui.GetContentRegionAvail();
         // Reserve space for the inline error line below the button when present.
@@ -2000,13 +2003,19 @@ public class LobbyScreen : IAppScreen
         return _lastLaunchError == null;
     }
 
+    private bool _launchStarted;
+
     private void DoLaunch(bool resume)
     {
         string? fail;
         bool started = resume ? _viewModel!.TryResumeGame(out fail) : _viewModel!.TryLaunchGame(out fail);
         _lastLaunchError = started ? null : (fail ?? "Launch failed.");
 
-        if (started) PersistHostSettings();
+        if (started)
+        {
+            _launchStarted = true;
+            PersistHostSettings();
+        }
     }
 
     // #310: the settings panel as the host left it becomes the default for the next hosted game.
