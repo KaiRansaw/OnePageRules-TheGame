@@ -1226,6 +1226,9 @@ public class RaylibRenderer
                 UpdatePopupAnchor(layout, show3D, boardRect, screenH);
                 // Bottom of the right column: Battle Report / Mission / Game Master tabs.
                 DrawBottomTabs(rightX, tabsY, rightW, Math.Max(80, screenH - tabsY));
+                // The hovered battle-report card's units, ringed on the table, with a line from shooter to
+                // target. After the tabs so it reads this frame's hover; on the background list so 3D lifts it.
+                Presentation.ReportFocusOverlay.Draw(_tableState, tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 if (!_resolverOverlayFaulted && !animating && !_takeBackInProgress)
                 {
                     try

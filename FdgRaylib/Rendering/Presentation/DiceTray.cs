@@ -55,6 +55,36 @@ public static class DiceTray
         public int LossCount;
         /// <summary>#441: rule names occurring in <see cref="Text"/>, highlighted with a hover.</summary>
         public IReadOnlyList<string> RuleNames = Array.Empty<string>();
+
+        // What the table highlights while this card is hovered (Kai, 2026-11-05).
+        public UnitID? AttackerId, TargetId;
+        /// <summary>Where the shots came from / landed, at the time - used when a unit has since died.</summary>
+        public Position? FromAt, ToAt;
+        /// <summary>Units a one-line entry is about ("X loses a model", "X routs").</summary>
+        public readonly List<UnitID> Units = new();
+    }
+
+    /// <summary>
+    /// What a hovered battle-report card is about, for the table to show: the attacker and target (a line
+    /// between them) and every unit the card names (highlighted). See <see cref="ReportFocusOverlay"/>.
+    /// </summary>
+    public readonly record struct ReportFocus(UnitID? Attacker, UnitID? Target, Position? FromAt, Position? ToAt,
+        IReadOnlyList<UnitID> Units);
+
+    private static ReportFocus? _hover;
+    private static int _hoverFrame = -1;
+
+    /// <summary>The card under the mouse this frame, or null. Read after the report has drawn.</summary>
+    public static ReportFocus? Hovered => _hoverFrame == ImGui.GetFrameCount() ? _hover : null;
+
+    private static void SetHover(Entry e)
+    {
+        var units = new List<UnitID>(e.Units);
+        if (e.AttackerId is { } a && !units.Contains(a)) units.Add(a);
+        if (e.TargetId is { } t && !units.Contains(t)) units.Add(t);
+        if (units.Count == 0 && e.FromAt == null && e.ToAt == null) return;
+        _hover = new ReportFocus(e.AttackerId, e.TargetId, e.FromAt, e.ToAt, units);
+        _hoverFrame = ImGui.GetFrameCount();
     }
 
     private static readonly List<Entry> Entries = new();   // oldest first; drawn newest first
@@ -123,8 +153,12 @@ public static class DiceTray
         {
             case AttackBeat a:
             {
-                IUnit? att = a.From.Count > 0 ? UnitAt(a.From[0]) : PopupAnchor.Progress?.ActivatingUnit;
-                IUnit? tgt = a.To.Count > 0 ? UnitAt(a.To[0]) : null;
+                // The engine names the units now; the nearest-model guess is only for a beat from an older
+                // host or save, and it is the guess that picks the wrong unit in a melee scrum.
+                IUnit? att = (a.AttackerUnit is { } aid ? UnitById(aid) : null)
+                    ?? (a.From.Count > 0 ? UnitAt(a.From[0]) : PopupAnchor.Progress?.ActivatingUnit);
+                IUnit? tgt = (a.TargetUnit is { } tid ? UnitById(tid) : null)
+                    ?? (a.To.Count > 0 ? UnitAt(a.To[0]) : null);
                 if (open != null && Same(open.Attacker, att) && Same(open.Target, tgt) && open.Melee == a.IsMelee)
                 {
                     open.Last = 'a';
@@ -135,6 +169,8 @@ public static class DiceTray
                     Kind = Kind.Attack, Key = key, Melee = a.IsMelee, Attacker = att, Target = tgt,
                     AttackerName = att?.Name ?? "", TargetName = tgt?.Name ?? "",
                     Weapons = att == null ? "" : WeaponList(att, a.IsMelee), Last = 'a',
+                    AttackerId = a.AttackerUnit ?? att?.ID, TargetId = a.TargetUnit ?? tgt?.ID,
+                    FromAt = Centroid(a.From), ToAt = Centroid(a.To),
                 };
                 Add(e);
                 _open = e;
@@ -201,18 +237,26 @@ public static class DiceTray
                 Entry? last = Entries.Count > 0 ? Entries[^1] : null;
                 if (last is { Kind: Kind.Line } && last.LossUnit == died.UnitName)
                 {
+                    if (!last.Units.Contains(died.Unit)) last.Units.Add(died.Unit);
                     last.LossCount++;
                     last.Text = $"{died.UnitName} loses {last.LossCount} models.";
                     break;
                 }
-                Add(new Entry { Kind = Kind.Line, Text = $"{died.UnitName} loses a model.", Color = Bad,
-                    LossUnit = died.UnitName, LossCount = 1 });
+                var lossLine = new Entry { Kind = Kind.Line, Text = $"{died.UnitName} loses a model.", Color = Bad,
+                    LossUnit = died.UnitName, LossCount = 1, ToAt = died.Position };
+                lossLine.Units.Add(died.Unit);
+                Add(lossLine);
                 break;
             }
 
             case UnitRoutedBeat routed:
                 if (open != null && open.Target != null && open.Target.ID.Equals(routed.Unit)) open.Routed = true;
-                else Add(new Entry { Kind = Kind.Line, Text = $"{routed.UnitName} routs!", Color = Bad });
+                else
+                {
+                    var routLine = new Entry { Kind = Kind.Line, Text = $"{routed.UnitName} routs!", Color = Bad };
+                    routLine.Units.Add(routed.Unit);
+                    Add(routLine);
+                }
                 break;
 
             case RollOffBeat r:
@@ -259,6 +303,17 @@ public static class DiceTray
 
     private static Vector4 SideColor(IUnit? unit) =>
         unit == null ? Body : IsMine?.Invoke(unit) == true ? Mine : Theirs;
+
+    private static IUnit? UnitById(UnitID id) =>
+        PopupAnchor.TableState?.Units.Objects.FirstOrDefault(u => u.ID.Equals(id));
+
+    private static Position? Centroid(IReadOnlyList<Position> ps)
+    {
+        if (ps.Count == 0) return null;
+        float x = 0f, z = 0f;
+        foreach (Position p in ps) { x += p.x; z += p.z; }
+        return new Position(x / ps.Count, z / ps.Count);
+    }
 
     private static bool Same(IUnit? a, IUnit? b) => a == null || b == null ? a == b : a.ID.Equals(b.ID);
 
@@ -355,6 +410,9 @@ public static class DiceTray
         if (hotRects is { Count: > 0 }) HoverRuleTooltip(e, hotRects);
 
         float bottom = ImGui.GetCursorScreenPos().Y - ImGui.GetStyle().ItemSpacing.Y;
+        if (e.Units.Count > 0 && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
+            && ImGui.IsMouseHoveringRect(start, new Vector2(start.X + width, bottom)))
+            SetHover(e);
         dl.AddRectFilled(start, new Vector2(start.X + bar, bottom), U(e.Color), 2f);
         if (e.Loud) dl.AddRectFilled(new Vector2(start.X, bottom - 1f), new Vector2(start.X + width, bottom), U(e.Color), 1f);
     }
@@ -422,7 +480,8 @@ public static class DiceTray
 
         Vector2 end = new(start.X + width, ImGui.GetCursorScreenPos().Y + padY - ImGui.GetStyle().ItemSpacing.Y);
         dl.ChannelsSetCurrent(0);
-        bool hovered = ImGui.IsMouseHoveringRect(start, end);
+        bool hovered = ImGui.IsMouseHoveringRect(start, end) && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
+        if (hovered) SetHover(e);
         dl.AddRectFilled(start, end, U(hovered ? new Vector4(0.15f, 0.14f, 0.13f, 1f) : new Vector4(0.11f, 0.10f, 0.09f, 1f)), 5f);
         dl.AddRectFilled(start, new Vector2(start.X + 4f, end.Y), U(attCol), 5f, ImDrawFlags.RoundCornersLeft);
         dl.ChannelsMerge();
