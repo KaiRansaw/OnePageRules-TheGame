@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using FDG;
 using FDG.Ai;
 using FDG.ArmyBuilding;
@@ -1269,43 +1269,84 @@ public class LobbyScreen : IAppScreen
             UiText.Tooltip(LobbyArmySource.WrongSystemTooltip(summary, allowed));
     }
 
-    // #221: the colour cell - a swatch of the row's effective colour + a dropdown of the 8 palette options,
-    // classic-RTS style. Any colour that is currently another row's - explicit pick OR assigned default -
-    // is disabled ("(taken)"), so no pick ever changes someone else's colour. Picks write through the view
-    // model (host: applies + rebroadcasts; client: requests its own row from the host), so they sync to
-    // every machine. Gated by the same modify-permission as Load Army (host: everyone; client: itself).
+    // #221: the colour cell. Kai, 2026-11-05: "Just a button that says Choose Color and when you click it, a
+    // small popup appears with a color wheel you can use to choose your color." So: the row's current colour
+    // as a swatch, a Choose Color button, and a popup with a hue wheel. Any colour goes, except one too close
+    // to another seat's (explicit pick or default alike - PlayerColorOptions.ClashingRow), because two armies
+    // you can't tell apart is the one thing a colour must not do. Picks write through the view model (host:
+    // applies + rebroadcasts; client: requests its own row from the host), so they sync to every machine.
+    // Gated by the same modify-permission as Load Army (host: everyone; client: itself).
+    private int _colorPopupRow = -1;
+    private Vector3 _colorDraft;
+
     private void DrawColorCell(int rowIdx, LobbyPlayerInfoSummary info,
         IReadOnlyList<LobbyPlayerInfoSummary> players, int[] effectiveColor)
     {
-        var (curName, curColor) = PlayerColorOptions.Options[effectiveColor[rowIdx]];
-        var swatch = new Vector4(curColor.R / 255f, curColor.G / 255f, curColor.B / 255f, 1f);
+        Color cur = PlayerColorOptions.ColorFor(effectiveColor[rowIdx]);
+        var swatch = new Vector4(cur.R / 255f, cur.G / 255f, cur.B / 255f, 1f);
 
-        float sz = ImGui.GetTextLineHeight();
+        float sz = ImGui.GetFrameHeight();
         ImGui.ColorButton($"##csw{rowIdx}", swatch,
             ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(sz, sz));
         ImGui.SameLine();
 
         bool canModify = _viewModel!.CheckCanModifyPlayerIDInfo(info.PlayerID);
         ImGui.BeginDisabled(!canModify);
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        if (ImGui.BeginCombo($"##color{rowIdx}", curName))
+        string popupId = $"Choose Color##colorpop{rowIdx}";
+        if (ImGui.Button($"Choose Color##colorbtn{rowIdx}", new Vector2(ImGui.GetContentRegionAvail().X, 0f)))
         {
-            for (int j = 0; j < PlayerColorOptions.Count; j++)
-            {
-                bool takenByOther = PlayerColorOptions.IsTakenByAnother(effectiveColor, rowIdx, j);
-
-                var (name, col) = PlayerColorOptions.Options[j];
-                var itemSwatch = new Vector4(col.R / 255f, col.G / 255f, col.B / 255f, 1f);
-                ImGui.ColorButton($"##cswi{rowIdx}_{j}", itemSwatch,
-                    ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(sz, sz));
-                ImGui.SameLine();
-                if (ImGui.Selectable(takenByOther ? $"{name} (taken)" : name, j == effectiveColor[rowIdx],
-                        takenByOther ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None))
-                    _viewModel.SetPlayerColor(info.PlayerID, j);
-            }
-            ImGui.EndCombo();
+            _colorPopupRow = rowIdx;
+            _colorDraft = new Vector3(swatch.X, swatch.Y, swatch.Z);
+            ImGui.OpenPopup(popupId);
         }
         ImGui.EndDisabled();
+
+        if (ImGui.BeginPopup(popupId))
+        {
+            if (_colorPopupRow != rowIdx) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); return; }
+
+            ImGui.TextUnformatted($"Base colour for {info.PlayerName}");
+            ImGui.SetNextItemWidth(220f);
+            ImGui.ColorPicker3($"##wheel{rowIdx}", ref _colorDraft,
+                ImGuiColorEditFlags.PickerHueWheel | ImGuiColorEditFlags.NoSidePreview
+                | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha);
+
+            var pick = new Color((byte)Math.Round(Math.Clamp(_colorDraft.X, 0f, 1f) * 255f),
+                                 (byte)Math.Round(Math.Clamp(_colorDraft.Y, 0f, 1f) * 255f),
+                                 (byte)Math.Round(Math.Clamp(_colorDraft.Z, 0f, 1f) * 255f), (byte)255);
+            int clash = PlayerColorOptions.ClashingRow(effectiveColor, rowIdx, pick);
+
+            // Old and new side by side, so the choice is made against what it replaces.
+            ImGui.ColorButton($"##old{rowIdx}", swatch, ImGuiColorEditFlags.NoTooltip, new Vector2(40f, 24f));
+            ImGui.SameLine();
+            UiText.Disabled("->");
+            ImGui.SameLine();
+            ImGui.ColorButton($"##new{rowIdx}", new Vector4(_colorDraft, 1f), ImGuiColorEditFlags.NoTooltip,
+                new Vector2(40f, 24f));
+
+            if (clash >= 0)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.45f, 0.4f, 1f));
+                UiText.Wrapped($"Too close to {players[clash].PlayerName}'s colour - pick something more different.");
+                ImGui.PopStyleColor();
+            }
+
+            ImGui.BeginDisabled(clash >= 0);
+            if (ImGui.Button("OK", new Vector2(100f, 0f)))
+            {
+                _viewModel.SetPlayerColor(info.PlayerID, PlayerColorOptions.EncodeCustom(pick.R, pick.G, pick.B));
+                _colorPopupRow = -1;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(100f, 0f)))
+            {
+                _colorPopupRow = -1;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
     }
 
     // #255: the team cell - a dropdown of Team 1..Team N, N = player count capped at the highest team

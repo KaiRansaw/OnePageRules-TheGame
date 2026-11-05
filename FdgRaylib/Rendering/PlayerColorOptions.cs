@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Raylib_cs;
 
 namespace FdgRaylib.Rendering;
@@ -34,6 +35,63 @@ public static class PlayerColorOptions
 
     public static int Count => Options.Length;
 
+    // ── Any colour from the wheel (Kai, 2026-11-05: "a button that says Choose Color and when you click it,
+    // a small popup appears with a color wheel") ─────────────────────────────────────────────────────────
+    //
+    // A pick is still ONE int, so it rides the existing lobby sync, the save's crew list and the host's
+    // first-committed-wins check unchanged - no protocol bump. 0..Count-1 is a palette entry (kept so old
+    // saves and the defaults still mean what they meant); a wheel colour is CustomFlag | 0xRRGGBB. -1 is
+    // "no pick", as before. The engine never decodes it; this class is the only decoder.
+
+    /// <summary>Marks a pick as a free RGB colour rather than a palette index.</summary>
+    public const int CustomFlag = 0x01000000;
+
+    /// <summary>The pick code for an arbitrary colour.</summary>
+    public static int EncodeCustom(byte r, byte g, byte b) => CustomFlag | (r << 16) | (g << 8) | b;
+
+    /// <summary>True for a palette index in range or a well-formed wheel colour.</summary>
+    public static bool IsValidCode(int code) =>
+        (code >= 0 && code < Options.Length) || (code & ~0x00FFFFFF) == CustomFlag;
+
+    /// <summary>The colour a pick code stands for. An invalid code falls back to the first palette colour.</summary>
+    public static Color ColorFor(int code)
+    {
+        if (code >= 0 && code < Options.Length) return Options[code].Color;
+        if ((code & ~0x00FFFFFF) == CustomFlag)
+            return new Color((byte)((code >> 16) & 0xFF), (byte)((code >> 8) & 0xFF), (byte)(code & 0xFF), (byte)255);
+        return Options[0].Color;
+    }
+
+    /// <summary>
+    /// How far apart two colours look, 0 (same) to about 765. The "redmean" weighting: plain RGB distance
+    /// rates greens as further apart than the eye does and blues as closer, which is exactly the pair a
+    /// player would be fooled by. Cheap and good enough to stop two armies looking alike.
+    /// </summary>
+    public static float Difference(Color a, Color b)
+    {
+        float rMean = (a.R + b.R) / 2f;
+        float dr = a.R - b.R, dg = a.G - b.G, db = a.B - b.B;
+        return MathF.Sqrt((2f + rMean / 256f) * dr * dr + 4f * dg * dg + (2f + (255f - rMean) / 256f) * db * db);
+    }
+
+    /// <summary>
+    /// Below this, two armies' bases are too alike to tell apart at a glance. Tuned so the palette's own
+    /// neighbours stay legal with room to spare: the nearest pair, orange/yellow, is about 176.
+    /// </summary>
+    public const float MinDifference = 110f;
+
+    /// <summary>
+    /// The row whose colour is too close to <paramref name="candidate"/> for <paramref name="rowIdx"/> to
+    /// take it, or -1 when it is free. Compares against every OTHER row's effective colour - explicit pick
+    /// or default alike, the same "defaults are reserved" rule the palette dropdown had.
+    /// </summary>
+    public static int ClashingRow(int[] effectiveCodes, int rowIdx, Color candidate)
+    {
+        for (int k = 0; k < effectiveCodes.Length; k++)
+            if (k != rowIdx && Difference(ColorFor(effectiveCodes[k]), candidate) < MinDifference) return k;
+        return -1;
+    }
+
     /// <summary>
     /// True when option <paramref name="optionIdx"/> is unavailable to row <paramref name="rowIdx"/>
     /// because it is some OTHER row's effective colour - explicit pick or assigned default alike. The
@@ -62,13 +120,21 @@ public static class PlayerColorOptions
         int n = chosenPerSlot.Count;
         var result = new int[n];
         var taken = new HashSet<int>();
+        var customPicks = new List<Color>();
         for (int i = 0; i < n; i++)
-            if (chosenPerSlot[i] is int c && c >= 0 && c < Options.Length)
-                taken.Add(c);
+            if (chosenPerSlot[i] is int c && IsValidCode(c))
+            {
+                if (c < Options.Length) taken.Add(c);
+                else customPicks.Add(ColorFor(c));
+            }
+        // A wheel colour reserves every palette default it looks like, so an unpicked seat never lands on
+        // a near-twin of somebody's custom colour.
+        for (int o = 0; o < Options.Length; o++)
+            if (customPicks.Any(cp => Difference(cp, Options[o].Color) < MinDifference)) taken.Add(o);
 
         for (int i = 0; i < n; i++)
         {
-            if (chosenPerSlot[i] is int chosen && chosen >= 0 && chosen < Options.Length)
+            if (chosenPerSlot[i] is int chosen && IsValidCode(chosen))
             {
                 result[i] = chosen;
                 continue;

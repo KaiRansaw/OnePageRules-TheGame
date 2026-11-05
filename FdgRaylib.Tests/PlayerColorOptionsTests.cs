@@ -94,4 +94,85 @@ public class PlayerColorOptionsTests
         Assert.That(r[8], Is.EqualTo(0), "ninth wraps to its slot colour");
         Assert.That(r[9], Is.EqualTo(1));
     }
+
+    // ── Choose Color wheel (Kai, 2026-11-05) ──────────────────────────────────────────────────────────
+
+    [Test]
+    public void WheelColour_RoundTripsThroughTheOneSyncedInt()
+    {
+        int code = PlayerColorOptions.EncodeCustom(12, 200, 99);
+        Assert.That(PlayerColorOptions.IsValidCode(code), Is.True);
+        var c = PlayerColorOptions.ColorFor(code);
+        Assert.That((c.R, c.G, c.B), Is.EqualTo(((byte)12, (byte)200, (byte)99)));
+        Assert.That(code, Is.GreaterThanOrEqualTo(PlayerColorOptions.Count), "never mistaken for a palette index");
+    }
+
+    [Test]
+    public void WheelColour_EvenPureBlack_IsNotTheNoPickValue()
+    {
+        int code = PlayerColorOptions.EncodeCustom(0, 0, 0);
+        Assert.That(code, Is.Not.EqualTo(-1));
+        Assert.That(code, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void OldPaletteIndices_StillMeanWhatTheyMeant()
+    {
+        for (int i = 0; i < PlayerColorOptions.Count; i++)
+            Assert.That(PlayerColorOptions.ColorFor(i), Is.EqualTo(PlayerColorOptions.Options[i].Color));
+    }
+
+    [Test]
+    public void Resolve_KeepsAWheelPick()
+    {
+        int code = PlayerColorOptions.EncodeCustom(10, 20, 30);
+        int[] r = PlayerColorOptions.ResolveIndices(new int?[] { code, null });
+        Assert.That(r[0], Is.EqualTo(code));
+    }
+
+    [Test]
+    public void Resolve_ADefaultNeverLandsOnANearTwinOfAWheelPick()
+    {
+        // Slot 1 picks almost-purple; slot 0's default is orange and stays; slot 2 would default to
+        // purple (index 1) but must skip it now.
+        int nearPurple = PlayerColorOptions.EncodeCustom(152, 72, 198);
+        int[] r = PlayerColorOptions.ResolveIndices(new int?[] { null, nearPurple, null });
+        Assert.That(r[0], Is.EqualTo(0));
+        Assert.That(r[2], Is.Not.EqualTo(1));
+        Assert.That(PlayerColorOptions.Difference(PlayerColorOptions.ColorFor(r[2]),
+            PlayerColorOptions.ColorFor(nearPurple)), Is.GreaterThanOrEqualTo(PlayerColorOptions.MinDifference));
+    }
+
+    [Test]
+    public void Clash_ANearIdenticalColourToAnotherSeat_IsRefused_AndYourOwnIsNot()
+    {
+        int[] effective = PlayerColorOptions.ResolveIndices(new int?[] { null, null }); // orange, purple
+        var nearOrange = new Raylib_cs.Color(250, 165, 10, 255);
+        Assert.That(PlayerColorOptions.ClashingRow(effective, 1, nearOrange), Is.EqualTo(0));
+        Assert.That(PlayerColorOptions.ClashingRow(effective, 0, nearOrange), Is.EqualTo(-1),
+            "moving your own colour slightly is fine");
+        var blue = new Raylib_cs.Color(0, 121, 241, 255);
+        Assert.That(PlayerColorOptions.ClashingRow(effective, 1, blue), Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void ThePalettesOwnColours_AreAllFarEnoughApart()
+    {
+        var o = PlayerColorOptions.Options;
+        for (int i = 0; i < o.Length; i++)
+        for (int j = i + 1; j < o.Length; j++)
+            Assert.That(PlayerColorOptions.Difference(o[i].Color, o[j].Color),
+                Is.GreaterThanOrEqualTo(PlayerColorOptions.MinDifference), $"{o[i].Name} vs {o[j].Name}");
+    }
+
+    [Test]
+    public void TheLobbyOffersTheWheel_NotTheOldDropdown()
+    {
+        var dir = new System.IO.DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (dir != null && !System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "fdg-raylib.sln"))) dir = dir.Parent;
+        string src = System.IO.File.ReadAllText(System.IO.Path.Combine(dir!.FullName, "FdgRaylib", "Rendering", "LobbyScreen.cs"));
+        Assert.That(src, Does.Contain("\"Choose Color##colorbtn"));
+        Assert.That(src, Does.Contain("ImGuiColorEditFlags.PickerHueWheel"));
+        Assert.That(src, Does.Contain("PlayerColorOptions.EncodeCustom"));
+    }
 }

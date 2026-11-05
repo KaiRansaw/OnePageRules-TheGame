@@ -52,7 +52,7 @@ public static class GameGuiWiring
         var nameColors = new Dictionary<string, TextColor>();
         for (int i = 0; i < players.Count; i++)
         {
-            Color c = PlayerColorOptions.Options[colorIdx[i]].Color;
+            Color c = PlayerColorOptions.ColorFor(colorIdx[i]);
             colors[players[i].ID] = c;
             nameColors[players[i].Name] = new TextColor(c.R, c.G, c.B, 255);
         }
