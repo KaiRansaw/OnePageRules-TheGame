@@ -1,5 +1,7 @@
 # 446 — Campaign detail panel, and a win/loss record to put in it
 
+> **2026-11-05: the history backfill described below was broken** - it never matched a real history line, and it forgot recovered wins after the next mission. Its test passed only because the test wrote the history itself. Fixed in **#449**; read that file before trusting anything below about the backfill.
+
 **Status:** done (engine `f6d4a1d`, app `4446d45`, build 0.79, patch B63).
 **Spec:** `claude/campaign-flow-spec.md` section 2. Follows #445, which built section 3a.
 

@@ -918,3 +918,6 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 
 > **2026-11-05 - number 448.** `git fetch origin` at the start of the session: nothing new on origin,
 > highest filed is 447 (this project's own, 2026-11-03). **448 = the campaign journal.** No collision.
+
+> **2026-11-05 - numbers 449 and 450.** Same session as 448, origin re-fetched: highest filed is 448.
+> **449 = the fix to #446's win recovery; 450 = the journal record and export.** No collision.
