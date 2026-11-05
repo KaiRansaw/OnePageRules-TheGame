@@ -589,9 +589,12 @@ public sealed class StrikeTeamScreen : IAppScreen
             UnitFileEntry unit = army.Units[i];
             StrikeUnit? sheet = CampaignRules.Sheet(unit);
             string tag = sheet?.IsHero == true ? " [hero]" : "";
+            // #453: a renamed unit says what it is on its second line.
+            string type = sheet != null && CampaignRules.HasOwnName(unit, army.Book)
+                ? CampaignRules.UnitTypeOf(unit, army.Book) + " - " : "";
             string second = sheet == null
                 ? "no campaign sheet"
-                : $"   Lv {sheet.Level} - {sheet.Xp} XP - {unit.ModelCount} model(s) - {unit.PointCost} pts";
+                : $"   {type}Lv {sheet.Level} - {sheet.Xp} XP - {unit.ModelCount} model(s) - {unit.PointCost} pts";
             if (sheet is { MissionsOut: > 0 })
                 second = $"   RECOVERING - out for {sheet.MissionsOut} more mission(s)";
             if (sheet?.Pending.Count > 0) second = "   WAITING ON YOU: pick a trait";
@@ -618,13 +621,45 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     // Column 2 ---------------------------------------------------------------------------------------
 
+    // #453: the rename box's text, and which unit it belongs to, so switching units reloads it rather
+    // than carrying one unit's half-typed name onto the next.
+    private string _renameBuf = "";
+    private string? _renameFor;
+
+    private void DrawRename(string path, BuiltArmyFile army, UnitFileEntry unit, StrikeUnit sheet)
+    {
+        if (_renameFor != sheet.Id) { _renameFor = sheet.Id; _renameBuf = unit.Name; }
+
+        ImGui.SetNextItemWidth(260f);
+        bool enter = ImGui.InputText("##rename", ref _renameBuf, CampaignRules.MaxUnitNameLength,
+            ImGuiInputTextFlags.EnterReturnsTrue);
+        ImGui.SameLine();
+        bool changed = !string.Equals(_renameBuf.Trim(), unit.Name, StringComparison.Ordinal);
+        ImGui.BeginDisabled(!changed);
+        bool clicked = UiButton.NavigateSmall("Rename");
+        ImGui.EndDisabled();
+        if (!(enter || clicked) || !changed) return;
+
+        string old = unit.Name;
+        if (CampaignRules.Rename(army, unit, _renameBuf, army.Book) is { } why) { Say(why, true); return; }
+        _renameBuf = unit.Name;
+        SaveCurrent(path, army);
+        Say($"{old} is now {unit.Name}.");
+    }
+
     private void DrawUnitDetail(string path, BuiltArmyFile army, CampaignNumbers n)
     {
         if (_unit < 0 || _unit >= army.Units.Count) { UiText.Disabled("Pick a unit on the left."); return; }
         UnitFileEntry unit = army.Units[_unit];
         if (CampaignRules.Sheet(unit) is not { } sheet) { UiText.Disabled("This unit has no campaign sheet."); return; }
 
+        // #453: the unit's own name large, what it is small underneath ("Vargas Squad" / Assault Grunts),
+        // and a box to rename it.
+        ImGui.SetWindowFontScale(1.35f);
         UiText.Colored(Accent, unit.Name + (sheet.IsHero ? "   [hero]" : ""));
+        ImGui.SetWindowFontScale(1f);
+        UiText.Disabled(CampaignRules.UnitTypeOf(unit, army.Book));
+        DrawRename(path, army, unit, sheet);
         ImGui.TextUnformatted($"{unit.ModelCount} model(s)   Quality {unit.Quality}+   Defense {unit.Defense}+   " +
                               $"{unit.PointCost} pts (book {CampaignEconomy.BookCost(unit)}, campaign {sheet.CostChange:+0;-0;0})");
 
