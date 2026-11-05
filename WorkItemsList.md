@@ -122,6 +122,9 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 ## Victory & scoring
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
+- [x] 453 — Campaign unit names: rename on the camp screen, type kept on the sheet (`StrikeUnit.UnitType`) and shown under the name. Done, B69 / 0.85. ([WorkItems/453](WorkItems/453-campaign-unit-names.md))
+- [x] 452 — New campaign wizard: build or pick your army, build the enemy or "Pick one for me", name both, optional opening note. Done, B68 / 0.84. ([WorkItems/452](WorkItems/452-new-campaign-flow.md))
+- [x] 451 — Locked Army Forge for campaign armies (one game's books, treasury as wallet, Continue gated by `CannotStart`). Done, 0.84. ([WorkItems/451](WorkItems/451-locked-army-forge.md))
 - [x] 450 — Journal: the game's own record on each mission page (`CampaignMissionNote.Record`, written by `AfterGame` + the write-back) and **Export journal** to a text file. Done, B67 / 0.83. ([WorkItems/450](WorkItems/450-journal-record-and-export.md))
 - [x] 449 — Fix #446: win recovery matched nothing in a real file (looked for the log text, not `Match N: won - `) and forgot recovered wins after the next mission. Done, B66 / 0.82. ([WorkItems/449](WorkItems/449-campaign-win-recovery-fix.md))
 - [x] 448 — Campaign journal: `StrikeTeamInfo.Journal` + per-mission `MissionNotes` via `CampaignJournal`, kept out of `History`; a Journal page on the camp screen. Done, B65 / 0.81; awaiting Kai's hand-verify. ([WorkItems/448](WorkItems/448-campaign-journal.md))

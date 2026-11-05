@@ -921,3 +921,7 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 
 > **2026-11-05 - numbers 449 and 450.** Same session as 448, origin re-fetched: highest filed is 448.
 > **449 = the fix to #446's win recovery; 450 = the journal record and export.** No collision.
+
+> **2026-11-05 - numbers 451, 452, 453.** Same session, origin re-fetched before each commit: highest
+> filed was 450. **451 = locked Army Forge, 452 = new-campaign wizard, 453 = campaign unit names.**
+> No collision.
