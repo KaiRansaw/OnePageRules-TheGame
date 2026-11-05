@@ -2131,14 +2131,7 @@ public class LobbyScreen : IAppScreen
             viewModel.SetGameMode(GameSystemInfo.Modes(system)[0]);
     }
 
-    private static string GameModeLabel(EGameMode mode) => mode switch
-    {
-        EGameMode.Standard => "Standard",
-        EGameMode.Horde => "Horde",
-        EGameMode.StarQuestHorde => "Star Quest Horde",
-        EGameMode.StarQuestMission => "Star Quest Mission",
-        _ => mode.ToString(),
-    };
+    private string GameModeLabel(EGameMode mode) => GameSystemInfo.ModeLabel(mode, _viewModel!.GameSystem);
 
     private static string ShootingModeLabel(EShootingMode mode) => mode switch
     {

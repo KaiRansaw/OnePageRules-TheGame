@@ -2527,7 +2527,21 @@ public class RaylibRenderer
         ImGui.SameLine();
         ImGui.TextUnformatted("  Items: " + pack);
         if (sheet.Conditions.Count > 0)
-            UiText.Colored(new Vector4(1f, 0.5f, 0.4f, 1f), "Conditions: " + string.Join(", ", sheet.Conditions));
+        {
+            // Each condition highlighted and explained on hover, in the book's words for the Quest game being
+            // played (Kai, 2026-11-05: "make that condition in game a highlighted tooltip (ie Afflicted)").
+            EGameSystem system = PopupAnchor.Progress?.GameSystem ?? EGameSystem.GFStarQuest;
+            var segments = new List<RuleHoverText.Segment> { new("Conditions: ", null, null) };
+            for (int i = 0; i < sheet.Conditions.Count; i++)
+            {
+                if (i > 0) segments.Add(new RuleHoverText.Segment(", ", null, null));
+                string c = sheet.Conditions[i];
+                segments.Add(new RuleHoverText.Segment(c, c, FDG.Stages.QuestTreasure.ConditionText(c, system)));
+            }
+            ImGui.PopTextWrapPos();
+            RuleHoverText.DrawWrapped(segments, ImGui.GetContentRegionAvail().X, new Vector4(1f, 0.5f, 0.4f, 1f));
+            ImGui.PushTextWrapPos(0f);
+        }
         // Skills in play this round (Reckless, Dread Attack ready, +6" next spell...).
         List<string> active = FDG.Stages.QuestFlags.Describe(quest, hero);
         if (active.Count > 0)

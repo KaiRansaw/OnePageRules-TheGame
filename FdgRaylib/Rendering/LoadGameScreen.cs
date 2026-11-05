@@ -120,7 +120,7 @@ public sealed class LoadGameScreen : IAppScreen
         s.ArmyPoints = progress != null ? settings.ArmyPoints : s.PointsLimits.DefaultIfEmpty(0).Max();
         s.Background = TableBackgrounds.For(settings.TableBackground);
         EGameMode mode = table.Progress.GameMode;
-        s.ModeLabel = mode switch { EGameMode.Horde => "Horde Mode", EGameMode.StarQuestHorde => "Star Quest Horde", EGameMode.StarQuestMission => "Star Quest Mission", _ => "Standard" };
+        s.ModeLabel = mode == EGameMode.Horde ? "Horde Mode" : GameSystemInfo.ModeLabel(mode, settings.GameSystem);
         s.HordePoints = table.Progress.HordePointsEarned;
         s.RoundLabel = table.Progress.RoundCount is int r ? $"Round {r}/{table.Progress.TotalRounds}" : "Deployment";
         s.CanResume = progress != null;

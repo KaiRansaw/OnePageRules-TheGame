@@ -1,3 +1,4 @@
+using FDG.Rules.Dispatch;
 using FDG;
 using System.Numerics;
 using FDG.Quest;
@@ -810,6 +811,24 @@ public sealed class HeroBuilderScreen : IAppScreen
 
     // ── Hero sheet ────────────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// A hero's rules as hoverable names (Kai, 2026-11-05: the hero sheet's special rules had no tooltips).
+    /// The text is this Quest game's own: the hero's faction rule from its hero book first, else OPR's wording
+    /// for THIS system only (<see cref="OfficialRuleText.OwnText"/>) - never Grimdark Future's or Age of
+    /// Fantasy's, which word several of these differently.
+    /// </summary>
+    private IReadOnlyList<RuleHoverText.Segment> RuleSegments(QuestHero hero, IEnumerable<string> rules)
+    {
+        SqFaction? faction = Data.Factions.FirstOrDefault(f => f.Uid == hero.FactionUid);
+        var segments = new List<RuleHoverText.Segment>();
+        foreach (string rule in rules)
+        {
+            if (segments.Count > 0) segments.Add(new RuleHoverText.Segment(", ", null, null));
+            segments.Add(new RuleHoverText.Segment(rule, rule, QuestRuleText.For(rule, System, faction)));
+        }
+        return segments;
+    }
+
     private void DrawSheet(QuestHero? hero)
     {
         Header("HERO SHEET");
@@ -849,8 +868,10 @@ public sealed class HeroBuilderScreen : IAppScreen
         UiText.Disabled($"{hero.Points} pts   -   {hero.Credits}{Money} {MoneyWord}   -   XP {hero.Xp}");
 
         Header("SPECIAL RULES");
+        if (hero.Rules.Count > 0)
+            RuleHoverText.DrawWrapped(RuleSegments(hero, hero.Rules), ImGui.GetContentRegionAvail().X);
+        else ImGui.TextUnformatted("-");
         ImGui.PushTextWrapPos(0f);
-        ImGui.TextUnformatted(hero.Rules.Count > 0 ? string.Join(", ", hero.Rules) : "-");
         if (hero.Gear.Count > 0) UiText.Disabled("Gear: " + string.Join(", ", hero.Gear));
         ImGui.PopTextWrapPos();
 
@@ -868,7 +889,10 @@ public sealed class HeroBuilderScreen : IAppScreen
                 ImGui.TableNextColumn(); ImGui.TextUnformatted((wpn.Count > 1 ? $"{wpn.Count}x " : "") + wpn.Name);
                 ImGui.TableNextColumn(); ImGui.TextUnformatted(wpn.Range > 0 ? $"{wpn.Range}\"" : "-");
                 ImGui.TableNextColumn(); ImGui.TextUnformatted($"A{wpn.Attacks}");
-                ImGui.TableNextColumn(); ImGui.PushTextWrapPos(0f); ImGui.TextUnformatted(wpn.Rules.Count > 0 ? string.Join(", ", wpn.Rules) : "-"); ImGui.PopTextWrapPos();
+                ImGui.TableNextColumn();
+                if (wpn.Rules.Count > 0)
+                    RuleHoverText.DrawWrapped(RuleSegments(hero, wpn.Rules), ImGui.GetContentRegionAvail().X);
+                else ImGui.TextUnformatted("-");
             }
             ImGui.EndTable();
         }
