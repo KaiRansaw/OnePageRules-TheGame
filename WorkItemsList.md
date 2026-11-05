@@ -122,6 +122,11 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 ## Victory & scoring
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
+- [ ] 460 — Fast-Play: Simplified Terrain - every piece an enterable Solid Building (capacity, inside = Cover, shoot out, one unit inside chargeable). Deferred by Kai 2026-11-05 as its own job.
+- [ ] 459 — Fast-Play: Leader-Based Movement - distances from the leader only, others placed in coherency. Next after #458.
+- [ ] 458 — Fast-Play: Leader-Based Melee - charge measured from the leader, everyone strikes, leader-first separation. Next.
+- [x] 457 — Fast-Play: Leader-Based Shooting (sight, range, cover from the leader). Done, B72 / 0.88. ([WorkItems/457](WorkItems/457-fast-play-leader-shooting.md))
+- [x] 456 — Fast-Play switches + unit leaders (auto-picked, changeable before deployment, last to die). Done, B72 / 0.88. ([WorkItems/456](WorkItems/456-fast-play-unit-leaders.md))
 - [x] 455 — The player runs the enemy's books: bot no longer spends after a mission; camp screen Your army / Enemy army switch. Done, B71 / 0.87. ([WorkItems/455](WorkItems/455-player-runs-enemy-books.md))
 - [x] 454 — Renamed campaign units show their type in game (card, hover, army list, table label) via `UnitData.CampaignTypeIfRenamed`. Done, B70 / 0.86. ([WorkItems/454](WorkItems/454-unit-type-in-game.md))
 - [x] 453 — Campaign unit names: rename on the camp screen, type kept on the sheet (`StrikeUnit.UnitType`) and shown under the name. Done, B69 / 0.85. ([WorkItems/453](WorkItems/453-campaign-unit-names.md))

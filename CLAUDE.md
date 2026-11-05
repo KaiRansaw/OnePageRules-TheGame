@@ -83,8 +83,10 @@ v2.1.0 says 6" - this test is the regression guard for the bump" is documenting 
 the old book. The rule is about *justification*, not about mentioning a version.
 
 **Known gaps created by this ruling** (as of 2026-11-01): the project has **no AoF: Quest Core Rules
-2.1.0** - only 2.0.1, now archived - and **no GF Advanced Rules 3.6.0**, only 3.5.1. So AoF: Quest core
-rules and anything from Advanced Rules currently have no valid source. Flag, do not guess.
+2.1.0** - only 2.0.1, now archived - so AoF: Quest core rules currently have no valid source. Flag, do not
+guess. *(The other gap, "no GF Advanced Rules 3.6.0", closed on 2026-11-02: all four Advanced books - GF,
+GFF, AoF, AoFS - are in the project at 3.6.0. They are four different books; see
+`claude/advanced-rules-audit.md`.)*
 
 ## When the books and Army Forge disagree, Army Forge wins
 

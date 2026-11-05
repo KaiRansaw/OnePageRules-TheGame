@@ -929,3 +929,7 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **2026-11-05 - number 454.** Same session; highest filed was 453. **454 = unit type shown in game.**
 
 > **2026-11-05 - number 455.** Same session; highest filed was 454. **455 = the player runs the enemy's books.**
+
+> **2026-11-05 - numbers 456-460.** `git fetch origin` before committing: highest filed was 455, nothing new
+> on origin. **456 Fast-Play leaders, 457 leader shooting** (built); **458 melee, 459 movement, 460
+> Simplified Terrain** reserved as open items. No collision.
