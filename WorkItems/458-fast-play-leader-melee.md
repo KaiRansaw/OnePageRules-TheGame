@@ -1,6 +1,6 @@
 # 458 — Fast-Play: Leader-Based Melee
 
-**Status:** part 1 done 2026-11-05 (build 0.94, patch B78). Part 2 open (below).
+**Status:** part 1 done (B78); leader-only charge done with #459 (B81). Only the leader-first 1" separation is open - see WorkItems/459.
 
 Source: GF and AoF Advanced Rulebook 3.6.0, p17 (identical wording):
 "When a unit wants to charge, only measure distances from the leader and move it into base contact first.

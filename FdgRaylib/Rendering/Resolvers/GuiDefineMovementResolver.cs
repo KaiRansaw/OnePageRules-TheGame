@@ -250,7 +250,7 @@ public class GuiDefineMovementResolver
             // the click hit test (#150/#312), so a remote viewer's ghost cannot drift from the placer's.
             Float2 finalFacing = PlannedPose(pt, m, waypoints).facing;
 
-            var (mAdvance, mRush, mCharge) = request.BudgetFor(m.ID);
+            var (mAdvance, mRush, mCharge) = request.PlayerBudgetFor(m.ID);
             bool hasChargeBand = mCharge > mRush + 0.0001f;
             float committedDist = pt.GetTotalDistanceMoved(m);
 
@@ -564,7 +564,7 @@ public class GuiDefineMovementResolver
         // budget — a joined hero with Fast shows bigger rings and can be placed further than its unitmates.
         // Group mode keeps the unit scalars here and applies each model's own budget in DrawGroupGhostAndInput.
         if (!group && _selectedModel != null)
-            (maxAdvance, maxRush, maxCharge) = request.BudgetFor(_selectedModel.ID);
+            (maxAdvance, maxRush, maxCharge) = request.PlayerBudgetFor(_selectedModel.ID);
         bool  hasChargeBand = maxCharge > maxRush + 0.0001f;
 
         // #334: the forced-charge bands go down FIRST, under the paths and ghosts - they mark ground, and a
@@ -660,7 +660,7 @@ public class GuiDefineMovementResolver
             // #155: once the committed path has crossed difficult terrain, the 6" total cap governs
             // every band - shrink the rings so they show the model's true remaining reach.
             float ringAdvance = maxAdvance, ringRush = maxRush, ringCharge = maxCharge;
-            if (difficultActive && committedCrossedDifficult.Contains(_selectedModel))
+            if (difficultActive && CountsForDifficult(request, _selectedModel) && committedCrossedDifficult.Contains(_selectedModel))
             {
                 float cap = GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES;
                 ringAdvance = MathF.Min(ringAdvance, cap);
@@ -724,7 +724,7 @@ public class GuiDefineMovementResolver
             // with no visible cause was the thing playtesters couldn't read.
             float allowedIgnoringDifficult = allowed;
             var difficultClampKind = MovementUtilities.EDifficultClampKind.NotLimited;
-            if (difficultActive && allowed > 0.0001f && dist > 0.0001f)
+            if (difficultActive && CountsForDifficult(request, _selectedModel) && allowed > 0.0001f && dist > 0.0001f)
             {
                 var segStart = new Float2(anchor.x, anchor.z);
                 var segEnd   = new Float2(anchor.x + dx / dist * allowed, anchor.z + dz / dist * allowed);
@@ -1122,6 +1122,20 @@ public class GuiDefineMovementResolver
         }
     }
 
+    /// <summary>
+    /// #459 Fast-Play Leader-Based Movement: the difficult-terrain cap is a measured distance, and only the
+    /// leader is measured - every other model may cross freely. Every model counts otherwise.
+    /// </summary>
+    /// <summary>"Model 3" - the leader as the leader picker and the unit card name it.</summary>
+    private static string LeaderLabel(DefineMovementPathRequest request, ModelID leaderId)
+    {
+        int index = request.UnitDataBinding.GetValue().Models.ToList().FindIndex(m => m.ID.Equals(leaderId)) + 1;
+        return index > 0 ? $"Model {index}, marked with chevrons" : "marked with chevrons";
+    }
+
+    private static bool CountsForDifficult(DefineMovementPathRequest request, IModel model) =>
+        !request.LeaderOnlyMovement || request.IsMeasured(model.ID);
+
     private static void DrawSingleModeHints()
     {
         ImGui.TextDisabled($"{ResolverHotkeys.CycleHint}: pick model   L-click: place waypoint");
@@ -1172,12 +1186,12 @@ public class GuiDefineMovementResolver
             // whichever model has the least remaining budget. Land just shy of the cap so a model that
             // travels its full allowance still classifies as Advance (not Rush) and clears the engine's
             // shoot-after-advance gate — matches single mode.
-            var (mAdvance, _, mCharge) = request.BudgetFor(m.ID);
+            var (mAdvance, _, mCharge) = request.PlayerBudgetFor(m.ID);
             float cap = advanceOnly ? mAdvance : mCharge;
             // #155: a model whose committed path already crossed difficult terrain has its whole move
             // capped at 6" total - fold that into its group budget (the clamp margin keeps the plan's
             // budget-limited steps under what ClampTravelForDifficultTerrain will allow below).
-            if (difficultActive && committedCrossedDifficult.Contains(m))
+            if (difficultActive && CountsForDifficult(request, m) && committedCrossedDifficult.Contains(m))
                 cap = MathF.Min(cap, GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES
                     - MovementUtilities.DIFFICULT_TERRAIN_CLAMP_MARGIN_INCHES);
             budgets.Add(cap - pt.GetTotalDistanceMoved(m) - GroupMoveSafetyMargin);
@@ -1312,7 +1326,7 @@ public class GuiDefineMovementResolver
                     float stepDist = Position.GetDistance2D(from, to);
                     if (stepDist <= 0.0001f) continue;
                     Float2 facing = StepFacing(from, to, models[i]);
-                    if (difficultActive && includeDifficult)
+                    if (difficultActive && includeDifficult && CountsForDifficult(request, models[i]))
                     {
                         float allowedDist = MovementUtilities.ClampTravelForDifficultTerrain(
                             new Float2(from.x, from.z), new Float2(to.x, to.z),
@@ -1720,6 +1734,12 @@ public class GuiDefineMovementResolver
 
         bool group = _formationMode.IsGroup || _boxSelected.Count > 0;
 
+        // #459 Fast-Play: say which model is measured, since the rest are free.
+        if (request.MeasuredModelId is { } leaderId)
+            UiText.Colored(new Vector4(1f, 0.86f, 0.4f, 1f), request.LeaderOnlyMovement
+                ? $"Fast-Play: only the leader ({LeaderLabel(request, leaderId)}) is measured - place the rest anywhere in coherency."
+                : $"Fast-Play: charging? Only the leader ({LeaderLabel(request, leaderId)}) is measured - the rest may go anywhere in contact.");
+
         if (_boxSelected.Count > 0)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.80f, 1f, 1f));
@@ -1799,14 +1819,19 @@ public class GuiDefineMovementResolver
         var friendlyFootprints = GetFriendlyFootprintsForRequest(request);
         // #093: validate each model against its OWN budget so Done gates exactly as the authoritative stage.
         bool engineValid = MovementUtilities.ValidatePaths(results,
-            entry => { var (_, rush, maxDist) = request.BudgetFor(entry.Model.GetValue().ID);
+            entry => { var (_, rush, maxDist) = request.PlayerBudgetFor(entry.Model.GetValue().ID);
                        return new ModelMoveBudget(rush, maxDist); },
             enemyFootprints, request.CanMoveThroughEnemies, request.IgnoresDifficultTerrain, request.IgnoresImpassibleTerrain, terrain, out var engineErrors,
-            friendlyFootprints, lenientCoherency: true); // the same coherency rule DefinePathStage applies
+            friendlyFootprints, lenientCoherency: true, // the same coherency rule DefinePathStage applies
+            // #459: and the same Fast-Play difficult-terrain rule - only the leader is measured.
+            measured: request.LeaderOnlyMovement ? entry => request.IsMeasured(entry.Model.GetValue().ID) : null);
         var finals = BuildFinalPositions(pt.CurrentPaths, null, null);
         var cohesion = CheckCohesion(finals);
 
         var issues = new List<string>();
+        // #458/#459: the Fast-Play charge rule, from the same helper the authoritative stage uses.
+        if (MovementUtilities.FastPlayChargeProblem(request, results, enemyFootprints) is { } fastPlayProblem)
+            issues.Add(fastPlayProblem);
         if (!engineValid)
         {
             // Skip the engine's coherency errors — its check is broken; we report our own below.
@@ -2054,7 +2079,7 @@ public class GuiDefineMovementResolver
     private static ModelRosterRow RosterRowFor(DefineMovementPathRequest request, PathTemplate pt,
         IModel model, bool capped, int ordinal = 0)
     {
-        var (advance, _, maxDist) = request.BudgetFor(model.ID);
+        var (advance, _, maxDist) = request.PlayerBudgetFor(model.ID);
         return ModelRoster.BuildRow(ordinal, pt.GetTotalDistanceMoved(model), advance, maxDist, capped);
     }
 
@@ -2396,7 +2421,7 @@ public class GuiDefineMovementResolver
                 IModel m = kvp.Key;
                 var (_, at, facing) = PlannedPose(pt, m, kvp.Value);
                 float remaining = MathF.Max(0f,
-                    request.BudgetFor(m.ID).maxDistance - pt.GetTotalDistanceMoved(m));
+                    request.PlayerBudgetFor(m.ID).maxDistance - pt.GetTotalDistanceMoved(m));
                 float gap = ForcedChargeUtilities.Gap(
                     new ForcedChargeUtilities.StandoffPose(at, m.BaseShape, facing), _frameEnemyPoses[e]);
                 if (gap <= remaining + GameWideConstants.ENEMY_STANDOFF_DISTANCE_INCHES)

@@ -1570,10 +1570,13 @@ public class LobbyScreen : IAppScreen
                     UiText.Tooltip("Charge with the leader; the rest of the unit is placed around the enemy for you,\n"
                                    + "and the target's models close in the same way. In melee every model strikes,\n"
                                    + "wherever it stands.");
-                // Movement is the next slice (#459), shown greyed so the set reads as the book prints it rather
-                // than as a mystery subset.
+                changed |= UiButton.Checkbox("Leader-Based Movement", ref move);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip("Only the leader's move is measured. Place the rest of the unit anywhere you like,\n"
+                                   + "as long as it stays in coherency - and a charge still needs the leader to reach.");
+                // Simplified Terrain is #460, later by Kai's call - shown greyed so the set reads as the book
+                // prints it.
                 ImGui.BeginDisabled(true);
-                UiButton.Checkbox("Leader-Based Movement (coming next)", ref move);
                 bool terrain = false;
                 UiButton.Checkbox("Simplified Terrain (later)", ref terrain);
                 ImGui.EndDisabled();
