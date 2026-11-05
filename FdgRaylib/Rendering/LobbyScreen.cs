@@ -1564,10 +1564,14 @@ public class LobbyScreen : IAppScreen
                 if (ImGui.IsItemHovered())
                     UiText.Tooltip("Range and line of sight are measured from the leader only. If the leader can\n"
                                    + "see the target, every weapon in range of it from the leader's spot may fire.");
-                // Movement and melee are the next two slices of #456 and are shown, greyed, so the set reads
-                // as the book prints it rather than as a mystery subset.
+                changed |= UiButton.Checkbox("Leader-Based Melee", ref melee);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip("Charge with the leader; the rest of the unit is placed around the enemy for you,\n"
+                                   + "and the target's models close in the same way. In melee every model strikes,\n"
+                                   + "wherever it stands.");
+                // Movement is the next slice (#459), shown greyed so the set reads as the book prints it rather
+                // than as a mystery subset.
                 ImGui.BeginDisabled(true);
-                UiButton.Checkbox("Leader-Based Melee (coming next)", ref melee);
                 UiButton.Checkbox("Leader-Based Movement (coming next)", ref move);
                 bool terrain = false;
                 UiButton.Checkbox("Simplified Terrain (later)", ref terrain);
