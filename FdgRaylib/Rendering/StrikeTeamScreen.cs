@@ -156,6 +156,71 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private void Say(string text, bool error = false) { _message = text; _messageIsError = error; }
 
+    // -- Whose army (#455) ----------------------------------------------------------------------------
+    //
+    // campaign-flow-spec section 4, Kai's call confirmed 2026-11-05: "the bot never spends its own points".
+    // The player runs BOTH armies' books between missions - casualties and XP happen to both by themselves,
+    // but the enemy's trait picks, upgrades and recruits are the player's job, like running an opponent in
+    // a solo game. So the camp screen can point at either army, and must make obvious which one it is.
+
+    /// <summary>True while the camp screen is managing this campaign's enemy rather than the player.</summary>
+    private bool _managingEnemy;
+
+    /// <summary>The army the camp screen's roster, unit panel and recruiting are working on: the player's,
+    /// or - when <see cref="_managingEnemy"/> - the campaign's standing enemy. The mission column and the
+    /// journal always belong to the player and read <see cref="Current"/>.</summary>
+    private (string Path, BuiltArmyFile Army, EGameSystem System)? Managed =>
+        _managingEnemy && Current is { } c && EnemyOf(c.Army.StrikeTeam!) is { } enemy ? enemy : Current;
+
+    /// <summary>Whether the managed army really is the enemy (false when it was asked for but there is none).</summary>
+    private bool ManagingEnemyNow => _managingEnemy && Current is { } c && EnemyOf(c.Army.StrikeTeam!) != null;
+
+    /// <summary>
+    /// The book allows one new Hero per army per mission. Tracked per side, since the player now recruits
+    /// for both: buying the enemy a Hero must not use up the player's allowance.
+    /// </summary>
+    private bool _enemyHeroRecruited;
+    private bool HeroRecruitedForManaged
+    {
+        get => ManagingEnemyNow ? _enemyHeroRecruited : _heroRecruited;
+        set { if (ManagingEnemyNow) _enemyHeroRecruited = value; else _heroRecruited = value; }
+    }
+
+    private static readonly Vector4 EnemyTint = new(1f, 0.45f, 0.40f, 1f);
+
+    /// <summary>The Your army / Enemy army switch, at the top of the roster column.</summary>
+    private void DrawWhoseArmy()
+    {
+        bool hasEnemy = Current is { } c && EnemyOf(c.Army.StrikeTeam!) != null;
+        if (UiButton.NavigateSmall(ManagingEnemyNow ? "  Your army  " : "> Your army <")) SwitchSide(false);
+        ImGui.SameLine();
+        ImGui.BeginDisabled(!hasEnemy);
+        if (UiButton.NavigateSmall(ManagingEnemyNow ? "> Enemy army <" : "  Enemy army  ")) SwitchSide(true);
+        ImGui.EndDisabled();
+        if (!hasEnemy) UiText.Disabled("This campaign has no standing enemy.");
+        else if (ManagingEnemyNow)
+            UiText.Colored(EnemyTint, "You are doing the ENEMY's books: its trait picks, upgrades and recruits.");
+        else if (Current is { } me && EnemyOf(me.Army.StrikeTeam!) is { } foe)
+        {
+            // The bot no longer makes its own picks, so the player has to be told they are waiting.
+            int waiting = foe.Army.Units.Sum(u => CampaignRules.Sheet(u)?.Pending.Count ?? 0);
+            UiText.Disabled($"Enemy treasury: {foe.Army.StrikeTeam!.BankedPoints} pts unspent.");
+            if (waiting > 0) UiText.Colored(EnemyTint, $"The enemy has {waiting} choice(s) waiting on you.");
+        }
+        ImGui.Separator();
+    }
+
+    private void SwitchSide(bool enemy)
+    {
+        if (_managingEnemy == enemy) return;
+        _managingEnemy = enemy;
+        _unit = 0;
+        _cart.Clear();
+        _cartVeteran = false;
+        _renameFor = null;
+        _message = "";
+    }
+
     private void SaveCurrent(string path, BuiltArmyFile army)
     {
         if (!StrikeTeamFiles.Save(path, army)) Say("Couldn't save the campaign army file.", true);
@@ -220,7 +285,9 @@ public sealed class StrikeTeamScreen : IAppScreen
             StrikeTeamInfo info = cur.Army.StrikeTeam!;
             string head = _view switch
             {
-                EView.Recruit => "RECRUIT - " + info.Name.ToUpperInvariant(),
+                EView.Recruit => "RECRUIT - " + (ManagingEnemyNow && Managed is { } m
+                    ? "FOR THE ENEMY: " + m.Army.StrikeTeam!.Name.ToUpperInvariant()
+                    : info.Name.ToUpperInvariant()),
                 EView.Journal => "JOURNAL - " + info.Name.ToUpperInvariant(),
                 _ => info.Name.ToUpperInvariant(),
             };
@@ -540,6 +607,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void OpenCamp(int index)
     {
         _selected = index;
+        _managingEnemy = false;   // #455: a campaign always opens on the player's own army
         _unit = 0;
         _cart.Clear();
         _cartVeteran = false;
@@ -551,9 +619,10 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private void DrawCamp(float x, float y, float w, float h)
     {
-        if (Current is not { } cur) { _view = EView.List; return; }
+        if (Current is not { } cur || Managed is not { } managed) { _view = EView.List; return; }
         (string path, BuiltArmyFile army, _) = cur;
         CampaignNumbers n = NumbersFor(army);
+        (string mPath, BuiltArmyFile mArmy, _) = managed;
 
         float gap = 12f;
         float leftW = w * 0.25f;
@@ -561,14 +630,18 @@ public sealed class StrikeTeamScreen : IAppScreen
         float midW = w - leftW - rightW - gap * 2f;
 
         ImGui.SetCursorPos(new Vector2(x, y));
+        // #455: the enemy's columns are tinted so it is never in doubt whose books are being done.
+        if (ManagingEnemyNow) ImGui.PushStyleColor(ImGuiCol.Border, EnemyTint);
         ImGui.BeginChild("##roster", new Vector2(leftW, h), ImGuiChildFlags.Borders);
-        DrawRoster(path, army);
+        DrawWhoseArmy();
+        DrawRoster(mPath, mArmy);
         ImGui.EndChild();
 
         ImGui.SetCursorPos(new Vector2(x + leftW + gap, y));
         ImGui.BeginChild("##unit", new Vector2(midW, h), ImGuiChildFlags.Borders);
-        DrawUnitDetail(path, army, n);
+        DrawUnitDetail(mPath, mArmy, n);
         ImGui.EndChild();
+        if (ManagingEnemyNow) ImGui.PopStyleColor();
 
         ImGui.SetCursorPos(new Vector2(x + leftW + midW + gap * 2f, y));
         ImGui.BeginChild("##mission", new Vector2(rightW, h), ImGuiChildFlags.Borders);
@@ -581,7 +654,9 @@ public sealed class StrikeTeamScreen : IAppScreen
     private void DrawRoster(string path, BuiltArmyFile army)
     {
         StrikeTeamInfo info = army.StrikeTeam!;
-        UiText.Colored(TextDim, $"YOUR ARMY - {army.Units.Count} UNIT(S), {CampaignEconomy.HeroCount(army)} HERO(ES)");
+        string whose = army.StrikeTeam?.IsBot == true ? $"ENEMY: {army.StrikeTeam.Name.ToUpperInvariant()}" : "YOUR ARMY";
+        UiText.Colored(army.StrikeTeam?.IsBot == true ? EnemyTint : TextDim,
+            $"{whose} - {army.Units.Count} UNIT(S), {CampaignEconomy.HeroCount(army)} HERO(ES)");
         ImGui.Separator();
 
         for (int i = 0; i < army.Units.Count; i++)
@@ -996,7 +1071,7 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private void DrawRecruit(float x, float y, float w, float h)
     {
-        if (Current is not { } cur || cur.Army.Book is not { } book) { _view = EView.Camp; return; }
+        if (Managed is not { } cur || cur.Army.Book is not { } book) { _view = EView.Camp; return; }
         (string path, BuiltArmyFile army, _) = cur;
         CampaignNumbers n = NumbersFor(army);
         StrikeTeamInfo info = army.StrikeTeam!;
@@ -1051,7 +1126,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.TextUnformatted($"{roster.BasePointCost} pts");
 
         var wanted = new BuilderUnit { RosterUnitId = roster.Id, ModelCount = roster.BaseModelCount };
-        string? why = CampaignEconomy.CannotRecruit(army, book, wanted, isHero && _heroRecruited);
+        string? why = CampaignEconomy.CannotRecruit(army, book, wanted, isHero && HeroRecruitedForManaged);
         int inCart = _cart.Count(c => c == roster.Id);
 
         ImGui.BeginDisabled(why != null);
@@ -1100,11 +1175,11 @@ public sealed class StrikeTeamScreen : IAppScreen
             bool isHero = roster.Rules.Any(r => r is SpecialRuleEntry_Core { Name: "Hero" });
             var wanted = new BuilderUnit { RosterUnitId = roster.Id, ModelCount = roster.BaseModelCount };
             CampaignPurchase result = CampaignEconomy.Recruit(army, book, wanted, n,
-                veteran: veteranLeft, heroAlreadyRecruitedThisMission: isHero && _heroRecruited, d6: D6);
+                veteran: veteranLeft, heroAlreadyRecruitedThisMission: isHero && HeroRecruitedForManaged, d6: D6);
             lines.Add(result.Message);
             if (!result.Ok) continue;
             if (veteranLeft) veteranLeft = false;
-            if (isHero) _heroRecruited = true;
+            if (isHero) HeroRecruitedForManaged = true;
         }
 
         army.StrikeTeam!.History.AddRange(lines);
@@ -1465,6 +1540,15 @@ public sealed class StrikeTeamScreen : IAppScreen
     internal bool BuildFreshForTest { get => _newBuildFresh; set => _newBuildFresh = value; }
     internal void SetEndForTest(ECampaignType type, int vpTarget) { _newType = type; _newVpTarget = vpTarget; }
     internal string? CurrentPathForTest => Current?.Path;
+    internal string? ManagedPathForTest => Managed?.Path;
+    internal bool ManagingEnemyForTest => ManagingEnemyNow;
+    internal void SwitchSideForTest(bool enemy) => SwitchSide(enemy);
+    internal bool HeroRecruitedForManagedForTest { get => HeroRecruitedForManaged; set => HeroRecruitedForManaged = value; }
+    internal void OpenCampForTest(string path)
+    {
+        int index = Teams.FindIndex(t => string.Equals(Path.GetFullPath(t.Path), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase));
+        if (index >= 0) OpenCamp(index);
+    }
 
     /// <summary>#452 - the new-campaign wizard's buttons, one set per step.</summary>
     private void DrawNewBar(float rx, float by, Vector2 btn, bool esc, float margin)
@@ -1615,8 +1699,9 @@ public sealed class StrikeTeamScreen : IAppScreen
             .Select(t => new CampaignEntrant(t.Army.StrikeTeam!.Name, t.Army.TotalPoints, false))
             .ToList();
 
-        // A new mission: the one-new-Hero-per-mission allowance comes back.
+        // A new mission: the one-new-Hero-per-mission allowance comes back, for both armies.
         _heroRecruited = false;
+        _enemyHeroRecruited = false;
         OnPlay?.Invoke(path, others);
     }
 

@@ -185,19 +185,8 @@ public static class StrikeTeamFiles
             .GroupBy(x => x.Sheet!.TeamFile!)
             .ToList();
 
-        // #428: the roster ceiling the bot spends against is the biggest NON-bot campaign army that
-        // played - it will not build past what it could ever legally bring to a table. Read before any
-        // army is written, so a bot does not measure itself against a rival that today's casualties
-        // have already shrunk.
-        int rivalValue = groups
-            .Select(g => Load(g.Key))
-            .Where(a => a is { StrikeTeam: { IsBot: false } })
-            .Select(a => a!.TotalPoints)
-            .DefaultIfEmpty(0)
-            .Max();
-
         // #450 - every campaign army's name, so each one's journal can say who the mission was fought
-        // against. Read before anything is written, like rivalValue above.
+        // against. Read before anything is written.
         var names = groups.ToDictionary(g => g.Key, g => Load(g.Key)?.StrikeTeam?.Name ?? "");
 
         foreach (var group in groups)
@@ -241,17 +230,12 @@ public static class StrikeTeamFiles
                 team.StrikeTeam.SpecialObjective = "";
             }
 
-            // #428: the bot has nobody to sit at its campaign screen, so it does its own steps 5 and 6
-            // here - take the choices waiting on its sheets, then spend its treasury. Run after
-            // AfterGame so it is spending the reward it just earned, which is what a player would do.
-            if (team.StrikeTeam.IsBot)
-            {
-                List<string> spent = CampaignBot.BetweenMissions(team, team.Book, n, rivalValue,
-                    () => rng.Next(1, 7));
-                log.AddRange(spent);
-                // Its own history, for the same reason: AfterGame's entry was written before this ran.
-                if (spent.Count > 0) team.StrikeTeam.History.Add(string.Join(" ", spent));
-            }
+            // #455 - the bot does NOT spend its own treasury, pick its own traits or recruit. Kai's
+            // call (campaign-flow-spec section 4, confirmed 2026-11-05): "the bot never spends its own
+            // points" - the player runs the enemy's economy on the campaign screen, like running an
+            // opponent in a solo game. #428 used to call CampaignBot.BetweenMissions here; that method is
+            // kept, unused, in case a "bot runs itself" option is ever wanted.
+            // CampaignWriteBackCallSiteTests fails if the call comes back.
 
             if (!Save(group.Key, team)) continue;
             if (team.StrikeTeam.IsBot)
