@@ -342,6 +342,8 @@ public sealed class ArmyListOverlay
         ImGui.TextUnformatted(unit is UnitData { PointCost: > 0 } ud
             ? $"{unit.Name} {count} - {ud.PointCost}pts"
             : $"{unit.Name} {count}");
+        // #454: what a renamed campaign unit is, under its name.
+        if (unit is UnitData { CampaignTypeIfRenamed: { } type }) UiText.Disabled(type);
         DrawHeroNameLine(unit, centered: false);
         if (destroyed)
         {
@@ -588,6 +590,13 @@ public sealed class ArmyListOverlay
             if (plan.TagOnHeaderLine) ImGui.SameLine(tagX);
             else ImGui.SetCursorPosX(tagX);
             UiText.Colored(tag.Color, tag.Text);
+        }
+
+        // #454: a renamed campaign unit says what it is, small and centred under its own name.
+        if (unit is UnitData { CampaignTypeIfRenamed: { } type })
+        {
+            CenterNextText(type);
+            UiText.Disabled(type);
         }
 
         // After the state tag, whose SameLine has to attach to the header itself.

@@ -316,6 +316,8 @@ public class TableTooltipOverlay
         ImGui.PushFont(RaylibRenderer.LargeFont);
         ImGui.TextUnformatted(unit.Name);
         ImGui.PopFont();
+        // #454: a renamed campaign unit's type, small under its name - "Vargas Squad" / Assault Grunts.
+        if (unit is UnitData { CampaignTypeIfRenamed: { } type }) UiText.Disabled(type);
 
         ImGui.Separator();
         ImGui.TextUnformatted($"Qua {unit.Quality}+   Def {unit.Defense}+");
@@ -623,7 +625,10 @@ public class TableTooltipOverlay
 
             if (ViewSettings.ShowLabels)
             {
-                Vector2 textSize = ImGui.CalcTextSize(unit.Name);
+                // #454: the label over a renamed campaign unit carries its type too, because that label is
+                // how a unit is picked out on the table at a glance - "Vargas Squad (Assault Grunts)".
+                string label = unit is UnitData { CampaignTypeIfRenamed: { } type } ? $"{unit.Name} ({type})" : unit.Name;
+                Vector2 textSize = ImGui.CalcTextSize(label);
                 float labelX = cx - textSize.X * 0.5f;
                 float labelY = stackTopY - textSize.Y - 2f;
                 // The activation marker hangs off the name's left edge, so it shares the name's fate.
@@ -633,8 +638,8 @@ public class TableTooltipOverlay
 
                 if (!labelHidden)
                 {
-                    drawList.AddText(new Vector2(labelX + 1, labelY + 1), shadow, unit.Name);
-                    drawList.AddText(new Vector2(labelX,     labelY),     white,  unit.Name);
+                    drawList.AddText(new Vector2(labelX + 1, labelY + 1), shadow, label);
+                    drawList.AddText(new Vector2(labelX,     labelY),     white,  label);
                 }
 
                 // The column above keeps its place whether or not the name drew, so a badge does not jump
@@ -750,6 +755,8 @@ public class TableTooltipOverlay
         ImGui.PushFont(RaylibRenderer.LargeFont);
         ImGui.TextUnformatted(unit.Name);
         ImGui.PopFont();
+        // #454: a renamed campaign unit's type, small under its name - "Vargas Squad" / Assault Grunts.
+        if (unit is UnitData { CampaignTypeIfRenamed: { } type }) UiText.Disabled(type);
 
         if (HasActivated(unit)) ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated");
         if (IsShaken(unit)) ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");
