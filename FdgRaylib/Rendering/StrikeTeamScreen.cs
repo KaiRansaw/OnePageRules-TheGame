@@ -36,7 +36,14 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// </summary>
     public Action<string, List<CampaignEntrant>>? OnPlay;
 
-    private enum EView { List, New, Camp, Recruit }
+    private enum EView { List, New, Camp, Recruit, Journal }
+
+    // #448 - the journal's edit buffers. Kept apart from the campaign file and only committed through
+    // CampaignJournal when a box loses focus, the mission changes or the view is left - committing on
+    // every keystroke would run Clean() mid-typing and eat a trailing space before the next word.
+    private string _journalCampaignBuf = "";
+    private string _journalMissionBuf = "";
+    private int _journalMission = 1;
     private EView _view = EView.List;
 
     private List<(string Path, BuiltArmyFile Army, EGameSystem System)> _all = new();
@@ -180,6 +187,7 @@ public sealed class StrikeTeamScreen : IAppScreen
             case EView.New: DrawNew(margin, top, w, bodyH); break;
             case EView.Camp: DrawCamp(margin, top, w, bodyH); break;
             case EView.Recruit: DrawRecruit(margin, top, w, bodyH); break;
+            case EView.Journal: DrawJournal(margin, top, w, bodyH); break;
             default: DrawList(margin, top, w, bodyH); break;
         }
         DrawBottomBar(screenW, screenH, margin, bottomBarH);
@@ -193,12 +201,19 @@ public sealed class StrikeTeamScreen : IAppScreen
         if (_view == EView.New)
             return ("NEW CAMPAIGN ARMY",
                 "Pick an army inside the treasury, and name it. Whatever is left over becomes points you can spend between missions.");
-        if (Current is { } cur && _view is EView.Camp or EView.Recruit)
+        if (Current is { } cur && _view is EView.Camp or EView.Recruit or EView.Journal)
         {
             StrikeTeamInfo info = cur.Army.StrikeTeam!;
-            string head = _view == EView.Recruit ? "RECRUIT - " + info.Name.ToUpperInvariant() : info.Name.ToUpperInvariant();
+            string head = _view switch
+            {
+                EView.Recruit => "RECRUIT - " + info.Name.ToUpperInvariant(),
+                EView.Journal => "JOURNAL - " + info.Name.ToUpperInvariant(),
+                _ => info.Name.ToUpperInvariant(),
+            };
+            // #445: the standing's own wording ("First to 7 VP" / "Endless") rather than the enum's
+            // name, which printed "PointLimited campaign" in the header.
             return (head,
-                $"{GameSystemInfo.DisplayName(info.GameSystem)}  -  {info.CampaignType} campaign" +
+                $"{GameSystemInfo.DisplayName(info.GameSystem)}  -  {StandingOf(cur.Army).Describe()}" +
                 (info.NoPermadeath ? " (No Permadeath)" : "") + "  -  " +
                 $"{info.Matches} mission(s) played  -  treasury {info.BankedPoints} pts  -  {info.Vp} VP  -  army {cur.Army.TotalPoints} pts");
         }
@@ -288,6 +303,16 @@ public sealed class StrikeTeamScreen : IAppScreen
         UiText.Colored(TextBright, foeInfo != null ? $"{info.Name}  vs  {foeInfo.Name}" : info.Name);
         UiText.Disabled($"{GameSystemInfo.DisplayName(info.GameSystem)}"
                         + (info.NoPermadeath ? " - No Permadeath" : ""));
+
+        // #448 - the opening of the campaign's own journal page, so picking a campaign shows its story
+        // as well as its score.
+        if (info.Journal.Length > 0)
+        {
+            const int excerpt = 280;
+            string text = info.Journal.Length <= excerpt ? info.Journal : info.Journal[..excerpt].TrimEnd() + "...";
+            ImGui.Spacing();
+            UiText.Wrapped(text);
+        }
         ImGui.Separator();
 
         // -- The scoreboard --
@@ -361,6 +386,98 @@ public sealed class StrikeTeamScreen : IAppScreen
         UiText.Disabled($"   Army {armyPoints} pts, unspent treasury {treasury} pts");
     }
 
+    // -- Journal (#448) ------------------------------------------------------------------------------
+
+    /// <summary>Opens the journal on the next mission - the page most likely to be written next.</summary>
+    private void OpenJournal()
+    {
+        if (Current is not { } cur) return;
+        StrikeTeamInfo info = cur.Army.StrikeTeam!;
+        _journalCampaignBuf = info.Journal;
+        _journalMission = info.Matches + 1;
+        _journalMissionBuf = CampaignJournal.NoteFor(info, _journalMission);
+        _view = EView.Journal;
+        _message = "";
+    }
+
+    /// <summary>
+    /// Writes both edit buffers into the campaign and saves the file, if anything changed. Called when a
+    /// box loses focus, when the mission page changes, and when the journal is left.
+    /// </summary>
+    private void CommitJournal()
+    {
+        if (Current is not { } cur) return;
+        (string path, BuiltArmyFile army, _) = cur;
+        StrikeTeamInfo info = army.StrikeTeam!;
+
+        string campaign = CampaignJournal.Clean(_journalCampaignBuf);
+        string mission = CampaignJournal.Clean(_journalMissionBuf);
+        if (campaign == info.Journal && mission == CampaignJournal.NoteFor(info, _journalMission)) return;
+
+        CampaignJournal.SetCampaignNote(info, _journalCampaignBuf);
+        CampaignJournal.SetNote(info, _journalMission, _journalMissionBuf);
+        SaveCurrent(path, army);
+    }
+
+    /// <summary>
+    /// The journal: the campaign's own page on the left, the missions on the right with the selected
+    /// one's page beside them. Deliberately the cheapest version that works - Kai said he was unsure how
+    /// he wants to write these, so this is something to react to in play, not a design.
+    /// </summary>
+    private void DrawJournal(float x, float y, float w, float h)
+    {
+        if (Current is not { } cur) { _view = EView.List; return; }
+        StrikeTeamInfo info = cur.Army.StrikeTeam!;
+
+        float gap = 12f;
+        float leftW = w * 0.40f;
+        float listW = w * 0.16f;
+        float pageW = w - leftW - listW - gap * 2f;
+        float boxH = h - ImGui.GetTextLineHeightWithSpacing() * 3.5f;
+
+        // The campaign's page.
+        ImGui.SetCursorPos(new Vector2(x, y));
+        ImGui.BeginChild("##journalCampaign", new Vector2(leftW, h), ImGuiChildFlags.Borders);
+        UiText.Colored(TextDim, "THE CAMPAIGN");
+        UiText.Disabled("The story so far - who these armies are and why they fight.");
+        ImGui.InputTextMultiline("##campaignNote", ref _journalCampaignBuf, CampaignJournal.MaxNoteLength,
+            new Vector2(-1f, boxH));
+        if (ImGui.IsItemDeactivatedAfterEdit()) CommitJournal();
+        ImGui.EndChild();
+
+        // The missions.
+        ImGui.SetCursorPos(new Vector2(x + leftW + gap, y));
+        ImGui.BeginChild("##journalMissions", new Vector2(listW, h), ImGuiChildFlags.Borders);
+        UiText.Colored(TextDim, "MISSIONS");
+        ImGui.Separator();
+        foreach (int mission in CampaignJournal.Missions(info))
+        {
+            bool written = CampaignJournal.NoteFor(info, mission).Length > 0;
+            string label = $"Mission {mission}" + (CampaignJournal.IsPlayed(info, mission) ? "" : " (next)")
+                           + (written ? "  *" : "");
+            if (ImGui.Selectable($"{label}##jm{mission}", mission == _journalMission) && mission != _journalMission)
+            {
+                CommitJournal();
+                _journalMission = mission;
+                _journalMissionBuf = CampaignJournal.NoteFor(info, mission);
+            }
+        }
+        ImGui.EndChild();
+
+        // The selected mission's page.
+        ImGui.SetCursorPos(new Vector2(x + leftW + listW + gap * 2f, y));
+        ImGui.BeginChild("##journalMission", new Vector2(pageW, h), ImGuiChildFlags.Borders);
+        bool played = CampaignJournal.IsPlayed(info, _journalMission);
+        UiText.Colored(TextDim, $"MISSION {_journalMission}" + (played ? "" : " - NOT PLAYED YET"));
+        UiText.Disabled(played
+            ? "What happened - the account of the battle."
+            : "The briefing - what the army expects, before it is fought.");
+        ImGui.InputTextMultiline("##missionNote", ref _journalMissionBuf, CampaignJournal.MaxNoteLength,
+            new Vector2(-1f, boxH));
+        if (ImGui.IsItemDeactivatedAfterEdit()) CommitJournal();
+        ImGui.EndChild();
+    }
+
     private void OpenCamp(int index)
     {
         _selected = index;
@@ -431,6 +548,12 @@ public sealed class StrikeTeamScreen : IAppScreen
             if (army.Book == null) Say("This army has no book attached, so there is nothing to recruit from.", true);
             else { _cart.Clear(); _cartVeteran = false; _view = EView.Recruit; _message = ""; }
         }
+        // #448 - the campaign journal, beside the other between-missions errand.
+        if (UiButton.Navigate("Journal")) OpenJournal();
+        int noted = info.MissionNotes?.Count ?? 0;
+        UiText.Disabled(info.Journal.Length == 0 && noted == 0
+            ? "Nothing written yet."
+            : $"{noted} mission note(s)" + (info.Journal.Length > 0 ? ", campaign page written" : ""));
         UiText.Disabled($"Treasury {info.BankedPoints} pts");
     }
 
@@ -1103,6 +1226,13 @@ public sealed class StrikeTeamScreen : IAppScreen
 
             case EView.Recruit:
                 if (UiButton.Back("Back to camp", btn) || esc) { _cart.Clear(); _view = EView.Camp; }
+                break;
+
+            case EView.Journal:
+                // Escape is not taken while a text box has the keyboard - it would throw away the
+                // paragraph being typed rather than leave the page.
+                if (UiButton.Back("Back to camp", btn) || esc) { CommitJournal(); _view = EView.Camp; }
+                DrawMessage(margin, by, btn);
                 break;
 
             case EView.Camp:
