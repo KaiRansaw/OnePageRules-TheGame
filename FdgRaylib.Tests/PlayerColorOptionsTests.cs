@@ -175,4 +175,22 @@ public class PlayerColorOptionsTests
         Assert.That(src, Does.Contain("ImGuiColorEditFlags.PickerHueWheel"));
         Assert.That(src, Does.Contain("PlayerColorOptions.EncodeCustom"));
     }
+
+    /// <summary>
+    /// Kai, 2026-11-05: "no color choice is showing". The team dropdown fills the rest of its line, so a
+    /// colour control placed beside it (SameLine) is pushed off the card and clipped. It must start its
+    /// own line.
+    /// </summary>
+    [Test]
+    public void TheColourControl_IsNotSqueezedOntoTheTeamLine()
+    {
+        var dir = new System.IO.DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (dir != null && !System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "fdg-raylib.sln"))) dir = dir.Parent;
+        string src = System.IO.File.ReadAllText(System.IO.Path.Combine(dir!.FullName, "FdgRaylib", "Rendering", "LobbyScreen.cs"));
+        int call = src.IndexOf("DrawColorCell(seat, info, players, effectiveColor);", System.StringComparison.Ordinal);
+        int team = src.LastIndexOf("DrawTeamCell(seat, info, players.Count);", call, System.StringComparison.Ordinal);
+        Assert.That(call, Is.GreaterThan(0));
+        Assert.That(team, Is.GreaterThan(0));
+        Assert.That(src.Substring(team, call - team), Does.Not.Contain("SameLine"));
+    }
 }

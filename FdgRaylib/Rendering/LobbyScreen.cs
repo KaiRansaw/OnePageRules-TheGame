@@ -555,15 +555,12 @@ public class LobbyScreen : IAppScreen
             GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
 
         // ── Side and colour ──
+        // Each on its own full-width line. They used to share one line, but the team dropdown sizes itself
+        // to the whole remaining width, so the colour control was pushed past the card's right edge and
+        // clipped - which is why Kai found the colour picker "gone" (2026-11-05). Own line = can't recur.
         ImGui.Spacing();
-        float half = MathF.Max(60f, (ImGui.GetContentRegionAvail().X - 8f) * 0.5f);
-        ImGui.PushItemWidth(half);
         DrawTeamCell(seat, info, players.Count);
-        ImGui.PopItemWidth();
-        ImGui.SameLine();
-        ImGui.PushItemWidth(half);
         DrawColorCell(seat, info, players, effectiveColor);
-        ImGui.PopItemWidth();
 
         // ── Re-crewing a resumed save keeps its old four buttons: a save's seats are fixed in number
         // but not in who plays them, and the house bots are still selectable there.
