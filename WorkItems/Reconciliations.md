@@ -927,3 +927,5 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > No collision.
 
 > **2026-11-05 - number 454.** Same session; highest filed was 453. **454 = unit type shown in game.**
+
+> **2026-11-05 - number 455.** Same session; highest filed was 454. **455 = the player runs the enemy's books.**

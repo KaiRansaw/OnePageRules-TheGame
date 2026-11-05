@@ -122,6 +122,7 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 ## Victory & scoring
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
+- [x] 455 — The player runs the enemy's books: bot no longer spends after a mission; camp screen Your army / Enemy army switch. Done, B71 / 0.87. ([WorkItems/455](WorkItems/455-player-runs-enemy-books.md))
 - [x] 454 — Renamed campaign units show their type in game (card, hover, army list, table label) via `UnitData.CampaignTypeIfRenamed`. Done, B70 / 0.86. ([WorkItems/454](WorkItems/454-unit-type-in-game.md))
 - [x] 453 — Campaign unit names: rename on the camp screen, type kept on the sheet (`StrikeUnit.UnitType`) and shown under the name. Done, B69 / 0.85. ([WorkItems/453](WorkItems/453-campaign-unit-names.md))
 - [x] 452 — New campaign wizard: build or pick your army, build the enemy or "Pick one for me", name both, optional opening note. Done, B68 / 0.84. ([WorkItems/452](WorkItems/452-new-campaign-flow.md))
