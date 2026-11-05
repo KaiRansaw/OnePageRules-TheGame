@@ -787,7 +787,8 @@ public class RaylibRenderer
             Color baseColor = draw.Tint is { } tint ? new Color(tint.R, tint.G, tint.B, (byte)255) : color;
             models.Add(new Table3DView.ModelDraw(draw.Position, model.BaseRadiusInches, baseColor, draw.Alpha,
                 unit.ID, label, heroUnit, active.HasValue && unit.ID == active.Value, model.ID,
-                factionByPlayer.TryGetValue(unit.PlayerID, out string? faction) ? faction : ""));
+                factionByPlayer.TryGetValue(unit.PlayerID, out string? faction) ? faction : "",
+                LeaderMarkerRenderer.IsLeaderModel(unit, model)));
         }
 
         ITerrain[] terrainSnapshot;
@@ -2006,6 +2007,9 @@ public class RaylibRenderer
             // with the selection / hover halos or range rings.
             if (HeroMarkerRenderer.IsHeroModel(unit, model))
                 HeroMarkerRenderer.DrawStarRaylib(cx, cy, model.BaseRadiusInches * l.Scale, a);
+            // Fast-Play leader: two black-edged white chevrons, readable on every player colour.
+            else if (LeaderMarkerRenderer.IsLeaderModel(unit, model))
+                LeaderMarkerRenderer.DrawRaylib(cx, cy, model.BaseRadiusInches * l.Scale, a);
         }
     }
 

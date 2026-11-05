@@ -23,7 +23,8 @@ internal sealed class Table3DView
     /// <summary>One model to draw this frame, already resolved by the renderer (gliding position,
     /// dying tint/alpha, owner color).</summary>
     internal readonly record struct ModelDraw(Position Position, float BaseRadius, Color Color, float Alpha,
-        UnitID UnitId, string Label, bool IsHero, bool IsActive, ModelID ModelId, string Faction = "");
+        UnitID UnitId, string Label, bool IsHero, bool IsActive, ModelID ModelId, string Faction = "",
+        bool IsLeader = false);
 
     internal readonly record struct ObjectiveDraw(Position Position, string Label, Color Color, bool IsPriority, bool IsToken = false);
 
@@ -439,6 +440,15 @@ void main()
         var fill = new Color(model.Color.R, model.Color.G, model.Color.B, a);
         Raylib.DrawCylinder(p, model.BaseRadius, model.BaseRadius, BaseHeight, 24, fill);
         Raylib.DrawCylinderWires(p, model.BaseRadius, model.BaseRadius, BaseHeight, 24, new Color(0, 0, 0, (int)a));
+        // Fast-Play leader (see LeaderMarkerRenderer): a black-ringed white disc on top of the base - black
+        // and white together read on every player colour, where any single hue is somebody's base.
+        if (model.IsLeader)
+        {
+            Vector3 top = World(model.Position.x, BaseHeight, model.Position.z);
+            Raylib.DrawCylinder(top, model.BaseRadius * 0.62f, model.BaseRadius * 0.62f, 0.03f, 24, new Color(10, 10, 10, (int)a));
+            Raylib.DrawCylinder(top, model.BaseRadius * 0.48f, model.BaseRadius * 0.48f, 0.05f, 24, new Color(255, 255, 255, (int)a));
+            Raylib.DrawCylinder(top, model.BaseRadius * 0.22f, model.BaseRadius * 0.22f, 0.07f, 16, new Color(10, 10, 10, (int)a));
+        }
         if (model.IsActive)
         {
             float pulse = 0.5f + 0.5f * MathF.Sin((float)Raylib.GetTime() * 3.2f);
