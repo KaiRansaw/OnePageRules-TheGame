@@ -8,6 +8,11 @@ project doc `claude/campaign-rules-delta.md`.
 
 ---
 
+## 2026-11-06 - conceding and playing past round 4
+
+Done as #466 (its own detail file). Leaves Parallel Play, Late Joiners and campaign types other than
+Endless/VP-target open.
+
 ## 2026-10-30 - slice 4: playing the mission
 
 Engine 3,728 / 0. UI 2,997 / 0. Smoke exits 0. Pushed.

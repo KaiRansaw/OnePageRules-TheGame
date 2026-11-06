@@ -2325,9 +2325,11 @@ public class RaylibRenderer
     {
         ImGui.PushTextWrapPos(0f);
         if (_missionRound is int round)
-            UiText.Colored(new Vector4(0.55f, 0.75f, 1f, 1f), $"ROUND {round} / {_missionTotalRounds}");
+            UiText.Colored(new Vector4(0.55f, 0.75f, 1f, 1f), RoundLabel(round, _missionTotalRounds));
         else
             ImGui.TextDisabled("The game hasn't started its first round yet.");
+
+        DrawConcede();
 
         if (_missionLines.Count > 0)
         {
@@ -2377,6 +2379,63 @@ public class RaylibRenderer
         {
             var seats = _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID).ToList();
             MissionCardsPanel.Draw(cards, _tableState.Progress.GameSystem, seats, _colorForPlayer ?? (_ => Color.White), _localPlayerIds);
+        }
+    }
+
+    /// <summary>
+    /// "ROUND 3 / 4"; past the last round, a campaign mission still looking for its winner (#466) reads
+    /// "ROUND 5 - extra round" rather than the impossible "5 / 4".
+    /// </summary>
+    internal static string RoundLabel(int round, int total) =>
+        round <= total ? $"ROUND {round} / {total}" : $"ROUND {round} - extra round (no winner yet)";
+
+    /// <summary>
+    /// #466 - the campaign books' "At the beginning of any round players may concede". A button for each
+    /// of this machine's players still in a campaign mission; pressing it (and confirming) takes effect at
+    /// the start of the next round, and can be taken back until then. Kai's call (2026-11-06): a button,
+    /// not a question every round.
+    /// </summary>
+    private void DrawConcede()
+    {
+        if (_tableState is not { } table || _resolverOverlay is not { } overlay) return;
+        if (table.Progress.GameMode != FDG.EGameMode.Standard) return;
+        if (!FDG.Stages.CampaignEventRunner.IsCampaignGame(table)) return;
+
+        var mine = table.Players.Objects.Where(p => p.IsFilled && _localPlayerIds.Contains(p.PlayerID))
+            .OrderBy(p => p.SlotID).ToList();
+        if (mine.Count == 0) return;
+        int next = (_missionRound ?? 0) + 1;
+
+        foreach (var player in mine)
+        {
+            ImGui.PushID("concede" + player.SlotID);
+            string who = mine.Count > 1 ? $" ({player.Name})" : "";
+            if (FDG.Stages.CampaignMissionLength.HasConceded(table, player.PlayerID))
+            {
+                ImGui.TextDisabled($"You conceded this mission{who}.");
+            }
+            else if (overlay.Concede.Has(player.PlayerID))
+            {
+                UiText.Colored(new Vector4(1f, 0.67f, 0.35f, 1f),
+                    _missionRound is int ? $"Conceding at the start of round {next}{who}." : $"Conceding at the start of round 1{who}.");
+                if (ImGui.Button("Take it back")) overlay.Concede.Set(player.PlayerID, false);
+            }
+            else
+            {
+                if (ImGui.Button($"Concede the mission{who}")) ImGui.OpenPopup("##concedeconfirm");
+                if (ImGui.BeginPopup("##concedeconfirm"))
+                {
+                    ImGui.TextUnformatted("Concede this mission?");
+                    ImGui.TextDisabled("At the start of the next round your army leaves the table and");
+                    ImGui.TextDisabled("you lose the mission. Units that leave don't count as casualties.");
+                    ImGui.TextDisabled("You can take it back until the round starts.");
+                    if (ImGui.Button("Concede")) { overlay.Concede.Set(player.PlayerID, true); ImGui.CloseCurrentPopup(); }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Keep fighting")) ImGui.CloseCurrentPopup();
+                    ImGui.EndPopup();
+                }
+            }
+            ImGui.PopID();
         }
     }
 

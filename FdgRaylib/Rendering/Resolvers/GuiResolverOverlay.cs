@@ -65,6 +65,9 @@ public class GuiResolverOverlay
     /// at TransitionToGame and hands it to the tactical overlay's rules probe - keeping every
     /// client-side cover preview on the same setting the host's CoverCheckStage rolls with.
     /// </summary>
+    /// <summary>#466: this machine's pressed Concede buttons, read by the round-start concession check.</summary>
+    public ConcedeIntent Concede { get; } = new();
+
     public bool CoverProximityExceptions { get; set; } = true;
 
     // #384: the launched game's see-through-allies LoS house rule (lobby toggle, default off =

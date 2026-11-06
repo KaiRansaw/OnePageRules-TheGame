@@ -45,6 +45,7 @@ public static class ResolverRegistryFactory
             .RegisterResolver(new PickCommandGroupUnitsResolver())
             .RegisterResolver(new PickUnitLeadersResolver())   // #456
             .RegisterResolver(new PickStringsResolver())       // #462
+            .RegisterResolver(new ConcedeCheckResolver())      // #466
             .RegisterResolver(new PlaceObjectsResolver<ModelData>(tableState))
             .RegisterResolver(new PlaceOneTerrainResolver(tableState))
             // The text interface has no shop: a CLI defender keeps its points.
@@ -142,6 +143,8 @@ public static class ResolverRegistryFactory
                 CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(unitLeaders)
             // #462: pick several labels from a list (the Mission Cards' custom decks).
             .RegisterResolver<PickStringsRequest, List<string>>(pickStrings)
+            // #466: the round-start concession check, answered from the Mission tab's Concede button.
+            .RegisterResolver<ConcedeCheckRequest, bool>(new GuiConcedeCheckResolver(overlay.Concede))
             // #191 A4-3's split kept: melee-defender has its own resolver, which inherits the canvas
             // picker for 2+ defenders and renders a one-click confirm card for a sole defender (#237).
             .RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<FDG.Data.DataBinding<UnitData>>>(

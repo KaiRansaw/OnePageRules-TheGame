@@ -122,7 +122,7 @@ public sealed class LoadGameScreen : IAppScreen
         EGameMode mode = table.Progress.GameMode;
         s.ModeLabel = mode == EGameMode.Horde ? "Horde Mode" : GameSystemInfo.ModeLabel(mode, settings.GameSystem);
         s.HordePoints = table.Progress.HordePointsEarned;
-        s.RoundLabel = table.Progress.RoundCount is int r ? $"Round {r}/{table.Progress.TotalRounds}" : "Deployment";
+        s.RoundLabel = table.Progress.RoundCount is int r ? (r <= table.Progress.TotalRounds ? $"Round {r}/{table.Progress.TotalRounds}" : $"Round {r} (extra)") : "Deployment";
         s.CanResume = progress != null;
         if (!s.CanResume) s.RoundLabel = "Saved during setup - can't be resumed";
 
