@@ -8,6 +8,14 @@ Make it happen in a played game.
 
 ---
 
+## 2026-11-06 - the last three (12, 32, 43): all 36 resolve
+
+Hits: `CampaignEventRunner.DealHits` - Defense per hit, granted Defense modifiers folded in (area bonus
+refreshed first), no AP, failures through `CasualtyPresentation.ApplyUnitWounds`. Thick Clouds: a
+`TokenType.ThickClouds` token on every unit for the round carrying the quarter as a new
+`TokenPayload.TableArea` (registered in `SaveTypeRegistry`), read by `RangeRuleQueries.InThickClouds` in
+`EffectiveRange` (halves the final range). Saved with the game, unlike the four area events' store.
+
 ## 2026-11-06 - the four position events (36, 44, 45, 46)
 
 `StateMachine/CampaignEventAreas.cs`. The runner picks the area (a 3" circle round a random marker, or a
