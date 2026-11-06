@@ -936,3 +936,6 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 
 > **2026-11-05 - number 462.** `git fetch origin` first: highest filed on origin (main and campaign-360)
 > was 461. **462 = Mission Cards.** No collision.
+
+> **2026-11-05 - number 463.** `git fetch origin` first: highest on origin (main, campaign-360) was 462.
+> **463 = per-system special-rule definitions.** No collision.

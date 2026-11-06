@@ -262,3 +262,5 @@ Detail files (where they exist) live beside this file as `NNN-slug.md`.
 - [x] 399 — Post-game polish pass from one reported game: grouped rectangular bases stack, "held in
   reserve" log spam, HUD colon spacing, terrain impassible==blocking + no heights, "Activated" tag
   overlap, ambush dust cloud, button text overrun. ([WorkItems/399](399-post-game-polish-pass.md))
+- [x] 463 — Per-system special-rule definitions (Slayer, Indirect, Furious Buff, Fanatic, Counter-Attack,
+  Flying, Elite), B87. ([WorkItems/463](463-per-system-rule-variants.md))
