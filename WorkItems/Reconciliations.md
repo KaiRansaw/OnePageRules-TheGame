@@ -933,3 +933,6 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **2026-11-05 - numbers 456-460.** `git fetch origin` before committing: highest filed was 455, nothing new
 > on origin. **456 Fast-Play leaders, 457 leader shooting** (built); **458 melee, 459 movement, 460
 > Simplified Terrain** reserved as open items. No collision.
+
+> **2026-11-05 - number 462.** `git fetch origin` first: highest filed on origin (main and campaign-360)
+> was 461. **462 = Mission Cards.** No collision.

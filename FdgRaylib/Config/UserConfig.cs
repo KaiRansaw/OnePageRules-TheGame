@@ -197,6 +197,7 @@ public sealed class HostGameSettings
     public bool FastPlayMelee { get; set; }
     public bool FastPlayShooting { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
+    public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
 
     public bool FriendlyUnitsMayOverlap { get; set; }
 
@@ -226,6 +227,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = settings.FastPlayMelee,
         FastPlayShooting       = settings.FastPlayShooting,
         DeploymentStyle        = settings.DeploymentStyle,
+        MissionCardGame        = settings.MissionCardGame,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
@@ -253,6 +255,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = viewModel.FastPlayMelee,
         FastPlayShooting       = viewModel.FastPlayShooting,
         DeploymentStyle        = viewModel.DeploymentStyle,
+        MissionCardGame        = viewModel.MissionCardGame,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
@@ -285,6 +288,7 @@ public sealed class HostGameSettings
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
         viewModel.SetFastPlay(FastPlayMovement, FastPlayMelee, FastPlayShooting);
         viewModel.SetDeploymentStyle(DeploymentStyle);
+        viewModel.SetMissionCardGame(MissionCardGame);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }

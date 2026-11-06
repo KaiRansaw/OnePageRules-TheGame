@@ -335,6 +335,8 @@ public class UserConfigTests
         public bool FastPlayMelee { get; set; }
         public EDeploymentStyle DeploymentStyle { get; set; }
         public void SetDeploymentStyle(EDeploymentStyle style) => DeploymentStyle = style;
+        public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
+        public void SetMissionCardGame(FDG.Missions.EMissionCardGame game) => MissionCardGame = game;
         public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }

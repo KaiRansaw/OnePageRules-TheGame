@@ -1509,6 +1509,19 @@ public class LobbyScreen : IAppScreen
                          "Two-player games only; a map with its own deployment zones keeps them.");
             ImGui.EndDisabled();
         }
+
+        // The Mission Cards (Kai, 2026-11-05): the two fixed-deck games. A standard game only.
+        if (FDG.Missions.MissionCardCatalog.Available(_viewModel.GameSystem) && _viewModel.GameMode == EGameMode.Standard)
+        {
+            ImGui.BeginDisabled(!isHost);
+            DrawEnumCombo("Mission Cards", _viewModel.MissionCardGame, _viewModel.SetMissionCardGame,
+                displayName: FDG.Missions.MissionCardCatalog.Name,
+                tooltip: "Play with the Mission Cards: six objectives, four rounds, and victory points from cards.\n" +
+                         "Battle of Wits - each player has their own deck and three cards of their own.\n" +
+                         "Total Domination - one shared deck; three cards everyone races to complete.\n" +
+                         "At the end you also get 1 VP per objective you control. Most VP wins.");
+            ImGui.EndDisabled();
+        }
         }
 
         if (Section("Rules"))

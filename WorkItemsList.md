@@ -122,6 +122,7 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 ## Victory & scoring
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
+- [ ] 462 — Mission Cards - slice 1 (Battle of Wits, Total Domination) done B84; slice 2 the six custom-deck games. [detail](WorkItems/462-mission-cards.md)
 - [x] 461 — Advanced deployment styles (18) - all four games done (B82 square, B83 long table). [detail](WorkItems/461-advanced-deployment-styles.md)
 - [ ] 460 — Fast-Play: Simplified Terrain - every piece an enterable Solid Building (capacity, inside = Cover, shoot out, one unit inside chargeable). Deferred by Kai 2026-11-05 as its own job.
 - [x] 459 — Fast-Play: Leader-Based Movement - done B81 (leader-only charge too); leader-first 1" separation open. [detail](WorkItems/459-fast-play-leader-movement.md)

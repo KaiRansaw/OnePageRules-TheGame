@@ -2370,6 +2370,12 @@ public class RaylibRenderer
             ImGui.Separator();
             QuestMissionPanel.DrawBody(quest);
         }
+
+        if (_tableState?.Progress.MissionCards is { } cards)
+        {
+            var seats = _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID).ToList();
+            MissionCardsPanel.Draw(cards, _tableState.Progress.GameSystem, seats, _colorForPlayer ?? (_ => Color.White));
+        }
     }
 
     // Centered "Game Over" card shown once the game ends. The board stays visible behind it; the player
