@@ -1,7 +1,7 @@
 # 462 — Mission Cards
 
-**Status:** slice 1 done 2026-11-05 (build 1.00, B84) - the two fixed-deck games. Slice 2 (the six
-custom-deck games) open.
+**Status:** done 2026-11-05 - fixed decks (build 1.00, B84), tie pick (1.01, B85), the six custom-deck
+games (1.02, B86). Open follow-ups below.
 
 Source: GF / GFF / AoF / AoFS Mission Cards v3.6.0 (rules text identical in all four); the 36 cards from
 Kai's screenshots (2026-11-05), plus the two per-book differences he gave: 65 Giant Slayer 1 VP is Tough(12)+
@@ -29,8 +29,16 @@ books name cards differently - Kai: use the names given.
   rout = destroyed in melee, side control, "within" = any model, Total Domination tie = card stays and
   nobody scores, lowest-score discard skipped on a tie for lowest.
 
+## Slice 2 (B86)
+- `MissionCardCustomDecks.cs` (partial of the round hooks): deck build (18 of 36) at round-1 start, hand 5
+  (6 Logistical Supremacy), round-1 hand redraw, place to 3, one face down; the six twists; end-of-round
+  score / discard / Coordinated Recovery.
+- `PickStringsRequest` (new multi-pick request) + AI / CLI / GUI resolvers.
+- Paragons: `MissionCardRules.Evaluate(heroOnly)`; hero attribution on kills, model kills
+  (`ModelKillers` from ApplyWoundsStage), spells, melee wins; `MissionBoard.HeroUnitsNear`.
+- Mission tab: hand, hidden cards hidden from non-local players, CHALLENGE / PARAGON tags.
+
 ## Not done
-- Slice 2: Direct Challenge, Strategic Ruse, Planned Gambit, Coordinated Recovery, Logistical Supremacy,
-  Tactical Paragons (18-card custom decks, hand of 5, hidden cards).
 - Bots chasing cards.
 - Roll & Play (two dice instead of a deck) - not needed in a video game; the deck shuffle is the same odds.
+- Hidden card face up "at any time" - no play effect, not offered (house rules).

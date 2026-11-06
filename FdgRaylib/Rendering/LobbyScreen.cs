@@ -1519,6 +1519,9 @@ public class LobbyScreen : IAppScreen
                 tooltip: "Play with the Mission Cards: six objectives, four rounds, and victory points from cards.\n" +
                          "Battle of Wits - each player has their own deck and three cards of their own.\n" +
                          "Total Domination - one shared deck; three cards everyone races to complete.\n" +
+                         "The other six: build your own 18-card deck, hold a hand of 5, play 3 (one may be face down),\n" +
+                         "each with a twist - challenges, hidden cards, sending cards back, recovering discards,\n" +
+                         "a bigger hand for whoever holds more objectives, or Hero-only paragon cards.\n" +
                          "At the end you also get 1 VP per objective you control. Most VP wins.");
             ImGui.EndDisabled();
         }

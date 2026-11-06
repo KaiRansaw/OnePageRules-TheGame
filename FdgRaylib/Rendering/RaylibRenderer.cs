@@ -87,6 +87,7 @@ public class RaylibRenderer
 
     private ITableState? _tableState;
     private Func<PlayerID, Color>? _colorForPlayer;
+    private IReadOnlyCollection<PlayerID> _localPlayerIds = Array.Empty<PlayerID>();
     private GameLog? _log;
     private GuiPlayerMessageUI? _playerMessageUI;  // in-game chat sink + send hook (#077)
     private string _chatInput = "";
@@ -355,6 +356,7 @@ public class RaylibRenderer
         GuiChooseRangedAttackResolver.ShotChosen = null;
         GuiAssignWoundsResolver.ClearActive();
         var localIds = taskDisplay?.LocalPlayerIDs.ToList() ?? new List<PlayerID>();
+        _localPlayerIds = localIds;
         DiceTray.IsMine = u => localIds.Contains(u.PlayerID);
         if (presentationPlayer != null && !ReferenceEquals(_reportHookedPlayer, presentationPlayer))
         {
@@ -2374,7 +2376,7 @@ public class RaylibRenderer
         if (_tableState?.Progress.MissionCards is { } cards)
         {
             var seats = _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID).ToList();
-            MissionCardsPanel.Draw(cards, _tableState.Progress.GameSystem, seats, _colorForPlayer ?? (_ => Color.White));
+            MissionCardsPanel.Draw(cards, _tableState.Progress.GameSystem, seats, _colorForPlayer ?? (_ => Color.White), _localPlayerIds);
         }
     }
 
