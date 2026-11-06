@@ -320,7 +320,7 @@ public sealed class MissionSetupScreen : IAppScreen
         ImGui.TextUnformatted("Difficulty");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-1f);
-        if (ImGui.BeginCombo("##difficulty", MissionDifficulty.Name(info.Difficulty)))
+        if (UiCombo.Begin("##difficulty", MissionDifficulty.Name(info.Difficulty)))
         {
             foreach (EMissionDifficulty option in MissionDifficulty.All)
             {
@@ -379,7 +379,7 @@ public sealed class MissionSetupScreen : IAppScreen
         int theirs = PointsComing(_enemy, foe);
         int theirCount = UnitsComing(_enemy, foe);
         int hardCap = MissionDifficulty.HardCap(yours, n);
-        ImGui.TextUnformatted($"They bring {theirs} / {hardCap} pts in {theirCount} unit(s).");
+        ImGui.TextUnformatted($"They bring {theirs} pts in {theirCount} unit(s) - at most {hardCap} allowed.");
         if (theirs > hardCap)
             UiText.Colored(Bad, $"Over the cap by {theirs - hardCap} pts - untick something.");
 
@@ -458,7 +458,7 @@ public sealed class MissionSetupScreen : IAppScreen
         {
             ImGui.TextUnformatted("Deployment");
             ImGui.SetNextItemWidth(-80f);
-            if (ImGui.BeginCombo("##plandeploy", AdvancedDeployment.Name(_plan.DeploymentStyle), ImGuiComboFlags.HeightLarge))
+            if (UiCombo.Begin("##plandeploy", AdvancedDeployment.Name(_plan.DeploymentStyle), ImGuiComboFlags.HeightLarge))
             {
                 foreach (EDeploymentStyle style in Enum.GetValues<EDeploymentStyle>())
                 {
@@ -485,7 +485,7 @@ public sealed class MissionSetupScreen : IAppScreen
             ImGui.SetNextItemWidth(-80f);
             string label = _plan.MissionCards == FDG.Missions.EMissionCardGame.Off
                 ? "Core objectives" : FDG.Missions.MissionCardCatalog.Name(_plan.MissionCards);
-            if (ImGui.BeginCombo("##plantype", label, ImGuiComboFlags.HeightLarge))
+            if (UiCombo.Begin("##plantype", label, ImGuiComboFlags.HeightLarge))
             {
                 foreach (FDG.Missions.EMissionCardGame game in Enum.GetValues<FDG.Missions.EMissionCardGame>())
                 {
@@ -549,7 +549,7 @@ public sealed class MissionSetupScreen : IAppScreen
 
         ImGui.TextUnformatted("Terrain");
         ImGui.SetNextItemWidth(-1f);
-        if (ImGui.BeginCombo("##terrainmode", TerrainModeLabel(_terrainMode)))
+        if (UiCombo.Begin("##terrainmode", TerrainModeLabel(_terrainMode)))
         {
             foreach (ETerrainPlacementMode mode in new[]
                      {
@@ -575,7 +575,7 @@ public sealed class MissionSetupScreen : IAppScreen
             string display = string.IsNullOrEmpty(_mapPath)
                 ? "(choose a map)"
                 : Path.GetFileNameWithoutExtension(_mapPath);
-            if (ImGui.BeginCombo("##mappick", display, ImGuiComboFlags.HeightLarge))
+            if (UiCombo.Begin("##mappick", display, ImGuiComboFlags.HeightLarge))
             {
                 IReadOnlyList<string> maps = FdgRaylib.SaveLoad.MapPaths.List();
                 if (maps.Count == 0) UiText.Disabled("No saved maps yet - make one in the map maker.");

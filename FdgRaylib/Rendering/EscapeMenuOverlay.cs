@@ -135,7 +135,7 @@ public sealed class EscapeMenuOverlay
             ImGui.BeginDisabled(!canSave);
             if (FullWidthButton("Save Game")) HandleSaveGame();
             ImGui.EndDisabled();
-            if (!canSave) ImGui.TextDisabled("Saving opens once round 1 starts.");
+            if (!canSave) UiText.Disabled("Saving opens once round 1 starts.");
             if (FullWidthButton("Load Game")) _confirm = Confirm.LoadGame;
         }
         else
@@ -144,7 +144,7 @@ public sealed class EscapeMenuOverlay
             FullWidthButton("Save Game");
             FullWidthButton("Load Game");
             ImGui.EndDisabled();
-            ImGui.TextDisabled("Host controls saving and loading.");
+            UiText.Disabled("Host controls saving and loading.");
             ImGui.Spacing();
         }
 
@@ -174,15 +174,15 @@ public sealed class EscapeMenuOverlay
         // already lingers longer), so a seconds figure would be a lie for most rolls.
         ImGui.SliderFloat("Dice popup time", ref ViewSettings.DiceLingerScale,
             ViewSettings.DiceLingerMin, ViewSettings.DiceLingerMax, "%.2fx");
-        ImGui.TextDisabled("1.00x is the default. Hovering the dice always freezes them.");
+        UiText.Disabled("1.00x is the default. Hovering the dice always freezes them.");
         ImGui.SliderFloat("Game speed", ref ViewSettings.GameSpeed, 0.25f, 2f, "%.2fx");
-        ImGui.TextDisabled("Lower it to follow the bot's turns more easily.");
+        UiText.Disabled("Lower it to follow the bot's turns more easily.");
 
         if (_tactical != null)
         {
             SectionHeader("Tactical overlay");
             ImGui.Checkbox("Weapon reach (B)", ref ViewSettings.ShowReachOverlay);
-            ImGui.TextDisabled("Ghosts while moving/placing; any unit you hover.");
+            UiText.Disabled("Ghosts while moving/placing; any unit you hover.");
 
             // #247: "Threat frontiers (F)" and "Anchor field on my position" are both gone. The red
             // frontier layer was outdated once the reach field could answer the same question in one
@@ -203,28 +203,28 @@ public sealed class EscapeMenuOverlay
         }
         else
         {
-            ImGui.TextDisabled("Audio unavailable.");
+            UiText.Disabled("Audio unavailable.");
         }
 
         SectionHeader("Controls");
-        ImGui.TextDisabled("F1: list of all controls");
-        ImGui.TextDisabled("WASD: move camera   Q/E: turn (3D)");
-        ImGui.TextDisabled("Shift+W/S: zoom   Shift+Q/E: tilt (3D)");
-        ImGui.TextDisabled("V or F3: switch 2D / 3D   Ctrl+S: quick save");
-        ImGui.TextDisabled("Alt+drag: measure");
-        ImGui.TextDisabled("Alt+wheel: zoom");
-        ImGui.TextDisabled("Middle-drag: pan");
-        ImGui.TextDisabled("L: army lists (all players)");
-        ImGui.TextDisabled("N labels   T tokens   B weapon reach   M measure");
+        UiText.Disabled("F1: list of all controls");
+        UiText.Disabled("WASD: move camera   Q/E: turn (3D)");
+        UiText.Disabled("Shift+W/S: zoom   Shift+Q/E: tilt (3D)");
+        UiText.Disabled("V or F3: switch 2D / 3D   Ctrl+S: quick save");
+        UiText.Disabled("Alt+drag: measure");
+        UiText.Disabled("Alt+wheel: zoom");
+        UiText.Disabled("Middle-drag: pan");
+        UiText.Disabled("L: army lists (all players)");
+        UiText.Disabled("N labels   T tokens   B weapon reach   M measure");
         // #326: G toggles Group/Single -- it is Ctrl+wheel that cycles the formation (#277). The old line
         // said "G: cycle formation", which named the wrong key for the wrong action.
-        ImGui.TextDisabled("G: group / single mode (during moves)");
-        ImGui.TextDisabled("Ctrl+wheel: cycle formation (group moves)");
-        ImGui.TextDisabled($"{Resolvers.ResolverHotkeys.CycleHint}: pick model (single moves)");
-        ImGui.TextDisabled("Click a model: switch to it (single moves)");
-        ImGui.TextDisabled($"{Resolvers.ResolverKeybinds.Confirm.Hint}: auto-assign / confirm");
-        ImGui.TextDisabled($"{Resolvers.ResolverKeybinds.Back.Hint}: undo / back out");
-        ImGui.TextDisabled("Esc: open this menu");
+        UiText.Disabled("G: group / single mode (during moves)");
+        UiText.Disabled("Ctrl+wheel: cycle formation (group moves)");
+        UiText.Disabled($"{Resolvers.ResolverHotkeys.CycleHint}: pick model (single moves)");
+        UiText.Disabled("Click a model: switch to it (single moves)");
+        UiText.Disabled($"{Resolvers.ResolverKeybinds.Confirm.Hint}: auto-assign / confirm");
+        UiText.Disabled($"{Resolvers.ResolverKeybinds.Back.Hint}: undo / back out");
+        UiText.Disabled("Esc: open this menu");
 
         ImGui.Spacing();
         ImGui.Separator();
@@ -251,7 +251,7 @@ public sealed class EscapeMenuOverlay
         foreach (string line in BugReportDisclosureLines(IsHost))
         {
             if (line.Length == 0) ImGui.Spacing();
-            else ImGui.TextDisabled(line);
+            else UiText.Disabled(line);
         }
         ImGui.PopTextWrapPos();
         ImGui.Spacing();
@@ -410,7 +410,7 @@ public sealed class EscapeMenuOverlay
     private static void SectionHeader(string text)
     {
         ImGui.Spacing();
-        ImGui.TextDisabled(text);
+        UiText.Disabled(text);
         ImGui.Separator();
         ImGui.Spacing();
     }

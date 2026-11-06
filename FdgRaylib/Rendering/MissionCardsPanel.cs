@@ -22,7 +22,7 @@ internal static class MissionCardsPanel
         ImGui.Separator();
         UiText.Colored(Heading, $"MISSION CARDS - {MissionCardCatalog.Name(state.Game).ToUpperInvariant()}");
 
-        ImGui.TextDisabled("Victory points:");
+        UiText.Disabled("Victory points:");
         foreach (IPlayerSlotInfo seat in seats)
         {
             int vp = state.Vp.TryGetValue(seat.SlotID, out int v) ? v : 0;
@@ -44,10 +44,10 @@ internal static class MissionCardsPanel
                 DrawCards(state, system, side.Table, seat.SlotID, side, mine);
                 if (mine && side.Hand.Count > 0)
                 {
-                    ImGui.TextDisabled("  In hand:");
+                    UiText.Disabled("  In hand:");
                     DrawCards(state, system, side.Hand, seat.SlotID, null, true);
                 }
-                else ImGui.TextDisabled($"  {side.Hand.Count} in hand, {side.Deck.Count} in deck");
+                else UiText.Disabled($"  {side.Hand.Count} in hand, {side.Deck.Count} in deck");
             }
         }
         else if (state.Game == EMissionCardGame.BattleOfWits)
@@ -63,7 +63,7 @@ internal static class MissionCardsPanel
         else
         {
             ImGui.Spacing();
-            ImGui.TextDisabled("Shared cards:");
+            UiText.Disabled("Shared cards:");
             DrawCards(state, system, state.SharedTable, -1);
         }
 
@@ -71,7 +71,7 @@ internal static class MissionCardsPanel
         if (scored.Count > 0)
         {
             ImGui.Spacing();
-            ImGui.TextDisabled("Scored:");
+            UiText.Disabled("Scored:");
             foreach (MissionScore s in scored)
             {
                 IPlayerSlotInfo? seat = seats.FirstOrDefault(p => p.SlotID == s.Slot);
@@ -81,7 +81,7 @@ internal static class MissionCardsPanel
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(s.Text);
             }
         }
-        ImGui.TextDisabled("End of game: +1 VP per objective you control.");
+        UiText.Disabled("End of game: +1 VP per objective you control.");
     }
 
     private static void DrawCards(MissionCardState state, EGameSystem system, List<int> table, int prioritySlot,
@@ -89,7 +89,7 @@ internal static class MissionCardsPanel
     {
         if (table.Count == 0)
         {
-            ImGui.TextDisabled("  (none)");
+            UiText.Disabled("  (none)");
             return;
         }
         foreach (int number in table)
@@ -109,12 +109,12 @@ internal static class MissionCardsPanel
 
             ImGui.BeginTooltip();
             ImGui.PushTextWrapPos(360f);
-            UiText.Colored(Heading, $"{number} {def.Title}");
+            UiText.Colored(Heading, $"{number} {def.Title}", wrap: false);
             foreach (MissionCondition c in def.Conditions)
                 ImGui.TextUnformatted($"{c.Vp} VP: {c.Text}");
             if (number == 44 && state.Priority.TryGetValue(MissionCardState.PriorityKey(prioritySlot, 44), out int obj))
                 UiText.Colored(Heading, $"Rolled: objective {obj}.");
-            if (def.Note != null) ImGui.TextDisabled(def.Note);
+            if (def.Note != null) UiText.Disabled(def.Note);
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
         }

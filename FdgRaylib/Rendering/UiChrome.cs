@@ -143,9 +143,11 @@ public static class UiChrome
     /// pixel count tuned for one monitor. Text after "##" is an ImGui id, not a label, so it is not
     /// measured.
     /// </summary>
-    public static Vector2 ButtonSize(string label) =>
-        new(ImGui.CalcTextSize(label, true).X + (ImGui.GetStyle().FramePadding.X * 4f),
-            ImGui.GetFrameHeight() * 1.35f);
+    public static Vector2 ButtonSize(string label)
+    {
+        float h = ImGui.GetFrameHeight() * 1.35f;
+        return new(ImGui.CalcTextSize(label, true).X + (ImGui.GetStyle().FramePadding.X * 4f) + UiButton.CapsWidth(h), h);
+    }
 
     private static readonly Vector4 PillText = new(1f, 1f, 1f, 1f);
 }

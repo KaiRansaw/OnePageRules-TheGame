@@ -117,7 +117,7 @@ public sealed class ModeSelectScreen : IAppScreen
             // sentence baked into the label makes the name harder to read at a glance.
             ImGui.SetCursorPos(new Vector2(x + 8f, top + tileH + 8f));
             ImGui.PushTextWrapPos(x + tileW);
-            UiText.Colored(Dim, blurb);
+            UiText.Colored(Dim, blurb, wrap: false);
             ImGui.PopTextWrapPos();
             ImGui.SetWindowFontScale(1f);
             if (pressed) go();

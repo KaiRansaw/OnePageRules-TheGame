@@ -230,6 +230,9 @@ public class ArmyForgeScreen : IAppScreen
         _systemIndex = systemIndex;
         RebuildVisible();
         SwitchBook(_visibleBooks[0]);
+        // "Saved Battle Brothers.fdgarmy" stayed in the toolbar after switching to another game, beside a
+        // cleared list of a different faction (2026-11-06).
+        _statusHint = null;
     }
 
     /// <summary>The library index of the book matching <paramref name="book"/> by name AND game system
@@ -338,7 +341,7 @@ public class ArmyForgeScreen : IAppScreen
         EGameSystem system = GameSystemInfo.FromSlug(_book.GameSystem) ?? EGameSystem.GrimdarkFuture;
         // UiText.Disabled, not ImGui.TextDisabled: that one takes a printf format string, so a folder
         // name containing a % would print stack garbage. CalculatorTextSafetyTests lints for it.
-        UiText.Disabled($"Saves to armies\\{ArmyPaths.FolderNameFor(system)}");
+        UiText.Disabled($"Saves to the {ArmyPaths.FolderNameFor(system)} armies folder");
         ImGui.Spacing();
 
         if (_focusSaveName)
@@ -1135,6 +1138,13 @@ public class ArmyForgeScreen : IAppScreen
     private void DrawRosterPane()
     {
         UiText.Disabled("ROSTER");
+        // At the top, not under the roster: with 40 units it sat a long scroll below where you picked one
+        // (found 2026-11-06). Double-clicking a unit still adds it too.
+        ImGui.SameLine();
+        ImGui.BeginDisabled(_selectedRosterId is null);
+        if (UiButton.Navigate("+ Add to list") && _selectedRosterId is not null)
+            AddToList(_selectedRosterId);
+        ImGui.EndDisabled();
         ImGui.Separator();
         foreach (RosterUnit unit in _book.Units)
         {
@@ -1165,12 +1175,6 @@ public class ArmyForgeScreen : IAppScreen
             // #403: no indent - the stats line up under the name they belong to.
             UiText.Disabled($"Qua {unit.Quality}+ Def {unit.Defense}+");
         }
-
-        ImGui.Separator();
-        ImGui.BeginDisabled(_selectedRosterId is null);
-        if (ImGui.Button("+ Add to list") && _selectedRosterId is not null)
-            AddToList(_selectedRosterId);
-        ImGui.EndDisabled();
 
         if (_book.Spells.Count > 0)
         {
@@ -1877,7 +1881,7 @@ public class ArmyForgeScreen : IAppScreen
         $"{u.Name} [{u.BaseModelCount}] - Qua {u.Quality}+ Def {u.Defense}+  ({u.BasePointCost} pts)";
 
     internal static string OptionSummary(UpgradeOption o) =>
-        o.Cost == 0 ? o.Label : $"{o.Label}  (+{o.Cost} pts)";
+        o.Cost == 0 ? o.Label : $"{o.Label}  ({o.Cost:+0;-0} pts)";   // a cheaper swap read "(+-5 pts)"
 
     private const float MmPerInch = 25.4f;
 

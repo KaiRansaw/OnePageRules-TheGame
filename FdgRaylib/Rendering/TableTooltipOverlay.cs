@@ -95,7 +95,7 @@ public class TableTooltipOverlay
     public void Draw(int screenW, int screenH,
         TableHitTester hitTester, ICanvasInteractionHandler? interactionHandler,
         Rectangle? rollStackBounds = null, bool rightClickReserved = false,
-        bool rightDragMoved = false)
+        bool rightDragMoved = false, bool placing = false)
     {
         if (_tableState == null) return;
 
@@ -155,8 +155,12 @@ public class TableTooltipOverlay
         // long enough that sweeping over the table stays clear, short enough not to feel sticky.
         if (Settled(hoveredUnit as object ?? hoveredObjective as object ?? hoveredTerrain))
         {
+            // Not while placing models: the card opened over the very spot being placed on - the ghost or
+            // a unit just put down - and covered the zone (found 2026-11-06). Right-click still shows it.
             if (hoveredUnit != null && hoveredModel != null)
-                DrawUnitTooltip(hoveredUnit, hoveredModel, interactionHandler);
+            {
+                if (!placing) DrawUnitTooltip(hoveredUnit, hoveredModel, interactionHandler);
+            }
             else if (hoveredObjective != null)
                 DrawObjectiveTooltip(hoveredObjective);
             else if (hoveredTerrain != null)
@@ -538,6 +542,12 @@ public class TableTooltipOverlay
         uint red    = ImGui.ColorConvertFloat4ToU32(new Vector4(0.85f, 0.14f, 0.14f, 1)); // "activated" marker
         uint amber  = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.72f, 0.35f, 1));    // #414 wound counter
 
+        // Names already drawn this frame. Two units standing close printed their names on top of each other,
+        // so neither could be read (found 2026-11-06); a name that would land on one moves up a line.
+        var placedLabels = new List<(float X, float Y, float W, float H)>();
+        static bool Overlaps((float X, float Y, float W, float H) a, float x, float y, float w, float h) =>
+            x < a.X + a.W && a.X < x + w && y < a.Y + a.H && a.Y < y + h;
+
         foreach (var unit in _tableState!.Units.Objects)
         {
             float sumX = 0, sumY = 0;
@@ -634,6 +644,14 @@ public class TableTooltipOverlay
                 Vector2 textSize = ImGui.CalcTextSize(label);
                 float labelX = cx - textSize.X * 0.5f;
                 float labelY = stackTopY - textSize.Y - 2f;
+                for (int bump = 0; bump < 6; bump++)
+                {
+                    bool hit = false;
+                    foreach (var r in placedLabels)
+                        if (Overlaps(r, labelX, labelY, textSize.X, textSize.Y)) { hit = true; labelY = r.Y - textSize.Y - 1f; break; }
+                    if (!hit) break;
+                }
+                placedLabels.Add((labelX, labelY, textSize.X, textSize.Y));
                 // The activation marker hangs off the name's left edge, so it shares the name's fate.
                 bool labelHidden = Occluded(labelX, labelY, textSize.X, textSize.Y);
 

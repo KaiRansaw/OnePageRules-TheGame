@@ -41,6 +41,14 @@ internal static class UiButton
     public static bool BackInList(string label, Vector2 size) =>
         Press(label, size, EClass.Back, EClass.Go);
 
+    /// <summary>
+    /// Room the plate's two arrow caps take at <paramref name="height"/> - add it to a fixed-width button
+    /// sized from its label, or the arrow lands on the first letter (the lobby's Back, the picker's CLOSE).
+    /// Zero when the skin isn't loaded.
+    /// </summary>
+    public static float CapsWidth(float height) =>
+        UiSkin.HasButtons ? 2f * UiSkin.CapWidth(UiSkin.EPlate.Back, height) : 0f;
+
     /// <summary>SmallButton voiced with the neutral Navigate tone (roster/copy/pick actions).</summary>
     public static bool NavigateSmall(string label)
     {
@@ -70,7 +78,9 @@ internal static class UiButton
             // Skinned: the plate image is drawn behind a transparent ImGui button of the same size.
             var style = ImGui.GetStyle();
             string visible = label.Split("##")[0];
-            Vector2 auto = new(ImGui.CalcTextSize(visible).X + style.FramePadding.X * 2f, ImGui.GetFrameHeight());
+            UiSkin.EPlate plateKind = cls switch { EClass.Back => UiSkin.EPlate.Back, EClass.Commit => UiSkin.EPlate.Commit, _ => UiSkin.EPlate.Go };
+            float caps = 2f * UiSkin.CapWidth(plateKind, ImGui.GetFrameHeight());
+            Vector2 auto = new(ImGui.CalcTextSize(visible).X + style.FramePadding.X * 2f + caps, ImGui.GetFrameHeight());
             Vector2 want = size ?? Vector2.Zero;
             float avail = ImGui.GetContentRegionAvail().X;
             Vector2 actual = new(want.X > 0 ? want.X : want.X < 0 ? MathF.Max(4f, avail + want.X) : auto.X,
@@ -78,9 +88,7 @@ internal static class UiButton
             Vector2 min = ImGui.GetCursorScreenPos();
             Vector2 max = min + actual;
             bool hovered = ImGui.IsMouseHoveringRect(min, max) && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
-            UiSkin.DrawPlate(ImGui.GetWindowDrawList(),
-                cls switch { EClass.Back => UiSkin.EPlate.Back, EClass.Commit => UiSkin.EPlate.Commit, _ => UiSkin.EPlate.Go },
-                min, max, hovered, hovered && ImGui.IsMouseDown(ImGuiMouseButton.Left));
+            UiSkin.DrawPlate(ImGui.GetWindowDrawList(), plateKind, min, max, hovered, hovered && ImGui.IsMouseDown(ImGuiMouseButton.Left));
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0f, 0f, 0f, 0f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 1f, 1f, 0.04f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0f, 0f, 0f, 0.15f));

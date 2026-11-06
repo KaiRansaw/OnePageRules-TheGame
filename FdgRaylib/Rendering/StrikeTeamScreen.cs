@@ -124,9 +124,20 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// </summary>
     public void Open(EGameSystem system) => _newSystem = system;
 
+    private bool _returnToCamp;
+
+    /// <summary>The next time this screen is shown, open the selected campaign's camp rather than the
+    /// list - Mission Setup's Back (it went to the campaign list - found 2026-11-06).</summary>
+    public void ReturnToCampOnShow() => _returnToCamp = true;
+
     public void OnShown()
     {
         Reload();
+        if (_returnToCamp)
+        {
+            _returnToCamp = false;
+            if (Current != null) { _view = EView.Camp; return; }
+        }
         // #452: back from the Army Forge in the middle of making a campaign - stay in the wizard.
         if (_returningFromForge)
         {
@@ -204,7 +215,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         {
             // The bot no longer makes its own picks, so the player has to be told they are waiting.
             int waiting = foe.Army.Units.Sum(u => CampaignRules.Sheet(u)?.Pending.Count ?? 0);
-            UiText.Disabled($"Enemy treasury: {foe.Army.StrikeTeam!.BankedPoints} pts unspent.");
+            UiText.Disabled($"The enemy has {foe.Army.StrikeTeam!.BankedPoints} pts unspent - switch to Enemy army to spend them.");
             if (waiting > 0) UiText.Colored(EnemyTint, $"The enemy has {waiting} choice(s) waiting on you.");
         }
         ImGui.Separator();
@@ -319,7 +330,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.BeginChild("##campaignDetail", new Vector2(w - listW - gap, h), ImGuiChildFlags.Borders);
         if (Current is { } sel) DrawCampaignDetail(sel.Army);
         else UiText.Disabled(Teams.Count == 0
-            ? "No campaigns yet. \"New Campaign Army\" starts one."
+            ? "No campaigns yet. \"New Campaign\" starts one."
             : "Pick a campaign on the left.");
         ImGui.EndChild();
     }
@@ -329,7 +340,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         var teams = Teams;
         ImGui.SetCursorPos(new Vector2(x, y));
         ImGui.BeginChild("##teamList", new Vector2(w, h), ImGuiChildFlags.Borders);
-        if (teams.Count == 0) UiText.Disabled("No campaign armies yet.\nClick \"New Campaign Army\".");
+        if (teams.Count == 0) UiText.Disabled("No campaign armies yet.\nClick \"New Campaign\".");
         for (int i = 0; i < teams.Count; i++)
         {
             StrikeTeamInfo info = teams[i].Army.StrikeTeam!;
@@ -631,7 +642,10 @@ public sealed class StrikeTeamScreen : IAppScreen
 
         ImGui.SetCursorPos(new Vector2(x, y));
         // #455: the enemy's columns are tinted so it is never in doubt whose books are being done.
-        if (ManagingEnemyNow) ImGui.PushStyleColor(ImGuiCol.Border, EnemyTint);
+        // Read once: DrawWhoseArmy can switch sides in between, and reading it again for the pop popped a
+        // colour that was never pushed - the "Enemy army" tab crashed the game (found 2026-11-06).
+        bool tinted = ManagingEnemyNow;
+        if (tinted) ImGui.PushStyleColor(ImGuiCol.Border, EnemyTint);
         ImGui.BeginChild("##roster", new Vector2(leftW, h), ImGuiChildFlags.Borders);
         DrawWhoseArmy();
         DrawRoster(mPath, mArmy);
@@ -641,7 +655,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         ImGui.BeginChild("##unit", new Vector2(midW, h), ImGuiChildFlags.Borders);
         DrawUnitDetail(mPath, mArmy, n);
         ImGui.EndChild();
-        if (ManagingEnemyNow) ImGui.PopStyleColor();
+        if (tinted) ImGui.PopStyleColor();
 
         ImGui.SetCursorPos(new Vector2(x + leftW + midW + gap * 2f, y));
         ImGui.BeginChild("##mission", new Vector2(rightW, h), ImGuiChildFlags.Borders);
@@ -836,17 +850,23 @@ public sealed class StrikeTeamScreen : IAppScreen
         foreach (UpgradeSection section in roster.Sections)
         {
             ImGui.PushID(section.Id);
-            UiText.Disabled(section.Label);
+            // A "Replace X" section on a unit that no longer carries X has nothing to buy - the Army Forge
+            // says so, and the camp offered "(-0 pts)" buttons that did nothing (2026-11-06).
+            bool nothingToReplace = section.Variant == UpgradeVariant.Replace
+                && ArmyForgeScreen.AvailableExcludingSection(army.Book, loadout, section) == 0;
+            UiText.Disabled(nothingToReplace ? $"{section.Label}  (none to replace)" : section.Label);
             foreach (UpgradeOption option in section.Options)
             {
                 bool owned = loadout.Choices.Any(c => c.SectionId == section.Id && c.OptionId == option.Id);
+                if (nothingToReplace && !owned) continue;
                 BuilderUnit wanted = Toggled(loadout, section.Id, option.Id, !owned);
                 int price = CampaignEconomy.PriceOfChange(army.Book, unit, wanted);
                 bool affordable = price <= treasury;
 
+                // What it costs or gives back, in plain words: "Buy X (-40 pts)" read as a discount.
                 string label = owned
-                    ? (price >= 0 ? $"Drop {option.Label} ({price:+0;-0;0} pts)" : $"Sell {option.Label} (+{-price} pts)")
-                    : (price >= 0 ? $"Buy {option.Label} (-{price} pts)" : $"Take {option.Label} (+{-price} pts)");
+                    ? (price > 0 ? $"Drop {option.Label} (costs {price} pts)" : price < 0 ? $"Sell {option.Label} (get {-price} pts back)" : $"Drop {option.Label} (free)")
+                    : (price > 0 ? $"Buy {option.Label} ({price} pts)" : price < 0 ? $"Take {option.Label} (get {-price} pts back)" : $"Take {option.Label} (free)");
 
                 ImGui.BeginDisabled(!owned && !affordable);
                 if (UiButton.NavigateSmall(label + "##" + option.Id))
@@ -1076,7 +1096,10 @@ public sealed class StrikeTeamScreen : IAppScreen
         CampaignNumbers n = NumbersFor(army);
         StrikeTeamInfo info = army.StrikeTeam!;
 
-        float cartH = ImGui.GetTextLineHeightWithSpacing() * 4f;
+        // Room for everything the cart draws - its list, the veteran tick, the total, the warning and the
+        // Confirm button. Four text lines left Confirm below the panel's edge (found 2026-11-06).
+        float cartH = ImGui.GetTextLineHeightWithSpacing() * 4f + ImGui.GetFrameHeightWithSpacing() * 2f
+            + ImGui.GetStyle().WindowPadding.Y * 2f;
         ImGui.SetCursorPos(new Vector2(x, y));
         ImGui.BeginChild("##cards", new Vector2(w, h - cartH - 10f), ImGuiChildFlags.Borders);
 
@@ -1636,7 +1659,12 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     private void DrawBottomBar(int screenW, int screenH, float margin, float barH)
     {
-        Vector2 btn = new(screenW * 0.13f, barH * 0.55f);
+        // Never narrower than the longest label plus the plate's arrows - at 1280x720 13% of the width put
+        // the arrows over "Play next mission" and "Campaign armies" (2026-11-06).
+        float btnH = barH * 0.55f;
+        float longest = new[] { "Play next mission", "Campaign armies", "Back to camp", "New Campaign", "Continue" }
+            .Max(l => ImGui.CalcTextSize(l).X);
+        Vector2 btn = new(MathF.Max(screenW * 0.13f, longest + ImGui.GetStyle().FramePadding.X * 2f + UiButton.CapsWidth(btnH) + 8f), btnH);
         float by = screenH - barH + (barH - btn.Y) * 0.5f;
         bool esc = ImGui.IsKeyPressed(ImGuiKey.Escape, false) && !ImGui.GetIO().WantTextInput;
         float rx = screenW - margin - btn.X;

@@ -245,6 +245,9 @@ public class RaylibRenderer
         _escapeMenu.OnLoadGame = () => { ExitGame(); NavigateTo(MainMenu); OnLoadGameRequested?.Invoke(); };
     }
 
+    /// <summary>The screen showing now (null before the first navigation).</summary>
+    public IAppScreen? CurrentScreen => _currentScreen;
+
     public void NavigateTo(IAppScreen screen)
     {
         _currentScreen = screen;
@@ -1214,7 +1217,8 @@ public class RaylibRenderer
                 _tooltipOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 _tooltipOverlay.Draw(screenW, screenH, _hitTester, _resolverOverlay?.ActiveInteractionHandler,
                     rollStackBounds, rightClickReserved: _resolverOverlay?.ActiveToolUsesRightClick ?? false,
-                    rightDragMoved: _view3D?.RightDragMoved ?? false);
+                    rightDragMoved: _view3D?.RightDragMoved ?? false,
+                    placing: _resolverOverlay?.ActiveEnemyExclusion != null);
                 _resolverOverlay?.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
                 // #280: other players' live previews (ghosts / planned paths) - same background
                 // draw list layer as the local resolver's own ghosts, drawn regardless of what the
@@ -1837,8 +1841,13 @@ public class RaylibRenderer
         // source height. The tint must be WHITE (it multiplies the texture's colour, so a coloured tint
         // would shift the hue) — only its alpha scales, making the whole blob uniformly translucent.
         var src = new Rectangle(0, 0, _exclusionRT.Texture.Width, -_exclusionRT.Texture.Height);
+        // Clipped to the table: the discs of enemies near an edge spilled the red off the board and under
+        // the side panel (found 2026-11-06).
+        Raylib.BeginScissorMode((int)l.OriginX, (int)l.OriginY, (int)MathF.Ceiling(TableWIn * l.Scale),
+            (int)MathF.Ceiling(TableHIn * l.Scale));
         Raylib.DrawTextureRec(_exclusionRT.Texture, src, Vector2.Zero,
             new Color((byte)255, (byte)255, (byte)255, ExclusionCompositeAlpha));
+        Raylib.EndScissorMode();
 
         // The waiver outline, on the canvas itself (not the RT) so it stays crisp at full alpha.
         foreach (PlacementDisc waiver in waivers)
@@ -2450,7 +2459,10 @@ public class RaylibRenderer
         // A recovery note (#187) is a wrapped absolute path, so the card grows to hold it.
         string? note = _gameOverNote;
         var size = new Vector2(Math.Min(460f, screenW * 0.8f), note == null ? 200f : 290f);
-        ImGui.SetNextWindowPos(new Vector2((screenW - size.X) / 2f, (screenH - size.Y) / 2f), ImGuiCond.Appearing);
+        // Centred on the table area, under the win banner (centred on the whole screen it sat off to the
+        // right of the banner, over the table edge - found 2026-11-06).
+        int areaW = ComputeLayout(screenW, screenH).AreaW;
+        ImGui.SetNextWindowPos(new Vector2((areaW - size.X) / 2f, (screenH - size.Y) / 2f), ImGuiCond.Appearing);
         ImGui.SetNextWindowSize(size, ImGuiCond.Always);
         ImGui.Begin("Game Over##overlay",
             ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |

@@ -191,7 +191,7 @@ public class ClientModal : IAppScreen
 
                 ImGui.TableNextColumn();
                 if (compatible) ImGui.TextUnformatted("OK");
-                else ImGui.TextColored(new Vector4(1f, 0.6f, 0.3f, 1f), "Mismatch");
+                else UiText.Colored(new Vector4(1f, 0.6f, 0.3f, 1f), "Mismatch");
 
                 ImGui.TableNextColumn();
                 // The registry TCP-probes the host's port at registration; null means it couldn't

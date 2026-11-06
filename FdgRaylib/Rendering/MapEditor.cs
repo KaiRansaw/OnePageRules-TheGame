@@ -404,8 +404,12 @@ public sealed class MapEditor
 
         // Left panel: name, tools, selected item, save/cancel.
         ImGui.SetCursorPos(new Vector2(margin, margin));
-        ImGui.BeginChild("##mapTools", new Vector2(panelW, screenH - margin * 2f), ImGuiChildFlags.Borders);
+        ImGui.BeginChild("##mapTools", new Vector2(panelW, screenH - margin * 2f), ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.BeginChild("##mapToolsBody", new Vector2(0f, MathF.Max(40f, ImGui.GetContentRegionAvail().Y - ToolFooterHeight())));
         DrawToolPanel();
+        ImGui.EndChild();
+        DrawToolFooter();
         ImGui.EndChild();
 
         // Right: the board.
@@ -436,7 +440,7 @@ public sealed class MapEditor
         ImGui.Spacing();
 
         // Tools.
-        ImGui.TextDisabled("Tools  (right-click the board to go back to Select)");
+        UiText.Disabled("Tools  (right-click the board to go back to Select)");
         float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
         Vector2 btn = new(half, 0f);
         if (ToolButton("Select / Move", _tool == ETool.Select, btn)) SetTool(ETool.Select);
@@ -454,7 +458,7 @@ public sealed class MapEditor
         if (_tool == ETool.BaseMarker)
         {
             ImGui.Spacing();
-            ImGui.TextDisabled("Base size  (click the board to place)");
+            UiText.Disabled("Base size  (click the board to place)");
             float third = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2f) / 3f;
             for (int i = 0; i < BasePresets.Length; i++)
             {
@@ -467,7 +471,7 @@ public sealed class MapEditor
         }
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Terrain  (click the board to place)");
+        UiText.Disabled("Terrain  (click the board to place)");
         for (int i = 0; i < Presets.Length; i++)
         {
             if (i % 2 == 1) ImGui.SameLine();
@@ -484,17 +488,29 @@ public sealed class MapEditor
 
         // Counts + hints.
         ImGui.Separator();
-        ImGui.TextDisabled($"{_pieces.Count} terrain, {_objectives.Count} objectives, {_zones.Count} deploy zones"
+        UiText.Disabled($"{_pieces.Count} terrain, {_objectives.Count} objectives, {_zones.Count} deploy zones"
             + (_baseMarkers.Count > 0 ? $", {_baseMarkers.Count} base refs" : ""));
         if (_objectives.Count == 0)
             ImGui.TextWrapped("No objectives: the game rolls D3+2 and places them as usual.");
         if (_zones.Count == 0)
             ImGui.TextWrapped("No deploy zones: the standard zones along the long edges are used.");
 
-        // Save / Cancel pinned to the bottom of the panel.
+        DrawConfirmPopups();
+    }
+
+    /// <summary>The panel's footer height: the status line (when there is one) and the Save / Cancel row.</summary>
+    private float ToolFooterHeight() =>
+        ImGui.GetFrameHeight() * 1.6f + ImGui.GetStyle().ItemSpacing.Y * 2f
+        + (_status.Length > 0 ? ImGui.GetTextLineHeightWithSpacing() * 2f : 0f);
+
+    /// <summary>
+    /// Save / Cancel, always visible under the scrolling tools (2026-11-06: at 1280x720 the tools ran past
+    /// the bottom and took Save and Cancel with them once something was selected).
+    /// </summary>
+    private void DrawToolFooter()
+    {
+        float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
         float rowH = ImGui.GetFrameHeight() * 1.6f;
-        float y = ImGui.GetWindowHeight() - rowH - ImGui.GetStyle().WindowPadding.Y - (_status.Length > 0 ? ImGui.GetTextLineHeightWithSpacing() * 2f : 0f);
-        if (ImGui.GetCursorPosY() < y) ImGui.SetCursorPosY(y);
         if (_status.Length > 0)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.55f, 0.45f, 1f));
@@ -505,7 +521,10 @@ public sealed class MapEditor
         if (UiButton.Back("Cancel", big)) { IsOpen = false; }
         ImGui.SameLine();
         if (UiButton.Confirm("Save Map", big)) TrySave();
+    }
 
+    private void DrawConfirmPopups()
+    {
         // Confirm popup for Clear Board.
         if (ImGui.BeginPopupModal("Clear the whole board?", ImGuiWindowFlags.AlwaysAutoResize))
         {
@@ -673,7 +692,7 @@ public sealed class MapEditor
                 }
                 ImGui.SetNextItemWidth(-90); ImGui.SliderFloat("Height", ref p.Height, 0f, 12f, "%.1f in");
                 ImGui.SetNextItemWidth(-90); ImGui.SliderInt("Points", ref p.Points, 1, 5);
-                ImGui.TextDisabled("Points: its cost in 'Alternating: Points' terrain mode.");
+                UiText.Disabled("Points: its cost in 'Alternating: Points' terrain mode.");
 
                 if (p.Raw == null && UiButton.Navigate("Duplicate", new Vector2(120, 0)))
                 {
@@ -708,16 +727,16 @@ public sealed class MapEditor
 
                 if (z.Parts.Count > 1)
                 {
-                    ImGui.TextDisabled($"Plus {z.Parts.Count - 1} more piece(s) - an L or T shape.");
+                    UiText.Disabled($"Plus {z.Parts.Count - 1} more piece(s) - an L or T shape.");
                     if (UiButton.NavigateSmall("Remove last piece") && z.Parts.Count > 1)
                         z.Parts.RemoveAt(z.Parts.Count - 1);
                 }
                 else
                 {
-                    ImGui.TextDisabled("Shift+drag to add another piece and make an L shape.");
+                    UiText.Disabled("Shift+drag to add another piece and make an L shape.");
                 }
 
-                ImGui.TextDisabled("Zone 1 goes to the first team to pick, and so on.");
+                UiText.Disabled("Zone 1 goes to the first team to pick, and so on.");
                 if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
                 break;
             }
@@ -725,7 +744,7 @@ public sealed class MapEditor
             {
                 MapBaseMarkerEntry m = _baseMarkers[_selIndex];
                 ImGui.TextUnformatted("Selected base reference");
-                ImGui.TextDisabled("A size reference only - the game ignores it.");
+                UiText.Disabled("A size reference only - the game ignores it.");
 
                 float x = m.X, z = m.Z;
                 ImGui.SetNextItemWidth(-90);
@@ -736,13 +755,13 @@ public sealed class MapEditor
                 float across = m.Base.Shape == EBaseShapeKind.Rectangle
                     ? MathF.Max(m.Base.WidthInches, m.Base.HeightInches)
                     : m.Base.DiameterInches;
-                ImGui.TextDisabled($"{m.Label}  -  {across:0.##} in across ({across * 25.4f:0} mm)");
+                UiText.Disabled($"{m.Label}  -  {across:0.##} in across ({across * 25.4f:0} mm)");
 
                 if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
                 break;
             }
             default:
-                ImGui.TextDisabled("Nothing selected. Use Select / Move and click\nsomething on the board to edit it.");
+                UiText.Disabled("Nothing selected. Use Select / Move and click\nsomething on the board to edit it.");
                 break;
         }
     }

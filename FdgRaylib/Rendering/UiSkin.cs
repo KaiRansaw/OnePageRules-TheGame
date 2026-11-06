@@ -63,6 +63,19 @@ public static class UiSkin
             dl.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(0.55f, 0.85f, 0.80f, 0.55f * a)), 2f);
     }
 
+    /// <summary>
+    /// How wide one end cap of a button plate is at <paramref name="height"/> - the part that carries the
+    /// arrow. An auto-sized button adds two of these so its label never sits under an arrow (the lobby's
+    /// Back and the army picker's CLOSE had the chevron over their first letter - found 2026-11-06).
+    /// </summary>
+    public static float CapWidth(EPlate plate, float height)
+    {
+        EnsureLoaded();
+        Texture2D? tex = plate switch { EPlate.Back => _back ?? _go, EPlate.Commit => _commit ?? _go, _ => _go };
+        if (tex is not Texture2D t || t.Height <= 0) return 0f;
+        return 34f * height / t.Height;
+    }
+
     /// <summary>The panel title bar image behind a heading line.</summary>
     public static void DrawTitleBar(ImDrawListPtr dl, Vector2 min, Vector2 max)
     {

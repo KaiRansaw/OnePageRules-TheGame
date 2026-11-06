@@ -110,11 +110,11 @@ public sealed class HeroBuilderScreen : IAppScreen
         ImDrawListPtr wdl = ImGui.GetWindowDrawList();
         wdl.AddText(headFont, titlePx, new Vector2(margin, screenH * 0.035f), U(TextBright),
             _view == EView.Shop ? "SHOP" :
-            _view == EView.List ? "STAR QUEST HEROES" : _editingPath == null ? "NEW HERO" : "EDIT HERO");
+            _view == EView.List ? (System == EGameSystem.AoFQuest ? "AOF: QUEST HEROES" : "STAR QUEST HEROES") : _editingPath == null ? "NEW HERO" : "EDIT HERO");
         string sub = Data.LoadError ?? (_view switch
         {
             EView.Shop => "Buy, sell and hand things between your heroes. Selling pays full price.",
-            EView.List => $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}  -  {HeroPaths.FolderFor(GameType)}",
+            EView.List => $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}",   // no folder path: a player has no use for it
             _ => "Pick a hero, give it a name and a class, then choose its starter skills and gear.",
         });
         wdl.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(margin, screenH * 0.035f + titlePx + 6f),
@@ -604,7 +604,10 @@ public sealed class HeroBuilderScreen : IAppScreen
                 foreach (SqHero hero in heroes)
                 {
                     bool sel = _base == hero;
-                    if (ImGui.Selectable($"  {hero.Name}##{fac.Uid}{hero.Id}", sel))
+                    // The name is cut with "..." to leave room for the points (they overlapped at 1280x720).
+                    float room = ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize($"{hero.Cost}pts").X - 16f;
+                    string shown = LobbyScreen.FitWithEllipsis($"  {hero.Name}", room);
+                    if (ImGui.Selectable($"{shown}##{fac.Uid}{hero.Id}", sel))
                     {
                         if (_base != hero) { _picks.Clear(); }
                         _faction = fac;
@@ -790,7 +793,7 @@ public sealed class HeroBuilderScreen : IAppScreen
             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 26f);
             ImGui.TextUnformatted(cls.Description);
             SqSkill? feat = Data.ClassFeat(cls);
-            if (feat != null) UiText.Colored(Accent, $"{feat.Name}: {feat.Rule}");
+            if (feat != null) UiText.Colored(Accent, $"{feat.Name}: {feat.Rule}", wrap: false);
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
         }

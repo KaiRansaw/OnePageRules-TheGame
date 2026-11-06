@@ -74,10 +74,7 @@ public sealed class SettingsScreen : IAppScreen
 
     private void DrawSound()
     {
-        UiText.Colored(Warn, "There is no audio in the game yet, so none of these do anything.");
-        UiText.Wrapped("They are here so the shape is settled: music, effects and voice lines are "
-                       + "separate channels, each with its own level and its own mute. Nothing is wired "
-                       + "to a mixer because there is no mixer.");
+        UiText.Colored(Warn, "The game has no sound yet. These controls will work once it does.");
         ImGui.Spacing();
 
         ImGui.BeginDisabled();
@@ -97,9 +94,8 @@ public sealed class SettingsScreen : IAppScreen
 
     private static void DrawControls()
     {
-        UiText.Colored(Warn, "Listed, not yet editable - remapping is its own job.");
-        UiText.Wrapped("This is the same list the game shows on F1 while you are playing, read from one "
-                       + "place so the two cannot disagree.");
+        UiText.Colored(Warn, "Keys can't be changed yet.");
+        UiText.Wrapped("Press F1 during a game to see this list.");
         ImGui.Spacing();
 
         string? section = null;
@@ -120,9 +116,6 @@ public sealed class SettingsScreen : IAppScreen
 
     private static void DrawDisplay()
     {
-        UiText.Wrapped("Fullscreen is F11 while the game is running. Everything else about the window "
-                       + "follows the desktop.");
-        ImGui.Spacing();
-        UiText.Colored(Dim, "Nothing to set here yet.");
+        UiText.Wrapped("Press F11 during a game to switch fullscreen on or off.");
     }
 }

@@ -208,7 +208,7 @@ public sealed class LoadGameScreen : IAppScreen
         if (_entries.Count == 0)
         {
             ImGui.SetCursorPos(new Vector2(0, gridH * 0.4f));
-            ImGui.TextDisabled("No saved games yet. Save a game from the in-game menu and it will appear here.");
+            UiText.Disabled("No saved games yet. Save a game from the in-game menu and it will appear here.");
         }
 
         bool loadNow = false;

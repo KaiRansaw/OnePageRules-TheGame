@@ -478,7 +478,12 @@ public static class DiceTray
             head.Add((target, tgtCol));
         }
         Rich(head, inner);
-        if (e.Weapons.Length > 0) Rich(new() { ("with " + e.Weapons, Dim) }, inner);
+        // Each line of the card starts at the card's inset. Rich ends with a Dummy, which returns the
+        // cursor to the window's left - so the second and third lines began under the colour bar and lost
+        // their first letter ("ith Heavy Flamer", "/2 hit" - found 2026-11-06).
+        void Inset() => ImGui.SetCursorScreenPos(new Vector2(start.X + padX, ImGui.GetCursorScreenPos().Y));
+        Inset();
+        if (e.Weapons.Length > 0) { Rich(new() { ("with " + e.Weapons, Dim) }, inner); Inset(); }
 
         // The outcome, in one sentence.
         var res = new List<(string, Vector4)>();

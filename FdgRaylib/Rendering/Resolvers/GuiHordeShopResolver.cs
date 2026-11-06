@@ -130,7 +130,7 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
             $"In cart: {Signed(total)}   Left after buying: {left}");
         ImGui.SameLine(0, 30f);
         ImGui.SetNextItemWidth(260f);
-        if (ImGui.BeginCombo("Army book", BookLabel(_book!, request.AllowedGameSystems)))
+        if (UiCombo.Begin("Army book", BookLabel(_book!, request.AllowedGameSystems)))
         {
             foreach (BookFile book in _books!)
             {
@@ -255,7 +255,7 @@ public sealed class GuiHordeShopResolver : IStageResolver<HordeShopRequest, Hord
         ImGui.Spacing();
         ImGui.SetNextItemWidth(200f);
         int current = _cartObjectives[_selectedRecruit];
-        if (ImGui.BeginCombo("Deploy at objective", current.ToString()))
+        if (UiCombo.Begin("Deploy at objective", current.ToString()))
         {
             foreach (HordeShopObjective objective in request.SeizedObjectives)
             {

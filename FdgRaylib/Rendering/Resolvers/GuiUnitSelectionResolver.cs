@@ -282,8 +282,10 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
             {
                 dl.AddRectFilledMultiColor(i0, i1, U(0.12f, 0.30f, 0.38f), U(0.12f, 0.30f, 0.38f),
                     U(0.05f, 0.12f, 0.18f), U(0.05f, 0.12f, 0.18f));
-                string initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                    .Take(3).Select(w => char.ToUpperInvariant(w[0])));
+                // From the name's words only: "Miners (Combined)" gave "M(" (2026-11-06).
+                string bare = System.Text.RegularExpressions.Regex.Replace(name, @"\([^)]*\)|\[[^\]]*\]", " ");
+                string initials = string.Concat(bare.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(w => char.IsLetterOrDigit(w[0])).Take(3).Select(w => char.ToUpperInvariant(w[0])));
                 ImGui.SetWindowFontScale(2f);
                 Vector2 isz = ImGui.CalcTextSize(initials);
                 ImGui.SetWindowFontScale(1f);

@@ -1321,6 +1321,14 @@ else
     // has made one. Null means "whatever the lobby defaults to": the campaign screens reach the host
     // dialog on their own terms and must not inherit a tile clicked earlier in the session.
     EGameSystem? pendingGameSystem = null;
+    // Where the Host dialog was opened from, so its Cancel can go back there.
+    IAppScreen? hostOpenedFrom = null;
+    void OpenHost()
+    {
+        IAppScreen? from = renderer.CurrentScreen;
+        if (from != null && !ReferenceEquals(from, renderer.HostModal)) hostOpenedFrom = from;
+        renderer.NavigateTo(renderer.HostModal);
+    }
     // Set beside it when the mode-select screen picked a mode (Army vs Army / Horde). Applied to the
     // lobby in the same place and cleared the same way, so a lobby reached any other way is unaffected.
     EGameMode? pendingGameMode = null;
@@ -1346,13 +1354,13 @@ else
     {
         pendingGameSystem = system;
         pendingGameMode = EGameMode.Standard;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
     renderer.ModeSelect.OnHorde = system =>
     {
         pendingGameSystem = system;
         pendingGameMode = EGameMode.Horde;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
     renderer.ModeSelect.OnCampaign = system =>
     {
@@ -1372,13 +1380,13 @@ else
         // One mission state machine serves both Quest systems; which system is playing decides the book,
         // the heroes and the wording (#418), and that rides on pendingGameSystem rather than on the mode.
         pendingGameMode = EGameMode.StarQuestMission;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
     renderer.QuestLanding.OnHorde = system =>
     {
         pendingGameSystem = system;
         pendingGameMode = EGameMode.StarQuestHorde;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
 
     // The lobby's Select Map button. The picker is its own screen rather than a dropdown because a
@@ -1403,7 +1411,7 @@ else
     renderer.MainMenu.OnHostClicked = () =>
     {
         pendingGameSystem = null;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
 
     renderer.MainMenu.OnArmyBuilderClicked = () =>
@@ -1439,12 +1447,12 @@ else
     renderer.Campaigns.OnPlay = () =>
     {
         pendingGameSystem = renderer.Campaigns.System;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
     renderer.AoFCampaigns.OnPlay = () =>
     {
         pendingGameSystem = renderer.AoFCampaigns.System;
-        renderer.NavigateTo(renderer.HostModal);
+        OpenHost();
     };
 
     renderer.MainMenu.OnStrikeTeamsClicked = () =>
@@ -1473,7 +1481,10 @@ else
         renderer.NavigateTo(renderer.MissionSetup);
     };
     renderer.MissionSetup.OnBack = () =>
+    {
+        renderer.StrikeTeams.ReturnToCampOnShow();   // back to the camp it came from, not the campaign list
         renderer.NavigateTo(renderer.StrikeTeams);
+    };
     // #435: Start Mission. Mission Setup has already recorded both armies, the map and the auto-launch
     // flag on LobbyScreen, so all that is left is a host. Opened silently on the saved settings - the
     // campaign flow is "straight into the game", with no Host Server dialog and no table screen. If the
@@ -1481,7 +1492,7 @@ else
     renderer.MissionSetup.OnStart = system =>
     {
         pendingGameSystem = system;
-        if (!renderer.HostModal.TryCreateSilently()) renderer.NavigateTo(renderer.HostModal);
+        if (!renderer.HostModal.TryCreateSilently()) OpenHost();
     };
 
     renderer.MainMenu.OnClientClicked = () =>
@@ -1668,11 +1679,18 @@ else
         renderer.NavigateTo(renderer.MainMenu);
 
     // ── Host Modal ─────────────────────────────────────────────────────────────
+    // Cancel goes back where the Host dialog was opened from - a campaign's Play next mission, a mode
+    // screen - not always to the main menu (found 2026-11-06).
     renderer.HostModal.OnCancel = () =>
-        renderer.NavigateTo(renderer.MainMenu);
+    {
+        IAppScreen back = hostOpenedFrom ?? renderer.MainMenu;
+        hostOpenedFrom = null;
+        renderer.NavigateTo(back);
+    };
 
     renderer.HostModal.OnCreated = (lobby, listing, mapper) =>
     {
+        hostOpenedFrom = null;
         TeardownLobby();
         activeLobby = lobby;
         activeListing = listing;

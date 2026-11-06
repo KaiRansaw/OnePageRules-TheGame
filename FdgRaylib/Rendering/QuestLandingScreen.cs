@@ -49,10 +49,18 @@ public sealed class QuestLandingScreen : IAppScreen
         bool useMenuFont = RaylibRenderer.MenuFontPx > 0f;
         if (useMenuFont) ImGui.PushFont(RaylibRenderer.MenuFont);
 
+        // Sized as fractions of the window height, like ModeSelectScreen (found 2026-11-06: everything was
+        // drawn at the full menu font, so tile names were cut off, blurbs wrapped a word a line and ran off
+        // the bottom, and Back's label overflowed its button).
+        float basePx = useMenuFont ? RaylibRenderer.MenuFontPx : ImGui.GetFontSize();
+        float titlePx = screenH * 0.045f, tilePx = screenH * 0.030f, blurbPx = screenH * 0.021f, backPx = screenH * 0.022f;
+
         string title = GameSystemInfo.DisplayName(System);
+        ImGui.SetWindowFontScale(titlePx / basePx);
         Vector2 size = ImGui.CalcTextSize(title);
         ImGui.SetCursorPos(new Vector2((screenW - size.X) * 0.5f, screenH * 0.10f));
         ImGui.TextUnformatted(title);
+        ImGui.SetWindowFontScale(1f);
 
         float margin = screenW * 0.06f;
         float tileW = (screenW - margin * 2f - 60f) / 4f;
@@ -65,7 +73,10 @@ public sealed class QuestLandingScreen : IAppScreen
         Tile(3, "Campaign", "Chapters of missions, carried between them.", () => OnCampaign?.Invoke(System));
 
         ImGui.SetCursorPos(new Vector2(margin, screenH - screenH * 0.12f));
-        if (UiButton.Back("Back", new Vector2(180f, 46f)) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+        ImGui.SetWindowFontScale(backPx / basePx);
+        bool back = UiButton.Back("Back", new Vector2(Math.Max(180f, screenH * 0.2f), Math.Max(46f, screenH * 0.055f)));
+        ImGui.SetWindowFontScale(1f);
+        if (back || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
             OnBack?.Invoke();
 
         if (useMenuFont) ImGui.PopFont();
@@ -76,11 +87,15 @@ public sealed class QuestLandingScreen : IAppScreen
         {
             float x = margin + index * (tileW + 20f);
             ImGui.SetCursorPos(new Vector2(x, top));
-            if (UiButton.Navigate(label + $"##quest{index}", new Vector2(tileW, tileH))) go();
+            ImGui.SetWindowFontScale(tilePx / basePx);
+            bool pressed = UiButton.Navigate(label + $"##quest{index}", new Vector2(tileW, tileH));
+            ImGui.SetWindowFontScale(blurbPx / basePx);
             ImGui.SetCursorPos(new Vector2(x + 8f, top + tileH + 8f));
             ImGui.PushTextWrapPos(x + tileW);
-            UiText.Colored(Dim, blurb);
+            UiText.Colored(Dim, blurb, wrap: false);
             ImGui.PopTextWrapPos();
+            ImGui.SetWindowFontScale(1f);
+            if (pressed) go();
         }
     }
 }

@@ -69,7 +69,9 @@ public class LobbyScreen : IAppScreen
 
     // Host connection info shown so the host knows what address to share (QF9). The port mirrors
     // CommandProtocol.TEMP_PORT (internal to the engine assembly, so it's restated here).
-    private const int ListenPort = 6389;
+    /// <summary>The port this host is listening on: the Host dialog saves its choice to the config before
+    /// the lobby opens (it showed a fixed 6389 whatever port was really in use - found 2026-11-06).</summary>
+    private static int ListenPort => UserConfig.Current.Port;
     private string? _lanAddresses;                 // computed once, lazily
     private volatile string _publicAddress = "checking...";
     private bool _publicFetchStarted;
@@ -119,6 +121,7 @@ public class LobbyScreen : IAppScreen
         // this lobby its own rotation, so re-opening one starts the army cycle over.
         _botArmyPicker = null;
         _autoArmiedSlots.Clear();
+        _servedForSystem = null;
         _resetSections = true;   // Connection closed, the rest open, every time the lobby opens
         _ = ArmyCatalogCache.Current;
         viewModel.OnLaunched += game => _pendingGame = game;
@@ -251,8 +254,8 @@ public class LobbyScreen : IAppScreen
         ImGui.SetWindowFontScale(ws);
 
         // CalcTextSize ignores SetWindowFontScale, so apply ws to the measured width by hand.
-        float backW = (ImGui.CalcTextSize("Back").X + 36f) * ws;
         float backH = headerH - 8f;
+        float backW = (ImGui.CalcTextSize("Back").X + 36f) * ws + UiButton.CapsWidth(backH);
         ImGui.SetCursorPos(new Vector2(headerW - backW - 4f, 4f));
         if (UiButton.Back("Back", new Vector2(backW, backH)))
         {
@@ -350,6 +353,7 @@ public class LobbyScreen : IAppScreen
     /// </summary>
     private void DrawPlayerList(float panelW, float panelScale)
     {
+        ReserveBotsOnGameTypeChange();
         AutoArmyNewSlots();
         EnsureTwoSeats();
 
@@ -553,12 +557,19 @@ public class LobbyScreen : IAppScreen
 
         // Faction and points on one line: both are facts about the army above, and the points number is
         // the one that turns red and blocks the launch.
-        DrawFactionCell(info.ArmyListSummary, _viewModel!.AllowedGameSystems, panelScale);
-        ImGui.SameLine();
-        UiText.Disabled("-");
-        ImGui.SameLine();
-        DrawPointsCell(info.ArmyListSummary,
-            GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
+        // A Quest hero seat with no heroes picked yet has no army to describe: it read "N/A - 0", or the
+        // army from before the game type was switched (2026-11-06).
+        bool heroSeat = GameSystemInfo.IsQuest(_viewModel!.GameSystem) && info.PlayerType != EPlayerType.AI;
+        bool partyChosen = _partyPicks.TryGetValue(info.PlayerID.ID, out List<string>? chosen) && chosen.Count > 0;
+        if (!heroSeat || partyChosen || !_viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID))
+        {
+            DrawFactionCell(info.ArmyListSummary, _viewModel.AllowedGameSystems, panelScale);
+            ImGui.SameLine();
+            UiText.Disabled("-");
+            ImGui.SameLine();
+            DrawPointsCell(info.ArmyListSummary,
+                GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
+        }
 
         // ── Side and colour ──
         // Each on its own full-width line. They used to share one line, but the team dropdown sizes itself
@@ -779,6 +790,26 @@ public class LobbyScreen : IAppScreen
         }
     }
 
+    private EGameSystem? _servedForSystem;
+
+    /// <summary>
+    /// When the Game Type changes, the bots' armies are from the old game - a Grimdark Future list in a
+    /// Firefight lobby is the wrong book and blocks the launch (found 2026-11-06). So every bot this machine
+    /// owns is marked unserved and re-rolled from the new game's folder. A human's pick is left alone - it
+    /// turns red, and choosing is theirs.
+    /// </summary>
+    private void ReserveBotsOnGameTypeChange()
+    {
+        EGameSystem now = _viewModel!.GameSystem;
+        if (_servedForSystem is { } was && was != now && !_viewModel.IsResumeMode)
+        {
+            foreach (LobbyPlayerInfoSummary info in _viewModel.PlayerInfos)
+                if (info.PlayerType == EPlayerType.AI && _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID))
+                    _autoArmiedSlots.Remove(info.PlayerID.ID);
+        }
+        _servedForSystem = now;
+    }
+
     /// <summary>Picks and loads the next army for one slot - one being seeded, or any player pressing
     /// Random Army. Silently does nothing when the folder holds no readable armies, or when the chosen
     /// file fails to load, so the slot keeps whatever it had.</summary>
@@ -923,6 +954,18 @@ public class LobbyScreen : IAppScreen
         return MathF.Max(fitted, baseScale * MinFitScale);
     }
 
+    /// <summary>The text, cut down with "..." until it fits <paramref name="width"/> at the current font.</summary>
+    internal static string FitWithEllipsis(string text, float width)
+    {
+        if (width <= 0f || ImGui.CalcTextSize(text).X <= width) return text;
+        for (int n = text.Length - 1; n > 0; n--)
+        {
+            string cut = text[..n].TrimEnd() + "...";
+            if (ImGui.CalcTextSize(cut).X <= width) return cut;
+        }
+        return "...";
+    }
+
     /// <summary>Draws one line of text, shrunk to fit the remaining cell width when it would clip, and
     /// kept vertically centred on the line it would have occupied at full size - a shrunk line is
     /// shorter than the row, so left alone it rides the top of the cell and reads as misaligned.
@@ -1016,8 +1059,12 @@ public class LobbyScreen : IAppScreen
         // preview of the list you are about to take.
         string cellLabel = summary.IsAssigned ? summary.ArmyName : "Choose an army...";
         if (missing) ImGui.PushStyleColor(ImGuiCol.Text, OverPointsColor);
-        bool pressed = UiButton.Navigate($"{cellLabel}##army{row}", new Vector2(-1f, 0f));
+        // A long list name is shortened to the button with "..." (it ran edge to edge or off it); the full
+        // name is on the hover.
+        string shown = FitWithEllipsis(cellLabel, ImGui.GetContentRegionAvail().X - ImGui.GetStyle().FramePadding.X * 2f - 8f);
+        bool pressed = UiButton.Navigate($"{shown}##army{row}", new Vector2(-1f, 0f));
         if (missing) ImGui.PopStyleColor();
+        if (shown != cellLabel && ImGui.IsItemHovered()) UiText.Tooltip(cellLabel);
         if (pressed)
         {
             // Snapshot what the picker needs before leaving the lobby, so it never reaches back into
@@ -1220,7 +1267,7 @@ public class LobbyScreen : IAppScreen
         ImGui.SetNextItemWidth(-1f);
         bool short_ = picks.Count < 2;
         if (short_) ImGui.PushStyleColor(ImGuiCol.Text, OverPointsColor);
-        bool open = ImGui.BeginCombo($"##party{row}", preview, ImGuiComboFlags.HeightLarge);
+        bool open = UiCombo.Begin($"##party{row}", preview, ImGuiComboFlags.HeightLarge);
         if (short_) ImGui.PopStyleColor();
         if (open)
         {
@@ -1394,7 +1441,7 @@ public class LobbyScreen : IAppScreen
         bool canModify = _viewModel!.CheckCanModifyPlayerIDInfo(info.PlayerID) && !_viewModel.IsResumeMode;
         ImGui.BeginDisabled(!canModify);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        if (ImGui.BeginCombo($"##team{rowIdx}", TeamLabel((int)info.TeamNumber, playerCount)))
+        if (UiCombo.Begin($"##team{rowIdx}", TeamLabel((int)info.TeamNumber, playerCount)))
         {
             for (int n = 1; n <= Math.Min(playerCount, TeamOptions.MaxTeamNumber); n++)
             {
@@ -1685,7 +1732,7 @@ public class LobbyScreen : IAppScreen
         string Label(int pts) => skirmish ? $"{pts} pts" : $"{pts / 1000}k ({pts} pts)";
         int current = _viewModel.ArmyPoints;
         bool isPreset = current % step == 0 && current >= step && current <= max;
-        if (ImGui.BeginCombo("##quicksize", isPreset ? Label(current) : "Custom"))
+        if (UiCombo.Begin("##quicksize", isPreset ? Label(current) : "Custom"))
         {
             for (int pts = step; pts <= max; pts += step)
                 if (ImGui.Selectable(Label(pts), pts == current))
@@ -1764,7 +1811,11 @@ public class LobbyScreen : IAppScreen
             : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
             : _viewModel.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced
                 ? "objectives placed by the players" : "objectives placed at the start";
-        UiText.Disabled($"Map preview - 6' x 4' - {terrainNote}, {objectiveNote}");
+        // The table's real size (it said 6' x 4' for every game, square tables included), wrapped so the
+        // line never runs past the column.
+        ImGui.PushTextWrapPos(0f);
+        UiText.Disabled($"Map preview - {tw / 12f:0.#}' x {th / 12f:0.#}' - {terrainNote}, {objectiveNote}");
+        ImGui.PopTextWrapPos();
 
         Vector2 p0 = ImGui.GetCursorScreenPos();
         Vector2 avail = ImGui.GetContentRegionAvail();
@@ -1809,7 +1860,11 @@ public class LobbyScreen : IAppScreen
         // Terrain.
         if (layout != null)
             foreach (FDG.SaveLoad.TerrainPieceEntry piece in layout.Pieces)
-                if (piece.Shape != null) DrawPreviewZone(dl, piece.Shape, TerrainPreviewColor(piece.TerrainType), P, scale);
+                // The auto layout leaves out pieces that don't fit this game's table, so the preview does too.
+                if (piece.Shape != null
+                    && (_viewModel.TerrainPlacementMode != ETerrainPlacementMode.AutoFromLayout
+                        || FDG.Stages.PlaceTerrainStage.FitsTable(piece.Shape, tw, th)))
+                    DrawPreviewZone(dl, piece.Shape, TerrainPreviewColor(piece.TerrainType), P, scale);
         dl.PopClipRect();
 
         // Horde's five fixed objectives: centre, then the centre of each table quarter.
@@ -1821,9 +1876,7 @@ public class LobbyScreen : IAppScreen
                 Vector2 c = P(spots[k].Item1, spots[k].Item2);
                 dl.AddCircleFilled(c, MathF.Max(5f, 1.2f * scale), U32(235, 235, 235), 20);
                 dl.AddCircle(c, MathF.Max(5f, 1.2f * scale), U32(20, 20, 20), 20, 2f);
-                string n = (k + 1).ToString();
-                Vector2 ts = ImGui.CalcTextSize(n);
-                dl.AddText(c - ts / 2f, U32(20, 20, 20), n);
+                PreviewObjectiveNumber(dl, c, MathF.Max(5f, 1.2f * scale), k + 1);
             }
         }
 
@@ -1835,13 +1888,21 @@ public class LobbyScreen : IAppScreen
                 Vector2 c = P(layout.Objectives[k].X, layout.Objectives[k].Z);
                 dl.AddCircleFilled(c, MathF.Max(5f, 1.2f * scale), U32(235, 235, 235), 20);
                 dl.AddCircle(c, MathF.Max(5f, 1.2f * scale), U32(20, 20, 20), 20, 2f);
-                string n = (k + 1).ToString();
-                Vector2 ts = ImGui.CalcTextSize(n);
-                dl.AddText(c - ts / 2f, U32(20, 20, 20), n);
+                PreviewObjectiveNumber(dl, c, MathF.Max(5f, 1.2f * scale), k + 1);
             }
         }
 
         dl.AddRect(P(0, th), P(tw, 0), U32(style.Border), 0f, ImDrawFlags.None, 3f);
+    }
+
+    /// <summary>An objective's number sized to fit inside its marker (it was drawn at the full UI font,
+    /// bigger than the circle, with the ring cutting through the digit).</summary>
+    private static void PreviewObjectiveNumber(ImDrawListPtr dl, Vector2 centre, float radius, int number)
+    {
+        string n = number.ToString();
+        float px = radius * 1.5f;
+        Vector2 ts = ImGui.CalcTextSize(n) * (px / ImGui.GetFontSize());
+        dl.AddText(ImGui.GetFont(), px, centre - ts / 2f, U32(20, 20, 20), n);
     }
 
     private static uint TerrainPreviewColor(ETerrainType type)
@@ -1929,7 +1990,9 @@ public class LobbyScreen : IAppScreen
         }
         else
         {
+            ImGui.PushTextWrapPos(0f);
             UiText.Disabled("Tailscale: not running (start it to play with friends anywhere)");
+            ImGui.PopTextWrapPos();
         }
 
         DrawCopyableAddress("LAN:    ", _lanAddresses ?? "unavailable", "lanip");
@@ -1942,9 +2005,14 @@ public class LobbyScreen : IAppScreen
     // string is copied regardless of how much of it is visible.
     private static void DrawCopyableAddress(string label, string address, string id)
     {
+        // Copy goes on its own line under a row too wide for both (at 1280x720 the address ran under the
+        // button). Nothing to copy when there is no address.
         ImGui.TextUnformatted($"{label}{address}");
+        if (address.Length == 0 || address == "unavailable" || address == "checking...") return;
         float copyW = ImGui.CalcTextSize("Copy").X + ImGui.GetStyle().FramePadding.X * 2f;
-        ImGui.SameLine(MathF.Max(0f, ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - copyW));
+        float textEnd = ImGui.GetItemRectMax().X - ImGui.GetWindowPos().X;
+        float right = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - copyW;
+        if (textEnd + 8f < right) ImGui.SameLine(MathF.Max(0f, right));
         if (UiButton.NavigateSmall($"Copy##{id}")) ImGui.SetClipboardText(address);
     }
 
@@ -2191,7 +2259,7 @@ public class LobbyScreen : IAppScreen
         ImGui.SameLine();
         FillRowItemWidth();
         EGameSystem current = _viewModel.GameSystem;
-        if (ImGui.BeginCombo("##Game Type", GameSystemInfo.DisplayName(current)))
+        if (UiCombo.Begin("##Game Type", GameSystemInfo.DisplayName(current)))
         {
             foreach (EGameSystem system in GameSystemInfo.DisplayOrder)
             {
@@ -2361,7 +2429,7 @@ public class LobbyScreen : IAppScreen
         ImGui.TextUnformatted("Map");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-1);
-        if (ImGui.BeginCombo("##MapPick", display, ImGuiComboFlags.HeightLarge))
+        if (UiCombo.Begin("##MapPick", display, ImGuiComboFlags.HeightLarge))
         {
             if (ImGui.Selectable("+ Create new map")) _mapEditor.OpenNew();
             ImGui.Separator();

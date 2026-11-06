@@ -83,7 +83,7 @@ public class ArmyPickerScreen : IAppScreen
             ? "CHOOSE ARMY"
             : $"CHOOSE ARMY - {_playerName}");
 
-        float closeW = (ImGui.CalcTextSize("CLOSE").X + 40f) * ws;
+        float closeW = (ImGui.CalcTextSize("CLOSE").X + 40f) * ws + UiButton.CapsWidth(headerH - 12f);
         ImGui.SetCursorPos(new Vector2(screenW - margin * 2f - closeW - 6f, 5f));
         if (UiButton.Back("CLOSE", new Vector2(closeW, headerH - 12f)))
             OnCancel?.Invoke();
@@ -170,6 +170,24 @@ public class ArmyPickerScreen : IAppScreen
         ImGui.PopStyleVar(3);
     }
 
+    private string? _unitsPath;
+    private IReadOnlyList<(string Name, int Models, int Points)>? _units;
+
+    private IReadOnlyList<(string Name, int Models, int Points)>? UnitsOf(string path)
+    {
+        if (path == _unitsPath) return _units;
+        _unitsPath = path;
+        _units = null;
+        try
+        {
+            var file = System.Text.Json.JsonSerializer.Deserialize<FDG.ArmyBuilding.BuiltArmyFile>(
+                File.ReadAllText(path), FDG.Rules.Serialization.RuleJson.Options);
+            _units = file?.Units.Select(u => (u.Name, u.ModelCount, u.PointCost)).ToList();
+        }
+        catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { }
+        return _units;
+    }
+
     private void DrawPreview(List<ArmyCatalogEntry> shown)
     {
         ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.HeaderAccent);
@@ -205,11 +223,27 @@ public class ArmyPickerScreen : IAppScreen
             UiText.Disabled($"Saved as: {army.Name}");
         }
 
-        // The unit list belongs here, and is not here yet: the army catalog stores a file's name,
-        // faction and points, not its roster, so showing units means opening every .fdgarmy on the
-        // folder scan. That is a catalog change, not a picker change.
+        // The units in the list (2026-11-06 - this was a "[ unit list: not read by the catalog yet ]"
+        // placeholder). The catalog only stores a file's name, faction and points, so the one selected
+        // file is opened here and kept until the selection changes - one small read per click, not one
+        // per file on the folder scan.
         ImGui.Spacing();
-        UiText.Disabled("[ unit list: not read by the catalog yet ]");
+        IReadOnlyList<(string Name, int Models, int Points)>? units = UnitsOf(army.Path);
+        if (units == null) UiText.Disabled("Couldn't read this army's units.");
+        else
+        {
+            float listBottom = MathF.Max(48f, ImGui.GetFontSize() * 2.2f) + ImGui.GetStyle().ItemSpacing.Y * 2f;
+            float listH = MathF.Max(ImGui.GetFrameHeight() * 2f, ImGui.GetContentRegionAvail().Y - listBottom);
+            ImGui.BeginChild("##pickunits", new Vector2(-1f, listH));
+            foreach (var (name, models, points) in units)
+            {
+                ImGui.TextUnformatted(models > 1 ? $"{name} [{models}]" : name);
+                string pts = $"{points} pts";
+                ImGui.SameLine(); ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(pts).X));
+                UiText.Disabled(pts);
+            }
+            ImGui.EndChild();
+        }
 
         // The button pins to the bottom of the panel: the one thing this screen is for.
         float btnH = MathF.Max(48f, ImGui.GetFontSize() * 2.2f);
@@ -227,7 +261,7 @@ public class ArmyPickerScreen : IAppScreen
                 factions.Add(e.Faction);
         factions.Sort(StringComparer.OrdinalIgnoreCase);
 
-        if (!ImGui.BeginCombo("##faction", _faction.Length == 0 ? "All factions" : _faction)) return;
+        if (!UiCombo.Begin("##faction", _faction.Length == 0 ? "All factions" : _faction)) return;
         foreach (string f in factions)
         {
             string label = f.Length == 0 ? "All factions" : f;
@@ -239,7 +273,7 @@ public class ArmyPickerScreen : IAppScreen
     private void DrawSortCombo()
     {
         string[] names = { "Sort: Name", "Sort: Points up", "Sort: Points down" };
-        if (!ImGui.BeginCombo("##sort", names[Math.Clamp(_sort, 0, names.Length - 1)])) return;
+        if (!UiCombo.Begin("##sort", names[Math.Clamp(_sort, 0, names.Length - 1)])) return;
         for (int i = 0; i < names.Length; i++)
             if (ImGui.Selectable(names[i], i == _sort)) _sort = i;
         ImGui.EndCombo();

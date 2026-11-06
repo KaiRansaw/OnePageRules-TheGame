@@ -19,17 +19,31 @@ namespace FdgRaylib.Rendering;
 /// </summary>
 internal static class UiText
 {
-    /// <summary>One line in <paramref name="color"/>, with no format interpretation.</summary>
-    internal static void Colored(Vector4 color, string text)
+    /// <summary>
+    /// Text in <paramref name="color"/>, with no format interpretation. A line too long for the space
+    /// left wraps at the content edge (2026-11-06: every coloured and dim line in the game was cut off at
+    /// its panel's edge instead - cost warnings, hints, the camp's notes - while plain text wrapped).
+    /// <paramref name="wrap"/> false keeps it to one line, for a caller that set its own wrap width with
+    /// <c>PushTextWrapPos</c> (which this would otherwise replace).
+    /// </summary>
+    internal static void Colored(Vector4 color, string text, bool wrap = true)
     {
         ImGui.PushStyleColor(ImGuiCol.Text, color);
+        // Not on a window's first frame: a tooltip or popup sizes itself to its contents, and wrapping it
+        // before it has a width would lock it narrow. After that frame it is as wide as its longest line,
+        // so nothing in it is ever "too long" and it never wraps.
+        bool pushWrap = wrap && !ImGui.IsWindowAppearing()
+            && ImGui.CalcTextSize(text).X > ImGui.GetContentRegionAvail().X;
+        if (pushWrap) ImGui.PushTextWrapPos(0f);
         ImGui.TextUnformatted(text);
+        if (pushWrap) ImGui.PopTextWrapPos();
         ImGui.PopStyleColor();
     }
 
-    /// <summary>The theme's disabled tone - <c>ImGui.TextDisabled</c> without the format pass.</summary>
-    internal static void Disabled(string text) =>
-        Colored(ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled], text);
+    /// <summary>The theme's disabled tone - <c>ImGui.TextDisabled</c> without the format pass. Wraps like
+    /// <see cref="Colored"/>.</summary>
+    internal static void Disabled(string text, bool wrap = true) =>
+        Colored(ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled], text, wrap);
 
     /// <summary>A one-shot tooltip - exactly what <c>ImGui.SetTooltip</c> does (begin, one line, end),
     /// without the format pass. Deliberately unwrapped, like <c>SetTooltip</c>: the callers that need a
