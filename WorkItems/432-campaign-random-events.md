@@ -8,6 +8,19 @@ Make it happen in a played game.
 
 ---
 
+## 2026-11-06 - the four position events (36, 44, 45, 46)
+
+`StateMachine/CampaignEventAreas.cs`. The runner picks the area (a 3" circle round a random marker, or a
+random quarter) and records it for the round in a per-store table (host-side, cleared with the round's
+temporary terrain; not saved - a mid-round save/reload loses it). The bonus is checked where it applies:
+`DetermineSaveRollsNeededStage` and `MoraleUtilities` call `RefreshRollBonus` just before reading granted
+modifiers (old area bonus off, one on per area the unit is inside now); `ActivationStartStage` calls
+`OnActivationStart` for Psychic Fog ("activates whilst"), which grants the existing Hastened rule for the
+round. "Within 3"" = a living model's centre within 3" (the other objective events' measure); "fully
+within" = every living model's whole base inside the quarter. Not stored as terrain on purpose: a
+typeless terrain piece would count for "within 1" of terrain" rules (Grounded). 33 of 36 now resolve;
+12, 32, 43 still deferred. Tests in `CampaignEventRunnerTests` (6 new).
+
 ## 2026-11-01 - built
 
 The book: *at the beginning of each round, every player rolls one die, and on a 5+ a random event
