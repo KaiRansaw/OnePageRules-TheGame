@@ -264,3 +264,5 @@ Detail files (where they exist) live beside this file as `NNN-slug.md`.
   overlap, ambush dust cloud, button text overrun. ([WorkItems/399](399-post-game-polish-pass.md))
 - [x] 463 — Per-system special-rule definitions (Slayer, Indirect, Furious Buff, Fanatic, Counter-Attack,
   Flying, Elite), B87. ([WorkItems/463](463-per-system-rule-variants.md))
+- [x] 464 — Battle Report rework, the words half: hover words (items, events), line breakdowns, dotted
+  underline, attack arithmetic, B88. ([WorkItems/464](464-battle-report-rework.md))

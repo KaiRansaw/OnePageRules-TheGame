@@ -55,6 +55,10 @@ public static class DiceTray
         public int LossCount;
         /// <summary>#441: rule names occurring in <see cref="Text"/>, highlighted with a hover.</summary>
         public IReadOnlyList<string> RuleNames = Array.Empty<string>();
+        /// <summary>#464: words with their own hover text (items, events), drawn with a dotted underline.</summary>
+        public IReadOnlyList<ReportTerm> Terms = Array.Empty<ReportTerm>();
+        /// <summary>#464: the line's own hover - the rolls, the cause, the models lost.</summary>
+        public IReadOnlyList<string> Details = Array.Empty<string>();
 
         // What the table highlights while this card is hovered (Kai, 2026-11-05).
         public UnitID? AttackerId, TargetId;
@@ -287,6 +291,8 @@ public static class DiceTray
                     // #441: the engine names the rules it mentioned; DrawLine highlights them and hovers
                     // their book wording.
                     RuleNames = b.ReferencedRules,
+                    Terms = b.Terms ?? Array.Empty<ReportTerm>(),
+                    Details = b.Details ?? Array.Empty<string>(),
                 });
                 break;
             }
@@ -403,13 +409,28 @@ public static class DiceTray
 
         // #441: a line that names special rules draws them highlighted, with a hover giving the rule's
         // own wording from the books. Everything else takes the single-piece path unchanged.
-        List<(string text, Vector4 color)> pieces = SplitOnRuleNames(e, out HashSet<int> hot);
+        List<(string text, Vector4 color)> pieces = SplitOnRuleNames(e, out HashSet<int> hot,
+            out Dictionary<int, (string Name, string? TermText)> hotNames);
         var hotRects = hot.Count > 0 ? new List<(Vector2 Min, Vector2 Max)>() : null;
-        Rich(pieces, width - bar - gap, hot.Count > 0 ? hot : null, hotRects);
+        var rectPieces = hot.Count > 0 ? new List<int>() : null;
+        // #464 (Kai): item and event names get a DOTTED underline; rule names keep the solid one.
+        var dotted = hotNames.Where(kv => kv.Value.TermText != null).Select(kv => kv.Key).ToHashSet();
+        Rich(pieces, width - bar - gap, hot.Count > 0 ? hot : null, hotRects, dotted, rectPieces);
 
-        if (hotRects is { Count: > 0 }) HoverRuleTooltip(e, hotRects);
+        bool overWord = false;
+        if (hotRects is { Count: > 0 }) overWord = HoverRuleTooltip(e, hotRects, rectPieces!, hotNames);
 
         float bottom = ImGui.GetCursorScreenPos().Y - ImGui.GetStyle().ItemSpacing.Y;
+        // #464: the line's own breakdown, anywhere on it except a highlighted word (which has its own).
+        if (!overWord && e.Details.Count > 0 && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
+            && ImGui.IsMouseHoveringRect(start, new Vector2(start.X + width, bottom)))
+        {
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(380f);
+            foreach (string detail in e.Details) ImGui.TextUnformatted(detail);
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
         if (e.Units.Count > 0 && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
             && ImGui.IsMouseHoveringRect(start, new Vector2(start.X + width, bottom)))
             SetHover(e);
@@ -491,11 +512,41 @@ public static class DiceTray
         if (hovered && e.Rolls.Count > 0)
         {
             ImGui.BeginTooltip();
+            DrawBreakdown(e);
             // Both sides of the exchange, in order and named: your attack dice, then the dice the enemy
             // threw to save against them. Each block is headed by whoever rolled it, in their own colour.
             foreach (var (d, who, col) in e.Rolls) DrawRollDetail(d, who, col);
             ImGui.EndTooltip();
         }
+    }
+
+    /// <summary>
+    /// #464 - the attack's arithmetic in one place, at the top of the hover: attacks, hits, saves, ignored,
+    /// wounds, models lost. The dice blocks below it are the detail; this is the sum a player wants first.
+    /// </summary>
+    private static void DrawBreakdown(Entry e)
+    {
+        var lines = new List<string>();
+        // The threshold only when every roll of that kind shared it - several weapons can need different numbers.
+        static string Needed(IEnumerable<DiceRolledBeat> rolls)
+        {
+            var t = rolls.Select(r => r.SuccessThreshold).Distinct().ToList();
+            return t.Count == 1 ? $" (needed {t[0]}+)" : "";
+        }
+        string hitNeeded = Needed(e.Rolls.Select(r => r.Roll).Where(r => r.Category == ERollBeatCategory.Offense));
+        string saveNeeded = Needed(e.Rolls.Select(r => r.Roll).Where(r => r.Category == ERollBeatCategory.Defense));
+        if (e.HasHits)
+            lines.Add($"Attacks: {Num(e.Attacks)}  ->  hits: {Num(e.Hits)}{hitNeeded}");
+        if (e.HasSaves)
+        {
+            lines.Add($"Saves: {Num(e.Saves)} of {Num(e.SaveTotal)}{saveNeeded}");
+            if (e.Ignored > 0f) lines.Add($"Wounds ignored: {Num(e.Ignored)}");
+            lines.Add($"Wounds: {Num(MathF.Max(0f, e.SaveTotal - e.Saves - e.Ignored))}");
+        }
+        if (e.Lost > 0 || e.HasSaves) lines.Add($"Models lost: {e.Lost}" + (e.Routed ? " - and it routs" : ""));
+        if (lines.Count == 0) return;
+        foreach (string line in lines) ImGui.TextUnformatted(line);
+        ImGui.Separator();
     }
 
     /// <summary>One roll in the hover card: who rolled it, then the dice - passes bright, fails greyed.</summary>
@@ -568,15 +619,22 @@ public static class DiceTray
     /// Splits the line into alternating plain and rule-name pieces, reporting which piece indices are
     /// the rule names. Longest name first, so "Banner Boost" is not split by "Banner" sitting inside it.
     /// </summary>
-    private static List<(string text, Vector4 color)> SplitOnRuleNames(Entry e, out HashSet<int> hot)
+    private static List<(string text, Vector4 color)> SplitOnRuleNames(Entry e, out HashSet<int> hot,
+        out Dictionary<int, (string Name, string? TermText)> hotNames)
     {
         hot = new HashSet<int>();
-        if (e.RuleNames.Count == 0) return new() { (e.Text, e.Color) };
+        hotNames = new Dictionary<int, (string Name, string? TermText)>();
+        if (e.RuleNames.Count == 0 && e.Terms.Count == 0) return new() { (e.Text, e.Color) };
 
         var pieces = new List<(string text, Vector4 color)>();
         string rest = e.Text;
-        List<string> names = e.RuleNames
+        // Rule names hover the books' wording; terms carry their own text (#464).
+        var termText = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (ReportTerm t in e.Terms)
+            if (!string.IsNullOrWhiteSpace(t.Name) && !string.IsNullOrWhiteSpace(t.Text)) termText[t.Name] = t.Text;
+        List<string> names = e.RuleNames.Concat(termText.Keys)
             .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(n => n.Length)
             .ToList();
 
@@ -595,6 +653,7 @@ public static class DiceTray
 
             if (at > 0) pieces.Add((rest[..at], e.Color));
             hot.Add(pieces.Count);
+            hotNames[pieces.Count] = (found, termText.TryGetValue(found, out string? tt) ? tt : null);
             pieces.Add((rest.Substring(at, found.Length), RuleName));
             rest = rest[(at + found.Length)..];
         }
@@ -636,28 +695,31 @@ public static class DiceTray
     /// takes the card away again, so the same gesture is both the on and the off.
     /// </para>
     /// </summary>
-    private static void HoverRuleTooltip(Entry e, List<(Vector2 Min, Vector2 Max)> rects)
+    /// <returns>Whether the cursor is on one of the highlighted words.</returns>
+    private static bool HoverRuleTooltip(Entry e, List<(Vector2 Min, Vector2 Max)> rects, List<int> rectPieces,
+        Dictionary<int, (string Name, string? TermText)> hotNames)
     {
         Vector2 mouse = ImGui.GetMousePos();
         int hit = rects.FindIndex(r => mouse.X >= r.Min.X && mouse.X <= r.Max.X
             && mouse.Y >= r.Min.Y && mouse.Y <= r.Max.Y);
         bool over = hit >= 0;
 
-        // The name being hovered: the first the line mentions. A line names one rule in practice - the
-        // obituaries that drove this feature each name exactly one.
-        string? name = e.RuleNames.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+        // #464: the word actually under the cursor - a line can now name several (an item and a rule).
+        (string Name, string? TermText) word = over && hit < rectPieces.Count && hotNames.TryGetValue(rectPieces[hit], out var w)
+            ? w : (e.RuleNames.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? "", null);
+        string? name = word.Name.Length > 0 ? word.Name : null;
         if (!over || name == null)
         {
-            if (_hoveredRule == name && !over) { _hoveredRule = null; _hoveredFor = 0f; }
-            return;
+            if (!over && _hoveredRule != null && hotNames.Values.Any(v => v.Name == _hoveredRule)) { _hoveredRule = null; _hoveredFor = 0f; }
+            return over;
         }
 
         if (_hoveredRule != name) { _hoveredRule = name; _hoveredFor = 0f; }
         _hoveredFor += ImGui.GetIO().DeltaTime;
-        if (_hoveredFor < TableTooltipOverlay.HoverDelaySeconds) return;
+        if (_hoveredFor < TableTooltipOverlay.HoverDelaySeconds) return true;
 
-        string? text = RuleTextLookup?.Invoke(name);
-        if (string.IsNullOrWhiteSpace(text)) return;
+        string? text = word.TermText ?? RuleTextLookup?.Invoke(name);
+        if (string.IsNullOrWhiteSpace(text)) return true;
 
         // Already pinned: its card is on screen, so a second floating copy beside it would just be in the
         // way. The click here is the way to dismiss it.
@@ -678,10 +740,10 @@ public static class DiceTray
                 });
             }
 
-            return;
+            return true;
         }
 
-        if (pinned >= 0) return;
+        if (pinned >= 0) return true;
 
         ImGui.BeginTooltip();
         ImGui.PushTextWrapPos(380f);
@@ -693,6 +755,7 @@ public static class DiceTray
         ImGui.TextDisabled("Click to keep this open.");
         ImGui.PopTextWrapPos();
         ImGui.EndTooltip();
+        return true;
     }
 
     /// <summary>
@@ -727,6 +790,10 @@ public static class DiceTray
     private static void Rich(List<(string text, Vector4 color)> pieces, float width)
         => Rich(pieces, width, null, null);
 
+    private static void Rich(List<(string text, Vector4 color)> pieces, float width,
+        HashSet<int>? hotPieces, List<(Vector2 Min, Vector2 Max)>? hotRects)
+        => Rich(pieces, width, hotPieces, hotRects, null, null);
+
     /// <summary>
     /// #441: the wrapping renderer, optionally collecting the on-screen rectangles of whichever pieces
     /// are flagged in <paramref name="hotPieces"/>. It draws straight to the draw list rather than
@@ -734,7 +801,8 @@ public static class DiceTray
     /// <c>IsItemHovered</c> about, and a hover has to be hit-tested against rectangles we kept.
     /// </summary>
     private static void Rich(List<(string text, Vector4 color)> pieces, float width,
-        HashSet<int>? hotPieces, List<(Vector2 Min, Vector2 Max)>? hotRects)
+        HashSet<int>? hotPieces, List<(Vector2 Min, Vector2 Max)>? hotRects, HashSet<int>? dottedPieces,
+        List<int>? rectPieces)
     {
         ImDrawListPtr dl = ImGui.GetWindowDrawList();
         Vector2 o = ImGui.GetCursorScreenPos();
@@ -773,8 +841,18 @@ public static class DiceTray
                     Vector2 max = min + new Vector2(ww, lh);
                     // Underlined in place, the same treatment #292/#336 gave rule names elsewhere, so the
                     // highlight does not rely on colour alone.
-                    dl.AddLine(new Vector2(min.X, max.Y - 1f), new Vector2(max.X, max.Y - 1f), col);
+                    if (dottedPieces != null && dottedPieces.Contains(pieceIndex))
+                    {
+                        // #464: dotted - "this explains itself" for items and events.
+                        for (float dx = min.X; dx < max.X; dx += 4f)
+                            dl.AddLine(new Vector2(dx, max.Y - 1f), new Vector2(MathF.Min(dx + 2f, max.X), max.Y - 1f), col);
+                    }
+                    else
+                    {
+                        dl.AddLine(new Vector2(min.X, max.Y - 1f), new Vector2(max.X, max.Y - 1f), col);
+                    }
                     hotRects?.Add((min, max));
+                    rectPieces?.Add(pieceIndex);
                 }
                 x += ww;
             }
