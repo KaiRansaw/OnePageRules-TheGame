@@ -24,6 +24,7 @@ books name cards differently - Kai: use the names given.
 ## Decisions
 - Bots score cards automatically but don't play towards them (Kai, 2026-11-05). Their only card choices
   are "keep" (first option).
+- Tied completed cards: the player picks which scores (Kai, 2026-11-05, B85); a bot takes the first.
 - Judgement calls (house-rules C): this-round counting, killer-less deaths credited to the victim's enemies,
   rout = destroyed in melee, side control, "within" = any model, Total Domination tie = card stays and
   nobody scores, lowest-score discard skipped on a tie for lowest.
