@@ -1488,9 +1488,9 @@ public class LobbyScreen : IAppScreen
 
         ImGui.BeginDisabled(locked);
 
-        // The Advanced Rulebooks' 18 deployment styles (Kai's screenshots, 2026-11-05). Only for the games
-        // whose pages are in - GF: Firefight and AoF: Skirmish print the same ones; Grimdark Future and Age of
-        // Fantasy print their own, still to come.
+        // The Advanced Rulebooks' 18 deployment styles (Kai's screenshots, 2026-11-05). GF: Firefight and
+        // AoF: Skirmish print one square-table set, Grimdark Future and Age of Fantasy their own long-table
+        // set; the Quest games have no Advanced book, so no dropdown there.
         if (AdvancedDeployment.Available(_viewModel.GameSystem))
         {
             ImGui.BeginDisabled(!isHost);
