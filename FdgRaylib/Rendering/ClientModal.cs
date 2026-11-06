@@ -19,7 +19,7 @@ public class ClientModal : IAppScreen
     // Seeded from the saved config (#310) - the same name you last hosted or joined under, "Newbie" on
     // a fresh install.
     private string _yourName  = UserConfig.Current.PlayerName;
-    private string _ipAddress = "127.0.0.1";
+    private string _ipAddress = UserConfig.Current.LastHostAddress;
     private string _port      = NetworkProtocol.DefaultPort.ToString();
     private string _password  = "";
     private string _status    = "";
@@ -457,6 +457,7 @@ public class ClientModal : IAppScreen
             // The name that just joined becomes the default for next time (#310), host dialog included.
             // Saved only after the host accepts, so a rejected join doesn't rewrite it.
             UserConfig.Current.PlayerName = _yourName;
+            UserConfig.Current.LastHostAddress = _ipAddress.Trim();
             UserConfig.Save();
 
             Reset();
@@ -493,7 +494,7 @@ public class ClientModal : IAppScreen
     private void Reset()
     {
         _yourName      = UserConfig.Current.PlayerName; // #310: the saved name, not a hardcoded default
-        _ipAddress     = "127.0.0.1";
+        _ipAddress     = UserConfig.Current.LastHostAddress;
         _port          = NetworkProtocol.DefaultPort.ToString();
         _password      = "";
         _status        = "";

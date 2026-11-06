@@ -87,6 +87,15 @@ public class HostModal : IAppScreen
         // Listen port (#189). Default 6389; players behind a fixed-port conflict can change it.
         DrawLabeledInput("Port",        ref _port,       dw, scale);
 
+        // Kai, 2026-11-05: what friends on Tailscale type into Join.
+        ImGui.SetWindowFontScale(0.9f * scale);
+        IReadOnlyList<string> tailscale = FdgRaylib.Network.TailscaleInfo.Addresses();
+        CenterText(tailscale.Count > 0
+            ? $"Tailscale friends join with: {FdgRaylib.Network.TailscaleInfo.JoinAddress()}"
+            : "Tailscale isn't running - start it to play with friends anywhere.", dw);
+        ImGui.SetWindowFontScale(1.0f * scale);
+        ImGui.Spacing();
+
         // Public listing (#271). Only offered when a list server is configured; hosting itself
         // never depends on the registry. Short clickable label (the full sentence was wider than
         // the dialog, so centering pushed the checkbox off the left edge); the warning rides below

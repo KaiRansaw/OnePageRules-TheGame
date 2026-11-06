@@ -1893,6 +1893,22 @@ public class LobbyScreen : IAppScreen
 
         UiText.Disabled("Share these with players:");
 
+        // Kai, 2026-11-05: friends join over Tailscale - that address first, since it is the one that
+        // works from anywhere without touching a router.
+        IReadOnlyList<string> tailscale = FdgRaylib.Network.TailscaleInfo.Addresses();
+        if (tailscale.Count > 0)
+        {
+            // A friend the machine is SHARED with can only use the full name (Tailscale's own docs), and
+            // their 100.x number for it may differ - so the full name leads when we can read it.
+            if (FdgRaylib.Network.TailscaleInfo.FullName() is { } full)
+                DrawCopyableAddress("Tailscale: ", full, "tsname");
+            DrawCopyableAddress(FdgRaylib.Network.TailscaleInfo.FullName() != null ? "  or:      " : "Tailscale: ", tailscale[0], "tsip");
+        }
+        else
+        {
+            UiText.Disabled("Tailscale: not running (start it to play with friends anywhere)");
+        }
+
         DrawCopyableAddress("LAN:    ", _lanAddresses ?? "unavailable", "lanip");
         DrawCopyableAddress("Public: ", _publicAddress, "pubip");
         ImGui.TextUnformatted($"Port:   {ListenPort}");
@@ -1924,6 +1940,7 @@ public class LobbyScreen : IAppScreen
                 {
                     if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
                     if (IPAddress.IsLoopback(ua.Address)) continue;
+                    if (FdgRaylib.Network.TailscaleInfo.IsTailscaleAddress(ua.Address)) continue;   // its own row
                     addresses.Add(ua.Address.ToString());
                 }
             }

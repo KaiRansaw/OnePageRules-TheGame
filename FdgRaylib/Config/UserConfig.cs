@@ -33,6 +33,8 @@ public sealed class UserConfig
 
     /// <summary>Host dialog: the listen port (#189).</summary>
     public int Port { get; set; } = NetworkProtocol.DefaultPort;
+    /// <summary>The last host address joined successfully, so Join opens on it (a friend's Tailscale name).</summary>
+    public string LastHostAddress { get; set; } = "127.0.0.1";
 
     /// <summary>Host dialog: the "List publicly" tick (#271). The password is deliberately never stored.</summary>
     public bool ListPublicly { get; set; }

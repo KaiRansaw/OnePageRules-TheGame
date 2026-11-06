@@ -99,6 +99,7 @@ publish_one() {
 
   # Drop a recipient-facing README with the platform gotchas.
   write_readme "$rid" "$out"
+  write_multiplayer_readme "$out"
 
   # Ship the third-party license notices next to the binary. The bundled MIT/BSD
   # components (Mono.Nat, Newtonsoft.Json, ImGui.NET, TinyDialogsNet) require their
@@ -117,6 +118,38 @@ publish_one() {
   else
     echo "!! armies/ missing at repo root - no sample army lists will ship" >&2
   fi
+}
+
+# Every platform: how to play with friends over the internet (Kai, 2026-11-05: Tailscale).
+write_multiplayer_readme() {
+  local out="$1"
+  cat >> "$out/README.txt" <<'EOF'
+
+Playing with friends (over the internet)
+========================================
+
+Easiest way: Tailscale (free, https://tailscale.com). It connects your
+computers as if they were on the same home network - no router setup.
+
+1. Everyone installs Tailscale and signs in (each with their own account).
+2. The host shares their computer with each friend: in the Tailscale admin
+   page, "..." next to the host's machine -> Share -> enter the friend's email.
+   The friend accepts the invite.
+3. Host: in the game, Host Server. The Host Server box and the lobby both
+   show "Tailscale friends join with: <name>.<something>.ts.net" (with a Copy
+   button in the lobby). Send that full name to your friends.
+4. Friends: Join, paste that full name as the Host Address, port 6389.
+   (A shared computer can only be reached by its full .ts.net name - the
+   short name and the 100.x number may not work for a friend.)
+5. The first time you host, Windows asks whether the game may use the
+   network: tick BOTH Private and Public (Tailscale often counts as Public).
+
+Everyone must run the same version of the game - an older copy is refused
+with "Incompatible game version". Send the new zip when it updates.
+
+On the same home network you don't need Tailscale: use the LAN address the
+lobby shows.
+EOF
 }
 
 write_readme() {
