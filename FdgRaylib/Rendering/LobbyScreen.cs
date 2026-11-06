@@ -1487,6 +1487,28 @@ public class LobbyScreen : IAppScreen
         ImGui.EndDisabled();
 
         ImGui.BeginDisabled(locked);
+
+        // The Advanced Rulebooks' 18 deployment styles (Kai's screenshots, 2026-11-05). Only for the games
+        // whose pages are in - GF: Firefight and AoF: Skirmish print the same ones; Grimdark Future and Age of
+        // Fantasy print their own, still to come.
+        if (AdvancedDeployment.Available(_viewModel.GameSystem))
+        {
+            ImGui.BeginDisabled(!isHost);
+            var order = new[]
+            {
+                EDeploymentStyle.Core, EDeploymentStyle.RandomStandard, EDeploymentStyle.RandomStrategic,
+                EDeploymentStyle.RandomAsymmetric,
+            }.Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Standard))
+             .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Strategic))
+             .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Asymmetric)).ToArray();
+            DrawEnumCombo("Deployment", _viewModel.DeploymentStyle, _viewModel.SetDeploymentStyle,
+                displayName: AdvancedDeployment.Name, explicitOrder: order,
+                tooltip: "Where each side deploys - the Advanced Rules' deployment styles.\n" +
+                         "Standard and Strategic are balanced; Asymmetric leaves one side surrounded or\n" +
+                         "outnumbered. A Random choice rolls one die at the start of the game.\n" +
+                         "Two-player games only; a map with its own deployment zones keeps them.");
+            ImGui.EndDisabled();
+        }
         }
 
         if (Section("Rules"))

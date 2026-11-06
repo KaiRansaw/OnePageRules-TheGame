@@ -61,7 +61,9 @@ public class GuiChooseDeploymentZoneResolver
             for (int i = 0; i < availableOrdered.Count; i++)
             {
                 var z = availableOrdered[i].GetValue();
-                if (mx >= z.Left && mx <= z.Right && mz >= z.Bottom && mz <= z.Top)
+                // The zone's real shape, not its bounding box: the Advanced deployment styles' zones
+                // interlock (Ground War's L's, Long Haul's chevrons), so boxes would overlap.
+                if (z.IsPointWithinZone(new Float2(mx, mz)))
                 {
                     canvasHover = i;
                     break;

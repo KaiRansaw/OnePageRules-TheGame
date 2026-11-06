@@ -22,6 +22,28 @@ public static class ZoneRenderer
     {
         switch (shape)
         {
+            // Odd-shaped deployment zones draw their real shape, not their bounding box.
+            case MultiRectZone multi:
+                foreach (RectangularZone part in multi.Parts)
+                    DrawFilled(part, scale, originX, originY, tableH, fill, outline, outlineThickness);
+                break;
+
+            case PolygonZone poly:
+                foreach (IReadOnlyList<Float2> part in poly.Vertices)
+                {
+                    var pts = part.Select(v => new Vector2(originX + v.X * scale, originY + (tableH - v.Y) * scale)).ToArray();
+                    // Screen y runs down, so the zone's counter-clockwise vertices are clockwise on screen; fan
+                    // both windings - Raylib culls one, the way the hero star is drawn.
+                    for (int i = 1; i + 1 < pts.Length; i++)
+                    {
+                        Raylib.DrawTriangle(pts[0], pts[i], pts[i + 1], fill);
+                        Raylib.DrawTriangle(pts[0], pts[i + 1], pts[i], fill);
+                    }
+                    for (int i = 0; i < pts.Length; i++)
+                        Raylib.DrawLineEx(pts[i], pts[(i + 1) % pts.Length], MathF.Max(1f, outlineThickness), outline);
+                }
+                break;
+
             case RectangularZone r:
                 int x = originX + (int)(r.Left * scale);
                 int y = originY + (int)((tableH - r.Top) * scale);
@@ -97,6 +119,20 @@ public static class ZoneRenderer
     {
         switch (shape)
         {
+            case MultiRectZone multi:
+                foreach (RectangularZone part in multi.Parts)
+                    DrawFilled(part, drawList, scale, originX, originY, tableH, fillColor, outlineColor, outlineThickness);
+                break;
+
+            case PolygonZone poly:
+                foreach (IReadOnlyList<Float2> part in poly.Vertices)
+                {
+                    var pts = part.Select(v => new Vector2(originX + v.X * scale, originY + (tableH - v.Y) * scale)).ToArray();
+                    drawList.AddConvexPolyFilled(ref pts[0], pts.Length, fillColor);
+                    drawList.AddPolyline(ref pts[0], pts.Length, outlineColor, ImDrawFlags.Closed, outlineThickness);
+                }
+                break;
+
             case RectangularZone r:
                 Vector2 tl = new(originX + r.Left * scale,  originY + (tableH - r.Top) * scale);
                 Vector2 br = new(originX + r.Right * scale, originY + (tableH - r.Bottom) * scale);

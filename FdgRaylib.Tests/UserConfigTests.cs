@@ -333,6 +333,8 @@ public class UserConfigTests
         public bool UnlimitedSplitFire { get; set; }
         public bool FastPlayMovement { get; set; }
         public bool FastPlayMelee { get; set; }
+        public EDeploymentStyle DeploymentStyle { get; set; }
+        public void SetDeploymentStyle(EDeploymentStyle style) => DeploymentStyle = style;
         public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }

@@ -122,6 +122,7 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 ## Victory & scoring
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
+- [ ] 461 — Advanced deployment styles (18) - GFF/AoFS done B82; GF/AoF wait on their pages. [detail](WorkItems/461-advanced-deployment-styles.md)
 - [ ] 460 — Fast-Play: Simplified Terrain - every piece an enterable Solid Building (capacity, inside = Cover, shoot out, one unit inside chargeable). Deferred by Kai 2026-11-05 as its own job.
 - [x] 459 — Fast-Play: Leader-Based Movement - done B81 (leader-only charge too); leader-first 1" separation open. [detail](WorkItems/459-fast-play-leader-movement.md)
 - [ ] 458 — Fast-Play: Leader-Based Melee - everyone strikes + rest placed (B78), leader-only charge (B81); only leader-first 1" separation open. [detail](WorkItems/458-fast-play-leader-melee.md)
