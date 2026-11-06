@@ -96,15 +96,17 @@ public class ClientModal : IAppScreen
         {
             if (ImGui.BeginTabBar("##JoinTabs"))
             {
-                if (ImGui.BeginTabItem("SERVER BROWSER"))
-                {
-                    DrawBrowseTab(dw, dh, scale, pad);
-                    ImGui.EndTabItem();
-                }
-
+                // Direct Connect first, so it is the tab Join opens on: friends join a Tailscale or LAN
+                // address, and the public list is the rarer case (and unreachable on some networks).
                 if (ImGui.BeginTabItem("DIRECT CONNECT"))
                 {
                     DrawDirectTab(dw, dh, scale, pad);
+                    ImGui.EndTabItem();
+                }
+
+                if (ImGui.BeginTabItem("SERVER BROWSER"))
+                {
+                    DrawBrowseTab(dw, dh, scale, pad);
                     ImGui.EndTabItem();
                 }
 
@@ -330,6 +332,9 @@ public class ClientModal : IAppScreen
         // the colons in an IPv6 literal, so a DNS name (DuckDNS / No-IP for a host on a dynamic IP) or a
         // Tailscale hostname couldn't be typed (QF10).
         DrawLabeledInput("Host Address", ref _ipAddress, dw, scale);
+        ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
+        CenterText("The address your host's lobby shows, e.g. kais-pc.tail1234.ts.net", dw);
+        ImGui.PopStyleColor();
         ImGui.SetCursorPosX(pad);
         // Connect port (#189). Matches the host's listen port; a browser join fills this in from the
         // listing, so a manual entry is only needed for a direct connect to a non-default port.

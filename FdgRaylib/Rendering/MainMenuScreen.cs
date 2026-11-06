@@ -186,7 +186,10 @@ public class MainMenuScreen : IAppScreen
         Tool("Army Forge",          OnArmyForgeClicked,      1);
         Tool("Map Maker",           OnMapMakerClicked,       2);
         Tool("Settings",            OnSettingsClicked,       3);
-        Tool("Close Game",          OnQuitClicked,           4, back: true);
+        // Kai, 2026-11-05: multiplayer with friends (over Tailscale) is wanted now, so Join is back -
+        // without it the game had no way at all for a friend to connect to a host.
+        Tool("Join a Game",         OnClientClicked,         4);
+        Tool("Close Game",          OnQuitClicked,           5, back: true);
 
         ImGui.EndDisabled();
 

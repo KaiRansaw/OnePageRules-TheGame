@@ -216,6 +216,15 @@ public class LobbyArmySourceTests
     public void OtherPlayerTypesKeepTheirName(EPlayerType type, string expected) =>
         Assert.That(LobbyScreen.PlayerTypeLabel(type), Is.EqualTo(expected));
 
+    [TestCase(EPlayerType.Local, true, false, "Local")]
+    [TestCase(EPlayerType.Network, true, false, "Network")]
+    [TestCase(EPlayerType.Local, false, false, "Host")]
+    [TestCase(EPlayerType.Network, false, true, "You")]
+    [TestCase(EPlayerType.Network, false, false, "Player")]
+    [TestCase(EPlayerType.AI, false, false, "Bot")]
+    public void SeatTagsReadFromWhereTheViewerSits(EPlayerType type, bool viewerIsHost, bool mine, string expected) =>
+        Assert.That(LobbyScreen.SeatOwnerLabel(type, viewerIsHost, mine), Is.EqualTo(expected));
+
     [Test]
     public void EveryPlayerTypeLabelIsAscii()
     {

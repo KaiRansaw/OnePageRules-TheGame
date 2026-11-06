@@ -403,7 +403,7 @@ public class UserConfigTests
         public IReadOnlyList<LobbyPlayerInfoSummary> PlayerInfos => throw new NotSupportedException();
         public bool CheckCanModifyPlayerIDInfo(PlayerID playerID) => throw new NotSupportedException();
         public void AddLocalPlayer() => throw new NotSupportedException();
-        public void AddAiPlayer(EAiProfile profile) => throw new NotSupportedException();
+        public void AddAiPlayer(EAiProfile profile, bool seatFiller = false) => throw new NotSupportedException();
         public bool CheckCanRemovePlayer(PlayerID playerID) => false; // #405
         public void RemovePlayer(PlayerID playerID) => throw new NotSupportedException();
         public void SendMessage(string message) => throw new NotSupportedException();

@@ -440,7 +440,7 @@ public class LobbyScreen : IAppScreen
         if (!_viewModel!.HasHostPrivileges || _viewModel.IsResumeMode) return;
         if (_viewModel.PlayerInfos.Count >= 2) return;
         _viewModel.AddAiPlayer(GameSystemInfo.IsQuest(_viewModel.GameSystem)
-            ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
+            ? EAiProfile.StarQuest : EAiProfile.SoloCoOp, seatFiller: true);
     }
 
     /// <summary>What a column of the grid is called. In 2v2 the column IS a team, which is the whole
@@ -512,6 +512,11 @@ public class LobbyScreen : IAppScreen
         LobbyPlayerInfoSummary info = players[seat];
         ImGui.BeginChild($"##card", size, ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        // A child window's font scale MULTIPLIES its parent's, and the players column already sets
+        // panelScale - so inside a card the base is 1. Passing panelScale down (as the card did) squared
+        // it on every card that hit a SetWindowFontScale: the read-only header (a network seat, or every
+        // seat on a joined friend's screen) and any fitted name - found 2026-11-05 playing host vs friend.
+        panelScale = 1f;
 
         // ── Header: which seat, who is holding the controls, and the Active switch ──
         ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
@@ -599,7 +604,8 @@ public class LobbyScreen : IAppScreen
         if (_viewModel!.IsResumeMode || !_viewModel.CheckCanSetPlayerType(info.PlayerID))
         {
             ImGui.SetWindowFontScale(panelScale * 0.65f);
-            UiText.Disabled(PlayerTypeLabel(info.PlayerType).ToUpperInvariant());
+            UiText.Disabled(SeatOwnerLabel(info.PlayerType, _viewModel.HasHostPrivileges,
+                !_viewModel.HasHostPrivileges && _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID)).ToUpperInvariant());
             ImGui.SetWindowFontScale(panelScale);
             return;
         }
@@ -870,6 +876,23 @@ public class LobbyScreen : IAppScreen
         EPlayerType.AI => "Bot",
         _ => type.ToString(),
     };
+
+    /// <summary>
+    /// The seat's tag, read from where the viewer sits. "Local" and "Network" are the host's words: on a
+    /// friend's screen the host's seat said LOCAL and their own said NETWORK - backwards for them (found in
+    /// the GUI pass, 2026-11-05). A joined player sees YOU on their own seat and HOST on the host's.
+    /// </summary>
+    internal static string SeatOwnerLabel(EPlayerType type, bool viewerIsHost, bool isViewersSeat)
+    {
+        if (viewerIsHost) return PlayerTypeLabel(type);
+        if (isViewersSeat) return "You";
+        return type switch
+        {
+            EPlayerType.Local => "Host",
+            EPlayerType.Network => "Player",
+            _ => PlayerTypeLabel(type),
+        };
+    }
 
     /// <summary>How far text may shrink before clipping is preferable, as a fraction of the row's
     /// normal size.</summary>

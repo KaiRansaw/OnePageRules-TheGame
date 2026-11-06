@@ -71,11 +71,19 @@ public sealed class ModeSelectScreen : IAppScreen
         bool useMenuFont = RaylibRenderer.MenuFontPx > 0f;
         if (useMenuFont) ImGui.PushFont(RaylibRenderer.MenuFont);
 
+        // Sizes as fractions of the window height, the way the main menu sets its own (found 2026-11-05
+        // playing it in a 1600x900 window: everything was drawn at the full menu font, so the blurbs ran
+        // off the bottom and the Back button's label was cut in half).
+        float basePx = useMenuFont ? RaylibRenderer.MenuFontPx : ImGui.GetFontSize();
+        float titlePx = screenH * 0.045f, tilePx = screenH * 0.034f, blurbPx = screenH * 0.021f, backPx = screenH * 0.022f;
+
         float margin = screenW * 0.06f;
         string title = GameSystemInfo.DisplayName(System);
+        ImGui.SetWindowFontScale(titlePx / basePx);
         Vector2 titleSize = ImGui.CalcTextSize(title);
         ImGui.SetCursorPos(new Vector2((screenW - titleSize.X) * 0.5f, screenH * 0.10f));
         ImGui.TextUnformatted(title);
+        ImGui.SetWindowFontScale(1f);
 
         // Three tiles across the middle, the shape of his mock.
         float tileW = (screenW - margin * 2f - 40f) / 3f;
@@ -87,7 +95,10 @@ public sealed class ModeSelectScreen : IAppScreen
         Tile(2, "Campaign", Blurb("campaign", System), () => OnCampaign?.Invoke(System));
 
         ImGui.SetCursorPos(new Vector2(margin, screenH - screenH * 0.12f));
-        if (UiButton.Back("Back", new Vector2(180f, 46f)) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+        ImGui.SetWindowFontScale(backPx / basePx);
+        bool back = UiButton.Back("Back", new Vector2(Math.Max(180f, screenH * 0.2f), Math.Max(46f, screenH * 0.055f)));
+        ImGui.SetWindowFontScale(1f);
+        if (back || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
             OnBack?.Invoke();
 
         if (useMenuFont) ImGui.PopFont();
@@ -98,7 +109,9 @@ public sealed class ModeSelectScreen : IAppScreen
         {
             float x = margin + index * (tileW + 20f);
             ImGui.SetCursorPos(new Vector2(x, top));
-            if (UiButton.Navigate(label + $"##mode{index}", new Vector2(tileW, tileH))) go();
+            ImGui.SetWindowFontScale(tilePx / basePx);
+            bool pressed = UiButton.Navigate(label + $"##mode{index}", new Vector2(tileW, tileH));
+            ImGui.SetWindowFontScale(blurbPx / basePx);
 
             // The blurb under the tile rather than inside it: a button's label is its name, and a
             // sentence baked into the label makes the name harder to read at a glance.
@@ -106,6 +119,8 @@ public sealed class ModeSelectScreen : IAppScreen
             ImGui.PushTextWrapPos(x + tileW);
             UiText.Colored(Dim, blurb);
             ImGui.PopTextWrapPos();
+            ImGui.SetWindowFontScale(1f);
+            if (pressed) go();
         }
     }
 }
