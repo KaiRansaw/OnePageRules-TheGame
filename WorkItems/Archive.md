@@ -266,3 +266,5 @@ Detail files (where they exist) live beside this file as `NNN-slug.md`.
   Flying, Elite), B87. ([WorkItems/463](463-per-system-rule-variants.md))
 - [x] 464 — Battle Report rework, the words half: hover words (items, events), line breakdowns, dotted
   underline, attack arithmetic, B88. ([WorkItems/464](464-battle-report-rework.md))
+- [x] 465 — Campaign mission plans: generate or write each mission on Mission Setup, save a campaign
+  as a file and replay it, B89. ([WorkItems/465](465-campaign-mission-plans.md))

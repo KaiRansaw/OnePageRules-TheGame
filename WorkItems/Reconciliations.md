@@ -941,3 +941,5 @@ A per-clone pre-push hook blocks duplicate numbers across the index and the arch
 > **463 = per-system special-rule definitions.** No collision.
 
 > **2026-11-05 - number 464.** Fetched origin: highest was 463. **464 = Battle Report rework.** No collision.
+
+> **2026-11-05 - number 465.** Fetched origin: highest was 464. **465 = campaign mission plans.** No collision.

@@ -1207,6 +1207,8 @@ public sealed class StrikeTeamScreen : IAppScreen
     /// <summary>True: build the army in the locked Army Forge. False: start from one in the folder.</summary>
     private bool _newBuildFresh = true;
     private string _newOpeningNote = "";
+    /// <summary>#465 - a saved campaign plan to start from, or null to plan missions as you go.</summary>
+    private string? _newScriptPath;
 
     /// <summary>The armies chosen so far, not yet written anywhere. Nothing touches the disk until Finish.</summary>
     private BuiltArmyFile? _draftYours;
@@ -1236,6 +1238,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         _newName = "";
         _newArmy = -1;
         _newOpeningNote = "";
+        _newScriptPath = null;
         _draftYours = _draftEnemy = null;
         _draftYoursSource = null;
         _enemyName = "";
@@ -1314,6 +1317,21 @@ public sealed class StrikeTeamScreen : IAppScreen
               + "sits out the next D3 missions. Nothing is ever lost for good."
             : "A unit that is killed is gone, with its XP, traits and upgrades. This is the default in "
               + "the book.");
+        ImGui.Spacing();
+
+        // #465 - the missions: planned one at a time on Mission Setup, or taken from a saved campaign.
+        UiText.Colored(TextDim, "Missions");
+        if (ImGui.RadioButton("Plan each mission as I go", _newScriptPath == null)) _newScriptPath = null;
+        var scripts = FdgRaylib.SaveLoad.CampaignScriptPaths.List(_newSystem);
+        foreach (var (scriptPath, script) in scripts)
+        {
+            if (ImGui.RadioButton($"Start from \"{script.Name}\" ({script.Missions.Count} mission(s))##{scriptPath}",
+                    _newScriptPath == scriptPath))
+                _newScriptPath = scriptPath;
+        }
+        UiText.Disabled(scripts.Count == 0
+            ? "Each mission is generated from the books (or picked by you) on Mission Setup. Save a campaign from there to replay it later."
+            : "A saved campaign brings its missions and notes; you can still change or re-roll each one when you get to it.");
         ImGui.Spacing();
 
         // #452 - the campaign's opening journal note (Kai: "Yes, and let me skip it").
@@ -1506,6 +1524,18 @@ public sealed class StrikeTeamScreen : IAppScreen
         yours.Selections = null;
         yours.StrikeTeam!.EnemyArmyFile = enemyPath;
         CampaignJournal.SetCampaignNote(yours.StrikeTeam, _newOpeningNote);
+        // #465: a saved campaign's missions and notes.
+        if (_newScriptPath != null)
+        {
+            try
+            {
+                if (CampaignScript.FromJson(File.ReadAllText(_newScriptPath)) is { } script) script.ApplyTo(yours.StrikeTeam);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                Say("Couldn't read that saved campaign - starting with no planned missions.", true);
+            }
+        }
         if (!StrikeTeamFiles.Save(path, yours))
         {
             try { File.Delete(enemyPath); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }

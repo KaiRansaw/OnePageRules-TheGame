@@ -1077,6 +1077,10 @@ public class LobbyScreen : IAppScreen
     /// <see cref="ETerrainPlacementMode.LoadFromFile"/>. Null for every other mode.</summary>
     public static string? PendingTerrainLayoutPath;
 
+    /// <summary>#465 - the mission plan's deployment style and mission type, from Mission Setup.</summary>
+    public static EDeploymentStyle? PendingDeploymentStyle;
+    public static FDG.Missions.EMissionCardGame? PendingMissionCardGame;
+
     /// <summary>
     /// #435 - set by Mission Setup: launch as soon as the lobby is ready, without drawing it. The
     /// campaign flow is meant to go from Mission Setup straight into the game ("The Table is gone from
@@ -1118,6 +1122,10 @@ public class LobbyScreen : IAppScreen
         PendingCampaignEnemyArmy = null;
         PendingTerrainMode = null;
         PendingTerrainLayoutPath = null;
+        EDeploymentStyle? deployment = PendingDeploymentStyle;
+        FDG.Missions.EMissionCardGame? missionCards = PendingMissionCardGame;
+        PendingDeploymentStyle = null;
+        PendingMissionCardGame = null;
         if (path == null || _viewModel == null) return;
         if (LoadArmyFile(path) is not { } army) return;
         if (_viewModel.PlayerInfos.Count == 0) return;
@@ -1139,6 +1147,9 @@ public class LobbyScreen : IAppScreen
             _viewModel.SetTerrainPlacementMode(mode);
             _viewModel.SetTerrainLayoutPath(mode == ETerrainPlacementMode.LoadFromFile ? layoutPath : null);
         }
+        // #465: the mission plan's deployment style and mission type.
+        if (deployment is { } style) _viewModel.SetDeploymentStyle(style);
+        if (missionCards is { } cards) _viewModel.SetMissionCardGame(cards);
 
         if (enemyPath == null || LoadArmyFile(enemyPath) is not { } enemy) return;
         _viewModel.AddAiPlayer(FDG.Ai.EAiProfile.SoloRules);

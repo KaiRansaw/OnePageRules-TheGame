@@ -4,6 +4,7 @@ using FDG.Campaign;
 using FDG;
 using FDG.SaveLoad;
 using FdgRaylib.Quest;
+using FdgRaylib.SaveLoad;
 using ImGuiNET;
 
 namespace FdgRaylib.Rendering;
@@ -61,6 +62,11 @@ public sealed class MissionSetupScreen : IAppScreen
     private ETerrainPlacementMode _terrainMode = ETerrainPlacementMode.Alternating;
     private string? _mapPath;
 
+    /// <summary>#465 - the plan card for this mission (title, map, deployment, mission type, difficulty).</summary>
+    private CampaignMissionPlan? _plan;
+    private string _title = "";
+    private string _notes = "";
+
     private static readonly Vector4 TextDim = new(0.62f, 0.63f, 0.66f, 1f);
     private static readonly Vector4 Accent = new(0.45f, 0.68f, 1f, 1f);
     private static readonly Vector4 Good = new(0.45f, 0.88f, 0.45f, 1f);
@@ -92,6 +98,25 @@ public sealed class MissionSetupScreen : IAppScreen
         _enemyPath = _army?.StrikeTeam?.EnemyArmyFile;
         if (_enemyPath != null) _enemy = StrikeTeamFiles.Load(_enemyPath);
 
+        // #465: the next mission's plan - made now if it has not been (Generate is the default; every
+        // field can then be changed or re-rolled). Its difficulty and map drive the panels beside it.
+        if (_army?.StrikeTeam is { } info)
+        {
+            _plan = CampaignPlans.Next(info);
+            if (_plan == null)
+            {
+                _plan = CampaignMissionGenerator.Generate(info.Matches + 1, info.GameSystem, D6);
+                CampaignPlans.Set(info, _plan);
+            }
+            info.Difficulty = _plan.Difficulty;
+            _terrainMode = _plan.TerrainMode;
+            _mapPath = CampaignScriptPaths.MapFor(_plan.MapName);
+            if (_terrainMode == ETerrainPlacementMode.LoadFromFile && _mapPath == null) _terrainMode = ETerrainPlacementMode.AutoFromLayout;
+            _title = _plan.Title;
+            _notes = CampaignJournal.NoteFor(info, _plan.Mission);
+            StrikeTeamFiles.Save(_path, _army);
+        }
+
         // The rival's force is filled from the difficulty band the moment the screen opens, so the
         // player sees a legal, sized force rather than an empty list they have to populate themselves.
         // Pressing Randomize or changing the difficulty re-fills it; ticking a box by hand overrides it.
@@ -104,6 +129,13 @@ public sealed class MissionSetupScreen : IAppScreen
     }
 
     private void Say(string text, bool error = false) { _message = text; _messageIsError = error; }
+
+    private void SavePlan()
+    {
+        if (_army?.StrikeTeam is not { } info || _plan == null) return;
+        CampaignPlans.Set(info, _plan);
+        StrikeTeamFiles.Save(_path, _army);
+    }
 
     private CampaignNumbers Numbers => CampaignNumbers.For(_army?.StrikeTeam?.GameSystem
                                                            ?? EGameSystem.GrimdarkFuture);
@@ -181,19 +213,22 @@ public sealed class MissionSetupScreen : IAppScreen
         float h = screenHeight - top - bottom;
         float w = (screenWidth - margin * 4f) / 3f;
 
+        // #465: the mission plan first (it holds the map), then the two forces.
         ImGui.SetCursorPos(new Vector2(margin, top));
+        ImGui.BeginChild("##plan", new Vector2(w, h), ImGuiChildFlags.Borders);
+        DrawPlan(info);
+        ImGui.Spacing();
+        DrawMap();
+        ImGui.EndChild();
+
+        ImGui.SetCursorPos(new Vector2(margin * 2f + w, top));
         ImGui.BeginChild("##yours", new Vector2(w, h), ImGuiChildFlags.Borders);
         DrawYourForce(info, n);
         ImGui.EndChild();
 
-        ImGui.SetCursorPos(new Vector2(margin * 2f + w, top));
+        ImGui.SetCursorPos(new Vector2(margin * 3f + w * 2f, top));
         ImGui.BeginChild("##theirs", new Vector2(w, h), ImGuiChildFlags.Borders);
         DrawTheirForce(info, n);
-        ImGui.EndChild();
-
-        ImGui.SetCursorPos(new Vector2(margin * 3f + w * 2f, top));
-        ImGui.BeginChild("##map", new Vector2(w, h), ImGuiChildFlags.Borders);
-        DrawMap();
         ImGui.EndChild();
 
         DrawBottomBar(info, margin, screenWidth, screenHeight, bottom);
@@ -293,7 +328,8 @@ public sealed class MissionSetupScreen : IAppScreen
                 if (ImGui.Selectable(MissionDifficulty.Name(option), selected) && !selected)
                 {
                     info.Difficulty = option;
-                    StrikeTeamFiles.Save(_path, _army!);
+                    if (_plan != null) _plan.Difficulty = option;
+                    SavePlan();
                     FillEnemyForce(randomize: false);
                 }
                 if (ImGui.IsItemHovered())
@@ -380,6 +416,132 @@ public sealed class MissionSetupScreen : IAppScreen
         }
     }
 
+    /// <summary>
+    /// #465 - the plan card. Generate rolls every field from the books; each field can be re-rolled or
+    /// picked by hand; the notes are this mission's journal page.
+    /// </summary>
+    private void DrawPlan(StrikeTeamInfo info)
+    {
+        UiText.Colored(TextDim, $"THE MISSION ({info.Matches + 1})");
+        ImGui.Separator();
+        if (_plan == null) return;
+        EGameSystem system = info.GameSystem;
+
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.InputText("##plantitle", ref _title, 80)) { }
+        if (ImGui.IsItemDeactivatedAfterEdit())
+        {
+            _plan.Title = CampaignJournal.Clean(_title);
+            _title = _plan.Title;
+            SavePlan();
+        }
+
+        if (UiButton.NavigateSmall("Generate all"))
+        {
+            int mission = _plan.Mission;
+            CampaignMissionPlan fresh = CampaignMissionGenerator.Generate(mission, system, D6);
+            fresh.TerrainMode = _plan.TerrainMode;
+            fresh.MapName = _plan.MapName;
+            _plan = fresh;
+            _title = _plan.Title;
+            info.Difficulty = _plan.Difficulty;
+            SavePlan();
+            FillEnemyForce(randomize: false);
+            Say("Rolled a new mission.");
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Rolls a new deployment style, mission type and difficulty from the books.\nThe map and your notes stay.");
+        ImGui.Spacing();
+
+        // Deployment style
+        if (AdvancedDeployment.Available(system))
+        {
+            ImGui.TextUnformatted("Deployment");
+            ImGui.SetNextItemWidth(-80f);
+            if (ImGui.BeginCombo("##plandeploy", AdvancedDeployment.Name(_plan.DeploymentStyle), ImGuiComboFlags.HeightLarge))
+            {
+                foreach (EDeploymentStyle style in Enum.GetValues<EDeploymentStyle>())
+                {
+                    if (ImGui.Selectable(AdvancedDeployment.Name(style), style == _plan.DeploymentStyle))
+                    {
+                        _plan.DeploymentStyle = style;
+                        SavePlan();
+                    }
+                }
+                ImGui.EndCombo();
+            }
+            ImGui.SameLine();
+            if (UiButton.NavigateSmall("Reroll##deploy"))
+            {
+                _plan.DeploymentStyle = CampaignMissionGenerator.RollDeployment(system, D6);
+                SavePlan();
+            }
+        }
+
+        // Mission type
+        if (FDG.Missions.MissionCardCatalog.Available(system))
+        {
+            ImGui.TextUnformatted("Mission type");
+            ImGui.SetNextItemWidth(-80f);
+            string label = _plan.MissionCards == FDG.Missions.EMissionCardGame.Off
+                ? "Core objectives" : FDG.Missions.MissionCardCatalog.Name(_plan.MissionCards);
+            if (ImGui.BeginCombo("##plantype", label, ImGuiComboFlags.HeightLarge))
+            {
+                foreach (FDG.Missions.EMissionCardGame game in Enum.GetValues<FDG.Missions.EMissionCardGame>())
+                {
+                    string name = game == FDG.Missions.EMissionCardGame.Off ? "Core objectives" : FDG.Missions.MissionCardCatalog.Name(game);
+                    if (ImGui.Selectable(name, game == _plan.MissionCards))
+                    {
+                        _plan.MissionCards = game;
+                        SavePlan();
+                    }
+                    if (ImGui.IsItemHovered()) UiText.Tooltip(CampaignMissionGenerator.DescribeMissionType(game));
+                }
+                ImGui.EndCombo();
+            }
+            ImGui.SameLine();
+            if (UiButton.NavigateSmall("Reroll##type"))
+            {
+                _plan.MissionCards = CampaignMissionGenerator.RollMissionType(system, D6);
+                SavePlan();
+            }
+            UiText.Wrapped(CampaignMissionGenerator.DescribeMissionType(_plan.MissionCards));
+        }
+
+        // Difficulty (set beside their force, which it sizes) - re-rollable here.
+        ImGui.TextUnformatted($"Difficulty: {MissionDifficulty.Name(_plan.Difficulty)}");
+        ImGui.SameLine();
+        if (UiButton.NavigateSmall("Reroll##diff"))
+        {
+            _plan.Difficulty = CampaignMissionGenerator.RollDifficulty(D6);
+            info.Difficulty = _plan.Difficulty;
+            SavePlan();
+            FillEnemyForce(randomize: false);
+        }
+
+        ImGui.Spacing();
+        UiText.Colored(TextDim, "Your notes (this mission's journal page)");
+        ImGui.InputTextMultiline("##plannotes", ref _notes, CampaignJournal.MaxNoteLength,
+            new Vector2(-1f, ImGui.GetTextLineHeight() * 5f));
+        if (ImGui.IsItemDeactivatedAfterEdit())
+        {
+            CampaignJournal.SetNote(info, _plan.Mission, _notes);
+            _notes = CampaignJournal.NoteFor(info, _plan.Mission);
+            StrikeTeamFiles.Save(_path, _army!);
+        }
+
+        if (UiButton.NavigateSmall("Save campaign as a file"))
+        {
+            if (CampaignScriptPaths.Save(CampaignScript.From(info, info.Name)) is { } saved)
+                Say($"Saved to {CampaignScriptPaths.DirectoryName}\\{Path.GetFileName(saved)} - start a new campaign from it any time.");
+            else
+                Say("Couldn't save the campaign file.", true);
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("Saves every mission planned so far, with your notes, as a campaign you can\nplay again with fresh armies (New Campaign -> start from a saved campaign).");
+        ImGui.Separator();
+    }
+
     private void DrawMap()
     {
         UiText.Colored(TextDim, "THE MAP");
@@ -397,7 +559,11 @@ public sealed class MissionSetupScreen : IAppScreen
                          ETerrainPlacementMode.LoadFromFile,
                      })
             {
-                if (ImGui.Selectable(TerrainModeLabel(mode), mode == _terrainMode)) _terrainMode = mode;
+                if (ImGui.Selectable(TerrainModeLabel(mode), mode == _terrainMode))
+                {
+                    _terrainMode = mode;
+                    if (_plan != null) { _plan.TerrainMode = mode; SavePlan(); }
+                }
             }
             ImGui.EndCombo();
         }
@@ -417,7 +583,10 @@ public sealed class MissionSetupScreen : IAppScreen
                 {
                     bool selected = string.Equals(map, _mapPath, StringComparison.OrdinalIgnoreCase);
                     if (ImGui.Selectable($"{Path.GetFileNameWithoutExtension(map)}##{map}", selected))
+                    {
                         _mapPath = map;
+                        if (_plan != null) { _plan.MapName = Path.GetFileNameWithoutExtension(map); SavePlan(); }
+                    }
                 }
                 ImGui.EndCombo();
             }
@@ -528,6 +697,12 @@ public sealed class MissionSetupScreen : IAppScreen
         LobbyScreen.PendingCampaignEnemyArmy = theirs;
         LobbyScreen.PendingTerrainMode = _terrainMode;
         LobbyScreen.PendingTerrainLayoutPath = _mapPath;
+        // #465: the plan's deployment style and mission type.
+        if (_plan != null)
+        {
+            LobbyScreen.PendingDeploymentStyle = _plan.DeploymentStyle;
+            LobbyScreen.PendingMissionCardGame = _plan.MissionCards;
+        }
         // The point of this screen: the player never sees the lobby or the table.
         LobbyScreen.PendingAutoLaunch = true;
         OnStart?.Invoke(info.GameSystem);
