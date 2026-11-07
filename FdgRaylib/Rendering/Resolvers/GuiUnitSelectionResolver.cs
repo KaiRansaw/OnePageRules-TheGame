@@ -25,6 +25,11 @@ namespace FdgRaylib.Rendering.Resolvers;
 public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanvasOverlay, ICanvasInteractionHandler
 {
     private float _scale = 10f;
+    // The unit strip's place and fold state, kept for the session (see DrawUnitCards).
+    private Vector2? _stripPos;
+    private bool _stripFolded;
+    private bool _stripResetPending;
+    private Vector2? _stripHome;
     private float _tableH = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
     private int _originX, _originY;
 
@@ -204,15 +209,60 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         float winW = MathF.Min(rowW + ImGui.GetStyle().WindowPadding.X * 2f, MathF.Max(260f, PopupAnchor.AreaW - 16f));
         float winH = cardH + lineH * 2f + ImGui.GetStyle().ScrollbarSize + 26f;
 
-        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(new Vector2(winW, winH)), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(winW, winH), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.90f);
-        ImGui.Begin("##unitcards", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar |
-            ImGuiWindowFlags.NoFocusOnAppearing);
-
+        // Kai, 2026-11-06: the strip covered the top of the board during deployment. It can be dragged
+        // anywhere (grab the title line or any empty part of it) and folded down to its title line. Both
+        // stick for the rest of the session, so the next unit to deploy comes up where it was left.
         string title = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : request.Instructions;
+        float foldedH = ImGui.GetFrameHeight() + ImGui.GetStyle().WindowPadding.Y * 2f + 2f;
+        float shownH = _stripFolded ? foldedH : winH;
+        if (_stripFolded) winW = MathF.Min(winW, MathF.Max(380f, ImGui.CalcTextSize(title).X + 260f));
+
+        if (_stripPos is not { } at || _stripResetPending)
+        {
+            at = PopupAnchor.PlaceTopStrip(new Vector2(winW, winH));
+            _stripHome = at;
+            _stripResetPending = false;
+            ImGui.SetNextWindowPos(at, ImGuiCond.Always);
+        }
+        else
+        {
+            // Keep it on screen if the window was resized since it was dragged.
+            Vector2 disp = ImGui.GetIO().DisplaySize;
+            Vector2 clamped = new(Math.Clamp(at.X, 0f, MathF.Max(0f, disp.X - winW)), Math.Clamp(at.Y, 0f, MathF.Max(0f, disp.Y - shownH)));
+            if (clamped != at) ImGui.SetNextWindowPos(clamped, ImGuiCond.Always);
+        }
+        ImGui.SetNextWindowSize(new Vector2(winW, shownH), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.95f);
+        ImGui.Begin("##unitcards", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.HorizontalScrollbar |
+            ImGuiWindowFlags.NoFocusOnAppearing | (_stripFolded ? ImGuiWindowFlags.NoScrollbar : 0));
+        _stripPos = ImGui.GetWindowPos();
+
+        ImGui.TextDisabled("::");
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Drag the bar to move it.");
+        ImGui.SameLine();
         ImGui.TextUnformatted(title);
+        ImGui.SameLine();
+        if (ImGui.SmallButton(_stripFolded ? $"Show ({count})##fold" : "Hide##fold")) _stripFolded = !_stripFolded;
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(_stripFolded ? "Show the units again." : "Fold this bar up so you can see the table.");
+        if (_stripPos is { } moved && _stripHome is { } home && Vector2.Distance(moved, home) > 4f)
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Reset##stripreset")) _stripResetPending = true;
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Put the bar back at the top.");
+        }
+        if (_stripFolded)
+        {
+            if (request.AllowCancel && PopupAnchor.RightClickOnEmptyTable())
+            {
+                ImGui.End();
+                Complete(tcs, null!);
+                return;
+            }
+            ImGui.End();
+            return;
+        }
         if (request.AllowCancel)
         {
             ImGui.SameLine();
