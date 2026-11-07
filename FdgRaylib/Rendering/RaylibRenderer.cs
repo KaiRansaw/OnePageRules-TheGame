@@ -2613,12 +2613,11 @@ public class RaylibRenderer
                 // #420: the rule hovers quote OPR's wording for the game being played, not a summary.
                 systemSlug: _tableState?.Progress is { } p ? GameSystemInfo.Slug(p.GameSystem) : null);
 
-            var tokens = TableTooltipOverlay.VisibleTokenNames(unit);
-            if (tokens.Count > 0)
+            if (TableTooltipOverlay.VisibleTokens(unit).Count > 0)
             {
                 ImGui.Spacing();
                 ImGui.TextUnformatted("Tokens:");
-                foreach (string t in tokens) ImGui.TextUnformatted($"- {t}");
+                TableTooltipOverlay.DrawTokenLines(unit, ImGui.GetContentRegionAvail().X);
             }
         }
         ImGui.End();

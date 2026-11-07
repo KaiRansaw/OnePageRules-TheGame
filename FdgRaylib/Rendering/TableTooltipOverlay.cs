@@ -741,6 +741,35 @@ public class TableTooltipOverlay
     /// <summary>The unit the Active / Selected Unit panel is showing this frame (set by the renderer).</summary>
     internal static UnitID? UnitOnPanel;
 
+    /// <summary>The same tokens as <see cref="VisibleTokenNames"/>, with what each one does.</summary>
+    internal static IReadOnlyList<FDG.Rules.Tokens.TokenDisplayInfo> VisibleTokens(IUnit unit) =>
+        TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit)
+            .Where(t => !BookkeepingTokenNames.Contains(t.Name))
+            .GroupBy(t => t.Name).Select(g => g.First()).ToList();
+
+    /// <summary>
+    /// One line per token: its table chip (the symbol drawn by the unit's name), then its name highlighted
+    /// like a rule, with what it does and how long it lasts on hover (Kai, 2026-11-06: "I have no clue what
+    /// that symbol means").
+    /// </summary>
+    internal static void DrawTokenLines(IUnit unit, float width)
+    {
+        var tokens = VisibleTokens(unit);
+        if (tokens.Count == 0) return;
+        foreach (var t in tokens)
+        {
+            Vector2 at = ImGui.GetCursorScreenPos();
+            float h = ImGui.GetTextLineHeight();
+            float chipW = TokenChipRenderer.RowWidth(new[] { t });
+            TokenChipRenderer.DrawChipRow(ImGui.GetWindowDrawList(), new[] { t }, at.X + chipW * 0.5f,
+                at.Y + MathF.Max(0f, (h - TokenChipRenderer.RowHeight(new[] { t })) * 0.5f));
+            ImGui.SetCursorScreenPos(at + new Vector2(chipW + 6f, 0f));
+            string desc = string.IsNullOrWhiteSpace(t.LifetimeText) ? t.Description : $"{t.Description}\n({t.LifetimeText})";
+            string label = t.Count > 1 ? $"{t.Name} x{t.Count}" : t.Name;
+            RuleHoverText.DrawWrapped(new[] { new RuleHoverText.Segment(label, t.Name, desc) }, width - chipW - 6f);
+        }
+    }
+
     internal static IReadOnlyList<string> VisibleTokenNames(IUnit unit) =>
         TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit)
             .Select(t => t.Name).Where(n => !BookkeepingTokenNames.Contains(n)).Distinct().ToList();
@@ -857,11 +886,10 @@ public class TableTooltipOverlay
             ImGui.PopTextWrapPos();
         }
 
-        var tokens = VisibleTokenNames(unit);
-        if (tokens.Count > 0)
+        if (VisibleTokens(unit).Count > 0)
         {
             ImGui.Separator();
-            ImGui.TextDisabled("Tokens: " + string.Join(", ", tokens));
+            DrawTokenLines(unit, 300f);
         }
 
         string? hoverLabel = model == null ? null : interactionHandler?.GetHoverLabel(unit, model);

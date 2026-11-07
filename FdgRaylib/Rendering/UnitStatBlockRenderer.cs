@@ -36,7 +36,9 @@ public static class UnitStatBlockRenderer
         ImGui.TextUnformatted(unit.Name);
 
         int live = unit.Models.Count(m => m.GetIsAlive());
-        ImGui.TextDisabled($"{live} model{(live == 1 ? "" : "s")}   Qua {unit.Quality}+  Def {unit.Defense}+");
+        // Kai, 2026-11-06: the unit's points on its card.
+        string pts = unit is UnitData { PointCost: > 0 } ud ? $"   {ud.PointCost} pts" : "";
+        ImGui.TextDisabled($"{live} model{(live == 1 ? "" : "s")}   Qua {unit.Quality}+  Def {unit.Defense}+{pts}");
         // #287/#288: wounds, matching the model hover tooltip - a unit placed after taking damage
         // (disembark, reposition) is the case where this matters, and it costs one line otherwise.
         ImGui.TextDisabled($"Wounds {WoundFormat.Fraction(unit.RemainingWounds, unit.MaxWounds)}");
