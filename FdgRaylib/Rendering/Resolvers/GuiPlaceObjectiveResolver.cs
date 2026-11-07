@@ -111,7 +111,7 @@ public class GuiPlaceObjectiveResolver
         var io = ImGui.GetIO();
         var dl = ImGui.GetBackgroundDrawList();
 
-        DrawLegalBand(dl, request.LegalBand);
+        DrawLegalBand(dl, request.Reach ?? request.LegalBand);
         DrawExistingMarkers(dl);
 
         int markerNumber = request.MarkerIndex;
@@ -161,7 +161,7 @@ public class GuiPlaceObjectiveResolver
 
     // ---- drawing ----
 
-    private void DrawLegalBand(ImDrawListPtr dl, RectangularZone band)
+    private void DrawLegalBand(ImDrawListPtr dl, IZone band)
     {
         uint fill    = ImGui.ColorConvertFloat4ToU32(new Vector4(0.20f, 0.85f, 0.30f, 0.10f));
         uint outline = ImGui.ColorConvertFloat4ToU32(new Vector4(0.20f, 0.85f, 0.30f, 0.70f));
@@ -285,6 +285,7 @@ public class GuiPlaceObjectiveResolver
         var existing = _tableState.Objectives.Objects;
         var impassable = _tableState.Terrain.Objects
             .Where(t => t.TerrainType.HasFlag(ETerrainType.Impassible));
+        if (!request.IsInLegalArea(candidate)) return ObjectivePlacementValidity.OutsideLegalBand;
         return ObjectivePlacementValidator.Check(
             candidate, request.LegalBand, request.MinSeparationInches, existing, impassable);
     }
