@@ -1690,6 +1690,16 @@ else
 
     renderer.HostModal.OnCreated = (lobby, listing, mapper) =>
     {
+        // QA: after a campaign mission the game-over card says Continue and goes back to that campaign,
+        // not to the main menu. Where the host was opened from tells us whether this is a campaign
+        // mission: a Quest campaign screen, or Mission Setup (a strike-team campaign, which opens the host
+        // silently, so it is still the current screen here).
+        IAppScreen? origin = hostOpenedFrom ?? renderer.CurrentScreen;
+        renderer.GameOverReturnTo =
+            ReferenceEquals(origin, renderer.Campaigns) ? renderer.Campaigns
+            : ReferenceEquals(origin, renderer.AoFCampaigns) ? renderer.AoFCampaigns
+            : ReferenceEquals(origin, renderer.MissionSetup) ? renderer.StrikeTeams
+            : null;
         hostOpenedFrom = null;
         TeardownLobby();
         activeLobby = lobby;
@@ -1719,6 +1729,7 @@ else
 
     renderer.ClientModal.OnConnected = lobby =>
     {
+        renderer.GameOverReturnTo = null;   // a joined game is never this machine's campaign mission
         TeardownLobby();
         activeLobby = lobby;
         renderer.LobbyScreen.SetViewModel(lobby);

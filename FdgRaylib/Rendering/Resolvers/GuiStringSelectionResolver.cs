@@ -961,6 +961,8 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
     private static string ChargeOpt => FDG.Stages.ChooseActionStage.CHARGE_CHOICE_NAME;
     private static string ShootOpt  => FDG.Stages.ChooseActionStage.SHOOT_CHOICE_NAME;
     private static string PassOpt   => FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME;
+    /// <summary>Quest heroes: Hold as the action, keeping the Skill action (QA 9.16).</summary>
+    private static string QuestHoldOpt => FDG.Stages.QuestActions.HoldWithoutShootingOption;
 
     /// <summary>
     /// The activation's choices as a small window beside the unit: Hold (stay and shoot, or just stay when
@@ -977,7 +979,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
             foreach (var inv in request.InvalidOptions) if (inv.Option == o) return inv.Reason;
             return null;
         }
-        bool Known(string o) => o == MoveOpt || o == ChargeOpt || o == ShootOpt || o == PassOpt;
+        bool Known(string o) => o == MoveOpt || o == ChargeOpt || o == ShootOpt || o == PassOpt || o == QuestHoldOpt;
         var extraValid = request.ValidOptions.Where(o => !Known(o)).ToList();
         var extraInvalid = request.InvalidOptions.Where(o => !Known(o.Option)).ToList();
 
@@ -1026,19 +1028,27 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
 
         // Hold: stay put and shoot; with nothing in range it just ends the activation.
         bool canShoot = Valid(ShootOpt) && !heldFire, canPass = Valid(PassOpt);
+        // A Quest hero standing still has used its action, not its activation: the Skill action is still to
+        // come ("any one action plus one Skill action"), so holding without a shot goes through the engine's
+        // hold option, which returns here, rather than Pass, which ends the activation (QA 9.16).
+        bool questHold = !afterMove && Valid(QuestHoldOpt);
+        string stillOpt = questHold ? QuestHoldOpt : PassOpt;
+        bool canStill = questHold || canPass;
         string holdTip = canShoot ? "Stay in place and shoot."
-            : canPass ? "Stay in place. Nothing is in range to shoot."
+            : canStill ? "Stay in place. Nothing is in range to shoot."
             : Reason(ShootOpt) ?? Reason(PassOpt) ?? "Not available.";
-        if (ActionButton(afterMove ? "End activation" : "Hold", canShoot || canPass,
+        if (ActionButton(afterMove ? "End activation" : "Hold", canShoot || canStill,
                 afterMove ? "Nothing left to do this activation." : holdTip))
-            picked = canShoot ? ShootOpt : PassOpt;
+            picked = canShoot ? ShootOpt : (afterMove ? PassOpt : stillOpt);
 
         // Holding is a legal action on its own - a unit may stand still and not shoot at all, and one with
         // no ranged weapon has no other way to hold. Offered as its own button so the player never has to
         // walk into the weapon picker just to come back out of it.
-        if (!afterMove && canPass && canShoot &&
-            ActionButton("Hold, don't shoot", true, "Stay in place and fire nothing this activation."))
-            picked = PassOpt;
+        if (!afterMove && canStill && canShoot &&
+            ActionButton("Hold, don't shoot", true, questHold
+                ? "Stay in place and fire nothing. You can still use a Skill after."
+                : "Stay in place and fire nothing this activation."))
+            picked = stillOpt;
 
         bool canMove = Valid(MoveOpt);
         string moveReason = Reason(MoveOpt) ?? "Not available.";

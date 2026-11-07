@@ -248,6 +248,13 @@ public class RaylibRenderer
     /// <summary>The screen showing now (null before the first navigation).</summary>
     public IAppScreen? CurrentScreen => _currentScreen;
 
+    /// <summary>
+    /// The campaign screen a campaign mission was started from (a Quest campaign, or the strike-team camp).
+    /// The game-over card's button reads Continue and goes back there; null means an ordinary game, which
+    /// returns to the main menu. Set by Program.cs whenever a lobby is created.
+    /// </summary>
+    public IAppScreen? GameOverReturnTo { get; set; }
+
     public void NavigateTo(IAppScreen screen)
     {
         _currentScreen = screen;
@@ -2494,10 +2501,12 @@ public class RaylibRenderer
         float btnH = 44f;
         // Pin the button to the bottom of the card.
         ImGui.SetCursorPosY(size.Y - btnH - ImGui.GetStyle().WindowPadding.Y);
-        if (ImGui.Button("Return to Main Menu", new Vector2(ImGui.GetContentRegionAvail().X, btnH)))
+        IAppScreen? back = GameOverReturnTo;
+        if (ImGui.Button(back != null ? "Continue" : "Return to Main Menu", new Vector2(ImGui.GetContentRegionAvail().X, btnH)))
         {
             ExitGame();
-            NavigateTo(MainMenu);
+            if (back == StrikeTeams) StrikeTeams.ReturnToCampOnShow();   // its camp, not the campaign list
+            NavigateTo(back ?? MainMenu);
         }
 
         ImGui.End();
