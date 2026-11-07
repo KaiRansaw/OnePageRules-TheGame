@@ -289,6 +289,9 @@ public class GuiPlaceObjectsResolver<T>
         var io   = ImGui.GetIO();
         var dl   = ImGui.GetBackgroundDrawList();
         var zone = request.DeploymentZone;
+        // Remembered for the unit-picker bar, which on a network client cannot see the zones yet (they are
+        // only synced once the main phase starts) - see GuiUnitSelectionResolver.DeployZoneIsAtTop.
+        PopupAnchor.LastDeployZoneTop[request.TargetPlayerID] = zone.Bounds.CenterZ > _tableH * 0.5f + 0.5f;
 
         float minEnemyDist = request.MinDistanceFromEnemiesInches;
         var enemies = minEnemyDist > 0f ? GetEnemyPositions(request.TargetPlayerID) : _noEnemies;

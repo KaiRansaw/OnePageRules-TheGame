@@ -53,6 +53,11 @@ public static class PopupAnchor
     }
 
     /// <summary>Width of the board area (the screen minus the right column) and the screen height.</summary>
+    /// <summary>Per player: was their deployment zone the top half of the board, as last seen while they placed
+    /// a unit. Null-safe fallback for the deploy bar on a network client (the zones are not synced to it
+    /// during deployment).</summary>
+    public static readonly System.Collections.Concurrent.ConcurrentDictionary<PlayerID, bool> LastDeployZoneTop = new();
+
     public static float AreaW = 1280f;
     public static float ScreenH = 720f;
 

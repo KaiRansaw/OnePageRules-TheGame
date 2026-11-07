@@ -208,7 +208,8 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         if (!title.Contains("Deploy", StringComparison.OrdinalIgnoreCase)) return false;
         if (PopupAnchor.TableState is not { } table) return false;
         var zones = FDG.GameProgressUtilities.DeploymentZones(table.DataStore);
-        if (zones == null || zones.Count < 2) return false;
+        if (zones == null || zones.Count < 2)
+            return PopupAnchor.LastDeployZoneTop.TryGetValue(request.TargetPlayerID, out bool top) && top;
         ITeam? mine = table.Teams.Objects.FirstOrDefault(t => t.Players.Contains(request.TargetPlayerID));
         if (mine == null || !zones.TryGetValue(mine.TeamNumber, out var own)) return false;
         float ownMid = (own.Top + own.Bottom) / 2f;
@@ -228,10 +229,14 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         float cardH = tabH + barH + imgH + nameH + iconH + 6f;
         int count = request.ValidOptions.Count + request.InvalidOptions.Count;
         float rowW = MathF.Max(1, count) * (cardW + gap);
-        float winW = MathF.Min(rowW + ImGui.GetStyle().WindowPadding.X * 2f, MathF.Max(260f, PopupAnchor.AreaW - 16f));
+        // At least wide enough for the title line and its buttons: with one unit left, a card-wide bar clipped
+        // its own title to "Choosing a U" (network play-through, 2026-11-06).
+        string titleForWidth = !string.IsNullOrEmpty(request.DisplayName) ? request.DisplayName : request.Instructions;
+        float titleW = ImGui.CalcTextSize(titleForWidth).X + 150f;
+        float winW = MathF.Min(MathF.Max(rowW, titleW) + ImGui.GetStyle().WindowPadding.X * 2f, MathF.Max(260f, PopupAnchor.AreaW - 16f));
         // Room for the scrollbar only when the row actually overflows - otherwise it was an empty band under
         // the cards (2026-11-06 look pass).
-        bool overflows = rowW + ImGui.GetStyle().WindowPadding.X * 2f > winW;
+        bool overflows = rowW + ImGui.GetStyle().WindowPadding.X * 2f > winW + 0.5f;
         float winH = cardH + ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().WindowPadding.Y * 2f + 6f
             + (overflows ? ImGui.GetStyle().ScrollbarSize : 0f);
 
