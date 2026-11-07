@@ -595,7 +595,8 @@ public class LobbyScreen : IAppScreen
                 _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Strategist);
             ImGui.SameLine();
             if (UiButton.NavigateSmall("DerpBot"))
-                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.SoloRules);
+                _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI,
+                    GameSystemInfo.IsQuest(_viewModel.GameSystem) ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
             ImGui.EndDisabled();
         }
 
@@ -1222,7 +1223,11 @@ public class LobbyScreen : IAppScreen
         if (missionCards is { } cards) _viewModel.SetMissionCardGame(cards);
 
         if (enemyPath == null || LoadArmyFile(enemyPath) is not { } enemy) return;
-        _viewModel.AddAiPlayer(FDG.Ai.EAiProfile.SoloRules);
+        // The official OPR bot, as every other new AI seat gets (Kai, 2026-10-31: "one AI, the official
+        // OPR one"). This was the frozen benchmark bot, so campaign missions played against the bot
+        // that ignores the Solo & Co-Op rules (found in the bot audit, 2026-11-07).
+        _viewModel.AddAiPlayer(GameSystemInfo.IsQuest(_viewModel.GameSystem)
+            ? FDG.Ai.EAiProfile.StarQuest : FDG.Ai.EAiProfile.SoloCoOp);
         // The bot that was just added is the AI row with no army on it - #402 means a fresh bot arrives
         // army-less, and the starter-army roll has not run yet. Found by that rather than by taking the
         // last row, so this does not depend on the roster's ordering.
