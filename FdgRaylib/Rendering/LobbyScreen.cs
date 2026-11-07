@@ -1507,6 +1507,12 @@ public class LobbyScreen : IAppScreen
             ImGui.PopStyleColor();
         }
 
+        if (!isHost)
+        {
+            UiText.Disabled("The host sets these. You pick your army and colour on your seat card.");
+            ImGui.Spacing();
+        }
+
         ImGui.BeginDisabled(locked);
 
         if (Section("Game"))
@@ -2081,6 +2087,19 @@ public class LobbyScreen : IAppScreen
         // Reserve space for the inline error line below the button when present.
         float errorLineH = _lastLaunchError != null ? ImGui.GetTextLineHeightWithSpacing() + 4f : 0f;
         Vector2 buttonSize = new Vector2(avail.X, MathF.Max(0f, avail.Y - errorLineH));
+
+        // A joined player has no launch button to press: say what they are waiting for instead of showing
+        // the host's button greyed out (2026-11-06 look pass).
+        if (!isHost)
+        {
+            Vector2 at = ImGui.GetCursorScreenPos();
+            string wait = _launchStarted ? "Starting..." : "Waiting for the host to launch";
+            Vector2 ts = ImGui.CalcTextSize(wait);
+            ImGui.GetWindowDrawList().AddText(at + (buttonSize - ts) * 0.5f,
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.70f, 0.72f, 1f)), wait);
+            ImGui.Dummy(buttonSize);
+            return;
+        }
 
         ImGui.BeginDisabled(!canLaunch);
         bool clicked = UiButton.Confirm(resume ? "RESUME" : "LAUNCH", buttonSize);
