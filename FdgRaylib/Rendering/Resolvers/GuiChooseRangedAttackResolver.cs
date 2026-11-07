@@ -946,6 +946,10 @@ public class GuiChooseRangedAttackResolver
 
         uint colorLabel = ImGui.ColorConvertFloat4ToU32(new Vector4(0.85f, 1.00f, 0.85f, 0.95f));
         uint colorLabelBg = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.55f));
+        // A rank of shooters draws parallel lines whose midpoints sit side by side, and their distance
+        // labels piled into one unreadable smear ("11 11 11 11.0"). Every line is still drawn; a label is
+        // skipped when it would overlap one already drawn.
+        var labelRects = new List<(Vector2 Min, Vector2 Max)>();
         foreach (var ab in ts.modelsThatCanShoot)
         {
             var attacker = ab.GetValue();
@@ -961,8 +965,11 @@ public class GuiChooseRangedAttackResolver
             var textSize = ImGui.CalcTextSize(distText);
             var mid = new Vector2((ax + tx) * 0.5f - textSize.X * 0.5f,
                                   (ay + ty) * 0.5f - textSize.Y * 0.5f);
-            dl.AddRectFilled(mid - new Vector2(3, 1), mid + textSize + new Vector2(3, 1),
-                colorLabelBg, 2f);
+            Vector2 rMin = mid - new Vector2(3, 1), rMax = mid + textSize + new Vector2(3, 1);
+            if (labelRects.Any(r => rMin.X < r.Max.X && rMax.X > r.Min.X && rMin.Y < r.Max.Y && rMax.Y > r.Min.Y))
+                continue;
+            labelRects.Add((rMin, rMax));
+            dl.AddRectFilled(rMin, rMax, colorLabelBg, 2f);
             dl.AddText(mid, colorLabel, distText);
         }
     }
@@ -1156,7 +1163,7 @@ public class GuiChooseRangedAttackResolver
         // One weapon at a time, picked automatically (the first that can fire); each comes up in turn.
         // Click a green-outlined enemy to fire it, or Hold fire to skip it.
         ImGui.Separator();
-        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
+        ImGui.PushTextWrapPos(0f);   // the Actions window's own edge, like every other panel in it
         bool anyFireable = request.WeaponOptions.Any(HasFireableTarget);
         int remaining = request.WeaponOptions.Count(HasFireableTarget);
         if (anyFireable && _selectedWeaponIdx >= 0 && _selectedWeaponIdx < request.WeaponOptions.Count)
@@ -1172,7 +1179,11 @@ public class GuiChooseRangedAttackResolver
         }
         ImGui.PopTextWrapPos();
 
-        Vector2 btn = new(155f, 0f);
+        // Two buttons side by side filling the window, at the Actions window's row height - the same
+        // shape as the Hold / Advance / Rush buttons the player just came from.
+        ImGui.Spacing();
+        float half = MathF.Max(120f, (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) * 0.5f);
+        Vector2 btn = new(half, ResolverPanelLayout.OptionRowHeight() * 0.8f);
         bool done = false;
         if (_selectedWeaponIdx >= 0 && _selectedWeaponIdx < request.WeaponOptions.Count)
         {

@@ -139,7 +139,7 @@ public sealed class ArmyListOverlay
 
         ImGui.SetNextWindowPos(new Vector2(side, top), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(areaW - side * 2f, screenH - top - bottom), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.85f);
+        ImGui.SetNextWindowBgAlpha(0.97f);
 
         if (ImGui.Begin("##armylists",
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |

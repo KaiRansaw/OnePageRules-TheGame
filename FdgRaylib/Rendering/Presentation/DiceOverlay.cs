@@ -234,11 +234,11 @@ public static class DiceOverlay
 
         if (beat.Entries != null)
             foreach (RollOffEntry e in beat.Entries)
-                l.NameColW = Math.Max(l.NameColW, Raylib.MeasureText(e.Name, RollOffNameSize));
+                l.NameColW = Math.Max(l.NameColW, RlText.Measure(e.Name, RollOffNameSize));
 
         l.RowsH = count > 0 ? count * l.DieSizeUsed + (count - 1) * l.RowGapUsed : 0;
 
-        int innerW = Math.Max(Raylib.MeasureText(l.Header, HeaderSize),
+        int innerW = Math.Max(RlText.Measure(l.Header, HeaderSize),
             l.NameColW + l.ColGapUsed + l.DieSizeUsed);
         l.PanelW = innerW + PanelPad * 2;
         l.PanelH = PanelPad * 2 + HeaderSize + RowGap + l.RowsH;
@@ -290,10 +290,10 @@ public static class DiceOverlay
 
         int chipH = ChipSize + ChipPadY * 2;
         int bodyW = l.Probabilistic ? l.BarW : l.RowW;
-        l.ContentW = Math.Max(Raylib.MeasureText(l.Header, HeaderSize),
-                     Math.Max(bodyW, Raylib.MeasureText(l.ResultLine, ResultSize)));
+        l.ContentW = Math.Max(RlText.Measure(l.Header, HeaderSize),
+                     Math.Max(bodyW, RlText.Measure(l.ResultLine, ResultSize)));
         if (beat.Context != null)
-            l.ContentW = Math.Max(l.ContentW, Raylib.MeasureText(beat.Context, ContextSize));
+            l.ContentW = Math.Max(l.ContentW, RlText.Measure(beat.Context, ContextSize));
         if (l.ModChips != null)  l.ContentW = Math.Max(l.ContentW, ChipsWidth(l.ModChips));
         if (l.ProcChips != null) l.ContentW = Math.Max(l.ContentW, ChipsWidth(l.ProcChips));
 
@@ -436,7 +436,7 @@ public static class DiceOverlay
         {
             RollOffEntry e = beat.Entries[i];
             int rowY = rowTop + i * (l.DieSizeUsed + l.RowGapUsed);
-            Raylib.DrawText(e.Name, nameX, rowY + (l.DieSizeUsed - RollOffNameSize) / 2, RollOffNameSize,
+            RlText.Draw(e.Name, nameX, rowY + (l.DieSizeUsed - RollOffNameSize) / 2, RollOffNameSize,
                 Faded(Header, a));
 
             int face;
@@ -494,8 +494,8 @@ public static class DiceOverlay
     private static (int Width, int Height) BadgeColumnSize(string badge, ERollBeatCategory category)
     {
         string word = CategoryWord(category);
-        int badgeW = Raylib.MeasureText(badge, BadgeSize) + BadgePad * 2;
-        int width  = Math.Max(badgeW, word.Length > 0 ? Raylib.MeasureText(word, CategorySize) : 0);
+        int badgeW = RlText.Measure(badge, BadgeSize) + BadgePad * 2;
+        int width  = Math.Max(badgeW, word.Length > 0 ? RlText.Measure(word, CategorySize) : 0);
         int height = BadgeSize + BadgePad * 2 + (word.Length > 0 ? 4 + CategorySize : 0);
         return (width, height);
     }
@@ -505,14 +505,14 @@ public static class DiceOverlay
     // with the roll's category word beneath it in the accent color.
     private static void DrawBadgeColumn(int x, int y, int colW, string badge, ERollBeatCategory category, float a)
     {
-        int badgeW = Raylib.MeasureText(badge, BadgeSize) + BadgePad * 2;
+        int badgeW = RlText.Measure(badge, BadgeSize) + BadgePad * 2;
         int badgeH = BadgeSize + BadgePad * 2;
         int chipX  = x + (colW - badgeW) / 2;
         var rect = new Rectangle(chipX, y, badgeW, badgeH);
         Raylib.DrawRectangleRounded(rect, 0.25f, 6, Faded(BadgeBg, a));
         Raylib.DrawRectangleRoundedLines(rect, 0.25f, 6, Faded(Result, a));
-        int tw = Raylib.MeasureText(badge, BadgeSize);
-        Raylib.DrawText(badge, chipX + (badgeW - tw) / 2, y + (badgeH - BadgeSize) / 2, BadgeSize, Faded(Result, a));
+        int tw = RlText.Measure(badge, BadgeSize);
+        RlText.Draw(badge, chipX + (badgeW - tw) / 2, y + (badgeH - BadgeSize) / 2, BadgeSize, Faded(Result, a));
 
         string word = CategoryWord(category);
         if (word.Length > 0)
@@ -531,14 +531,14 @@ public static class DiceOverlay
         int used = 0;
         for (int i = 0; i < tags.Count; i++)
         {
-            int w = Raylib.MeasureText(tags[i], ChipSize) + ChipPadX * 2;
+            int w = RlText.Measure(tags[i], ChipSize) + ChipPadX * 2;
             int gap = chips.Count > 0 ? ChipGap : 0;
             // Keep room for a potential "+N" tail chip when more tags follow.
             int tailReserve = i < tags.Count - 1 ? 50 : 0;
             if (used + gap + w + tailReserve > maxWidth && chips.Count > 0)
             {
                 string more = $"+{tags.Count - i}";
-                chips.Add((more, Raylib.MeasureText(more, ChipSize) + ChipPadX * 2));
+                chips.Add((more, RlText.Measure(more, ChipSize) + ChipPadX * 2));
                 return chips;
             }
             chips.Add((tags[i], w));
@@ -565,7 +565,7 @@ public static class DiceOverlay
             Raylib.DrawRectangleRounded(rect, 0.35f, 6, Faded(bg, a));
             if (border.HasValue)
                 Raylib.DrawRectangleRoundedLines(rect, 0.35f, 6, Faded(border.Value, a * 0.8f));
-            Raylib.DrawText(chipText, cx + ChipPadX, y + ChipPadY, ChipSize, Faded(text, a));
+            RlText.Draw(chipText, cx + ChipPadX, y + ChipPadY, ChipSize, Faded(text, a));
             cx += w + ChipGap;
         }
     }
@@ -628,8 +628,8 @@ public static class DiceOverlay
 
     private static void DrawCenteredIn(string text, int x, int width, int y, int fontSize, Color color)
     {
-        int w = Raylib.MeasureText(text, fontSize);
-        Raylib.DrawText(text, x + (width - w) / 2, y, fontSize, color);
+        int w = RlText.Measure(text, fontSize);
+        RlText.Draw(text, x + (width - w) / 2, y, fontSize, color);
     }
 
     // Standard d6 pip layout on a 3x3 grid (col, row), 0..2.

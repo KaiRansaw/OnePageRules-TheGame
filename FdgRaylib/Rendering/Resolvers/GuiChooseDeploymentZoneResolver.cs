@@ -162,7 +162,7 @@ public class GuiChooseDeploymentZoneResolver
         {
             var zb   = available[i];
             var zone = zb.GetValue();
-            string label = $"{ResolverHotkeys.NumberPrefix(i)}Zone {i + 1}  (X {zone.Left:F0}\"-{zone.Right:F0}\", Z {zone.Bottom:F0}\"-{zone.Top:F0}\")##{i}";
+            string label = $"{ResolverHotkeys.NumberPrefix(i)}Zone {i + 1} - {Where(zone)}##{i}";
 
             bool forceHover = i == canvasHover;
             if (forceHover)
@@ -184,7 +184,7 @@ public class GuiChooseDeploymentZoneResolver
             for (int i = 0; i < takenCount; i++)
             {
                 var zone = unavailable[i].GetValue();
-                string label = $"Zone -- (X {zone.Left:F0}\"-{zone.Right:F0}\", Z {zone.Bottom:F0}\"-{zone.Top:F0}\") [taken]##t{i}";
+                string label = $"{Where(zone)} (taken)##t{i}";
                 ImGui.BeginDisabled(true);
                 ImGui.Button(label, new Vector2(btnW, rowH - 4f));
                 ImGui.EndDisabled();
@@ -223,5 +223,25 @@ public class GuiChooseDeploymentZoneResolver
     {
         lock (_lock) { _request = null; _tcs = null; _lastButtonHover = -1; }
         tcs.SetResult(zone);
+    }
+
+    /// <summary>
+    /// Where a zone sits as the player sees the table - "top edge", "bottom-left corner" - instead of its
+    /// inch coordinates (2026-11-06 look pass: "(X 0"-72", Z 36"-48")" meant nothing at a glance).
+    /// Screen top is the table's far (high Z) side.
+    /// </summary>
+    private string Where(RectangularZone zone)
+    {
+        float w = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, h = _tableH;
+        float cx = (zone.Left + zone.Right) * 0.5f, cz = (zone.Bottom + zone.Top) * 0.5f;
+        bool fullWidth = zone.Right - zone.Left >= w * 0.9f, fullHeight = zone.Top - zone.Bottom >= h * 0.9f;
+        string vert = cz > h * 0.6f ? "top" : cz < h * 0.4f ? "bottom" : "";
+        string horiz = cx < w * 0.4f ? "left" : cx > w * 0.6f ? "right" : "";
+        if (fullWidth && vert.Length > 0) return $"{vert} edge";
+        if (fullHeight && horiz.Length > 0) return $"{horiz} edge";
+        if (vert.Length > 0 && horiz.Length > 0) return $"{vert}-{horiz} corner";
+        if (vert.Length > 0) return $"{vert} side";
+        if (horiz.Length > 0) return $"{horiz} side";
+        return "centre";
     }
 }

@@ -1709,14 +1709,14 @@ public class RaylibRenderer
             Raylib.DrawCircleLines(cx, cy, r, Color.Black);
             string mark = token.IsTreasure ? "$" : "?";
             int fs = Math.Max(8, (int)(r * 1.5f));
-            Raylib.DrawText(mark, cx - Raylib.MeasureText(mark, fs) / 2, cy - fs / 2, fs, Color.White);
+            RlText.Draw(mark, cx - RlText.Measure(mark, fs) / 2, cy - fs / 2, fs, Color.White);
             if (token.IsTreasure && token.Contents.Count > 0)
             {
                 string what = string.Join(" + ", token.Contents);
                 int small = Math.Max(9, (int)(r * 0.9f));
-                int tw = Raylib.MeasureText(what, small);
+                int tw = RlText.Measure(what, small);
                 Raylib.DrawRectangle(cx - tw / 2 - 3, (int)(cy + r + 2), tw + 6, small + 4, new Color(0, 0, 0, 170));
-                Raylib.DrawText(what, cx - tw / 2, (int)(cy + r + 4), small, QuestTreasureColor);
+                RlText.Draw(what, cx - tw / 2, (int)(cy + r + 4), small, QuestTreasureColor);
             }
         }
     }
@@ -1737,7 +1737,7 @@ public class RaylibRenderer
         Raylib.DrawCircle(mx, my, mr, m.Color);
         Raylib.DrawCircleLines(mx, my, mr, Color.Black);
         int mfs = Math.Max(8, (int)(mr * (m.Label.Length > 1 ? 0.9f : 1.4f)));
-        Raylib.DrawText(m.Label, mx - Raylib.MeasureText(m.Label, mfs) / 2, my - mfs / 2, mfs, Color.White);
+        RlText.Draw(m.Label, mx - RlText.Measure(m.Label, mfs) / 2, my - mfs / 2, mfs, Color.White);
     }
 
     private void DrawObjectives(Layout l)
@@ -1764,16 +1764,19 @@ public class RaylibRenderer
             Raylib.EndScissorMode();
 
             // Solid inner marker.
-            float markerPx = ObjectiveMarkerRadiusInches * l.Scale;
+            // Never smaller than 13px: at the 6'x4' table's scale the true-size marker was a 9px dot with a
+            // number nobody could read (2026-11-06 look pass). Purely the drawing - the 3" zone is exact.
+            float markerPx = MathF.Max(13f, ObjectiveMarkerRadiusInches * l.Scale);
             Raylib.DrawCircle(cx, cy, markerPx, baseColor);
             Raylib.DrawCircleLines(cx, cy, markerPx, Color.Black);
 
             // Number centered inside the marker. Horde Mode markers keep their fixed 1-5 number, so the
             // label still matches the banners after another objective is destroyed.
             string label = (obj.HordeNumber ?? i + 1).ToString();
-            int fontSize = Math.Max(8, (int)(markerPx * 1.5f));
-            int textW    = Raylib.MeasureText(label, fontSize);
-            Raylib.DrawText(label, cx - textW / 2, cy - fontSize / 2, fontSize, Color.White);
+            int fontSize = Math.Max(14, (int)(markerPx * 1.3f));
+            int textW    = RlText.Measure(label, fontSize);
+            RlText.Draw(label, cx - textW / 2 + 1, cy - fontSize / 2 + 1, fontSize, new Color(0, 0, 0, 200));
+            RlText.Draw(label, cx - textW / 2, cy - fontSize / 2, fontSize, Color.White);
         }
     }
 
@@ -2465,7 +2468,9 @@ public class RaylibRenderer
 
         // A recovery note (#187) is a wrapped absolute path, so the card grows to hold it.
         string? note = _gameOverNote;
-        var size = new Vector2(Math.Min(460f, screenW * 0.8f), note == null ? 200f : 290f);
+        List<(string Name, Vector4 Color, string Line)> summary = GameOverSummary();
+        float summaryH = summary.Count * (ImGui.GetTextLineHeightWithSpacing() + 2f) + (summary.Count > 0 ? 16f : 0f);
+        var size = new Vector2(Math.Min(460f, screenW * 0.8f), (note == null ? 165f : 255f) + summaryH);
         // Centred on the table area, under the win banner (centred on the whole screen it sat off to the
         // right of the banner, over the table edge - found 2026-11-06).
         int areaW = ComputeLayout(screenW, screenH).AreaW;
@@ -2486,6 +2491,20 @@ public class RaylibRenderer
         else
             ImGui.TextWrapped(result);
         ImGui.Spacing();
+
+        // Who finished where: each side's objectives and the units it still has on the table - the "why"
+        // behind the result line, which on its own ("It's a tie!") said nothing (2026-11-06 look pass).
+        if (summary.Count > 0)
+        {
+            ImGui.Separator();
+            ImGui.Spacing();
+            foreach (var (name, color, line) in summary)
+            {
+                ImGui.TextColored(color, name);
+                ImGui.SameLine();
+                ImGui.TextDisabled(line);
+            }
+        }
         ImGui.Spacing();
 
         if (note != null)
@@ -2510,6 +2529,28 @@ public class RaylibRenderer
         }
 
         ImGui.End();
+    }
+
+    /// <summary>One line per player for the game-over card: objectives held now, units left, rounds played.</summary>
+    private List<(string Name, Vector4 Color, string Line)> GameOverSummary()
+    {
+        var rows = new List<(string, Vector4, string)>();
+        ITableState? table = _tableState;
+        if (table == null || _colorForPlayer == null) return rows;
+        try
+        {
+            foreach (var p in table.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID))
+            {
+                int held = table.Objectives.Objects.Count(o => o.OwnerID is { } id && id.Equals(p.PlayerID));
+                var units = table.Units.Objects.Where(u => u.PlayerID.Equals(p.PlayerID)).ToList();
+                int alive = units.Count(u => u.GetIsAlive());
+                Color c = _colorForPlayer(p.PlayerID);
+                rows.Add((p.Name, new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, 1f),
+                    $"- {held} objective{(held == 1 ? "" : "s")}, {alive}/{units.Count} units left"));
+            }
+        }
+        catch (InvalidOperationException) { rows.Clear(); }   // the table is being torn down - show none
+        return rows;
     }
 
     // One line of text horizontally centered in a window of the given width (uses the current font).

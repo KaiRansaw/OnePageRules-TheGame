@@ -658,13 +658,13 @@ void main()
         for (int size = 60; size >= 20; size -= 4)
         {
             List<string> lines = Wrap(text, size, width);
-            bool tooWide = lines.Any(line => Raylib.MeasureText(line, size) > width);
+            bool tooWide = lines.Any(line => RlText.Measure(line, size) > width);
             if ((lines.Count * (size + 2) > height || tooWide) && size > 20) continue;
             int ty = y + Math.Max(0, (height - lines.Count * (size + 2)) / 2);
             foreach (string line in lines.Take(Math.Max(1, height / (size + 2))))
             {
-                int tw = Raylib.MeasureText(line, size);
-                Raylib.DrawText(line, x + (width - tw) / 2, ty, size, Color.White);
+                int tw = RlText.Measure(line, size);
+                RlText.Draw(line, x + (width - tw) / 2, ty, size, Color.White);
                 ty += size + 2;
             }
             return;
@@ -678,7 +678,7 @@ void main()
         foreach (string word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
             string trial = current.Length == 0 ? word : current + " " + word;
-            if (Raylib.MeasureText(trial, size) <= width || current.Length == 0) current = trial;
+            if (RlText.Measure(trial, size) <= width || current.Length == 0) current = trial;
             else
             {
                 lines.Add(current);
@@ -699,8 +699,8 @@ void main()
         Raylib.ClearBackground(new Color(0, 0, 0, 0));
         Raylib.DrawCircle(size / 2, size / 2, size / 2f - 2f, new Color(15, 15, 18, 220));
         int font = 40;
-        int tw = Raylib.MeasureText(label, font);
-        Raylib.DrawText(label, (size - tw) / 2, (size - font) / 2, font, Color.White);
+        int tw = RlText.Measure(label, font);
+        RlText.Draw(label, (size - tw) / 2, (size - font) / 2, font, Color.White);
         Raylib.EndTextureMode();
         _objectiveLabels[label] = texture;
     }

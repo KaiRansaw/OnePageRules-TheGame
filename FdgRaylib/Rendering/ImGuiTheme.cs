@@ -135,7 +135,7 @@ public static class ImGuiTheme
     /// rather than the near-opaque <c>PopupBg</c> the menus use — the models and terrain it covers stay
     /// readable through it. Same Ink tone, so it is the theme's popup, just thinner.
     /// </summary>
-    public static readonly Vector4 TooltipBg = A(Ink, 0.72f);
+    public static readonly Vector4 TooltipBg = A(Ink, 0.93f);   // 2026-11-06: 0.72 let the green board bleed through the rule text - unreadable
 
     public static void Apply()
     {

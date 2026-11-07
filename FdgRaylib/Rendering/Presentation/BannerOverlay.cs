@@ -188,8 +188,8 @@ public static class BannerOverlay
             TextColor c = beat.Color;
             for (int i = 0; i < layout.Lines.Count; i++)
             {
-                int w = Raylib.MeasureText(layout.Lines[i], layout.FontSize);
-                Raylib.DrawText(layout.Lines[i], pillX + (pillW - w) / 2,
+                int w = RlText.Measure(layout.Lines[i], layout.FontSize);
+                RlText.Draw(layout.Lines[i], pillX + (pillW - w) / 2,
                     pillY + ToastPadY + i * lineH, layout.FontSize, new Color(c.R, c.G, c.B, a));
             }
         }
@@ -244,15 +244,23 @@ public static class BannerOverlay
         byte shadA = (byte)(a * 0.6f);
         TextColor c = beat.Color;
 
+        // A dark band behind the words: green or orange text straight on the felt washed out (2026-11-06
+        // look pass). Full width of the text block plus a margin, faded with the banner.
+        int padX = layout.FontSize / 2, padY = layout.FontSize / 5;
+        int bandX = (areaWidth - layout.Widest) / 2 - padX;
+        Raylib.DrawRectangleRounded(
+            new Rectangle(bandX, y0 - padY, layout.Widest + padX * 2, lineH * layout.Lines.Count + padY * 2),
+            0.25f, 6, new Color((byte)10, (byte)12, (byte)16, (byte)(a * 0.7f)));
+
         for (int i = 0; i < layout.Lines.Count; i++)
         {
-            int w = Raylib.MeasureText(layout.Lines[i], layout.FontSize);
+            int w = RlText.Measure(layout.Lines[i], layout.FontSize);
             int x = (areaWidth - w) / 2;
             int y = y0 + i * lineH;
             // Drop shadow so the text reads over the table.
-            Raylib.DrawText(layout.Lines[i], x + 3, y + 3, layout.FontSize,
+            RlText.Draw(layout.Lines[i], x + 3, y + 3, layout.FontSize,
                 new Color((byte)0, (byte)0, (byte)0, shadA));
-            Raylib.DrawText(layout.Lines[i], x, y, layout.FontSize, new Color(c.R, c.G, c.B, a));
+            RlText.Draw(layout.Lines[i], x, y, layout.FontSize, new Color(c.R, c.G, c.B, a));
         }
     }
 
@@ -265,7 +273,7 @@ public static class BannerOverlay
         foreach (string word in text.Split(' '))
         {
             string trial = current.Length == 0 ? word : current + " " + word;
-            if (current.Length == 0 || Raylib.MeasureText(trial, fontSize) <= maxWidth)
+            if (current.Length == 0 || RlText.Measure(trial, fontSize) <= maxWidth)
             {
                 current = trial;
             }
@@ -283,7 +291,7 @@ public static class BannerOverlay
     {
         int widest = 0;
         foreach (string line in lines)
-            widest = Math.Max(widest, Raylib.MeasureText(line, fontSize));
+            widest = Math.Max(widest, RlText.Measure(line, fontSize));
         return widest;
     }
 

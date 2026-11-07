@@ -554,6 +554,9 @@ public class TableTooltipOverlay
             int   count = 0;
             float minRadiusPx = float.MaxValue;
             float minLeftX = float.MaxValue, maxRightX = float.MinValue;
+            // 2026-11-06 look pass: the topmost model (and anything stacked on it), not the centroid. A
+            // two-rank block had its name printed across its own front rank.
+            float topmostY = float.MaxValue;
 
             // Status outline around every base: red = Shaken, green = activated this round (Shaken wins).
             uint? statusOutline = IsShaken(unit)
@@ -597,6 +600,8 @@ public class TableTooltipOverlay
                     // drop onto them the frame a chip yields to the roll stack (same rule as the unit name).
                     modelStackTopY = mcY - 2f;
                 }
+                // The facing pip pokes ~4px above the base.
+                topmostY = MathF.Min(topmostY, modelStackTopY - 3f);
 
                 // #414: the damaged model's own wound counter, drawn ON the model. The health bar above the
                 // unit is an aggregate and says so itself - no tick on it can name a body - and until now
@@ -622,7 +627,7 @@ public class TableTooltipOverlay
 
             float cx = sumX / count;
             float cy = sumY / count;
-            float modelsTop = cy - minRadiusPx;
+            float modelsTop = topmostY < float.MaxValue ? topmostY : cy - minRadiusPx;
 
             // Unit-scoped tokens sit just above the unit, under its name.
             var unitChips = TokenChipRenderer.ResolveVisible(unit.Tokens, _ruleResolver, false, ViewSettings.ShowAllTokens, unit);
@@ -734,7 +739,19 @@ public class TableTooltipOverlay
 
     /// <summary>Names of the tokens a unit carries (all of them, not just the ones shown as chips).</summary>
     internal static IReadOnlyList<string> VisibleTokenNames(IUnit unit) =>
-        TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit).Select(t => t.Name).ToList();
+        TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit)
+            .Select(t => t.Name).Where(n => !BookkeepingTokenNames.Contains(n)).Distinct().ToList();
+
+    /// <summary>
+    /// Engine bookkeeping that says nothing a player can act on, and which the card was printing as if it
+    /// were a status ("Ability used" under every unit that had picked Vinci Tech). The card still lists
+    /// the hidden-from-the-table tokens that DO mean something - In reserve, Embarked, Targeted (AP).
+    /// </summary>
+    private static readonly HashSet<string> BookkeepingTokenNames = new(StringComparer.Ordinal)
+    {
+        "Ability used", "Activated", "Activates next", "Activated out of order", "Was in melee",
+        "Joins round in progress", "Post-combat move used", "Delayed Action used", "Reinforcement spent",
+    };
 
     /// <summary>
     /// Status symbols drawn right-to-left ending at <paramref name="rightCenter"/> (the right edge, vertical

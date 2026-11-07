@@ -69,13 +69,13 @@ public static class StatusHudOverlay
 
         string roundText = !hasRound ? "" : totalRounds >= 999 ? $"ROUND {round}" : $"ROUND {round} / {totalRounds}";
 
-        int roundW  = hasRound ? Raylib.MeasureText(roundText, FontSize) : 0;
+        int roundW  = hasRound ? RlText.Measure(roundText, FontSize) : 0;
         int sepW    = (hasRound && hasScores) ? Gap * 2 + 1 : 0;
 
         int scoresW = 0;
         for (int i = 0; i < scores.Count; i++)
         {
-            scoresW += PipRadius * 2 + PipGap + Raylib.MeasureText(scores[i].count.ToString(), FontSize);
+            scoresW += PipRadius * 2 + PipGap + RlText.Measure(scores[i].count.ToString(), FontSize);
             if (i < scores.Count - 1) scoresW += Gap;
         }
 
@@ -114,7 +114,7 @@ public static class StatusHudOverlay
 
             string cnt = count.ToString();
             DrawTextShadow(cnt, x, textY, Label);
-            x += Raylib.MeasureText(cnt, FontSize) + Gap;
+            x += RlText.Measure(cnt, FontSize) + Gap;
         }
 
         DrawWaitingLines(areaWidth, waiting, startY: ((hasRound || hasScores)
@@ -137,7 +137,7 @@ public static class StatusHudOverlay
         int innerW = 0;
         for (int i = 0; i < items.Count; i++)
         {
-            innerW += Raylib.MeasureText(items[i].text, FontSize);
+            innerW += RlText.Measure(items[i].text, FontSize);
             if (i < items.Count - 1) innerW += sepW;
         }
 
@@ -148,7 +148,7 @@ public static class StatusHudOverlay
         for (int i = 0; i < items.Count; i++)
         {
             DrawTextShadow(items[i].text, x, textY, items[i].color);
-            x += Raylib.MeasureText(items[i].text, FontSize);
+            x += RlText.Measure(items[i].text, FontSize);
             if (i < items.Count - 1)
             {
                 x += Gap;
@@ -168,13 +168,13 @@ public static class StatusHudOverlay
     private static void DrawSubline(int areaWidth, IReadOnlyList<(string text, Color color)> parts, int y)
     {
         int total = 0;
-        foreach (var (text, _) in parts) total += Raylib.MeasureText(text, WaitFontSize);
+        foreach (var (text, _) in parts) total += RlText.Measure(text, WaitFontSize);
         int x = (areaWidth - total) / 2;
         foreach (var (text, color) in parts)
         {
-            Raylib.DrawText(text, x + 1, y + 1, WaitFontSize, Shadow);
-            Raylib.DrawText(text, x, y, WaitFontSize, color);
-            x += Raylib.MeasureText(text, WaitFontSize);
+            RlText.Draw(text, x + 1, y + 1, WaitFontSize, Shadow);
+            RlText.Draw(text, x, y, WaitFontSize, color);
+            x += RlText.Measure(text, WaitFontSize);
         }
     }
 
@@ -203,9 +203,9 @@ public static class StatusHudOverlay
             // after its last glyph. Laying the runs out at raw measured widths therefore closed one
             // `spacing` at every seam, which is why the colon sat hard against the name.
             var (prefixX, nameX, restX) = WaitLineRuns(areaWidth,
-                Raylib.MeasureText(prefix, WaitFontSize),
-                Raylib.MeasureText(playerName, WaitFontSize),
-                Raylib.MeasureText(rest, WaitFontSize),
+                RlText.Measure(prefix, WaitFontSize),
+                RlText.Measure(playerName, WaitFontSize),
+                RlText.Measure(rest, WaitFontSize),
                 GlyphSpacing(WaitFontSize));
 
             DrawTextShadow(prefix, prefixX, y, WaitDim, WaitFontSize);
@@ -217,7 +217,7 @@ public static class StatusHudOverlay
         if (waiting.Count > shown)
         {
             string more = $"+{waiting.Count - shown} more";
-            DrawTextShadow(more, (areaWidth - Raylib.MeasureText(more, WaitFontSize)) / 2, y,
+            DrawTextShadow(more, (areaWidth - RlText.Measure(more, WaitFontSize)) / 2, y,
                 WaitDim, WaitFontSize);
         }
     }
@@ -266,7 +266,7 @@ public static class StatusHudOverlay
 
     private static void DrawTextShadow(string text, int x, int y, Color color, int size = FontSize)
     {
-        Raylib.DrawText(text, x + 1, y + 1, size, Shadow);
-        Raylib.DrawText(text, x, y, size, color);
+        RlText.Draw(text, x + 1, y + 1, size, Shadow);
+        RlText.Draw(text, x, y, size, color);
     }
 }
