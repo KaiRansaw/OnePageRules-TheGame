@@ -1667,6 +1667,22 @@ public class LobbyScreen : IAppScreen
                              "another unit when charging - friendly units included.\n" +
                              "On by default because the written rule is painful in Star Quest and\n" +
                              "Quest, where every hero is its own unit and a party can never close up.");
+
+        // Game length (house rule when not 4). Standard games only - Horde and Quest keep their own.
+        int[] lengths = { 4, 5, 6, 8 };
+        int current = _viewModel.NumberOfRounds ?? 4;
+        ImGui.SetNextItemWidth(160f);
+        if (ImGui.BeginCombo("Game Length", current == 4 ? "4 rounds (book)" : $"{current} rounds"))
+        {
+            foreach (int n in lengths)
+                if (ImGui.Selectable(n == 4 ? "4 rounds (book)" : $"{n} rounds", n == current))
+                    _viewModel.SetNumberOfRounds(n == 4 ? null : n);
+            ImGui.EndCombo();
+        }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip("House rule unless 4: how many rounds a standard game lasts. The books\n" +
+                             "play 4; the Advanced Rulebook's small-scale games suggest 6.\n" +
+                             "Horde Mode and the Quest games keep their own length.");
         }
 
         // #456: the Advanced Rules section is live now that the 3.6.0 Advanced books are in the project
@@ -1704,14 +1720,27 @@ public class LobbyScreen : IAppScreen
                 if (ImGui.IsItemHovered())
                     UiText.Tooltip("Only the leader's move is measured. Place the rest of the unit anywhere you like,\n"
                                    + "as long as it stays in coherency - and a charge still needs the leader to reach.");
-                // Simplified Terrain is #460, later by Kai's call - shown greyed so the set reads as the book
-                // prints it.
-                ImGui.BeginDisabled(true);
-                bool terrain = false;
-                UiButton.Checkbox("Simplified Terrain (later)", ref terrain);
-                ImGui.EndDisabled();
+                bool terrain = _viewModel.FastPlaySimplifiedTerrain;
+                if (UiButton.Checkbox("Simplified Terrain", ref terrain))
+                    _viewModel.SetFastPlaySimplifiedTerrain(terrain);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip("Cover only counts for units standing INSIDE a piece of terrain - being behind\n"
+                                   + "a wall or another unit gives none. Buildings stay impassable (the book's\n"
+                                   + "garrisoning rules for buildings are not in the game).");
                 if (changed) _viewModel.SetFastPlay(move, melee, shoot);
             }
+
+            ImGui.Spacing();
+            UiText.Colored(ImGuiTheme.HeaderAccent, "Multiplayer");
+            UiText.Wrapped("Three or four sides play a free-for-all: each picks a table corner to deploy in. "
+                           + "In a team game the points limit is for the whole side - split it however you like.");
+            bool king = _viewModel.KingOfTheHill;
+            if (UiButton.Checkbox("King of the Hill (3-4 sides)", ref king))
+                _viewModel.SetKingOfTheHill(king);
+            if (ImGui.IsItemHovered())
+                UiText.Tooltip("The player whose army is worth the most is the king. Shooting at or charging\n"
+                               + "one of the king's units earns a combat bonus point; once per activation, spend\n"
+                               + "one for +1 to every die in one of your rolls.");
         }
 
         ImGui.EndDisabled();

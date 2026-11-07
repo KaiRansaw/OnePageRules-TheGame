@@ -198,6 +198,9 @@ public sealed class HostGameSettings
     public bool FastPlayMovement { get; set; }
     public bool FastPlayMelee { get; set; }
     public bool FastPlayShooting { get; set; }
+    public bool FastPlaySimplifiedTerrain { get; set; }
+    public int? NumberOfRounds { get; set; }
+    public bool KingOfTheHill { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
 
@@ -228,6 +231,9 @@ public sealed class HostGameSettings
         FastPlayMovement       = settings.FastPlayMovement,
         FastPlayMelee          = settings.FastPlayMelee,
         FastPlayShooting       = settings.FastPlayShooting,
+        FastPlaySimplifiedTerrain = settings.FastPlaySimplifiedTerrain,
+        NumberOfRounds         = settings.NumberOfRounds,
+        KingOfTheHill          = settings.KingOfTheHill,
         DeploymentStyle        = settings.DeploymentStyle,
         MissionCardGame        = settings.MissionCardGame,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
@@ -256,6 +262,9 @@ public sealed class HostGameSettings
         FastPlayMovement       = viewModel.FastPlayMovement,
         FastPlayMelee          = viewModel.FastPlayMelee,
         FastPlayShooting       = viewModel.FastPlayShooting,
+        FastPlaySimplifiedTerrain = viewModel.FastPlaySimplifiedTerrain,
+        NumberOfRounds         = viewModel.NumberOfRounds,
+        KingOfTheHill          = viewModel.KingOfTheHill,
         DeploymentStyle        = viewModel.DeploymentStyle,
         MissionCardGame        = viewModel.MissionCardGame,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
@@ -289,6 +298,9 @@ public sealed class HostGameSettings
         viewModel.SetSeeThroughFriendlyUnits(SeeThroughFriendlyUnits);
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
         viewModel.SetFastPlay(FastPlayMovement, FastPlayMelee, FastPlayShooting);
+        viewModel.SetFastPlaySimplifiedTerrain(FastPlaySimplifiedTerrain);
+        viewModel.SetNumberOfRounds(NumberOfRounds);
+        viewModel.SetKingOfTheHill(KingOfTheHill);
         viewModel.SetDeploymentStyle(DeploymentStyle);
         viewModel.SetMissionCardGame(MissionCardGame);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);

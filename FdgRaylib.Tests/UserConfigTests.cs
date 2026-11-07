@@ -364,6 +364,13 @@ public class UserConfigTests
             FastPlayMovement = movement; FastPlayMelee = melee; FastPlayShooting = shooting;
         }
 
+        public int? NumberOfRounds { get; private set; }
+        public void SetNumberOfRounds(int? rounds) => NumberOfRounds = rounds;
+        public bool FastPlaySimplifiedTerrain { get; private set; }
+        public void SetFastPlaySimplifiedTerrain(bool enabled) => FastPlaySimplifiedTerrain = enabled;
+        public bool KingOfTheHill { get; private set; }
+        public void SetKingOfTheHill(bool enabled) => KingOfTheHill = enabled;
+
         public void SetFriendlyUnitsMayOverlap(bool enabled) => FriendlyUnitsMayOverlap = enabled;
         public void SetTableBackground(ETableBackground background) => TableBackground = background;
 
