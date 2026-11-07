@@ -3439,12 +3439,23 @@ public class GuiDefineMovementResolver
             .Select(mb => new ModelMoveEntry(mb, new List<Position>()))
             .ToList();
 
-    private void Complete(TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>> tcs, List<ModelMoveEntry> entries) =>
+    private void Complete(TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>> tcs, List<ModelMoveEntry> entries)
+    {
+        // The confirm already said "N models reach X - confirm to charge": that click IS the target choice
+        // when only one enemy is in contact, so the defender picker does not ask a second time.
+        ChargeMoveJustConfirmed = _moveKind == "Charge";
         CompleteWith(tcs, new Selected<List<ModelMoveEntry>>(entries));
+    }
+
+    /// <summary>Set when a Charge move is confirmed; read and cleared by the melee defender picker.</summary>
+    public static volatile bool ChargeMoveJustConfirmed;
 
     /// <summary> Abandon the move. Nothing has moved yet, so the stage returns to the action menu. </summary>
-    private void CompleteCancelled(TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>> tcs) =>
+    private void CompleteCancelled(TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>> tcs)
+    {
+        ChargeMoveJustConfirmed = false;
         CompleteWith(tcs, new Cancelled<List<ModelMoveEntry>>());
+    }
 
     private void CompleteWith(TaskCompletionSource<CancellableResult<List<ModelMoveEntry>>> tcs,
         CancellableResult<List<ModelMoveEntry>> result)

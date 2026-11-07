@@ -981,7 +981,9 @@ public class ArmyForgeScreen : IAppScreen
 
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        ImGui.TextColored(new Vector4(0.55f, 0.85f, 0.80f, 1f), "ARMY FORGE");
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.85f, 0.80f, 1f));
+        ImGui.TextUnformatted("ARMY FORGE");
+        ImGui.PopStyleColor();
         if (_showSystemCombo)
         {
             // #378: the game-system filter. Switching clears the list like a book switch, so it gets

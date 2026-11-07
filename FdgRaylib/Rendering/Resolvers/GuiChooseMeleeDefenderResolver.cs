@@ -19,7 +19,17 @@ public class GuiChooseMeleeDefenderResolver : GuiCancellableUnitSelectionResolve
     IStageResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>
 {
     public Task<CancellableResult<DataBinding<UnitData>>> Resolve(ChooseMeleeDefenderRequest request)
-        => base.Resolve(request);
+    {
+        // Kai, network play-through 2026-11-07: "Charge X? Only one enemy unit is in range" straight after
+        // confirming a charge move that already named X is the same question twice. Skip it then; it still
+        // shows when the charge came from somewhere else (already in contact) or two enemies are touching.
+        bool justCharged = GuiDefineMovementResolver.ChargeMoveJustConfirmed;
+        GuiDefineMovementResolver.ChargeMoveJustConfirmed = false;
+        if (justCharged && request.ValidOptions.Count == 1)
+            return Task.FromResult<CancellableResult<DataBinding<UnitData>>>(
+                new Selected<DataBinding<UnitData>>(request.ValidOptions[0].Option));
+        return base.Resolve(request);
+    }
 
     public override void Draw(int screenW, int screenH)
     {

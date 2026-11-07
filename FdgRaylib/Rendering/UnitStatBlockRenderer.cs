@@ -55,8 +55,9 @@ public static class UnitStatBlockRenderer
 
     // Read-only, non-logging: the move queries ask the rule graph what Fast / Slow / Crippled do, and the
     // dice roller is never reached because no movement rule rolls anything.
-    internal static readonly RuleEvaluator MoveEvaluator =
-        new RuleEvaluator(new ProbabilisticDiceRoller(), ruleResolver: CoreRuleCatalog.CreateResolver());
+    // The table's evaluator, so a rule an aura grants (Highborn Boost) shows on the card too - the core
+    // catalog alone can't resolve an army's own rule names.
+    internal static RuleEvaluator MoveEvaluator => ReadOnlyRuleEvaluators.For(FdgRaylib.Rendering.Resolvers.PopupAnchor.TableState);
 
     /// <summary>
     /// Advance and Rush as the unit will actually get to use them, and a line naming anything that moved

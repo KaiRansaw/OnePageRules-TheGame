@@ -658,13 +658,19 @@ public class TableTooltipOverlay
             var unitChips = TokenChipRenderer.ResolveVisible(unit.Tokens, _ruleResolver, false, ViewSettings.ShowAllTokens, unit);
             float chipH = TokenChipRenderer.RowHeight(unitChips);
             float chipTopY = modelsTop - 3f - chipH;
+            float chipW = TokenChipRenderer.RowWidth(unitChips);
+            // Same rule as the name (look pass, 2026-11-07): in melee the row above the unit lands on the
+            // enemy's bases, so drop the chips under the unit when that spot is clear.
+            bool chipsBelow = unitChips.Count > 0
+                && OnOtherUnit(unit, cx - chipW * 0.5f, chipTopY, chipW, chipH)
+                && !OnOtherUnit(unit, cx - chipW * 0.5f, bottommostY + 4f, chipW, chipH);
+            if (chipsBelow) chipTopY = bottommostY + 4f;
             if (unitChips.Count > 0
-                && !Occluded(cx - TokenChipRenderer.RowWidth(unitChips) * 0.5f, chipTopY,
-                    TokenChipRenderer.RowWidth(unitChips), chipH))
+                && !Occluded(cx - chipW * 0.5f, chipTopY, chipW, chipH))
                 TokenChipRenderer.DrawChipRow(drawList, unitChips, cx, chipTopY);
 
             // Top of the name/chips stack — the health bar sits above it.
-            float stackTopY = unitChips.Count > 0 ? chipTopY : modelsTop - 3f;
+            float stackTopY = unitChips.Count > 0 && !chipsBelow ? chipTopY : modelsTop - 3f;
 
             float? belowStackY = null; // set when the name went under the unit: the health bar follows it
             if (ViewSettings.ShowLabels)
@@ -679,7 +685,7 @@ public class TableTooltipOverlay
                     && !OnOtherUnit(unit, labelX, bottommostY + 6f, textSize.X, textSize.Y);
                 if (below)
                 {
-                    labelY = bottommostY + 6f;
+                    labelY = chipsBelow ? chipTopY + chipH + 2f : bottommostY + 6f;
                     belowStackY = labelY + textSize.Y + 2f;
                 }
                 for (int bump = 0; bump < 6 && !below; bump++)
