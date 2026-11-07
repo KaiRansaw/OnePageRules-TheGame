@@ -378,7 +378,11 @@ public sealed class GameMasterPanel
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            UiText.Disabled(label);
+            // The panel wraps all its text (PushTextWrapPos(0) in DrawBody), and this column sizes itself to
+            // its text - wrapped, it shrank to one letter a line. Labels never wrap.
+            ImGui.PushTextWrapPos(-1f);
+            UiText.Disabled(label, wrap: false);
+            ImGui.PopTextWrapPos();
             ImGui.TableNextColumn();
             UiText.Wrapped(value);
         }
