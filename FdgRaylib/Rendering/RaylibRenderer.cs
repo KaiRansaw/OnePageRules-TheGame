@@ -1272,6 +1272,7 @@ public class RaylibRenderer
                 // Fill the resolver panel with an idle placeholder whenever nothing is prompting, so the
                 // top-right region always reads as an intentional panel rather than empty space.
                 // (The top of the right column is the dice tray now - drawn before the resolvers above.)
+                DrawRoundSummaryCard(screenW, screenH);
                 DrawGameOverOverlay(screenW, screenH);
 
                 // Standalone "Menu" button in the bottom-left corner (where the retired toolbar sat),
@@ -2555,6 +2556,75 @@ public class RaylibRenderer
             NavigateTo(back ?? MainMenu);
         }
 
+        ImGui.End();
+    }
+
+    // The round summary card (2026-11-07): after each round, what changed - objectives held, VP, units lost.
+    private ITableState? _summaryTable;
+    private int _summariesSeen = -1;
+    private RoundSummary? _summaryShown;
+
+    private void DrawRoundSummaryCard(int screenW, int screenH)
+    {
+        ITableState? table = _tableState;
+        if (table == null || _gameOverResult != null) { _summaryShown = null; return; }
+        IReadOnlyList<RoundSummary> rounds;
+        try { rounds = table.Progress.RoundSummaries; }
+        catch (InvalidOperationException) { return; }
+
+        // A new game (or a resumed one) starts counting from what is already recorded.
+        if (!ReferenceEquals(_summaryTable, table)) { _summaryTable = table; _summariesSeen = rounds.Count; _summaryShown = null; }
+        if (rounds.Count > _summariesSeen) { _summaryShown = rounds[^1]; _summariesSeen = rounds.Count; }
+        RoundSummary? card = _summaryShown;
+        if (card == null) return;
+
+        float lineH = ImGui.GetTextLineHeightWithSpacing();
+        int lostLines = card.Sides.Sum(s => Math.Max(1, s.UnitsLost?.Count ?? 1));
+        var size = new Vector2(Math.Min(440f, screenW * 0.8f),
+            110f + card.Sides.Count * lineH * 2.2f + lostLines * lineH + 50f);
+        int areaW = ComputeLayout(screenW, screenH).AreaW;
+        ImGui.SetNextWindowPos(new Vector2((areaW - size.X) / 2f, (screenH - size.Y) / 2f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
+        ImGui.Begin($"Round {card.Round} summary##roundsummary",
+            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoSavedSettings);
+
+        ImGui.PushFont(LargeFont);
+        CenteredText(size.X, $"End of round {card.Round}");
+        ImGui.PopFont();
+        ImGui.Separator();
+
+        static string Signed(int n) => n > 0 ? $" (+{n})" : n < 0 ? $" ({n})" : "";
+        foreach (RoundSideSummary side in card.Sides)
+        {
+            ImGui.Spacing();
+            IPlayerSlotInfo? slot = table.Players.Objects.FirstOrDefault(p => p.SlotID == side.SlotId);
+            Vector4 col = new Vector4(1f, 1f, 1f, 1f);
+            if (slot != null && _colorForPlayer != null)
+            {
+                Color c = _colorForPlayer(slot.PlayerID);
+                col = new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, 1f);
+            }
+            ImGui.PushStyleColor(ImGuiCol.Text, col);
+            ImGui.TextUnformatted(side.Name);
+            ImGui.PopStyleColor();
+            string vp = side.Vp is int v ? $"{v} VP{Signed(side.VpChange)}, " : "";
+            ImGui.TextUnformatted($"   {vp}{side.ObjectivesHeld} objective{(side.ObjectivesHeld == 1 ? "" : "s")} held{Signed(side.ObjectivesChange)}");
+            if (side.UnitsLost == null)
+                ImGui.TextDisabled("   Units lost: not recorded (game resumed mid-round)");
+            else if (side.UnitsLost.Count == 0)
+                ImGui.TextDisabled("   No units lost");
+            else
+            {
+                ImGui.TextUnformatted($"   Lost {side.UnitsLost.Count}:");
+                foreach (string name in side.UnitsLost) ImGui.TextDisabled($"      {name}");
+            }
+        }
+
+        float btnH = 36f;
+        ImGui.SetCursorPosY(size.Y - btnH - ImGui.GetStyle().WindowPadding.Y);
+        // A button only: Enter belongs to whatever prompt is open underneath.
+        if (ImGui.Button("Continue", new Vector2(ImGui.GetContentRegionAvail().X, btnH)))
+            _summaryShown = null;
         ImGui.End();
     }
 

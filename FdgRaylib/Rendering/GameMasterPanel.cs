@@ -718,6 +718,9 @@ public sealed class GameMasterPanel
         if (Button("Kill", "Destroys the unit outright (no XP for anyone). A hero becomes unconscious.")) hub.KillUnit(unit.ID);
         if (Button("Revive", "Restores every model to full wounds and clears Shaken and Fatigued.")) hub.ReviveUnit(unit.ID);
         if (Button(unit.Tokens.HasToken(TokenType.Shaken) ? "Remove Shaken" : "Make Shaken", "Toggles the Shaken token.")) hub.ToggleShaken(unit.ID);
+        if (unit.Tokens.HasToken(TokenType.ActivatedThisRound)
+            && Button("Not activated yet", "Puts the unit back on this round's list so it can activate again - for fixing a misclick. Takes effect before the next activation."))
+            hub.MarkNotActivated(unit.ID);
 
         if (hub.IsHorde)
         {
