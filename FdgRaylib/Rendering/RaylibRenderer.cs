@@ -2119,7 +2119,7 @@ public class RaylibRenderer
         if (progress.RoundCount != null)
         {
             subline = new List<(string text, Color color)>();
-            var leftByPlayer = progress.UnactivatedUnits.GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
+            var leftByPlayer = progress.UnactivatedUnits.Where(u => u.GetIsAlive()).GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
             var dim = new Color(190, 196, 205, 235);
             bool first = true;
             foreach (IPlayerSlotInfo slot in _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID))
@@ -2149,7 +2149,10 @@ public class RaylibRenderer
         _missionWaiting.AddRange(waiting);
         if (progress.RoundCount != null)
         {
-            var leftByPlayer = progress.UnactivatedUnits.GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
+            // Alive only: the progress record is captured at the start of each activation, so a unit
+            // destroyed since then (routed in a melee, say) was still listed as waiting to activate
+            // (network play-through, 2026-11-07).
+            var leftByPlayer = progress.UnactivatedUnits.Where(u => u.GetIsAlive()).GroupBy(u => u.PlayerID).ToDictionary(g => g.Key, g => g.Count());
             foreach (IPlayerSlotInfo slot in _tableState.Players.Objects.Where(pl => pl.IsFilled).OrderBy(pl => pl.SlotID))
                 _missionActivations.Add((_colorForPlayer(slot.PlayerID), slot.Name,
                     leftByPlayer.TryGetValue(slot.PlayerID, out int n) ? n : 0));
