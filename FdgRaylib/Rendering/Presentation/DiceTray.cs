@@ -380,9 +380,17 @@ public static class DiceTray
             ImGui.TextDisabled("Attacks, saves and casualties show up here.");
 
         float width = ImGui.GetContentRegionAvail().X;
+        // An "X's Activation" header with nothing under it (a unit that held, or a turn the bots passed
+        // through) made the report a ladder of empty headers (2026-11-06 look pass). A header is shown only
+        // when something happened after it - or when it is the newest line, the turn in progress.
+        static bool IsTurnHeader(Entry x) => x.Kind != Kind.Attack && x.Kind != Kind.Divider
+            && x.Text.EndsWith("'s Activation", StringComparison.Ordinal);
         for (int i = Entries.Count - 1; i >= 0; i--)
         {
             Entry e = Entries[i];
+            if (IsTurnHeader(e) && i + 1 < Entries.Count
+                && (IsTurnHeader(Entries[i + 1]) || Entries[i + 1].Kind == Kind.Divider))
+                continue;
             ImGui.PushID(i);
             switch (e.Kind)
             {

@@ -139,7 +139,7 @@ public class GuiChooseDeploymentZoneResolver
 
         ImGui.SetNextWindowPos(new Vector2(dx, dy), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(dw, dh), ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.15f, 0.15f, 0.20f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, ImGuiTheme.DialogPanelBg);
         ImGui.Begin("##DeployZoneDialog",
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus);

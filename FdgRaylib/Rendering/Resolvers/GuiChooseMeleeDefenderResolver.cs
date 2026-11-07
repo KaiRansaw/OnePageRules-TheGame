@@ -54,7 +54,7 @@ public class GuiChooseMeleeDefenderResolver : GuiCancellableUnitSelectionResolve
         float dy = ResolverPanelLayout.Y;
 
         ImGui.SetCursorPos(new Vector2(dx, dy));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.15f, 0.15f, 0.20f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, ImGuiTheme.DialogPanelBg);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f);
         ImGui.BeginChild("##MeleeConfirmCard", new Vector2(dw, dh), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.None);

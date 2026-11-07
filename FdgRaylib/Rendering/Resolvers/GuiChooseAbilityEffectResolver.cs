@@ -68,7 +68,7 @@ public class GuiChooseAbilityEffectResolver : IStageResolver<ChooseAbilityEffect
         }
 
         ImGui.SetCursorPos(new Vector2(ResolverPanelLayout.X, ResolverPanelLayout.Y));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.15f, 0.15f, 0.20f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, ImGuiTheme.DialogPanelBg);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f);
         ImGui.BeginChild("##AbilityEffectDialog", new Vector2(dw, ResolverPanelLayout.H),
             ImGuiChildFlags.Borders, ImGuiWindowFlags.None);
