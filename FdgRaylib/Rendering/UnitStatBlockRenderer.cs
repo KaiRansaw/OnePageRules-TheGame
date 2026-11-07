@@ -55,7 +55,7 @@ public static class UnitStatBlockRenderer
 
     // Read-only, non-logging: the move queries ask the rule graph what Fast / Slow / Crippled do, and the
     // dice roller is never reached because no movement rule rolls anything.
-    private static readonly RuleEvaluator MoveEvaluator =
+    internal static readonly RuleEvaluator MoveEvaluator =
         new RuleEvaluator(new ProbabilisticDiceRoller(), ruleResolver: CoreRuleCatalog.CreateResolver());
 
     /// <summary>
@@ -68,9 +68,10 @@ public static class UnitStatBlockRenderer
         float advance = MovementRuleQueries.EffectiveMoveShootDistance(unit, MoveEvaluator);
         float rush = MovementRuleQueries.EffectiveMaxRushDistance(unit, MoveEvaluator);
 
-        var reasons = new List<string>();
-        if (advance < GameWideConstants.MOVE_SHOOT_DISTANCE_INCHES) reasons.Add("Slow");
-        else if (advance > GameWideConstants.MOVE_SHOOT_DISTANCE_INCHES) reasons.Add("Fast");
+        // The rules themselves (Fast, Slow, Rapid Advance...), not a guess from the numbers.
+        var reasons = new List<string>(MovementRuleQueries.MovementModifierRuleNames(unit, MoveEvaluator));
+        if (reasons.Count == 0 && advance < GameWideConstants.MOVE_SHOOT_DISTANCE_INCHES) reasons.Add("Slow");
+        else if (reasons.Count == 0 && advance > GameWideConstants.MOVE_SHOOT_DISTANCE_INCHES) reasons.Add("Fast");
 
         // Star Quest halves the whole move for a Crippled hero and for everyone in bad weather; the two
         // stack. Mirrors QuestActions.MoveFactor, which is what the move resolver applies.

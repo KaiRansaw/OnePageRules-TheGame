@@ -984,8 +984,18 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         var extraInvalid = request.InvalidOptions.Where(o => !Known(o.Option)).ToList();
 
         IUnit? unit = PopupAnchor.Unit;
-        float advance = 0f, chargeDist = 0f;
+        float advance = 0f, chargeDist = 0f, rushDist = 0f;
         bool hasMobility = unit != null && unit.GetMobility(out advance, out chargeDist);
+        // The unit's real distances with its rules (Fast, Slow, Rapid Advance...). GetMobility is a stub that
+        // answers the bare 6"/12", so a Rapid Advance unit's button said Advance (6") while its card said 10".
+        rushDist = chargeDist;
+        if (unit != null)
+        {
+            var ev = FdgRaylib.Rendering.UnitStatBlockRenderer.MoveEvaluator;
+            advance = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveMoveShootDistance(unit, ev);
+            rushDist = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveMaxRushDistance(unit, ev);
+            chargeDist = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveChargeDistance(unit, ev);
+        }
 
         // After the unit has moved the engine asks again. Carry straight on instead of making the player
         // press Hold: a charge move goes into the charge, an advance goes into shooting (click a target or
@@ -1053,7 +1063,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         bool canMove = Valid(MoveOpt);
         string moveReason = Reason(MoveOpt) ?? "Not available.";
         string advLabel = hasMobility ? $"Advance ({advance:0.#}\")" : "Advance";
-        string rushLabel = hasMobility ? $"Rush ({chargeDist:0.#}\")" : "Rush";   // rush = charge distance
+        string rushLabel = hasMobility ? $"Rush ({rushDist:0.#}\")" : "Rush";
         if (!afterMove && ActionButton(advLabel, canMove, canMove ? "Move, then shoot." : moveReason))
         {
             GuiDefineMovementResolver.NextMoveAdvanceOnly = true;
