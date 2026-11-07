@@ -1741,6 +1741,31 @@ public class LobbyScreen : IAppScreen
                 UiText.Tooltip("The player whose army is worth the most is the king. Shooting at or charging\n"
                                + "one of the king's units earns a combat bonus point; once per activation, spend\n"
                                + "one for +1 to every die in one of your rolls.");
+
+            if (!GameSystemInfo.IsQuest(_viewModel.GameSystem))
+            {
+                ImGui.Spacing();
+                UiText.Colored(ImGuiTheme.HeaderAccent, "Extra Actions");
+                UiText.Wrapped("More actions every unit may pick, on top of Hold, Advance, Rush and Charge. "
+                               + "Tick the ones you want in this game.");
+                EExtraActions extra = _viewModel.ExtraActions;
+                EExtraActions edited = extra;
+                foreach ((string name, EExtraActions flag) in FDG.ExtraActions.All)
+                {
+                    bool on = (edited & flag) != 0;
+                    if (UiButton.Checkbox(name + "##extra", ref on))
+                        edited = on ? edited | flag : edited & ~flag;
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.BeginTooltip();
+                        ImGui.PushTextWrapPos(ImGui.GetFontSize() * 28f);
+                        ImGui.TextUnformatted(FDG.ExtraActions.Describe(name));
+                        ImGui.PopTextWrapPos();
+                        ImGui.EndTooltip();
+                    }
+                }
+                if (edited != extra) _viewModel.SetExtraActions(edited);
+            }
         }
 
         ImGui.EndDisabled();

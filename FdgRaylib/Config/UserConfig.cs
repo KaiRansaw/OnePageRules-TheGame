@@ -201,6 +201,7 @@ public sealed class HostGameSettings
     public bool FastPlaySimplifiedTerrain { get; set; }
     public int? NumberOfRounds { get; set; }
     public bool KingOfTheHill { get; set; }
+    public EExtraActions ExtraActions { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
 
@@ -234,6 +235,7 @@ public sealed class HostGameSettings
         FastPlaySimplifiedTerrain = settings.FastPlaySimplifiedTerrain,
         NumberOfRounds         = settings.NumberOfRounds,
         KingOfTheHill          = settings.KingOfTheHill,
+        ExtraActions           = settings.ExtraActions,
         DeploymentStyle        = settings.DeploymentStyle,
         MissionCardGame        = settings.MissionCardGame,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
@@ -265,6 +267,7 @@ public sealed class HostGameSettings
         FastPlaySimplifiedTerrain = viewModel.FastPlaySimplifiedTerrain,
         NumberOfRounds         = viewModel.NumberOfRounds,
         KingOfTheHill          = viewModel.KingOfTheHill,
+        ExtraActions           = viewModel.ExtraActions,
         DeploymentStyle        = viewModel.DeploymentStyle,
         MissionCardGame        = viewModel.MissionCardGame,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
@@ -301,6 +304,7 @@ public sealed class HostGameSettings
         viewModel.SetFastPlaySimplifiedTerrain(FastPlaySimplifiedTerrain);
         viewModel.SetNumberOfRounds(NumberOfRounds);
         viewModel.SetKingOfTheHill(KingOfTheHill);
+        viewModel.SetExtraActions(ExtraActions);
         viewModel.SetDeploymentStyle(DeploymentStyle);
         viewModel.SetMissionCardGame(MissionCardGame);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
