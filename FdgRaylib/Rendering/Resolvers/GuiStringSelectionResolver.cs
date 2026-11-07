@@ -294,7 +294,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         }
 
         ImGui.SetCursorPos(new Vector2(dx, dy));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.15f, 0.15f, 0.20f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, ImGuiTheme.DialogPanelBg   /* 2026-11-06: was a lighter blue-grey slab that did not match the docked panels */);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f);
         ImGui.BeginChild("##StrSelDialog", new Vector2(dw, dh), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);

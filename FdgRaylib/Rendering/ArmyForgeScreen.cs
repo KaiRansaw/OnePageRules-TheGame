@@ -929,8 +929,10 @@ public class ArmyForgeScreen : IAppScreen
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
         // #451: a campaign build has no "Army Forge" title bar - the spec removes it, and the header says
         // which army and which game instead.
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse;
-        if (_campaign != null) flags |= ImGuiWindowFlags.NoTitleBar;
+        // 2026-11-06 look pass: no ImGui title strip on the free build either - it read as a debug window.
+        // The toolbar says "Army Forge" itself.
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse
+            | ImGuiWindowFlags.NoTitleBar;
         ImGui.Begin("Army Forge", flags);
 
         if (_campaign is { } build)
@@ -979,7 +981,7 @@ public class ArmyForgeScreen : IAppScreen
 
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        ImGui.TextUnformatted("Army Forge  -");
+        ImGui.TextColored(new Vector4(0.55f, 0.85f, 0.80f, 1f), "ARMY FORGE");
         if (_showSystemCombo)
         {
             // #378: the game-system filter. Switching clears the list like a book switch, so it gets

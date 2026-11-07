@@ -2585,6 +2585,7 @@ public class RaylibRenderer
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoBringToFrontOnFocus);
 
+        TableTooltipOverlay.UnitOnPanel = unit?.ID;
         bool acting = unit != null && _tableState?.Progress.ActivatingUnit?.ID.Equals(unit.ID) == true;
         ResolverPanelLayout.PanelHeading(unit == null || acting ? "ACTIVE UNIT" : "SELECTED UNIT");
         if (unit == null)

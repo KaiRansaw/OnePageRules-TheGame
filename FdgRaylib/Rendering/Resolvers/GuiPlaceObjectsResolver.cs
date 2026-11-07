@@ -1306,11 +1306,11 @@ public class GuiPlaceObjectsResolver<T>
         bool canDone = _placed.Count == total && !_dragIndex.HasValue
             && (!request.MustTouchTableEdge || touchingEdge) && cohesionIssue == null;
 
-        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(_stripSize), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.92f);
-        ImGui.Begin("##deploystrip", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoFocusOnAppearing);
+        // 2026-11-06: in the Actions window (right column) instead of a strip over the top of the board, which
+        // hid the deployment zone (Kai). Name and count on the first line, Done / Back on the second, the
+        // undo tools on the third.
+        ResolverPanelLayout.BeginDocked("##deploystrip");
+        float rowW = ImGui.GetContentRegionAvail().X, gapX = ImGui.GetStyle().ItemSpacing.X;
 
         ImGui.TextUnformatted(deploying?.Name ?? "Placing");
         ImGui.SameLine();
@@ -1325,9 +1325,10 @@ public class GuiPlaceObjectsResolver<T>
             ImGui.TextDisabled($"{_formationCycle.Label}");
         }
 
-        ImGui.SameLine();
+        ImGui.Spacing();
         ImGui.BeginDisabled(!canDone);
-        bool done = ResolverButtons.Primary("Done##dpdone", new Vector2(90f, 0f), enabled: canDone);
+        bool done = ResolverButtons.Primary("Done##dpdone",
+            new Vector2((rowW - gapX) / 2f, ResolverPanelLayout.ActionRowHeight()), enabled: canDone);
         ImGui.EndDisabled();
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && !canDone)
             ImGui.SetTooltip(cohesionIssue ?? (request.MustTouchTableEdge && !touchingEdge
@@ -1342,7 +1343,7 @@ public class GuiPlaceObjectsResolver<T>
         if (request.AllowCancel)
         {
             ImGui.SameLine();
-            if (ImGui.Button("Back##dpback"))
+            if (ImGui.Button("Back##dpback", new Vector2((rowW - gapX) / 2f, ResolverPanelLayout.ActionRowHeight())))
             {
                 CompleteCancelled(tcs);
                 ImGui.End();
@@ -1351,7 +1352,6 @@ public class GuiPlaceObjectsResolver<T>
             if (ImGui.IsItemHovered() && !string.IsNullOrEmpty(request.CancelHint)) ImGui.SetTooltip(request.CancelHint);
         }
 
-        ImGui.SameLine();
         ImGui.BeginDisabled(!_history.CanUndo);
         if (ImGui.Button("Undo##dpundo")) UndoLastAction();
         ImGui.EndDisabled();
@@ -1392,7 +1392,7 @@ public class GuiPlaceObjectsResolver<T>
         if (problem != null)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.55f, 0.4f, 1f));
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 560f);
+            ImGui.PushTextWrapPos(0f);
             ImGui.TextWrapped(problem);
             ImGui.PopTextWrapPos();
             ImGui.PopStyleColor();

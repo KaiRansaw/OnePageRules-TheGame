@@ -207,7 +207,11 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         int count = request.ValidOptions.Count + request.InvalidOptions.Count;
         float rowW = MathF.Max(1, count) * (cardW + gap);
         float winW = MathF.Min(rowW + ImGui.GetStyle().WindowPadding.X * 2f, MathF.Max(260f, PopupAnchor.AreaW - 16f));
-        float winH = cardH + lineH * 2f + ImGui.GetStyle().ScrollbarSize + 26f;
+        // Room for the scrollbar only when the row actually overflows - otherwise it was an empty band under
+        // the cards (2026-11-06 look pass).
+        bool overflows = rowW + ImGui.GetStyle().WindowPadding.X * 2f > winW;
+        float winH = cardH + ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().WindowPadding.Y * 2f + 6f
+            + (overflows ? ImGui.GetStyle().ScrollbarSize : 0f);
 
         // Kai, 2026-11-06: the strip covered the top of the board during deployment. It can be dragged
         // anywhere (grab the title line or any empty part of it) and folded down to its title line. Both

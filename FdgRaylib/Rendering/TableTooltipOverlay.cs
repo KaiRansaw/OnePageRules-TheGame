@@ -738,6 +738,9 @@ public class TableTooltipOverlay
     private static readonly IRuleResolver SharedResolver = CoreRuleCatalog.CreateResolver();
 
     /// <summary>Names of the tokens a unit carries (all of them, not just the ones shown as chips).</summary>
+    /// <summary>The unit the Active / Selected Unit panel is showing this frame (set by the renderer).</summary>
+    internal static UnitID? UnitOnPanel;
+
     internal static IReadOnlyList<string> VisibleTokenNames(IUnit unit) =>
         TokenChipRenderer.ResolveVisible(unit.Tokens, SharedResolver, false, true, unit)
             .Select(t => t.Name).Where(n => !BookkeepingTokenNames.Contains(n)).Distinct().ToList();
@@ -825,6 +828,17 @@ public class TableTooltipOverlay
             .Where(r => r.Definition.Name != CoreRuleCatalog.DisembarkRuleName
                      && r.Definition.Name != CoreRuleCatalog.EmbarkRuleName)
             .ToList();
+        // The unit already shown in the Active / Selected Unit panel: its rules are spelled out there (hover
+        // an underlined name), so the hover card lists them by name only. The full text here was a tall
+        // block that sat right over the unit being moved (2026-11-06 look pass).
+        if (rules.Count > 0 && UnitOnPanel is { } onPanel && unit.ID.Equals(onPanel))
+        {
+            ImGui.Separator();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300f);
+            UiText.Disabled(string.Join(", ", rules.Select(RuleDisplayName)));
+            ImGui.PopTextWrapPos();
+            return;
+        }
         if (rules.Count > 0)
         {
             ImGui.Separator();

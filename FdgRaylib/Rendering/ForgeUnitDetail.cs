@@ -166,7 +166,10 @@ internal static class ForgeUnitDetail
             // header: "(none to replace)" only when there's no target even without this section's choice.
             int switchAvailable = isReplace ? ArmyForgeScreen.AvailableExcludingSection(book, bu, section) : int.MaxValue;
 
-            ImGui.TextUnformatted(section.Label);
+            // A little air and a warm heading per upgrade group, so the groups read as groups rather than
+            // one long column of radio buttons (2026-11-06 look pass).
+            ImGui.Spacing();
+            UiText.Colored(new Vector4(0.95f, 0.82f, 0.55f, 1f), section.Label);
             if (linked)
             {
                 ImGui.SameLine();

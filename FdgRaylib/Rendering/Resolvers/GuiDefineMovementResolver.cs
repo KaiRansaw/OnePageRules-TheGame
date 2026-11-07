@@ -1681,14 +1681,10 @@ public class GuiDefineMovementResolver
         bool selectedCapped = _selectedModel != null && cappedByDifficult.Contains(_selectedModel);
         // A compact panel along the bottom of the board (out of the way of where the unit is going), with
         // "Confirm move" up front and the rarely-needed tools folded under "More options".
-        float panelW = 430f;
-        ImGui.SetNextWindowPos(PopupAnchor.PlaceTopStrip(_movePanelSize), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(panelW, 0f), ImGuiCond.Always);   // height fits the content
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.10f, 0.15f, 0.94f));
-        ImGui.Begin("##MovementPanel",
-            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
-            ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar);
-        ImGui.PopStyleColor();
+        // 2026-11-06 look pass: in the Actions window (right column), which sat empty during a move while
+        // this panel floated over the top of the board - the same complaint as the unit-picker bar. The
+        // Actions window is where the player just pressed Advance/Rush, so the controls stay where they were.
+        ResolverPanelLayout.BeginDocked("##MovementPanel");
         _movePanelSize = ImGui.GetWindowSize();
 
         string unitName = request.UnitDataBinding.GetValue().Name;
@@ -1805,7 +1801,7 @@ public class GuiDefineMovementResolver
         ImGui.Spacing();
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         float pad     = ImGui.GetStyle().WindowPadding.X * 2;
-        float fullW   = panelW - pad;                  // one button spanning the panel
+        float fullW   = ImGui.GetContentRegionAvail().X; // one button spanning the panel
         float btnW    = (fullW - spacing) / 2f;        // two buttons per row
 
         // Facing overrides (#150/#282): each waypoint follows its direction of travel, rotated by the manual
@@ -1868,7 +1864,7 @@ public class GuiDefineMovementResolver
         if (!canSubmit)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.WoundsRed);
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + btnW);
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + fullW);
             foreach (string issue in issues)
                 ImGui.TextWrapped("- " + issue);
             ImGui.PopTextWrapPos();
