@@ -548,10 +548,32 @@ public class TableTooltipOverlay
         static bool Overlaps((float X, float Y, float W, float H) a, float x, float y, float w, float h) =>
             x < a.X + a.W && a.X < x + w && y < a.Y + a.H && a.Y < y + h;
 
+        // Every live base on the table, by unit, so a name can tell when it would print across ANOTHER unit's
+        // models - which is every melee: the charger's name sat on top of the enemy it charged (look pass,
+        // 2026-11-06). Such a name goes under its own unit instead.
+        var baseRects = new List<(IUnit Unit, float X, float Y, float R)>();
+        foreach (var u in _tableState!.Units.Objects)
+            foreach (var m in u.Models)
+            {
+                if (!m.GetIsAlive()) continue;
+                var p = _presentationPlayer?.GetModelDrawState(m).Position ?? m.Position;
+                if (p.x == 0f && p.z == 0f) continue;
+                baseRects.Add((u, _originX + p.x * _scale, _originY + (_tableH - p.z) * _scale,
+                    m.BaseRadiusInches * _scale));
+            }
+        bool OnOtherUnit(IUnit self, float x, float y, float w, float h)
+        {
+            foreach (var b in baseRects)
+                if (!ReferenceEquals(b.Unit, self) && x < b.X + b.R && b.X - b.R < x + w && y < b.Y + b.R && b.Y - b.R < y + h)
+                    return true;
+            return false;
+        }
+
         foreach (var unit in _tableState!.Units.Objects)
         {
             float sumX = 0, sumY = 0;
             int   count = 0;
+            float bottommostY = float.MinValue;
             float minRadiusPx = float.MaxValue;
             float minLeftX = float.MaxValue, maxRightX = float.MinValue;
             // 2026-11-06 look pass: the topmost model (and anything stacked on it), not the centroid. A
@@ -584,6 +606,7 @@ public class TableTooltipOverlay
                 minRadiusPx = MathF.Min(minRadiusPx, mr);
                 minLeftX    = MathF.Min(minLeftX, mx - mr);
                 maxRightX   = MathF.Max(maxRightX, mx + mr);
+                bottommostY = MathF.Max(bottommostY, my + mr);
                 count++;
 
                 // Model-scoped tokens sit just above each model (usually none).
@@ -641,6 +664,7 @@ public class TableTooltipOverlay
             // Top of the name/chips stack — the health bar sits above it.
             float stackTopY = unitChips.Count > 0 ? chipTopY : modelsTop - 3f;
 
+            float? belowStackY = null; // set when the name went under the unit: the health bar follows it
             if (ViewSettings.ShowLabels)
             {
                 // #454: the label over a renamed campaign unit carries its type too, because that label is
@@ -649,7 +673,14 @@ public class TableTooltipOverlay
                 Vector2 textSize = ImGui.CalcTextSize(label);
                 float labelX = cx - textSize.X * 0.5f;
                 float labelY = stackTopY - textSize.Y - 2f;
-                for (int bump = 0; bump < 6; bump++)
+                bool below = OnOtherUnit(unit, labelX, labelY, textSize.X, textSize.Y)
+                    && !OnOtherUnit(unit, labelX, bottommostY + 6f, textSize.X, textSize.Y);
+                if (below)
+                {
+                    labelY = bottommostY + 6f;
+                    belowStackY = labelY + textSize.Y + 2f;
+                }
+                for (int bump = 0; bump < 6 && !below; bump++)
                 {
                     bool hit = false;
                     foreach (var r in placedLabels)
@@ -669,8 +700,9 @@ public class TableTooltipOverlay
                 }
 
                 // The column above keeps its place whether or not the name drew, so a badge does not jump
-                // down into the panel the moment the name yields.
-                stackTopY = labelY;
+                // down into the panel the moment the name yields. (A name moved under the unit leaves the
+                // column where it was.)
+                if (!below) stackTopY = labelY;
             }
 
 
@@ -697,7 +729,7 @@ public class TableTooltipOverlay
             // Health bar above the name (#152) — hidden at full strength.
             var (remainingW, maxW) = HealthBarRenderer.Compute(unit);
             float barW = maxRightX - minLeftX;
-            float barY = stackTopY - 3f - HealthBarRenderer.Height;
+            float barY = belowStackY ?? (stackTopY - 3f - HealthBarRenderer.Height);
             if (HealthBarRenderer.ShouldShow(remainingW, maxW)
                 && !Occluded(cx - barW * 0.5f, barY, barW, HealthBarRenderer.Height))
                 // #347: with the model-loss boundaries ticked on it, so "how many more hits before I lose a

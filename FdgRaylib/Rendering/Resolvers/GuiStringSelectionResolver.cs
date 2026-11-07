@@ -1067,11 +1067,13 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
         if (!afterMove && ActionButton(advLabel, canMove, canMove ? "Move, then shoot." : moveReason))
         {
             GuiDefineMovementResolver.NextMoveAdvanceOnly = true;
+            GuiDefineMovementResolver.NextMoveKind = "Advance";
             picked = MoveOpt;
         }
         if (!afterMove && ActionButton(rushLabel, canMove, canMove ? "Move up to double, no shooting." : moveReason))
         {
             GuiDefineMovementResolver.NextMoveAdvanceOnly = false;
+            GuiDefineMovementResolver.NextMoveKind = "Rush";
             picked = MoveOpt;
         }
 
@@ -1090,6 +1092,7 @@ public class GuiStringSelectionResolver : IStageResolver<StringSelectionRequest,
             {
                 _chargeIntent = true;
                 GuiDefineMovementResolver.NextMoveAdvanceOnly = false;
+                GuiDefineMovementResolver.NextMoveKind = "Charge";
                 picked = MoveOpt;
             }
         }

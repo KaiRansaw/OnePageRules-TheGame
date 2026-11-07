@@ -175,6 +175,11 @@ public class GuiDefineMovementResolver
         get => NextMoveAdvanceOnlyBox as bool?;
         set => NextMoveAdvanceOnlyBox = value;
     }
+    /// <summary>Set by the action pop-up alongside <see cref="NextMoveAdvanceOnly"/>: which button started this
+    /// move ("Advance", "Rush", "Charge"), so the panel can say so. Look pass 2026-11-06: a Charge opened a
+    /// panel titled "Move:" and nothing on screen said the unit was charging.</summary>
+    public static volatile string? NextMoveKind;
+    private string? _moveKind;
     /// <summary>#333: the "models still on the start line" confirmation is up. While it is, it owns the
     /// keyboard and the table — otherwise the same Enter press would answer the popup and re-press Done
     /// behind it, and a stray click would drop a waypoint the player never saw them place.</summary>
@@ -464,6 +469,8 @@ public class GuiDefineMovementResolver
             // advance distance); otherwise it starts off, as before.
             _stayInAdvance = NextMoveAdvanceOnly ?? false;
             NextMoveAdvanceOnly = null;
+            _moveKind = NextMoveKind;
+            NextMoveKind = null;
             _groupRotation = 0f;
             _groupFacingAngle = 0f;
             _groupGhostPositions = null;
@@ -1688,12 +1695,15 @@ public class GuiDefineMovementResolver
         _movePanelSize = ImGui.GetWindowSize();
 
         string unitName = request.UnitDataBinding.GetValue().Name;
-        ImGui.TextUnformatted($"Move: {unitName}");
+        ImGui.TextUnformatted($"{_moveKind ?? "Move"}: {unitName}");
         ImGui.SameLine();
         if (ImGui.SmallButton(_formationMode.IsGroup ? "Group (G)##mvmode" : "Single (G)##mvmode")) _formationMode.Toggle();
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Group: the whole unit moves together. Single: move one model at a time.");
         // (Distances, pinned targets and the per-model roster live under "More options" now.)
+        if (_moveKind == "Charge")
+            ImGui.TextColored(new Vector4(1f, 0.72f, 0.35f, 1f),
+                $"Move into base contact with an enemy (up to {request.MaxDistanceInches:0.#}\"), then confirm.");
 
         // #155: live terrain-consequence warnings (ghost-aware, computed in Draw).
         if (dangerousCrossers > 0)
@@ -1720,7 +1730,14 @@ public class GuiDefineMovementResolver
         // #334: the forced-charge consequence, loudest of the warnings because it is the only one that
         // changes what the player may do NEXT rather than what this move costs. Done stays live - the move is
         // legal (#206), and a unit closing to contact on purpose must not be told it made a mistake.
-        if (_frameForcedMoverCount > 0)
+        if (_frameForcedMoverCount > 0 && _moveKind == "Charge")
+        {
+            // The player pressed Charge: contact is the goal, not a warning.
+            ImGui.TextColored(new Vector4(0.45f, 0.95f, 0.45f, 1f),
+                $"{_frameForcedMoverCount} model{(_frameForcedMoverCount == 1 ? "" : "s")} reach "
+                + string.Join(", ", _frameForcedUnitNames) + " - confirm to charge.");
+        }
+        else if (_frameForcedMoverCount > 0)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, StandoffTextCol);
             ImGui.TextWrapped(ForcedChargeWarning(_frameForcedMoverCount, _frameForcedUnitNames,

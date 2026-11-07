@@ -113,10 +113,12 @@ public class GuiAssignWoundsResolver
         IUnit unit = request.UnitReceivingWounds.GetValue();
 
         // ── Header: picture, "Assign wounds", the unit, how many are left ──
-        const float thumb = 46f;
         Vector2 h0 = ImGui.GetCursorScreenPos();
         Texture2D? tex = PopupAnchor.CardImageFor?.Invoke(unit);
-        if (tex is Texture2D t && t.Width > 0 && t.Height > 0)
+        bool hasPicture = tex is Texture2D tp && tp.Width > 0 && tp.Height > 0;
+        // No picture, no box: an empty red square read as a broken image (look pass, 2026-11-06).
+        float thumb = hasPicture ? 46f : 0f;
+        if (tex is Texture2D t && hasPicture)
         {
             float aspect = t.Width / (float)t.Height;
             Vector2 uv0 = Vector2.Zero, uv1 = Vector2.One;
@@ -124,12 +126,7 @@ public class GuiAssignWoundsResolver
             else { float hh = aspect; uv0.Y = (1f - hh) / 2f; uv1.Y = uv0.Y + hh; }
             dl.AddImageRounded((IntPtr)t.Id, h0, h0 + new Vector2(thumb, thumb), uv0, uv1, C(1f, 1f, 1f), 4f);
         }
-        else
-        {
-            dl.AddRectFilledMultiColor(h0, h0 + new Vector2(thumb, thumb), C(0.40f, 0.12f, 0.10f), C(0.40f, 0.12f, 0.10f),
-                C(0.15f, 0.05f, 0.05f), C(0.15f, 0.05f, 0.05f));
-        }
-        ImGui.SetCursorScreenPos(h0 + new Vector2(thumb + 8f, 0f));
+        ImGui.SetCursorScreenPos(h0 + new Vector2(hasPicture ? thumb + 8f : 0f, 0f));
         ImGui.BeginGroup();
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + dw - thumb - 30f);
         ImGui.TextColored(new Vector4(1f, 0.55f, 0.45f, 1f), "ASSIGN WOUNDS");
