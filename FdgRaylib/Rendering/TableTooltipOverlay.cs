@@ -580,10 +580,12 @@ public class TableTooltipOverlay
             // two-rank block had its name printed across its own front rank.
             float topmostY = float.MaxValue;
 
-            // Status outline around every base: red = Shaken, green = activated this round (Shaken wins).
+            // Status outline around every base: red = Shaken, grey = activated this round (Shaken wins).
+            // Grey, not green: green is also "a valid target" while shooting or charging, and an enemy that
+            // had already activated looked exactly like one you could pick (look pass, 2026-11-06).
             uint? statusOutline = IsShaken(unit)
                 ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.95f, 0.20f, 0.20f, 1f))
-                : HasActivated(unit) ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.25f, 0.85f, 0.35f, 1f)) : null;
+                : HasActivated(unit) ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.62f, 0.66f, 1f)) : null;
 
             foreach (var model in unit.Models)
             {

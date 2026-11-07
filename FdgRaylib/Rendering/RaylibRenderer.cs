@@ -2340,13 +2340,21 @@ public class RaylibRenderer
     // still in the tab), so "what round is it, who is ahead" never takes a click. Horde Mode's segments
     // (wave, points) replace the score pips, as before.
     private readonly List<(Color color, int count)> _stripScores = new();
+    private readonly List<(string text, Color color)> _stripSegments = new();
     private void DrawRoundStrip(Layout l)
     {
         if (_tableState == null || _gameOverResult != null) return;
         _stripScores.Clear();
         foreach (var sc in _missionScores) _stripScores.Add((sc.color, sc.count));
+        // A mission-card game is won on victory points, not on objectives held, so the strip shows each
+        // player's VP instead (the objective count is still in the Mission tab).
+        _stripSegments.Clear();
+        if (_tableState.Progress.MissionCards is { } cards && _colorForPlayer != null)
+            foreach (var seat in _tableState.Players.Objects.Where(p => p.IsFilled).OrderBy(p => p.SlotID))
+                _stripSegments.Add(($"{(cards.Vp.TryGetValue(seat.SlotID, out int vp) ? vp : 0)} VP", _colorForPlayer(seat.PlayerID)));
+        else _stripSegments.AddRange(_missionLines);
         StatusHudOverlay.Draw(l.AreaW, _missionRound, _missionTotalRounds, _stripScores,
-            Array.Empty<(Color, string, string)>(), _missionLines.Count > 0 ? _missionLines : null);
+            Array.Empty<(Color, string, string)>(), _stripSegments.Count > 0 ? _stripSegments : null);
     }
 
     private readonly List<(Color color, string name, int count)> _missionScores = new();
@@ -2561,8 +2569,13 @@ public class RaylibRenderer
                 var units = table.Units.Objects.Where(u => u.PlayerID.Equals(p.PlayerID)).ToList();
                 int alive = units.Count(u => u.GetIsAlive());
                 Color c = _colorForPlayer(p.PlayerID);
+                // A mission-card game is won on victory points, so the card leads with them (the final
+                // +1 per objective is already folded in by then) - "2 objectives" next to a 3-VP win read
+                // as if the objective count had decided it.
+                string vp = table.Progress.MissionCards is { } cards
+                    ? $"{(cards.Vp.TryGetValue(p.SlotID, out int v) ? v : 0)} VP, " : "";
                 rows.Add((p.Name, new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, 1f),
-                    $"- {held} objective{(held == 1 ? "" : "s")}, {alive}/{units.Count} units left"));
+                    $"- {vp}{held} objective{(held == 1 ? "" : "s")}, {alive}/{units.Count} units left"));
             }
         }
         catch (InvalidOperationException) { rows.Clear(); }   // the table is being torn down - show none

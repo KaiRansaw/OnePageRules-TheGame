@@ -43,6 +43,7 @@ public static class DiceTray
         public string Weapons = "";
         public float Hits, Attacks, Saves, SaveTotal, Ignored;
         public bool HasHits, HasSaves, Routed;
+        public bool FiredNamed;   // Weapons lists what actually fired (AttackBeat.WeaponName), not the unit's kit
         public int Lost;
         public char Last;                  // 'a' attack, 'h' hit roll, 's' save, 'i' ignore roll
         /// <summary>Every die of this exchange, each tagged with who threw it so the hover card can say.</summary>
@@ -163,16 +164,19 @@ public static class DiceTray
                     ?? (a.From.Count > 0 ? UnitAt(a.From[0]) : PopupAnchor.Progress?.ActivatingUnit);
                 IUnit? tgt = (a.TargetUnit is { } tid ? UnitById(tid) : null)
                     ?? (a.To.Count > 0 ? UnitAt(a.To[0]) : null);
+                string? fired = a.WeaponName is { Length: > 0 } wn ? (a.WeaponCount > 1 ? $"{a.WeaponCount}x {wn}" : wn) : null;
                 if (open != null && Same(open.Attacker, att) && Same(open.Target, tgt) && open.Melee == a.IsMelee)
                 {
                     open.Last = 'a';
+                    if (fired != null && open.FiredNamed && !open.Weapons.Split(", ").Contains(fired))
+                        open.Weapons = open.Weapons.Length == 0 ? fired : open.Weapons + ", " + fired;
                     break;
                 }
                 var e = new Entry
                 {
                     Kind = Kind.Attack, Key = key, Melee = a.IsMelee, Attacker = att, Target = tgt,
                     AttackerName = att?.Name ?? "", TargetName = tgt?.Name ?? "",
-                    Weapons = att == null ? "" : WeaponList(att, a.IsMelee), Last = 'a',
+                    Weapons = fired ?? (att == null ? "" : WeaponList(att, a.IsMelee)), FiredNamed = fired != null, Last = 'a',
                     AttackerId = a.AttackerUnit ?? att?.ID, TargetId = a.TargetUnit ?? tgt?.ID,
                     FromAt = Centroid(a.From), ToAt = Centroid(a.To),
                 };
@@ -204,7 +208,12 @@ public static class DiceTray
 
             case DiceRolledBeat d when d.Category == ERollBeatCategory.Defense && open != null:
             {
-                if (open.Last == 'h')
+                // A save batch, whatever came before it. An attack with two save thresholds (Rending 6s at
+                // AP+4 next to the ordinary hits) sends one save roll per threshold, and the second used to be
+                // read as a Regeneration roll - "save 0/1, taking 1 wound and losing 5 models" for an attack
+                // that took 5 (found playing a full AoF game, 2026-11-06).
+                bool isSave = open.Last == 'h' || (open.Last == 's' && (d.Context ?? "").EndsWith(" saves", StringComparison.Ordinal));
+                if (isSave)
                 {
                     open.Saves += d.Successes; open.SaveTotal += d.Total; open.HasSaves = true;
                     open.Last = 's';
@@ -262,6 +271,28 @@ public static class DiceTray
                     Add(routLine);
                 }
                 break;
+
+            // Every move, by how far (found playing a full AoF game, 2026-11-06): an activation with no dice
+            // left nothing in the report at all, so the bot's turn was invisible unless you watched the board.
+            case UnitMovedBeat moved:
+            {
+                float longest = 0f;
+                foreach (var mv in moved.Moves)
+                {
+                    float len = 0f;
+                    for (int i = 1; i < mv.Waypoints.Count; i++)
+                    {
+                        float dx = mv.Waypoints[i].x - mv.Waypoints[i - 1].x, dz = mv.Waypoints[i].z - mv.Waypoints[i - 1].z;
+                        len += MathF.Sqrt(dx * dx + dz * dz);
+                    }
+                    longest = MathF.Max(longest, len);
+                }
+                if (longest < 0.05f) break;
+                var moveLine = new Entry { Kind = Kind.Line, Color = Dim, Text = $"{moved.UnitName} moves {longest:0.#}\"" };
+                moveLine.Units.Add(moved.Unit);
+                Add(moveLine);
+                break;
+            }
 
             case RollOffBeat r:
                 Add(new Entry

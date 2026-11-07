@@ -195,6 +195,28 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         _cargoRowRefs.Clear();
     }
 
+    /// <summary>
+    /// True when this is a deployment pick and the deploying player's zone is the TOP half of the board.
+    /// The bar starts at the top of the board, which is exactly where a top-side player has to put the unit
+    /// it just picked (found in a full AoF play-through, 2026-11-06: the placed unit vanished under the bar).
+    /// Such a player gets the bar along the bottom instead. False whenever the zones are not known - a
+    /// client before the main phase, a mode without zones - which keeps the old top placement.
+    /// </summary>
+    private static bool DeployZoneIsAtTop(SelectionRequest<UnitData> request)
+    {
+        string title = request.DisplayName ?? request.Instructions ?? "";
+        if (!title.Contains("Deploy", StringComparison.OrdinalIgnoreCase)) return false;
+        if (PopupAnchor.TableState is not { } table) return false;
+        var zones = FDG.GameProgressUtilities.DeploymentZones(table.DataStore);
+        if (zones == null || zones.Count < 2) return false;
+        ITeam? mine = table.Teams.Objects.FirstOrDefault(t => t.Players.Contains(request.TargetPlayerID));
+        if (mine == null || !zones.TryGetValue(mine.TeamNumber, out var own)) return false;
+        float ownMid = (own.Top + own.Bottom) / 2f;
+        float othersMid = zones.Where(z => z.Key != mine.TeamNumber).Average(z => (z.Value.Top + z.Value.Bottom) / 2f);
+        // Table Y grows up the screen (row 0 at the bottom edge), so the higher centre is the top zone.
+        return ownMid > othersMid + 0.5f;
+    }
+
     private void DrawUnitCards(SelectionRequest<UnitData> request, TaskCompletionSource<DataBinding<UnitData>> tcs)
     {
         // Tall unit cards in a row, like a strategy game's army bar: points tab, models-left bar, the unit's
@@ -223,7 +245,10 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
 
         if (_stripPos is not { } at || _stripResetPending)
         {
-            at = PopupAnchor.PlaceTopStrip(new Vector2(winW, winH));
+            at = DeployZoneIsAtTop(request)
+                // Clear of the toolbar (Menu / Army Lists / Measure) along the very bottom.
+                ? PopupAnchor.PlaceBottomCenter(new Vector2(winW, winH)) - new Vector2(0f, 44f)
+                : PopupAnchor.PlaceTopStrip(new Vector2(winW, winH));
             _stripHome = at;
             _stripResetPending = false;
             ImGui.SetNextWindowPos(at, ImGuiCond.Always);
@@ -254,7 +279,7 @@ public class GuiUnitSelectionResolver : GuiSelectionResolver<UnitData>, IGuiCanv
         {
             ImGui.SameLine();
             if (ImGui.SmallButton("Reset##stripreset")) _stripResetPending = true;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Put the bar back at the top.");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Put the bar back where it started.");
         }
         if (_stripFolded)
         {

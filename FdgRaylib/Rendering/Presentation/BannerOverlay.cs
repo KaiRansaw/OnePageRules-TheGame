@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FDG;
 using FDG.Presentation.Beats;
 using Raylib_cs;
@@ -83,12 +84,21 @@ public static class BannerOverlay
         float toastBottom = DrawToasts(toasts, areaWidth, screenH);
 
         int headlineFont = Math.Clamp((int)Math.Round(screenH * 0.07f), 36, 96);
-        float headlineTop = DrawCenteredStack(headlines, areaWidth, (int)(screenH * HeadlineY),
+        int headlineAnchor = (int)(screenH * HeadlineY);
+        DrawCenteredStack(headlines, areaWidth, headlineAnchor,
             headlineFont, 0.90f, ceiling: toastBottom + BandGap);
 
+        // Notices stack UP from their anchor, so they must stop at the headline's BOTTOM edge. They were
+        // given the headline's top as their ceiling, which let a second notice ride up over the headline
+        // (look pass, 2026-11-06: "Round 2", "DerpBot's Activation" and "Round 2 mission cards dealt"
+        // printed on top of each other). With no room, the notice band slides down instead of dropping
+        // the news.
         int noticeFont = Math.Clamp((int)Math.Round(screenH * 0.042f), 24, 56);
+        float noticeCeiling = headlines.Count > 0
+            ? headlineAnchor + LayOutText(headlines[^1].Item1.BannerText ?? "", headlineFont, areaWidth, 0.90f).Height + BandGap
+            : toastBottom + BandGap;
         DrawCenteredStack(notices, areaWidth, (int)(screenH * NoticeY), noticeFont, 0.80f,
-            ceiling: headlineTop - BandGap);
+            ceiling: noticeCeiling, maxAnchorY: (int)(screenH * 0.62f));
     }
 
     /// <summary>
@@ -99,7 +109,7 @@ public static class BannerOverlay
     /// band's ceiling.
     /// </summary>
     private static float DrawCenteredStack(List<(BannerBeat beat, float alpha)> band, int areaWidth,
-        int anchorY, int fontSize, float widthFraction, float ceiling)
+        int anchorY, int fontSize, float widthFraction, float ceiling, int maxAnchorY = 0)
     {
         if (band.Count == 0) return anchorY;
 
@@ -108,6 +118,15 @@ public static class BannerOverlay
         var layouts = new TextLayout[band.Count];
         for (int i = 0; i < band.Count; i++)
             layouts[i] = LayOutText(band[i].beat.BannerText ?? "", fontSize, areaWidth, widthFraction);
+
+        // A band allowed to move slides its anchor down (up to maxAnchorY) until the whole stack clears
+        // the ceiling; only what still overflows after that is dropped.
+        if (maxAnchorY > anchorY)
+        {
+            var hs = layouts.Select(l => (float)l.Height).ToList();
+            float top = StackTop(hs, 0, anchorY);
+            if (top < ceiling) anchorY = (int)Math.Min(maxAnchorY, anchorY + (ceiling - top));
+        }
 
         // Drop the OLDEST entries while the stack overflows its ceiling. The newest sits highest, so an
         // overflow always threatens the entry that just happened; dropping from the anchored end shifts
