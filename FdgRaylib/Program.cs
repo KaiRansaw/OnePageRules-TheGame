@@ -1712,7 +1712,7 @@ else
         if (pendingGameSystem is { } picked)
             LobbyScreen.ApplyGameSystem(lobby, picked);
         // After ApplyGameSystem, which resets the mode along with the points and the allowed systems.
-        if (pendingGameMode is { } mode) lobby.SetGameMode(mode);
+        if (pendingGameMode is { } mode) LobbyScreen.ApplyGameMode(lobby, mode);
         pendingGameSystem = null;
         pendingGameMode = null;
         // #410: a campaign army waiting to be played takes the host's own slot, with the points limit

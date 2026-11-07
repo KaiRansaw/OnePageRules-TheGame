@@ -1523,7 +1523,7 @@ public class LobbyScreen : IAppScreen
         if (Section("Game"))
         {
         DrawGameSystemCombo();
-        DrawEnumCombo("Game Mode",     _viewModel.GameMode,       _viewModel.SetGameMode,
+        DrawEnumCombo("Game Mode",     _viewModel.GameMode,       mode => ApplyGameMode(_viewModel, mode),
             displayName: GameModeLabel,
             explicitOrder: GameSystemInfo.Modes(_viewModel.GameSystem),
             tooltip: "Which kind of game to play within the Game Type.\n" +
@@ -2376,6 +2376,19 @@ public class LobbyScreen : IAppScreen
         else if (!isSkirmish && wasSkirmish) viewModel.SetArmyPoints(2000);
         if (Array.IndexOf(GameSystemInfo.Modes(system), viewModel.GameMode) < 0)
             viewModel.SetGameMode(GameSystemInfo.Modes(system)[0]);
+        else if (viewModel.GameMode == EGameMode.Horde)
+            ApplyGameMode(viewModel, EGameMode.Horde);
+    }
+
+    /// <summary>
+    /// Point a lobby at a Game Mode. Horde Mode also takes the army size its book prints (2000 / 1500 /
+    /// 800 / 600 pts a side) - the player can still change it afterwards.
+    /// </summary>
+    public static void ApplyGameMode(ILobbyViewModel viewModel, EGameMode mode)
+    {
+        viewModel.SetGameMode(mode);
+        if (mode == EGameMode.Horde && FDG.StateMachine.HordeRules.BookArmyPoints(viewModel.GameSystem) is { } points)
+            viewModel.SetArmyPoints(points);
     }
 
     private string GameModeLabel(EGameMode mode) => GameSystemInfo.ModeLabel(mode, _viewModel!.GameSystem);
