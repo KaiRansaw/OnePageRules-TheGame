@@ -703,7 +703,7 @@ public class RaylibRenderer
         // The Ambush no-go area paints into its own texture first (texture modes can't nest), and the reach
         // field rebuilds into its own textures here too, for the same reason.
         Layout board = VirtualBoardLayout;
-        _tacticalOverlay.PrepareField();
+        using (FrameProfiler.Time("field-prepare")) _tacticalOverlay.PrepareField();
         bool exclusion = RenderAmbushExclusion(board, w, h, out var exclusionWaivers);
 
         Raylib.BeginTextureMode(_boardOverlayRT);
@@ -1026,14 +1026,14 @@ public class RaylibRenderer
                 DrawTable(layout);
                 if (ViewSettings.ShowGrid)
                     DrawTableGrid(layout);   // etched grid + felt vignette, under terrain/objectives/models
-                _tacticalOverlay.DrawField();    // opportunity field: under terrain (spec draw order)
-                DrawTerrain(layout);
-                _tacticalOverlay.DrawContours(); // threat + secondary contours: above terrain, under objectives
+                using (FrameProfiler.Time("field")) _tacticalOverlay.DrawField();    // opportunity field: under terrain (spec draw order)
+                using (FrameProfiler.Time("terrain")) DrawTerrain(layout);
+                using (FrameProfiler.Time("contours")) _tacticalOverlay.DrawContours(); // threat + secondary contours: above terrain, under objectives
                 DrawObjectives(layout);
                 DrawQuestTokens(layout);
                 DrawAmbushExclusion(layout, screenW, screenH);
                 DrawActiveUnitSpotlight(layout);
-                DrawModels(layout);
+                using (FrameProfiler.Time("models")) DrawModels(layout);
                 DrawUnitQuestMarkers(layout);   // poison / silence chips ride on top of their token
                 DrawDeathBursts(layout);
 
@@ -1246,7 +1246,7 @@ public class RaylibRenderer
                 {
                     try
                     {
-                        _resolverOverlay?.Draw(screenW, screenH);
+                        using (FrameProfiler.Time("resolver")) _resolverOverlay?.Draw(screenW, screenH);
                         resolverShown = _resolverOverlay?.HasAnyPending ?? false;
                     }
                     catch (Exception ex)
@@ -1314,7 +1314,8 @@ public class RaylibRenderer
                 rlImGui.End();
             }
 
-            Raylib.EndDrawing();
+            using (FrameProfiler.Time("present")) Raylib.EndDrawing();
+            FrameProfiler.EndFrame();
         }
 
         rlImGui.Shutdown();

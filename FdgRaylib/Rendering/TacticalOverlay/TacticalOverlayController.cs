@@ -393,6 +393,13 @@ public class TacticalOverlayController
     // frame. The per-frame/cached split is emergent, not a mode.
     //
     // Returns false when there is nothing to draw (no ranged weapons, or no model on the table).
+    private const long GhostRebuildIntervalMs = 120;
+    private const long GhostSettleMs = 250;
+    private long _lastGhostRebuildMs;
+    private long _lastSeenGhostSig;
+    private long _lastGhostSigChangeMs;
+    private bool _ghostFieldCoarse;
+
     private bool RebuildGhostField(IUnit movingUnit, IReadOnlyDictionary<IModel, Position> ghosts,
         DefineMovementPathRequest? req)
     {
@@ -434,8 +441,25 @@ public class TacticalOverlayController
         // nothing that shapes the picture has moved — which is every frame after the first for a hovered
         // unit, and no frame at all for live ghosts.
         long signature = ComputeGhostFieldSignature(movingUnit, sources, byRange.Keys);
-        if (_fieldActive && signature == _lastGhostFieldSig) return true;
+        // 2026-11-06 (Kai: the frame rate drops while a move preview follows the mouse). Measured: the cost
+        // is the GPU half - two full-table sight fans per model, every frame the ghosts moved. Now, while
+        // the ghosts are moving: the picture is rebuilt at most ~8 times a second, and its line-of-sight
+        // shading comes from at most three of the unit's models (both ends and the middle). A quarter of a
+        // second after the cursor stops, it is rebuilt once in full from every model - the exact picture.
+        long now = Environment.TickCount64;
+        if (signature != _lastSeenGhostSig) { _lastSeenGhostSig = signature; _lastGhostSigChangeMs = now; }
+        bool settled = now - _lastGhostSigChangeMs >= GhostSettleMs;
+        if (_fieldActive && signature == _lastGhostFieldSig && !(_ghostFieldCoarse && settled)) return true;
+        if (_fieldActive && !settled && now - _lastGhostRebuildMs < GhostRebuildIntervalMs) return true;
+        _lastGhostRebuildMs = now;
         _lastGhostFieldSig = signature;
+        _ghostFieldCoarse = !settled && sources.Count > 3;
+        List<Position> sightSources = sources;
+        if (_ghostFieldCoarse)
+        {
+            var byX = sources.OrderBy(p => p.x).ThenBy(p => p.z).ToList();
+            sightSources = new List<Position> { byX[0], byX[byX.Count / 2], byX[^1] };
+        }
 
         var ranges = byRange.Keys.ToList();
         ranges.Sort();
@@ -455,8 +479,9 @@ public class TacticalOverlayController
             .Where(t => t.TerrainType.HasFlag(ETerrainType.Blocking) || t.TerrainType.HasFlag(ETerrainType.Cover))
             .ToList();
         var maps = new List<PolarSightMap>();
+        using (FdgRaylib.Rendering.FrameProfiler.Time("f.sightmaps"))
         if (relevant.Count > 0)
-            foreach (Position s in sources)
+            foreach (Position s in sightSources)
                 maps.Add(PolarSightMap.Build(s, relevant, TacticalOverlayConfig.PolarBuckets));
 
         (byte r, byte g, byte b) accentCol = TeamAccent(movingUnit);   // Self mode: the mover's team color
@@ -466,6 +491,7 @@ public class TacticalOverlayController
         bool gpuActive = _gpuField != null && TacticalOverlayConfig.UseGpuField;
         if (gpuActive)
         {
+            using var _g = FdgRaylib.Rendering.FrameProfiler.Time("f.gpu");
             _gpuField!.RebuildDiscs(perBand, maps, accentCol, 1f);
         }
         else
@@ -586,7 +612,7 @@ public class TacticalOverlayController
         // red contour layer on its own F toggle was outdated clutter. The threat DISCS are still built,
         // because the frontier snap and the "inside enemy reach" readout are computed from them; both are
         // move-job-only, so the rebuild is too (it used to also run whenever the toggle was on).
-        if (moveJobActive) RebuildThreatIfNeeded();
+        using (FdgRaylib.Rendering.FrameProfiler.Time("c.threat")) { if (moveJobActive) RebuildThreatIfNeeded(); }
 
         // The band rings ride with the field, whatever anchored it (#247 — this was gated on a move job,
         // so placement and hover fields drew the fill wash with no boundary rings. The rings ARE the band
@@ -596,6 +622,7 @@ public class TacticalOverlayController
         {
             // GPU draws rings in screen space (constant thin width, every anchor); the CPU vector rings
             // are the fallback (target-anchored only) and are empty when the GPU handles them.
+            using var _rt = FdgRaylib.Rendering.FrameProfiler.Time("c.rings");
             if (_gpuField != null && TacticalOverlayConfig.UseGpuField && _gpuField.RingsReady)
                 _gpuField.DrawRings(_originX, _originY,
                     GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES, _scale);
@@ -604,7 +631,7 @@ public class TacticalOverlayController
         }
 
         // Secondary-pin contours are pin-only, so they stay scoped to a move job.
-        if (moveJobActive) DrawSecondaryContours();
+        using (FdgRaylib.Rendering.FrameProfiler.Time("c.secondary")) { if (moveJobActive) DrawSecondaryContours(); }
     }
 
     // Band boundary rings for the focused field, as consistent-thickness vector lines in the lead accent.

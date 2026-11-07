@@ -2298,6 +2298,12 @@ public class GuiDefineMovementResolver
         var end   = new Float2(anchor.x + dirX * allowed, anchor.z + dirZ * allowed);
         IUnit ownUnit = request.UnitDataBinding.GetValue();
         float limited = allowed;
+        // Broad phase (2026-11-06 frame-rate pass: this ran the exact base-collision test against every enemy
+        // model on the table, for every model in the unit, several times a frame while the group search
+        // shrinks the formation). An enemy further from the travel segment than the two bases' outer radii
+        // plus the 1" gap can never be touched, so it is skipped before the exact test.
+        float moverR = movingModel.BaseShape.CircumscribedRadiusInches;
+        float sx = end.X - start.X, sz = end.Y - start.Y, segLenSq = sx * sx + sz * sz;
 
         foreach (var unit in _tableState.Units.Objects)
         {
@@ -2308,6 +2314,13 @@ public class GuiDefineMovementResolver
                 if (!m.GetIsAlive()) continue;
                 var mp = m.Position;
                 if (mp.x == 0f && mp.z == 0f) continue; // unplaced (reserve) model
+                {
+                    float px = mp.x - start.X, pz = mp.z - start.Y;
+                    float tt = segLenSq > 0f ? Math.Clamp((px * sx + pz * sz) / segLenSq, 0f, 1f) : 0f;
+                    float qx = px - sx * tt, qz = pz - sz * tt;
+                    float reach = moverR + m.BaseShape.CircumscribedRadiusInches + 2f;
+                    if (qx * qx + qz * qz > reach * reach) continue;
+                }
                 float t = BaseShapeGeometry.MaxTravelBeforeBaseCollision(
                     movingModel.BaseShape, start, end, facing, m.BaseShape, mp, m.Facing);
                 if (t < limited) limited = t;
