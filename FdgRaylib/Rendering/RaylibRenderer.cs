@@ -1113,6 +1113,7 @@ public class RaylibRenderer
                 }
 
                 UpdateMissionInfo();
+                DrawRoundStrip(layout);
 
                 // #331: victory fireworks. Last of the Raylib-drawn pass, so they sit over the board and
                 // banners but under every ImGui window - the game-over card floats on top of them, which is
@@ -2334,6 +2335,20 @@ public class RaylibRenderer
     // What used to be the top status strip, gathered each frame for the Mission tab.
     private int? _missionRound;
     private int _missionTotalRounds;
+    // Kai, 2026-11-06: the dark strip above the board was empty - the round and the objective score lived
+    // there until the Oct 24 UI rework moved them into the Game Master tab. They are back in the strip (and
+    // still in the tab), so "what round is it, who is ahead" never takes a click. Horde Mode's segments
+    // (wave, points) replace the score pips, as before.
+    private readonly List<(Color color, int count)> _stripScores = new();
+    private void DrawRoundStrip(Layout l)
+    {
+        if (_tableState == null || _gameOverResult != null) return;
+        _stripScores.Clear();
+        foreach (var sc in _missionScores) _stripScores.Add((sc.color, sc.count));
+        StatusHudOverlay.Draw(l.AreaW, _missionRound, _missionTotalRounds, _stripScores,
+            Array.Empty<(Color, string, string)>(), _missionLines.Count > 0 ? _missionLines : null);
+    }
+
     private readonly List<(Color color, string name, int count)> _missionScores = new();
     private readonly List<(string text, Color color)> _missionLines = new();
     private readonly List<(Color color, string name, int left)> _missionActivations = new();
