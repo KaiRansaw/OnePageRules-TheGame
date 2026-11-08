@@ -105,9 +105,9 @@ public class UiReworkBatchBTests
     {
         // Ground War is two side columns on the GF/AoF page and an L each on the GFF/AoFS page.
         var gf = LobbyDeploymentPreview.For(EGameSystem.GrimdarkFuture, EGameMode.Standard,
-            EDeploymentStyle.GroundWar, 2, 72, 48, null);
+            EDeploymentStyle.GroundWar, 2, 72, 48);
         var gff = LobbyDeploymentPreview.For(EGameSystem.GFFirefight, EGameMode.Standard,
-            EDeploymentStyle.GroundWar, 2, 48, 48, null);
+            EDeploymentStyle.GroundWar, 2, 48, 48);
 
         var expectGf = AdvancedDeployment.LongTableZones(EDeploymentStyle.GroundWar, 72, 48);
         var expectGff = AdvancedDeployment.Zones(EDeploymentStyle.GroundWar, 48, 48);
@@ -127,26 +127,28 @@ public class UiReworkBatchBTests
     public void ARandomStyleShowsTheCoreZonesAndSaysItIsRolled()
     {
         var plan = LobbyDeploymentPreview.For(EGameSystem.AgeOfFantasy, EGameMode.Standard,
-            EDeploymentStyle.RandomStrategic, 2, 72, 48, null);
+            EDeploymentStyle.RandomStrategic, 2, 72, 48);
         Assert.That(plan.Zones, Has.Count.EqualTo(2));
         Assert.That(Bounds(plan.Zones[1]), Is.EqualTo((0f, 72f, 0f, 12f)));
         Assert.That(plan.Note, Does.Contain("rolled"));
     }
 
+    /// <summary>
+    /// Batch B pinned "a map with a zone for every side keeps its own" on purpose; Kai reversed that on
+    /// 2026-11-07 (deployment is ONLY picked in the lobby), so the preview no longer even takes the map -
+    /// the pick is drawn whatever map is chosen, as the engine now deploys (MapZonesIgnoredTests).
+    /// </summary>
     [Test]
-    public void AMapWithAZoneForEverySideKeepsItsOwnAndThreeSidesUseTheCorners()
+    public void TheLobbysPickIsAlwaysDrawnAndThreeSidesUseTheCorners()
     {
-        var map = new TerrainLayoutFile
-        {
-            DeploymentZones = { new MapDeploymentZoneEntry(), new MapDeploymentZoneEntry() },
-        };
-        var withMap = LobbyDeploymentPreview.For(EGameSystem.GrimdarkFuture, EGameMode.Standard,
-            EDeploymentStyle.Spearhead, 2, 72, 48, map);
-        Assert.That(withMap.Zones, Is.Empty);
-        Assert.That(withMap.Note, Does.Contain("own deployment zones"));
+        var picked = LobbyDeploymentPreview.For(EGameSystem.GrimdarkFuture, EGameMode.Standard,
+            EDeploymentStyle.Spearhead, 2, 72, 48);
+        Assert.That(picked.Zones, Has.Count.EqualTo(2));
+        Assert.That(picked.Note, Does.Contain("Spearhead").Or.Contain(AdvancedDeployment.Name(EDeploymentStyle.Spearhead)));
+        Assert.That(picked.Note, Does.Not.Contain("own deployment zones"));
 
         var ffa = LobbyDeploymentPreview.For(EGameSystem.GrimdarkFuture, EGameMode.Standard,
-            EDeploymentStyle.Spearhead, 3, 72, 48, null);
+            EDeploymentStyle.Spearhead, 3, 72, 48);
         Assert.That(ffa.Zones, Is.Empty);
         Assert.That(ffa.Note, Does.Contain("corner"));
     }

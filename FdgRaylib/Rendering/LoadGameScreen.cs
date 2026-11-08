@@ -9,19 +9,36 @@ using Raylib_cs;
 namespace FdgRaylib.Rendering;
 
 /// <summary>
-/// The Load Game screen: a grid of tiles, 5 per row, one per saved game, each showing a top-down
-/// picture of the board as it was saved plus "Faction vs Faction", army points and the score. Replaces
-/// the old native file dialog. Player 1 (slot 0 - the host, i.e. you) is always listed first.
+/// The Load Game screen (Load Game and Join Mockup, 2026-11-07): save tiles newest first with All /
+/// Grimdark Future / Age of Fantasy filter buttons along the top; on the right a big picture of the selected
+/// save's board and its details (game, mode, round, score, points, players, date) with LOAD and Delete.
+/// Delete asks first. Player 1 (slot 0 - the host, i.e. you) is always listed first.
 ///
 /// <para>Saves are read on a background task, one at a time, so the screen opens instantly and tiles
-/// fill in as each file is read. Controls: click a tile to select it, double-click (or Load, or Enter)
+/// fill in as each file is read. Controls: click a tile to select it, double-click (or LOAD, or Enter)
 /// to load it, arrow keys to move, mouse wheel to scroll, Esc / Back to return.</para>
+///
+/// <para>Rental layout (plain ImGui). What is permanent - what a save says about itself and which
+/// filter it falls under - is in the pure <see cref="Matches"/> and the summary read.</para>
 /// </summary>
 public sealed class LoadGameScreen : IAppScreen
 {
     /// <summary>Called with the full path of the save the player chose.</summary>
     public Action<string>? OnLoad;
     public Action? OnBack;
+
+    /// <summary>The filter buttons along the top.</summary>
+    internal enum EFilter { All, GrimdarkFuture, AgeOfFantasy }
+
+    /// <summary>Whether a save of <paramref name="system"/> shows under <paramref name="filter"/>. A save whose
+    /// game could not be read (made during setup, before the engine recorded the settings) shows under All only.</summary>
+    internal static bool Matches(EFilter filter, EGameSystem? system) => filter switch
+    {
+        EFilter.All => true,
+        EFilter.GrimdarkFuture => system is { } g && GameScreen.Games(GameScreen.EFamily.GrimdarkFuture).Contains(g),
+        EFilter.AgeOfFantasy => system is { } a && GameScreen.Games(GameScreen.EFamily.AgeOfFantasy).Contains(a),
+        _ => true,
+    };
 
     // ── What a tile shows, pulled out of the save once and kept as plain data ────────────────────────
     private sealed record PreviewModel(Vector2 PosIn, IBaseShape Shape, Float2 Facing, int ColorIndex);
@@ -31,13 +48,20 @@ public sealed class LoadGameScreen : IAppScreen
     private sealed class SaveSummary
     {
         public List<string> Factions = new();      // in slot order: Player 1 first
+        public List<string> ArmyNames = new();
+        public List<string> PlayerNames = new();
         public List<int> PointsLimits = new();
         public List<int> Scores = new();
+        public List<int>? Vp;                      // mission-card games only
         public int ArmyPoints;
+        public EGameSystem? GameSystem;            // null when the save has no settings (made during setup)
+        public string GameLabel = "";
         public string ModeLabel = "";
         public string RoundLabel = "";
         public bool CanResume = true;   // false for a save made before round 1 (setup / deployment)
         public int? HordePoints;
+        public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
+        public float TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
         public TableBackgroundStyle Background = TableBackgrounds.For(ETableBackground.Forest);
         public List<PreviewTerrain> Terrain = new();
         public List<PreviewObjective> Objectives = new();
@@ -54,9 +78,11 @@ public sealed class LoadGameScreen : IAppScreen
     }
 
     private List<SaveEntry> _entries = new();
-    private int _selected;
+    private EFilter _filter = EFilter.All;
+    private string? _selectedPath;
     private bool _scrollToSelected;
     private int _generation;   // bumped on every rescan so a stale background read stops early
+    private string? _deleteAsked;   // the save the Delete popup is asking about
 
     private string _error = "";
 
@@ -66,14 +92,15 @@ public sealed class LoadGameScreen : IAppScreen
     public void OnShown()
     {
         _error = "";
+        _deleteAsked = null;
         int gen = ++_generation;
         _entries = SavePaths.ListSaves().Select(p => new SaveEntry
         {
             Path = p,
             Title = System.IO.Path.GetFileNameWithoutExtension(p),
             Saved = SavePaths.SafeWriteTime(p),
-        }).ToList();
-        _selected = 0;
+        }).OrderByDescending(e => e.Saved).ToList();
+        _selectedPath = _entries.FirstOrDefault()?.Path;
         _scrollToSelected = true;
 
         List<SaveEntry> toRead = _entries;
@@ -111,6 +138,8 @@ public sealed class LoadGameScreen : IAppScreen
                 : !string.IsNullOrWhiteSpace(army?.ArmyName) ? army!.ArmyName
                 : slot.Name;
             s.Factions.Add(faction);
+            s.ArmyNames.Add(!string.IsNullOrWhiteSpace(army?.ArmyName) ? army!.ArmyName : faction);
+            s.PlayerNames.Add(slot.Name);
             s.PointsLimits.Add(army?.PointsLimit ?? 0);
             s.Scores.Add(scores.TryGetValue(slot.PlayerID, out int sc) ? sc : 0);
         }
@@ -119,6 +148,14 @@ public sealed class LoadGameScreen : IAppScreen
         GameSettings settings = progress?.Settings ?? GameSettings.GetDefault();
         s.ArmyPoints = progress != null ? settings.ArmyPoints : s.PointsLimits.DefaultIfEmpty(0).Max();
         s.Background = TableBackgrounds.For(settings.TableBackground);
+        if (progress != null)
+        {
+            s.GameSystem = settings.GameSystem;
+            s.GameLabel = GameSystemInfo.DisplayName(settings.GameSystem);
+            (s.TableW, s.TableH) = GameWideConstants.TableSizeFor(settings.GameSystem);
+        }
+        if (table.Progress.MissionCards is { } cards)
+            s.Vp = slots.Select(sl => cards.Vp.TryGetValue(sl.SlotID, out int v) ? v : 0).ToList();
         EGameMode mode = table.Progress.GameMode;
         s.ModeLabel = mode == EGameMode.Horde ? "Horde Mode" : GameSystemInfo.ModeLabel(mode, settings.GameSystem);
         s.HordePoints = table.Progress.HordePointsEarned;
@@ -179,83 +216,134 @@ public sealed class LoadGameScreen : IAppScreen
 
         bool useMenuFont = RaylibRenderer.MenuFontPx > 0f;
         ImFontPtr headFont = useMenuFont ? RaylibRenderer.MenuFont : ImGui.GetFont();
-        float margin = screenW * 0.03f;
+        float margin = MathF.Max(16f, screenW * 0.02f);
 
-        // Title.
+        List<SaveEntry> shown = _entries.Where(e => Matches(_filter, e.Summary?.GameSystem)).ToList();
+        int selected = shown.FindIndex(e => e.Path == _selectedPath);
+        if (selected < 0 && shown.Count > 0) { selected = 0; _selectedPath = shown[0].Path; }
+
+        // ── Header: title, count, filter buttons ──
+        float headerH = MathF.Max(56f, screenH * 0.075f);
         ImDrawListPtr wdl = ImGui.GetWindowDrawList();
-        float titlePx = screenH * 0.055f;
-        wdl.AddText(headFont, titlePx, new Vector2(margin, screenH * 0.05f), TextBright, "LOAD GAME");
-        wdl.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(margin, screenH * 0.05f + titlePx + 6f), TextDim,
-            $"{_entries.Count} saved game{(_entries.Count == 1 ? "" : "s")}  -  {SavePaths.FolderPath}");
+        float titlePx = headerH * 0.5f;
+        wdl.AddText(headFont, titlePx, new Vector2(margin, (headerH - titlePx) / 2f), TextBright, "LOAD GAME");
+        float titleW = ImGui.CalcTextSize("LOAD GAME").X * (titlePx / ImGui.GetFontSize()) * 1.1f;
+        string count = $"{shown.Count} saved game{(shown.Count == 1 ? "" : "s")} - newest first";
+        wdl.AddText(new Vector2(margin + titleW + 24f, (headerH - ImGui.GetFontSize()) / 2f), TextDim, count);
 
-        // Tile grid: 5 tiles per row, scrolling down for more.
-        const int Columns = 5;
-        float gridY = screenH * 0.17f;
-        float bottomBarH = screenH * 0.10f;
-        float gridW = screenW - margin * 2f;
-        float gridH = screenH - gridY - bottomBarH;
-        float gap = screenW * 0.010f;
+        (EFilter Filter, string Label, string Hover)[] filters =
+        {
+            (EFilter.All, "All", "Every saved game."),
+            (EFilter.GrimdarkFuture, "Grimdark Future", "Grimdark Future, GF: Firefight and GF: Star Quest saves."),
+            (EFilter.AgeOfFantasy, "Age of Fantasy", "Age of Fantasy, AoF: Skirmish and AoF: Quest saves."),
+        };
+        float fx = screenW - margin;
+        float fh = headerH * 0.6f;
+        for (int k = filters.Length - 1; k >= 0; k--)
+        {
+            float fw = ImGui.CalcTextSize(filters[k].Label).X + 32f;
+            fx -= fw;
+            ImGui.SetCursorPos(new Vector2(fx, (headerH - fh) / 2f));
+            bool on = _filter == filters[k].Filter;
+            if (on) ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.25f, 0.45f, 0.70f, 1f));
+            if (ImGui.Button(filters[k].Label + "##filter", new Vector2(fw, fh)))
+            {
+                _filter = filters[k].Filter;
+                _scrollToSelected = true;
+            }
+            if (on) ImGui.PopStyleColor();
+            if (ImGui.IsItemHovered()) UiText.Tooltip(filters[k].Hover);
+            fx -= 8f;
+        }
+        wdl.AddLine(new Vector2(0, headerH), new Vector2(screenW, headerH), U32(74, 74, 74));
+
+        // ── Body: tile grid on the left, the selected save on the right ──
+        float bottomBarH = MathF.Max(60f, screenH * 0.08f);
+        float bodyY = headerH + 14f;
+        float bodyH = screenH - bodyY - bottomBarH - 6f;
+        float detailW = Math.Clamp(screenW * 0.30f, 340f, 560f);
+        float gridW = screenW - margin * 2f - detailW - 16f;
+
+        const int Columns = 3;
+        float gap = 12f;
         float scrollbarW = ImGui.GetStyle().ScrollbarSize + 4f;
         float tileW = (gridW - scrollbarW - gap * (Columns - 1)) / Columns;
         float pad = MathF.Max(6f, tileW * 0.03f);
         float previewH = (tileW - pad * 2f) / 1.5f + pad * 1.5f;   // 6' x 4' board = 3:2
-        float textH = tileW * 0.42f;
+        float textH = MathF.Max(ImGui.GetFontSize() * 4.2f, tileW * 0.30f);
         float tileH = previewH + textH;
 
-        ImGui.SetCursorPos(new Vector2(margin, gridY));
-        ImGui.BeginChild("##saveGrid", new Vector2(gridW, gridH), ImGuiChildFlags.None, ImGuiWindowFlags.None);
+        ImGui.SetCursorPos(new Vector2(margin, bodyY));
+        ImGui.BeginChild("##saveGrid", new Vector2(gridW, bodyH), ImGuiChildFlags.None, ImGuiWindowFlags.None);
 
-        if (_entries.Count == 0)
+        if (shown.Count == 0)
         {
-            ImGui.SetCursorPos(new Vector2(0, gridH * 0.4f));
-            UiText.Disabled("No saved games yet. Save a game from the in-game menu and it will appear here.");
+            ImGui.SetCursorPos(new Vector2(0, bodyH * 0.4f));
+            UiText.Disabled(_entries.Count == 0
+                ? "No saved games yet. Save a game from the in-game menu and it will appear here."
+                : "No saved games for this game family. Pick All to see every save.");
         }
 
         bool loadNow = false;
-        for (int i = 0; i < _entries.Count; i++)
+        for (int i = 0; i < shown.Count; i++)
         {
             int col = i % Columns, row = i / Columns;
             ImGui.SetCursorPos(new Vector2(col * (tileW + gap), row * (tileH + gap)));
-            if (DrawTile(_entries[i], i == _selected, tileW, tileH, previewH, pad, headFont, out bool doubleClicked))
-                _selected = i;
+            if (DrawTile(shown[i], i == selected, tileW, tileH, previewH, pad, headFont, out bool doubleClicked))
+            {
+                selected = i;
+                _selectedPath = shown[i].Path;
+            }
             if (doubleClicked) loadNow = true;
-            if (i == _selected && _scrollToSelected)
+            if (i == selected && _scrollToSelected)
             {
                 ImGui.SetScrollHereY(0.5f);
                 _scrollToSelected = false;
             }
         }
-        // Bottom spacer so the last row can scroll fully into view.
-        int rows = (_entries.Count + Columns - 1) / Columns;
+        int rows = (shown.Count + Columns - 1) / Columns;
         ImGui.SetCursorPos(new Vector2(0, rows * (tileH + gap)));
         ImGui.Dummy(new Vector2(1, 1));
         ImGui.EndChild();
 
-        // Keyboard: arrows move one tile sideways or one row up/down.
-        if (_entries.Count > 0)
+        // Keyboard: arrows move one tile sideways or one row up/down (not while the Delete box is up).
+        bool popupOpen = _deleteAsked != null;
+        if (shown.Count > 0 && !popupOpen)
         {
-            int before = _selected;
-            if (ImGui.IsKeyPressed(ImGuiKey.RightArrow)) _selected = Math.Min(_entries.Count - 1, _selected + 1);
-            if (ImGui.IsKeyPressed(ImGuiKey.LeftArrow))  _selected = Math.Max(0, _selected - 1);
-            if (ImGui.IsKeyPressed(ImGuiKey.DownArrow))  _selected = Math.Min(_entries.Count - 1, _selected + Columns);
-            if (ImGui.IsKeyPressed(ImGuiKey.UpArrow))    _selected = Math.Max(0, _selected - Columns);
-            if (_selected != before) _scrollToSelected = true;
+            int before = selected;
+            if (ImGui.IsKeyPressed(ImGuiKey.RightArrow)) selected = Math.Min(shown.Count - 1, selected + 1);
+            if (ImGui.IsKeyPressed(ImGuiKey.LeftArrow))  selected = Math.Max(0, selected - 1);
+            if (ImGui.IsKeyPressed(ImGuiKey.DownArrow))  selected = Math.Min(shown.Count - 1, selected + Columns);
+            if (ImGui.IsKeyPressed(ImGuiKey.UpArrow))    selected = Math.Max(0, selected - Columns);
+            if (selected != before) { _scrollToSelected = true; _selectedPath = shown[selected].Path; }
             if (ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.KeypadEnter, false)) loadNow = true;
         }
 
-        // Bottom bar: Back on the left, Load on the right.
-        Vector2 btn = new(screenW * 0.14f, bottomBarH * 0.55f);
+        SaveEntry? current = selected >= 0 && selected < shown.Count ? shown[selected] : null;
+        ImGui.SetCursorPos(new Vector2(screenW - margin - detailW, bodyY));
+        ImGui.BeginChild("##saveDetail", new Vector2(detailW, bodyH), ImGuiChildFlags.Borders);
+        if (DrawDetail(current, detailW, headFont, out bool deleteClicked)) loadNow = true;
+        if (deleteClicked && current != null)
+        {
+            _deleteAsked = current.Path;
+            ImGui.OpenPopup(DeletePopup);
+        }
+        DrawDeletePopup();
+        ImGui.EndChild();
+
+        // ── Bottom bar: Back, and the note from the mockup ──
+        Vector2 btn = new(MathF.Max(140f, screenW * 0.09f), bottomBarH * 0.66f);
         float btnY = screenH - bottomBarH + (bottomBarH - btn.Y) * 0.5f;
         ImGui.SetCursorPos(new Vector2(margin, btnY));
-        if (UiButton.Back("Back", btn) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+        if (UiButton.Back("Back", btn) || (!popupOpen && ImGui.IsKeyPressed(ImGuiKey.Escape, false)))
         {
             _generation++;
             OnBack?.Invoke();
         }
-        ImGui.SetCursorPos(new Vector2(screenW - margin - btn.X, btnY));
-        ImGui.BeginDisabled(_entries.Count == 0);
-        if (UiButton.Confirm("Load", btn)) loadNow = true;
-        ImGui.EndDisabled();
+        ImGui.SameLine(0f, 16f);
+        ImGui.SetCursorPosY(btnY + (btn.Y - ImGui.GetTextLineHeight()) / 2f);
+        UiText.Disabled("Saves made before round 1 show \"can't be resumed\". Campaign and Quest campaign "
+            + "progress lives in their own screens, not here.", wrap: false);
 
         ImGui.End();
         ImGui.PopStyleColor();
@@ -263,21 +351,138 @@ public sealed class LoadGameScreen : IAppScreen
         if (_error.Length > 0)
         {
             Vector2 es = ImGui.CalcTextSize(_error);
-            ImGui.GetForegroundDrawList().AddText(new Vector2((screenW - es.X) / 2f, screenH - bottomBarH / 2f - es.Y / 2f),
+            ImGui.GetForegroundDrawList().AddText(new Vector2((screenW - es.X) / 2f, bodyY + bodyH - es.Y - 4f),
                 ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.55f, 0.45f, 1f)), _error);
         }
 
-        if (loadNow && _selected >= 0 && _selected < _entries.Count && _entries[_selected].Summary is { CanResume: false })
+        if (loadNow && current?.Summary is { CanResume: false })
         {
             ShowError("That game was saved before round 1 started, so it can't be resumed.");
             loadNow = false;
         }
         if (loadNow) _error = "";
-        if (loadNow && _selected >= 0 && _selected < _entries.Count && _entries[_selected].Error == null)
+        if (loadNow && current != null && current.Error == null)
         {
             _generation++;
-            OnLoad?.Invoke(_entries[_selected].Path);
+            OnLoad?.Invoke(current.Path);
         }
+    }
+
+    private const string DeletePopup = "Delete this saved game?";
+
+    /// <summary>The selected save in full: big board, "Army vs Army", its details, Delete and LOAD.
+    /// Returns true when LOAD was pressed; <paramref name="deleteClicked"/> when Delete was.</summary>
+    private static bool DrawDetail(SaveEntry? e, float width, ImFontPtr headFont, out bool deleteClicked)
+    {
+        deleteClicked = false;
+        if (e == null)
+        {
+            UiText.Disabled("Pick a saved game on the left.");
+            return false;
+        }
+        SaveSummary? s = e.Summary;
+        float inner = ImGui.GetContentRegionAvail().X;
+
+        // Big board picture, shaped like the save's own table.
+        float tw = s?.TableW ?? GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
+        float th = s?.TableH ?? GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
+        float boardH = MathF.Min(inner * th / tw, ImGui.GetContentRegionAvail().Y * 0.45f);
+        Vector2 b0 = ImGui.GetCursorScreenPos();
+        ImGui.Dummy(new Vector2(inner, boardH));
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        if (s != null) DrawBoard(dl, s, b0, b0 + new Vector2(inner, boardH));
+        else
+        {
+            string msg = e.Error != null ? "Could not read this save" : "Reading...";
+            Vector2 ts = ImGui.CalcTextSize(msg);
+            dl.AddText(b0 + new Vector2(inner, boardH) / 2f - ts / 2f, TextDim, msg);
+        }
+
+        ImGui.Spacing();
+        ImGui.PushFont(headFont);
+        ImGui.PushTextWrapPos(0f);
+        ImGui.TextUnformatted(s != null && s.ArmyNames.Count > 0 ? string.Join(" vs ", s.ArmyNames) : e.Title);
+        ImGui.PopTextWrapPos();
+        ImGui.PopFont();
+        ImGui.Spacing();
+
+        if (s != null && ImGui.BeginTable("##savefacts", 2, ImGuiTableFlags.SizingStretchProp))
+        {
+            ImGui.TableSetupColumn("k", ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("Objectives").X + 16f);
+            ImGui.TableSetupColumn("v", ImGuiTableColumnFlags.WidthStretch);
+            void Row(string k, string v)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0); UiText.Disabled(k, wrap: false);
+                ImGui.TableSetColumnIndex(1); ImGui.PushTextWrapPos(0f); ImGui.TextUnformatted(v); ImGui.PopTextWrapPos();
+            }
+            Row("Game", s.GameLabel.Length > 0 ? $"{s.GameLabel} - {s.ModeLabel}" : s.ModeLabel);
+            Row("Round", s.RoundLabel);
+            Row("Score", "Objectives held " + string.Join(" vs ", s.Scores)
+                + (s.HordePoints is int hp ? $" (Horde {hp} pts earned)" : ""));
+            if (s.Vp != null) Row("VP", string.Join(" vs ", s.Vp));
+            bool samePoints = s.PointsLimits.Count == 0 || s.PointsLimits.All(pl => pl == s.PointsLimits[0] || pl == 0);
+            Row("Points", samePoints ? $"{s.ArmyPoints} pts" : string.Join(" vs ", s.PointsLimits) + " pts");
+            Row("Players", string.Join(", ", s.PlayerNames.Select((n, i) =>
+                i < s.Factions.Count ? $"{n} ({s.Factions[i]})" : n)));
+            Row("Saved", e.Saved.ToString("MMM d, yyyy h:mm tt"));
+            Row("File", e.Title);
+            ImGui.EndTable();
+        }
+        else if (e.Error != null)
+        {
+            UiText.Colored(new Vector4(1f, 0.55f, 0.45f, 1f), e.Error);
+        }
+
+        // Delete and LOAD pinned to the bottom of the panel.
+        float rowH = MathF.Max(44f, ImGui.GetFrameHeight() * 1.8f);
+        float y = ImGui.GetWindowHeight() - ImGui.GetStyle().WindowPadding.Y - rowH;
+        if (ImGui.GetCursorPosY() < y) ImGui.SetCursorPosY(y);
+        float delW = MathF.Max(110f, inner * 0.28f);
+        if (UiButton.Back("Delete", new Vector2(delW, rowH))) deleteClicked = true;
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Delete this saved game from disk. Asks first.");
+        ImGui.SameLine();
+        ImGui.BeginDisabled(s is { CanResume: false } || e.Error != null);
+        bool load = UiButton.Confirm("LOAD", new Vector2(ImGui.GetContentRegionAvail().X, rowH));
+        ImGui.EndDisabled();
+        return load;
+    }
+
+    private void DrawDeletePopup()
+    {
+        if (!ImGui.BeginPopupModal(DeletePopup, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+        {
+            return;
+        }
+        SaveEntry? target = _entries.FirstOrDefault(x => x.Path == _deleteAsked);
+        ImGui.TextUnformatted($"Delete \"{target?.Title ?? "this save"}\"?");
+        UiText.Disabled("The file is removed from disk. This can't be undone.", wrap: false);
+        ImGui.Spacing();
+        if (UiButton.Back("Keep it", new Vector2(140, 0)) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+        {
+            _deleteAsked = null;
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.SameLine();
+        if (UiButton.Confirm("Delete", new Vector2(140, 0)) && target != null)
+        {
+            try
+            {
+                File.Delete(target.Path);
+                int at = _entries.IndexOf(target);
+                _entries.Remove(target);
+                // Select the next save along, so a run of deletes doesn't jump back to the top.
+                _selectedPath = _entries.Count == 0 ? null : _entries[Math.Min(at, _entries.Count - 1)].Path;
+                _error = "";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _error = "Couldn't delete that save: " + ex.Message;
+            }
+            _deleteAsked = null;
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.EndPopup();
     }
 
     /// <summary>Draws one tile at the current cursor. Returns true when it was clicked.</summary>
@@ -306,10 +511,9 @@ public sealed class LoadGameScreen : IAppScreen
             dl.AddText((boardMin + boardMax) / 2f - ts / 2f, TextDim, msg);
         }
 
-        // Text block under the board, word-wrapped to the tile width.
-        float big = MathF.Max(15f, w * 0.075f);
-        float mid = MathF.Max(13f, w * 0.052f);
-        float small = MathF.Max(12f, w * 0.040f);
+        // Text block under the board: title, game - mode - round, date.
+        float big = ImGui.GetFontSize() * 1.1f;
+        float small = ImGui.GetFontSize();
         ImFontPtr body = ImGui.GetFont();
         float x = p0.X + pad;
         float y = p0.Y + previewH + 2f;
@@ -317,17 +521,11 @@ public sealed class LoadGameScreen : IAppScreen
 
         if (s != null)
         {
-            string factions = string.Join(" vs ", s.Factions.Select(Abbreviate));
-            y = DrawWrapped(dl, headFont, big, x, y, maxW, TextBright, factions);
-
-            bool samePoints = s.PointsLimits.Count == 0 || s.PointsLimits.All(pl => pl == s.PointsLimits[0] || pl == 0);
-            string points = samePoints ? $"{s.ArmyPoints} pts" : string.Join(" vs ", s.PointsLimits) + " pts";
-            string score = "Score " + string.Join(" vs ", s.Scores);
-            if (s.HordePoints is int hp) score += $" (Horde {hp})";
-            y = DrawWrapped(dl, headFont, mid, x, y, maxW, TextBright, $"{points}  -  {score}");
-
-            DrawWrapped(dl, body, small, x, y, maxW, TextDim,
-                $"{s.ModeLabel} - {s.RoundLabel} - {e.Title} - {e.Saved:MMM d, yyyy h:mm tt}");
+            string title = string.Join(" vs ", s.Factions.Select(Abbreviate));
+            y = DrawWrapped(dl, headFont, big, x, y, maxW, TextBright, title);
+            string game = s.GameLabel.Length > 0 ? s.GameLabel + " - " : "";
+            y = DrawWrapped(dl, body, small, x, y, maxW, TextBright, $"{game}{s.ModeLabel} - {s.RoundLabel}");
+            DrawWrapped(dl, body, small, x, y, maxW, TextDim, e.Saved.ToString("MMM d, yyyy h:mm tt"));
         }
         else
         {
@@ -390,8 +588,8 @@ public sealed class LoadGameScreen : IAppScreen
     /// <summary>A flat top-down picture of the saved board, fitted into the given rectangle.</summary>
     private static void DrawBoard(ImDrawListPtr dl, SaveSummary s, Vector2 min, Vector2 max)
     {
-        float tw = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
-        float th = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
+        float tw = s.TableW;
+        float th = s.TableH;
         Vector2 avail = max - min;
         float scale = MathF.Max(0.1f, MathF.Min(avail.X / tw, avail.Y / th));
         int ox = (int)(min.X + (avail.X - tw * scale) / 2f);

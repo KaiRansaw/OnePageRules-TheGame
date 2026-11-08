@@ -9,16 +9,19 @@ using Raylib_cs;
 namespace FdgRaylib.Rendering;
 
 /// <summary>
-/// The 2D map maker, opened from the Play (lobby) screen's Custom Map picker. It takes over the screen
-/// while open: tools and the selected item's settings on the left, the 6' x 4' board on the right.
+/// The 2D map editor, opened from the Map Maker (Map Maker Mockup, 2026-11-07). It takes over the screen
+/// while open: map name and table size in the top bar, tools and terrain presets on the left, the board
+/// in the middle, the selected piece's settings on the right, Cancel / Save Map along the bottom. Cancel
+/// asks before throwing changes away.
 ///
 /// <para>Tools: Select (click to pick, drag to move), a palette of terrain pieces (building, sandbags,
 /// trees, rocks, rubble, mine field, plain rectangle / circle - click the board to drop one), Objective
-/// (click to drop a marker) and Deployment Zone (drag a rectangle). Right-click goes back to Select;
-/// Delete removes the selected item. Positions snap to half inches.</para>
+/// (click to drop a marker) and Model Base (a size reference). Right-click goes back to Select; Delete
+/// removes the selected item. Positions snap to half inches.</para>
 ///
-/// <para>A map is saved as an ordinary terrain layout (.fdgterrain) in the Maps folder, plus its own
-/// objectives and deployment zones (see <see cref="TerrainLayoutFile.Objectives"/>).</para>
+/// <para>A map is terrain and objectives only, saved as an ordinary terrain layout (.fdgterrain) in the
+/// Maps folder. There is no Deploy Zone tool any more: deployment is picked in the lobby (Kai,
+/// 2026-11-07). Zones an older map carries are ignored by the game and dropped when it is saved here.</para>
 /// </summary>
 public sealed class MapEditor
 {
@@ -89,38 +92,6 @@ public sealed class MapEditor
         public Piece Clone() => (Piece)MemberwiseClone();
     }
 
-    /// <summary>
-    /// A deployment zone being drawn: one rectangle, or several joined into an L, a T or any other
-    /// rectilinear shape (Kai, 2026-11-02 - "what if I wanted to do an L shaped deployment zone?").
-    /// </summary>
-    private sealed class Zone
-    {
-        public readonly List<ZoneRect> Parts = new();
-
-        /// <summary>The first rectangle, which is the one the properties panel edits.</summary>
-        public ZoneRect Main => Parts[0];
-
-        public float L => Parts.Min(p => MathF.Min(p.L, p.R));
-        public float R => Parts.Max(p => MathF.Max(p.L, p.R));
-        public float B => Parts.Min(p => MathF.Min(p.B, p.T));
-        public float T => Parts.Max(p => MathF.Max(p.B, p.T));
-
-        public bool Contains(float x, float z)
-        {
-            foreach (ZoneRect r in Parts)
-            {
-                if (x >= MathF.Min(r.L, r.R) && x <= MathF.Max(r.L, r.R)
-                    && z >= MathF.Min(r.B, r.T) && z <= MathF.Max(r.B, r.T)) return true;
-            }
-            return false;
-        }
-
-        public static Zone Of(float l, float r, float b, float t) =>
-            new() { Parts = { new ZoneRect { L = l, R = r, B = b, T = t } } };
-    }
-
-    private sealed class ZoneRect { public float L, R, B, T; }
-
     private sealed record Preset(string Label, string Name, ETerrainType Type, bool Circle,
         float W, float D, float R, float Height, int Points);
 
@@ -139,7 +110,12 @@ public sealed class MapEditor
 
     private readonly List<Piece> _pieces = new();
     private readonly List<Vector2> _objectives = new();   // X = table x, Y = table z
-    private readonly List<Zone> _zones = new();
+
+    /// <summary>How many deployment zones the opened file carried (old maps). Shown, never edited or saved.</summary>
+    private int _legacyZones;
+
+    /// <summary>The map as it was when opened (or last saved), to tell whether Cancel would lose anything.</summary>
+    private string _openedAs = "";
 
     /// <summary>
     /// Model bases dropped on the board purely as size references (Kai, 2026-11-02): can a unit
@@ -155,15 +131,14 @@ public sealed class MapEditor
     private bool _focusWanted;
 
     // ── Tools and selection ───────────────────────────────────────────────────────────────────────────
-    private enum ETool { Select, Place, Objective, DeployZone, BaseMarker }
-    private enum ESel { None, Piece, Objective, Zone, BaseMarker }
+    private enum ETool { Select, Place, Objective, BaseMarker }
+    private enum ESel { None, Piece, Objective, BaseMarker }
     private ETool _tool = ETool.Select;
     private Preset? _preset;
     private ESel _selKind = ESel.None;
     private int _selIndex = -1;
     private bool _dragging;
     private Vector2 _dragOffset;
-    private Vector2? _zoneStart;
     private BasePreset _basePreset = BasePresets[1];
 
     /// <summary>
@@ -203,10 +178,7 @@ public sealed class MapEditor
     {
         Reset();
         _name = "New Map";
-        // Start from the standard long-edge deployment zones so a new map is playable straight away.
-        float d = GameWideConstants.DEPLOYMENT_DISTANCE_INCHES;
-        _zones.Add(Zone.Of(0, TW, 0, d));
-        _zones.Add(Zone.Of(0, TW, TH - d, TH));
+        _openedAs = Snapshot();
         IsOpen = true;
     }
 
@@ -229,22 +201,19 @@ public sealed class MapEditor
             if (e.Shape != null) _pieces.Add(FromEntry(e));
         foreach (MapObjectiveEntry o in layout.Objectives ?? new())
             _objectives.Add(new Vector2(o.X, o.Z));
-        foreach (MapDeploymentZoneEntry z in layout.DeploymentZones ?? new())
-        {
-            var zone = new Zone();
-            foreach (MapZoneRect r in z.AllParts())
-                zone.Parts.Add(new ZoneRect { L = r.Left, R = r.Right, B = r.Bottom, T = r.Top });
-            _zones.Add(zone);
-        }
+        _legacyZones = layout.DeploymentZones?.Count ?? 0;
         foreach (MapBaseMarkerEntry m in layout.BaseMarkers ?? new())
             _baseMarkers.Add(m);
+        // Taken after the load, without the old zones: opening an old map and pressing Cancel loses nothing
+        // the game would ever have used, so it must not ask.
+        _openedAs = Snapshot();
         IsOpen = true;
     }
 
     private void Reset()
     {
         _boardZoom = 1f; _boardPan = Vector2.Zero;
-        _pieces.Clear(); _objectives.Clear(); _zones.Clear();
+        _pieces.Clear(); _objectives.Clear(); _legacyZones = 0;
         _path = null; _status = "";
         _focusWanted = true;
         TW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES;
@@ -252,7 +221,7 @@ public sealed class MapEditor
         _baseMarkers.Clear();
         _tool = ETool.Select; _preset = null;
         _selKind = ESel.None; _selIndex = -1;
-        _dragging = false; _zoneStart = null;
+        _dragging = false;
     }
 
     private Piece FromEntry(TerrainPieceEntry e)
@@ -326,29 +295,19 @@ public sealed class MapEditor
             Points = p.Points,
         }).ToList(),
         Objectives = _objectives.Select(o => new MapObjectiveEntry { X = o.X, Z = o.Y }).ToList(),
-        DeploymentZones = _zones.Select(z =>
-        {
-            // The first piece goes in the four plain fields, the rest in ExtraParts - so an ordinary
-            // one-rectangle zone writes exactly the file it always did, and anything reading only the
-            // four edges still gets a sensible rectangle.
-            ZoneRect first = z.Main;
-            return new MapDeploymentZoneEntry
-            {
-                Left = MathF.Min(first.L, first.R), Right = MathF.Max(first.L, first.R),
-                Bottom = MathF.Min(first.B, first.T), Top = MathF.Max(first.B, first.T),
-                ExtraParts = z.Parts.Skip(1).Select(r => new MapZoneRect
-                {
-                    Left = MathF.Min(r.L, r.R), Right = MathF.Max(r.L, r.R),
-                    Bottom = MathF.Min(r.B, r.T), Top = MathF.Max(r.B, r.T),
-                }).ToList(),
-            };
-        }).ToList(),
+        // Never written: deployment is the lobby's pick (Kai, 2026-11-07).
+        DeploymentZones = new List<MapDeploymentZoneEntry>(),
     };
+
+    /// <summary>The map as it would be saved, as text - two equal snapshots mean nothing changed.</summary>
+    private string Snapshot() => TerrainLoader.SerializeToJson(BuildLayout());
+
+    /// <summary>True when Cancel would throw something away.</summary>
+    private bool HasUnsavedChanges => Snapshot() != _openedAs;
 
     private bool TrySave()
     {
         if (string.IsNullOrWhiteSpace(_name)) { _status = "Give the map a name first."; return false; }
-        if (_zones.Count == 1) { _status = "Add a second deployment zone (or remove the only one to use the standard zones)."; return false; }
         try
         {
             string path = MapPaths.Save(BuildLayout(), _path);
@@ -372,8 +331,6 @@ public sealed class MapEditor
     private static uint U32(int r, int g, int b, int a = 255) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(r / 255f, g / 255f, b / 255f, a / 255f));
 
-    private static readonly uint[] ZoneFill = { U32(80, 160, 255, 70), U32(255, 110, 90, 70), U32(90, 220, 120, 70), U32(240, 210, 80, 70) };
-    private static readonly uint[] ZoneLine = { U32(80, 160, 255, 220), U32(255, 110, 90, 220), U32(90, 220, 120, 220), U32(240, 210, 80, 220) };
     private static readonly uint SelectColor = U32(255, 235, 60);
 
     public void Draw(int screenW, int screenH)
@@ -400,24 +357,47 @@ public sealed class MapEditor
                                    ImGuiWindowFlags.NoScrollWithMouse);
 
         float margin = 12f;
-        float panelW = MathF.Max(300f, screenW * 0.22f);
+        float topH = MathF.Max(56f, ImGui.GetFrameHeight() * 2.2f);
+        float footH = MathF.Max(64f, ImGui.GetFrameHeight() * 2.6f);
+        float leftW = MathF.Max(250f, screenW * 0.16f);
+        float rightW = MathF.Max(290f, screenW * 0.19f);
+        float bodyY = topH + margin;
+        float bodyH = screenH - bodyY - footH - margin;
 
-        // Left panel: name, tools, selected item, save/cancel.
+        // Top bar: title, map name, table size, counts.
         ImGui.SetCursorPos(new Vector2(margin, margin));
-        ImGui.BeginChild("##mapTools", new Vector2(panelW, screenH - margin * 2f), ImGuiChildFlags.Borders,
+        ImGui.BeginChild("##mapTop", new Vector2(screenW - margin * 2f, topH - margin), ImGuiChildFlags.None,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.BeginChild("##mapToolsBody", new Vector2(0f, MathF.Max(40f, ImGui.GetContentRegionAvail().Y - ToolFooterHeight())));
+        DrawTopBar();
+        ImGui.EndChild();
+
+        // Left: tools and terrain presets.
+        ImGui.SetCursorPos(new Vector2(margin, bodyY));
+        ImGui.BeginChild("##mapTools", new Vector2(leftW, bodyH), ImGuiChildFlags.Borders);
         DrawToolPanel();
         ImGui.EndChild();
-        DrawToolFooter();
-        ImGui.EndChild();
 
-        // Right: the board.
-        ImGui.SetCursorPos(new Vector2(margin * 2f + panelW, margin));
-        ImGui.BeginChild("##mapBoard", new Vector2(screenW - panelW - margin * 3f, screenH - margin * 2f),
+        // Middle: the board.
+        float boardW = screenW - leftW - rightW - margin * 4f;
+        ImGui.SetCursorPos(new Vector2(margin * 2f + leftW, bodyY));
+        ImGui.BeginChild("##mapBoard", new Vector2(boardW, bodyH),
             ImGuiChildFlags.Borders, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawBoard();
         ImGui.EndChild();
+
+        // Right: the selected piece's settings, then the counts and hints.
+        ImGui.SetCursorPos(new Vector2(screenW - margin - rightW, bodyY));
+        ImGui.BeginChild("##mapSelected", new Vector2(rightW, bodyH), ImGuiChildFlags.Borders);
+        DrawSelectionProperties();
+        ImGui.Separator();
+        DrawHints();
+        ImGui.EndChild();
+
+        // Footer: Cancel, the status line, Save Map.
+        ImGui.SetCursorPos(new Vector2(margin, screenH - footH));
+        DrawFooter(screenW - margin * 2f, footH - margin);
+
+        DrawConfirmPopups();
 
         // Keyboard: Delete removes the selection (not while typing in a text box).
         if (!ImGui.GetIO().WantTextInput && ImGui.IsKeyPressed(ImGuiKey.Delete, false)) DeleteSelected();
@@ -426,34 +406,49 @@ public sealed class MapEditor
         ImGui.PopStyleColor();
     }
 
+    private void DrawTopBar()
+    {
+        float rowY = ImGui.GetCursorPosY();
+        ImGui.PushFont(RaylibRenderer.LargeFont);
+        ImGui.TextUnformatted(_path == null ? "MAP MAKER - New map" : "MAP MAKER - Editing");
+        ImGui.PopFont();
+        float frameY = rowY + MathF.Max(0f, (ImGui.GetItemRectSize().Y - ImGui.GetFrameHeight()) / 2f);
+
+        ImGui.SameLine(0f, 20f);
+        ImGui.SetCursorPosY(frameY);
+        ImGui.SetNextItemWidth(MathF.Min(320f, ImGui.GetContentRegionAvail().X * 0.3f));
+        ImGui.InputTextWithHint("##mapName", "Map name", ref _name, 64);
+        if (ImGui.IsItemHovered()) UiText.Tooltip("The map's name, as the map lists show it.");
+
+        ImGui.SameLine(0f, 16f);
+        ImGui.SetCursorPosY(frameY);
+        DrawTableSizePicker();
+
+        string counts = $"{_pieces.Count} terrain - {_objectives.Count} objectives"
+            + (_baseMarkers.Count > 0 ? $" - {_baseMarkers.Count} base refs" : "");
+        float cw = ImGui.CalcTextSize(counts).X;
+        ImGui.SameLine(MathF.Max(ImGui.GetCursorPosX() + 16f, ImGui.GetWindowWidth() - cw - 8f));
+        ImGui.SetCursorPosY(frameY + (ImGui.GetFrameHeight() - ImGui.GetTextLineHeight()) / 2f);
+        UiText.Disabled(counts, wrap: false);
+    }
+
     private void DrawToolPanel()
     {
-        ImGui.TextUnformatted(_path == null ? "MAP MAKER - New map" : "MAP MAKER - Editing");
-        ImGui.Separator();
-
-        ImGui.TextUnformatted("Map name");
-        ImGui.SetNextItemWidth(-1);
-        ImGui.InputText("##mapName", ref _name, 64);
-        ImGui.Spacing();
-
-        DrawTableSizePicker();
-        ImGui.Spacing();
-
-        // Tools.
-        UiText.Disabled("Tools  (right-click the board to go back to Select)");
-        float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
-        Vector2 btn = new(half, 0f);
-        if (ToolButton("Select / Move", _tool == ETool.Select, btn)) SetTool(ETool.Select);
-        ImGui.SameLine();
-        if (ToolButton("Objective", _tool == ETool.Objective, btn)) SetTool(ETool.Objective);
-        if (ToolButton("Deploy Zone", _tool == ETool.DeployZone, btn)) SetTool(ETool.DeployZone);
-        ImGui.SameLine();
-        if (ToolButton("Model Base", _tool == ETool.BaseMarker, btn)) SetTool(ETool.BaseMarker);
+        UiText.Disabled("TOOLS  (right-click the board for Select)");
+        Vector2 full = new(-1f, 0f);
+        if (ToolButton("Select / Move", _tool == ETool.Select, full)) SetTool(ETool.Select);
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Click a piece, objective or base to select it; drag to move it.");
+        if (ToolButton("Objective", _tool == ETool.Objective, full)) SetTool(ETool.Objective);
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Click the board to drop an objective marker.");
+        if (ToolButton("Model Base (size guide)", _tool == ETool.BaseMarker, full)) SetTool(ETool.BaseMarker);
         if (ImGui.IsItemHovered())
             UiText.Tooltip("Drop a model's base on the table to see how big things really are -\n" +
                            "whether a squad fits through that gap, how much of the board a\n" +
                            "unit covers. Saved with the map; the game ignores them entirely.");
-        if (ToolButton("Clear Board", false, btn)) ImGui.OpenPopup("Clear the whole board?");
+        // Opened from DrawConfirmPopups, at the editor window's own level: a popup opened inside this child
+        // panel would have a different ID from the one the editor's window looks for, and never show.
+        if (ToolButton("Clear Board", false, full)) _askClear = true;
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Remove every terrain piece, objective and base reference. Asks first.");
 
         if (_tool == ETool.BaseMarker)
         {
@@ -471,7 +466,9 @@ public sealed class MapEditor
         }
 
         ImGui.Spacing();
-        UiText.Disabled("Terrain  (click the board to place)");
+        UiText.Disabled("TERRAIN  (click the board to place)");
+        float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
+        Vector2 btn = new(half, 0f);
         for (int i = 0; i < Presets.Length; i++)
         {
             if (i % 2 == 1) ImGui.SameLine();
@@ -480,60 +477,91 @@ public sealed class MapEditor
                 SetTool(ETool.Place);
                 _preset = Presets[i];
             }
+            if (ImGui.IsItemHovered()) UiText.Tooltip(PresetHover(Presets[i]));
         }
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        DrawSelectionProperties();
-
-        // Counts + hints.
-        ImGui.Separator();
-        UiText.Disabled($"{_pieces.Count} terrain, {_objectives.Count} objectives, {_zones.Count} deploy zones"
-            + (_baseMarkers.Count > 0 ? $", {_baseMarkers.Count} base refs" : ""));
-        if (_objectives.Count == 0)
-            ImGui.TextWrapped("No objectives: the game rolls D3+2 and places them as usual.");
-        if (_zones.Count == 0)
-            ImGui.TextWrapped("No deploy zones: the standard zones along the long edges are used.");
-
-        DrawConfirmPopups();
     }
 
-    /// <summary>The panel's footer height: the status line (when there is one) and the Save / Cancel row.</summary>
-    private float ToolFooterHeight() =>
-        ImGui.GetFrameHeight() * 1.6f + ImGui.GetStyle().ItemSpacing.Y * 2f
-        + (_status.Length > 0 ? ImGui.GetTextLineHeightWithSpacing() * 2f : 0f);
-
-    /// <summary>
-    /// Save / Cancel, always visible under the scrolling tools (2026-11-06: at 1280x720 the tools ran past
-    /// the bottom and took Save and Cancel with them once something was selected).
-    /// </summary>
-    private void DrawToolFooter()
+    /// <summary>A terrain preset's hover: what it drops and the terrain types it starts with.</summary>
+    private static string PresetHover(Preset p)
     {
-        float half = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
-        float rowH = ImGui.GetFrameHeight() * 1.6f;
+        var types = Enum.GetValues<ETerrainType>().Where(t => t != 0 && p.Type.HasFlag(t)).Select(t => t.ToString());
+        string size = p.Circle ? $"{p.R * 2f:0.#}\" across" : $"{p.W:0.#}\" x {p.D:0.#}\"";
+        return $"{p.Name}, {size}: {string.Join(", ", types)}. Change any of it once placed.";
+    }
+
+    /// <summary>The counts' explanations: what the game does when the map leaves something out.</summary>
+    private void DrawHints()
+    {
+        ImGui.PushTextWrapPos(0f);
+        if (_objectives.Count == 0)
+            UiText.Disabled("No objectives: the game rolls D3+2 and places them.");
+        UiText.Disabled("Deployment is not part of a map - it is picked in the lobby.");
+        if (_legacyZones > 0)
+            UiText.Colored(new Vector4(1f, 0.75f, 0.4f, 1f),
+                $"This map was drawn with {_legacyZones} deployment zone{(_legacyZones == 1 ? "" : "s")}. "
+                + "Games ignore them, and saving removes them.");
+        ImGui.PopTextWrapPos();
+    }
+
+    private const string DiscardPopup = "Throw away your changes?";
+
+    private void DrawFooter(float width, float height)
+    {
+        float rowH = MathF.Min(height, 48f);
+        Vector2 cancel = new(140f, rowH), save = new(200f, rowH);
+        float x0 = ImGui.GetCursorPosX(), y0 = ImGui.GetCursorPosY();
+        if (UiButton.Back("Cancel", cancel))
+        {
+            if (HasUnsavedChanges) ImGui.OpenPopup(DiscardPopup);
+            else IsOpen = false;
+        }
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Leave without saving. Asks first if you changed anything.");
         if (_status.Length > 0)
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.55f, 0.45f, 1f));
-            ImGui.TextWrapped(_status);
-            ImGui.PopStyleColor();
+            ImGui.SameLine(0f, 16f);
+            ImGui.SetCursorPosY(y0 + (rowH - ImGui.GetTextLineHeight()) / 2f);
+            UiText.Colored(new Vector4(1f, 0.55f, 0.45f, 1f), _status, wrap: false);
         }
-        Vector2 big = new(half, rowH);
-        if (UiButton.Back("Cancel", big)) { IsOpen = false; }
-        ImGui.SameLine();
-        if (UiButton.Confirm("Save Map", big)) TrySave();
+        ImGui.SameLine(MathF.Max(ImGui.GetCursorPosX() + 16f, x0 + width - save.X));
+        ImGui.SetCursorPosY(y0);
+        if (UiButton.Confirm("Save Map", save)) TrySave();
     }
+
+    /// <summary>Clear Board was pressed this frame (the popup is opened at the editor window's level).</summary>
+    private bool _askClear;
 
     private void DrawConfirmPopups()
     {
+        if (_askClear)
+        {
+            ImGui.OpenPopup("Clear the whole board?");
+            _askClear = false;
+        }
+
+        // Cancel with unsaved changes.
+        if (ImGui.BeginPopupModal(DiscardPopup, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+        {
+            ImGui.TextUnformatted("You have changes that are not saved. Throw them away?");
+            if (UiButton.Back("Keep editing", new Vector2(150, 0)) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+                ImGui.CloseCurrentPopup();
+            ImGui.SameLine();
+            if (UiButton.Confirm("Throw away", new Vector2(150, 0)))
+            {
+                IsOpen = false;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
+
         // Confirm popup for Clear Board.
         if (ImGui.BeginPopupModal("Clear the whole board?", ImGuiWindowFlags.AlwaysAutoResize))
         {
-            ImGui.TextUnformatted("Remove all terrain, objectives, deployment zones and base refs?");
+            ImGui.TextUnformatted("Remove all terrain, objectives and base refs?");
             if (UiButton.Back("No", new Vector2(120, 0))) ImGui.CloseCurrentPopup();
             ImGui.SameLine();
             if (UiButton.Confirm("Yes, clear", new Vector2(120, 0)))
             {
-                _pieces.Clear(); _objectives.Clear(); _zones.Clear(); _baseMarkers.Clear();
+                _pieces.Clear(); _objectives.Clear(); _baseMarkers.Clear();
                 Deselect();
                 ImGui.CloseCurrentPopup();
             }
@@ -556,9 +584,7 @@ public sealed class MapEditor
     /// </summary>
     private void DrawTableSizePicker()
     {
-        ImGui.TextUnformatted("Table size");
-        float w = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X
-                   * (TableSizes.Length - 1)) / TableSizes.Length;
+        float w = ImGui.CalcTextSize("6' x 4'").X + 28f;
 
         for (int i = 0; i < TableSizes.Length; i++)
         {
@@ -593,16 +619,6 @@ public sealed class MapEditor
             if (!Nearly(c.X, o.X) || !Nearly(c.Y, o.Y)) moved++;
             _objectives[i] = c;
         }
-        foreach (Zone z in _zones)
-        {
-            foreach (ZoneRect part in z.Parts)
-            {
-                float l = Math.Clamp(part.L, 0f, TW), r = Math.Clamp(part.R, 0f, TW);
-                float b = Math.Clamp(part.B, 0f, TH), t = Math.Clamp(part.T, 0f, TH);
-                if (!Nearly(l, part.L) || !Nearly(r, part.R) || !Nearly(b, part.B) || !Nearly(t, part.T)) moved++;
-                part.L = l; part.R = r; part.B = b; part.T = t;
-            }
-        }
         foreach (MapBaseMarkerEntry m in _baseMarkers)
         {
             float x = Math.Clamp(m.X, 0f, TW), z = Math.Clamp(m.Z, 0f, TH);
@@ -633,7 +649,6 @@ public sealed class MapEditor
     {
         _tool = tool;
         _preset = null;
-        _zoneStart = null;
         _dragging = false;
     }
 
@@ -650,7 +665,6 @@ public sealed class MapEditor
         {
             case ESel.Piece when _selIndex < _pieces.Count: _pieces.RemoveAt(_selIndex); break;
             case ESel.Objective when _selIndex < _objectives.Count: _objectives.RemoveAt(_selIndex); break;
-            case ESel.Zone when _selIndex < _zones.Count: _zones.RemoveAt(_selIndex); break;
             case ESel.BaseMarker when _selIndex < _baseMarkers.Count: _baseMarkers.RemoveAt(_selIndex); break;
         }
         Deselect();
@@ -663,7 +677,7 @@ public sealed class MapEditor
             case ESel.Piece when _selIndex >= 0 && _selIndex < _pieces.Count:
             {
                 Piece p = _pieces[_selIndex];
-                ImGui.TextUnformatted("Selected terrain");
+                UiText.Disabled("SELECTED: " + (p.Name.Length > 0 ? p.Name.ToUpperInvariant() : "TERRAIN"));
                 ImGui.SetNextItemWidth(-1);
                 ImGui.InputText("##pieceName", ref p.Name, 48);
 
@@ -715,31 +729,6 @@ public sealed class MapEditor
                 if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
                 break;
             }
-            case ESel.Zone when _selIndex >= 0 && _selIndex < _zones.Count:
-            {
-                Zone z = _zones[_selIndex];
-                ImGui.TextUnformatted($"Selected deploy zone {_selIndex + 1}");
-                ZoneRect main = z.Main;
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Left", ref main.L, 0.25f, 0f, TW, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Right", ref main.R, 0.25f, 0f, TW, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Bottom", ref main.B, 0.25f, 0f, TH, "%.1f in");
-                ImGui.SetNextItemWidth(-90); ImGui.DragFloat("Top", ref main.T, 0.25f, 0f, TH, "%.1f in");
-
-                if (z.Parts.Count > 1)
-                {
-                    UiText.Disabled($"Plus {z.Parts.Count - 1} more piece(s) - an L or T shape.");
-                    if (UiButton.NavigateSmall("Remove last piece") && z.Parts.Count > 1)
-                        z.Parts.RemoveAt(z.Parts.Count - 1);
-                }
-                else
-                {
-                    UiText.Disabled("Shift+drag to add another piece and make an L shape.");
-                }
-
-                UiText.Disabled("Zone 1 goes to the first team to pick, and so on.");
-                if (UiButton.Back("Delete", new Vector2(120, 0))) DeleteSelected();
-                break;
-            }
             case ESel.BaseMarker when _selIndex >= 0 && _selIndex < _baseMarkers.Count:
             {
                 MapBaseMarkerEntry m = _baseMarkers[_selIndex];
@@ -761,7 +750,8 @@ public sealed class MapEditor
                 break;
             }
             default:
-                UiText.Disabled("Nothing selected. Use Select / Move and click\nsomething on the board to edit it.");
+                UiText.Disabled("SELECTED: NOTHING");
+                UiText.Wrapped("Use Select / Move and click something on the board to edit it here.");
                 break;
         }
     }
@@ -802,25 +792,6 @@ public sealed class MapEditor
 
         dl.PushClipRect(tl, br, true);
 
-        // Deployment zones (under everything else).
-        for (int i = 0; i < _zones.Count; i++)
-        {
-            Zone z = _zones[i];
-            // Every piece of the zone, so an L draws as an L. Each is filled and outlined in the
-            // zone's own colour; the pieces sharing a colour is what reads them as one zone.
-            foreach (ZoneRect r in z.Parts)
-            {
-                Vector2 pa = P(MathF.Min(r.L, r.R), MathF.Max(r.B, r.T));
-                Vector2 pb = P(MathF.Max(r.L, r.R), MathF.Min(r.B, r.T));
-                dl.AddRectFilled(pa, pb, ZoneFill[i % ZoneFill.Length]);
-                dl.AddRect(pa, pb, ZoneLine[i % ZoneLine.Length], 0f, ImDrawFlags.None, 2f);
-                if (_selKind == ESel.Zone && _selIndex == i)
-                    dl.AddRect(pa, pb, SelectColor, 0f, ImDrawFlags.None, 3f);
-            }
-            Vector2 label = P(MathF.Min(z.L, z.R), MathF.Max(z.B, z.T));
-            dl.AddText(label + new Vector2(6, 4), ZoneLine[i % ZoneLine.Length], $"Deploy {i + 1}");
-        }
-
         // Terrain.
         for (int i = 0; i < _pieces.Count; i++)
         {
@@ -852,7 +823,7 @@ public sealed class MapEditor
             dl.AddText(c - ts / 2f, U32(20, 20, 20), n);
         }
 
-        // Ghosts: the piece about to be placed, or the zone being dragged out.
+        // Ghost: the piece about to be placed.
         if (hovered && _tool == ETool.Place && _preset is Preset pr)
         {
             var ghost = new Piece { Circle = pr.Circle, X = snapped.X, Z = snapped.Y, W = pr.W, D = pr.D, R = pr.R };
@@ -906,14 +877,6 @@ public sealed class MapEditor
                 dl.AddRect(P(snapped.X - h.X, snapped.Y + h.Y), P(snapped.X + h.X, snapped.Y - h.Y),
                     U32(255, 255, 255, 170), 0f, ImDrawFlags.None, 2f);
             }
-        }
-        if (_zoneStart is Vector2 zs)
-        {
-            Vector2 a = P(MathF.Min(zs.X, snapped.X), MathF.Max(zs.Y, snapped.Y));
-            Vector2 b = P(MathF.Max(zs.X, snapped.X), MathF.Min(zs.Y, snapped.Y));
-            int k = _zones.Count;
-            dl.AddRectFilled(a, b, ZoneFill[k % ZoneFill.Length]);
-            dl.AddRect(a, b, ZoneLine[k % ZoneLine.Length], 0f, ImDrawFlags.None, 2f);
         }
         dl.PopClipRect();
 
@@ -998,40 +961,6 @@ public sealed class MapEditor
                 _selKind = ESel.BaseMarker; _selIndex = _baseMarkers.Count - 1;
                 break;
 
-            case ETool.DeployZone:
-                if (pressed) _zoneStart = snapped;
-                else if (_zoneStart is Vector2 start && !down)
-                {
-                    if (MathF.Abs(snapped.X - start.X) >= 1f && MathF.Abs(snapped.Y - start.Y) >= 1f)
-                    {
-                        var rect = new ZoneRect
-                        {
-                            L = MathF.Min(start.X, snapped.X), R = MathF.Max(start.X, snapped.X),
-                            B = MathF.Min(start.Y, snapped.Y), T = MathF.Max(start.Y, snapped.Y),
-                        };
-
-                        // Shift+drag JOINS this rectangle to the selected zone, which is how an L (or a
-                        // T, or anything else rectilinear) gets drawn: block out the long band, then
-                        // shift-drag the arm. Kai, 2026-11-02. Without Shift it is a new zone, which is
-                        // what the tool always did.
-                        bool addToSelected = ImGui.IsKeyDown(ImGuiKey.LeftShift)
-                                          || ImGui.IsKeyDown(ImGuiKey.RightShift);
-                        if (addToSelected && _selKind == ESel.Zone && _selIndex >= 0 && _selIndex < _zones.Count)
-                        {
-                            _zones[_selIndex].Parts.Add(rect);
-                        }
-                        else
-                        {
-                            var zone = new Zone();
-                            zone.Parts.Add(rect);
-                            _zones.Add(zone);
-                            _selKind = ESel.Zone; _selIndex = _zones.Count - 1;
-                        }
-                    }
-                    _zoneStart = null;
-                }
-                break;
-
             case ETool.Select:
                 if (pressed)
                 {
@@ -1049,8 +978,8 @@ public sealed class MapEditor
         }
     }
 
-    /// <summary>Selects the topmost thing under the cursor: objectives first, then terrain (last drawn on
-    /// top), then deployment zones.</summary>
+    /// <summary>Selects the topmost thing under the cursor: base references, objectives, then terrain
+    /// (last drawn on top).</summary>
     private void PickAt(Vector2 m)
     {
         for (int i = _baseMarkers.Count - 1; i >= 0; i--)
@@ -1065,12 +994,6 @@ public sealed class MapEditor
             if (Vector2.Distance(_objectives[i], m) <= ObjectivePickRadius) { _selKind = ESel.Objective; _selIndex = i; return; }
         for (int i = _pieces.Count - 1; i >= 0; i--)
             if (_pieces[i].ToZone().IsPointWithinZone(new Float2(m.X, m.Y))) { _selKind = ESel.Piece; _selIndex = i; return; }
-        for (int i = _zones.Count - 1; i >= 0; i--)
-        {
-            // Any piece of the zone selects it - clicking the arm of an L must select the L, and the
-            // notch must select nothing, which the bounding box would get wrong both ways.
-            if (_zones[i].Contains(m.X, m.Y)) { _selKind = ESel.Zone; _selIndex = i; return; }
-        }
         Deselect();
     }
 
@@ -1087,7 +1010,6 @@ public sealed class MapEditor
         ESel.Piece => new Vector2(_pieces[_selIndex].X, _pieces[_selIndex].Z),
         ESel.Objective => _objectives[_selIndex],
         ESel.BaseMarker => new Vector2(_baseMarkers[_selIndex].X, _baseMarkers[_selIndex].Z),
-        ESel.Zone => new Vector2(MathF.Min(_zones[_selIndex].L, _zones[_selIndex].R), MathF.Min(_zones[_selIndex].B, _zones[_selIndex].T)),
         _ => Vector2.Zero,
     };
 
@@ -1104,21 +1026,6 @@ public sealed class MapEditor
             case ESel.BaseMarker:
                 _baseMarkers[_selIndex].X = t.X; _baseMarkers[_selIndex].Z = t.Y;
                 break;
-            case ESel.Zone:
-            {
-                // The whole zone moves as one, pieces and all - dragging an L must not leave its arm
-                // behind.
-                Zone z = _zones[_selIndex];
-                float w = z.R - z.L, h = z.T - z.B;
-                float l = Math.Clamp(t.X, 0f, TW - w), b = Math.Clamp(t.Y, 0f, TH - h);
-                float dx = l - z.L, dz = b - z.B;
-                foreach (ZoneRect part in z.Parts)
-                {
-                    part.L += dx; part.R += dx;
-                    part.B += dz; part.T += dz;
-                }
-                break;
-            }
         }
     }
 }

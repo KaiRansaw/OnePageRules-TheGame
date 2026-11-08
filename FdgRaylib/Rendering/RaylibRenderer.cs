@@ -1234,8 +1234,12 @@ public class RaylibRenderer
                     : null;
                 // Right column, top to bottom: Active Unit (always open), Actions (every decision the game
                 // asks for), then the tabbed Battle Report / Mission / Game Master window.
-                int infoH = _gameOverResult != null ? 0 : (int)(screenH * UnitInfoHeightFraction);
+                // Kai, 2026-11-07: "I don't want to have to scroll to see all the unit's information." The
+                // Active Unit card is as tall as what it holds (measured last frame), and only falls back to
+                // scrolling when that would squeeze the Actions panel and the tabs off the screen.
                 int actionsH = (int)(screenH * ActionsHeightFraction);
+                int infoH = _gameOverResult != null ? 0
+                    : UnitInfoPanelHeight(_unitInfoContentH, screenH, actionsH);
                 int tabsY = infoH + actionsH;
                 ResolverPanelLayout.Set(rightX, infoH, rightW, actionsH);
 
@@ -2773,22 +2777,22 @@ public class RaylibRenderer
         RoundSummary? card = _summaryShown;
         if (card == null) return;
 
-        float lineH = ImGui.GetTextLineHeightWithSpacing();
-        int lostLines = card.Sides.Sum(s => Math.Max(1, s.UnitsLost?.Count ?? 1));
-        var size = new Vector2(Math.Min(440f, screenW * 0.8f),
-            110f + card.Sides.Count * lineH * 2.2f + lostLines * lineH + 50f);
+        // In-Game Mockup (2026-11-07): "END OF ROUND n", then one line per side - objectives held (and the
+        // change), VP in a mission-card game, and the units it lost this round. All of it is what the engine
+        // recorded for the round (RoundSummaryRecorder); nothing here is worked out by the screen.
+        float width = Math.Min(520f, screenW * 0.8f);
         int areaW = ComputeLayout(screenW, screenH).AreaW;
-        ImGui.SetNextWindowPos(new Vector2((areaW - size.X) / 2f, (screenH - size.Y) / 2f), ImGuiCond.Appearing);
-        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
-        ImGui.Begin($"Round {card.Round} summary##roundsummary",
-            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoSavedSettings);
+        ImGui.SetNextWindowPos(new Vector2((areaW - width) / 2f, screenH * 0.25f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(new Vector2(width, 0f), ImGuiCond.Always);
+        ImGui.Begin($"##roundsummary{card.Round}",
+            ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize);
 
         ImGui.PushFont(LargeFont);
-        CenteredText(size.X, $"End of round {card.Round}");
+        CenteredText(width, $"END OF ROUND {card.Round}");
         ImGui.PopFont();
         ImGui.Separator();
 
-        static string Signed(int n) => n > 0 ? $" (+{n})" : n < 0 ? $" ({n})" : "";
         foreach (RoundSideSummary side in card.Sides)
         {
             ImGui.Spacing();
@@ -2799,28 +2803,34 @@ public class RaylibRenderer
                 Color c = _colorForPlayer(slot.PlayerID);
                 col = new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, 1f);
             }
-            ImGui.PushStyleColor(ImGuiCol.Text, col);
-            ImGui.TextUnformatted(side.Name);
-            ImGui.PopStyleColor();
-            string vp = side.Vp is int v ? $"{v} VP{Signed(side.VpChange)}, " : "";
-            ImGui.TextUnformatted($"   {vp}{side.ObjectivesHeld} objective{(side.ObjectivesHeld == 1 ? "" : "s")} held{Signed(side.ObjectivesChange)}");
-            if (side.UnitsLost == null)
-                ImGui.TextDisabled("   Units lost: not recorded (game resumed mid-round)");
-            else if (side.UnitsLost.Count == 0)
-                ImGui.TextDisabled("   No units lost");
-            else
-            {
-                ImGui.TextUnformatted($"   Lost {side.UnitsLost.Count}:");
-                foreach (string name in side.UnitsLost) ImGui.TextDisabled($"      {name}");
-            }
+            ImGui.TextColored(col, side.Name + ":");
+            ImGui.SameLine();
+            ImGui.PushTextWrapPos(0f);
+            ImGui.TextUnformatted(RoundSummaryLine(side));
+            ImGui.PopTextWrapPos();
         }
 
-        float btnH = 36f;
-        ImGui.SetCursorPosY(size.Y - btnH - ImGui.GetStyle().WindowPadding.Y);
+        ImGui.Spacing();
         // A button only: Enter belongs to whatever prompt is open underneath.
-        if (ImGui.Button("Continue", new Vector2(ImGui.GetContentRegionAvail().X, btnH)))
+        if (ImGui.Button("Continue", new Vector2(ImGui.GetContentRegionAvail().X, 40f)))
             _summaryShown = null;
         ImGui.End();
+    }
+
+    /// <summary>
+    /// One side's line on the round summary card: "1 objective held (+1), 3 VP (+1), lost: Assault Grunts".
+    /// Pure, so the wording is pinned by a test. Units lost is "not recorded" for a round that was resumed
+    /// from a save part-way through, because the engine took no snapshot at that round's start.
+    /// </summary>
+    internal static string RoundSummaryLine(RoundSideSummary side)
+    {
+        static string Signed(int n) => n > 0 ? $" (+{n})" : n < 0 ? $" ({n})" : "";
+        string line = $"{side.ObjectivesHeld} objective{(side.ObjectivesHeld == 1 ? "" : "s")} held{Signed(side.ObjectivesChange)}";
+        if (side.Vp is int vp) line += $", {vp} VP{Signed(side.VpChange)}";
+        line += side.UnitsLost == null ? ", units lost: not recorded (game resumed mid-round)"
+            : side.UnitsLost.Count == 0 ? ", no units lost"
+            : ", lost: " + string.Join(", ", side.UnitsLost);
+        return line;
     }
 
     /// <summary>One line per player for the game-over card: objectives held now, units left, rounds played.</summary>
@@ -2864,16 +2874,37 @@ public class RaylibRenderer
     // message arrives while Chat is toggled off.
     // ── Unit info window (right column, between the decision panel and Chat / Log) ─────────────
     private const float DecisionPanelHeightFraction = 0.42f;
-    private const float UnitInfoHeightFraction = 0.30f;
     private const float ActionsHeightFraction = 0.30f;
+
+    /// <summary>How tall the Active Unit card's content was last frame (0 before the first frame).</summary>
+    private float _unitInfoContentH;
+
+    /// <summary>
+    /// The Active Unit card's height: its content's height, never less than a small floor (so the column
+    /// keeps its shape with nothing selected) and never so tall that the Actions panel and at least a
+    /// strip of the tabs no longer fit under it. Pure, so the sizing rule is pinned by a test.
+    /// </summary>
+    internal static int UnitInfoPanelHeight(float contentH, int screenH, int actionsH)
+    {
+        int floor = (int)(screenH * 0.12f);
+        int tabsMin = Math.Max(120, (int)(screenH * 0.12f));
+        int ceiling = Math.Max(floor, screenH - actionsH - tabsMin);
+        return Math.Clamp((int)MathF.Ceiling(contentH), floor, ceiling);
+    }
     private IUnit? _selectedInfoUnit;
 
     /// <summary>The unit that was activating last frame, so a new activation can take over the card.</summary>
     private UnitID? _lastActingUnit;
 
-    /// <summary>The info window: the acting (or last clicked) unit's status, stats, weapons, special rules
-    /// with what they do, and tokens. The header button folds it to one line. Stays on screen with nothing
-    /// selected so the right column keeps its shape.</summary>
+    /// <summary>The Active Unit card's portrait (the same picture and fallbacks as every portrait card).</summary>
+    private readonly UnitPortraitCards _unitPortrait = new();
+
+    /// <summary>
+    /// The Active Unit card (In-Game Mockup, 2026-11-07): portrait beside the name, models, Quality /
+    /// Defense, wounds, moves and status; then the weapons table, the special rules (hover = book wording),
+    /// a joined hero, a campaign unit's sheet, and tokens. The window is sized to what it holds (see
+    /// <see cref="UnitInfoPanelHeight"/>), so a normal unit never needs a scrollbar.
+    /// </summary>
     private void DrawUnitInfoPanel(IUnit? unit, int x, int y, int w, int h)
     {
         ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.Always);
@@ -2890,25 +2921,65 @@ public class RaylibRenderer
             ImGui.PushTextWrapPos(0f);
             ImGui.TextDisabled("Click a unit on the table (or right-click any unit) to see its card here.");
             ImGui.PopTextWrapPos();
-            ImGui.End();
-            return;
         }
+        else
         {
-            // Status first: activated / Shaken / in reserve.
-            if (_tableState != null && UnitActivation.HasActivated(_tableState.Progress, unit))
-                ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated this round");
-            if (unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken))
-                ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken");
-            if (UnitActivation.IsInReserve(unit))
-                ImGui.TextDisabled("In reserve (off the table)");
+            string? slug = _tableState?.Progress is { } p ? GameSystemInfo.Slug(p.GameSystem) : null;
 
-            float wrap = Math.Max(120f, ImGui.GetContentRegionAvail().X - 20f);
+            // Portrait, with the header block beside it.
+            float portraitW = ImGui.GetFontSize() * 4.6f;
+            string faction = _tableState?.Armies.Objects.OfType<ArmyData>()
+                .FirstOrDefault(a => a.PlayerID.Equals(unit.PlayerID))?.Faction ?? "";
+            string picture = unit is UnitData { CampaignTypeIfRenamed: { } type } ? type : unit.Name;
+            _unitPortrait.DrawPortrait(picture, faction, new Vector2(portraitW, portraitW * 1.3f));
+            ImGui.SameLine();
+            ImGui.BeginGroup();
+            ImGui.PushTextWrapPos(0f);
+            UnitStatBlockRenderer.DrawHeader(unit, _tableState?.Progress.Quest);
+            // Status: activated / Shaken / in reserve - or that it has yet to act.
+            bool any = false;
+            if (_tableState != null && UnitActivation.HasActivated(_tableState.Progress, unit))
+            { ImGui.TextColored(new Vector4(0.35f, 0.85f, 0.40f, 1f), "Activated this round"); any = true; }
+            if (unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken))
+            { ImGui.TextColored(new Vector4(1f, 0.35f, 0.35f, 1f), "Shaken"); any = true; }
+            if (UnitActivation.IsInReserve(unit))
+            { ImGui.TextDisabled("In reserve (off the table)"); any = true; }
+            if (!any && unit.Models.Any(m => m.GetIsAlive()) && (_tableState?.Progress.RoundCount ?? 0) >= 1)
+                ImGui.TextDisabled("Not activated this round");
+            ImGui.PopTextWrapPos();
+            ImGui.EndGroup();
+
+            float wrap = Math.Max(120f, ImGui.GetContentRegionAvail().X - 8f);
             if (unit is UnitData { IsQuestHero: true } questHero)
                 DrawQuestHeroStats(questHero, _tableState?.Progress.Quest);
-            UnitStatBlockRenderer.Draw(unit, includeRuleDescriptions: true, descriptionWrapWidth: wrap,
-                quest: _tableState?.Progress.Quest,
-                // #420: the rule hovers quote OPR's wording for the game being played, not a summary.
-                systemSlug: _tableState?.Progress is { } p ? GameSystemInfo.Slug(p.GameSystem) : null);
+
+            if (unit.AllWeapons().Count > 0)
+            {
+                ImGui.Spacing();
+                ArmyListOverlay.DrawWeaponTable(unit);
+            }
+            ImGui.Spacing();
+            UnitStatBlockRenderer.DrawSpecialRules(unit, hoverable: true, wrap, slug);
+
+            // A joined hero: its name, own Quality / Defense, wounds and its own rules.
+            if (unit.JoinedHeroModelId != null)
+            {
+                ImGui.Spacing();
+                ArmyListOverlay.DrawHeroSummary(unit, slug);
+            }
+
+            // A campaign unit's sheet: what it is in the book, XP, traits and injuries.
+            if (unit is UnitData { StrikeUnitJson: { } sheetJson }
+                && FDG.Campaign.StrikeUnit.FromJson(sheetJson) is { } sheet)
+            {
+                ImGui.Spacing();
+                ImGui.PushTextWrapPos(0f);
+                var parts = new List<string> { $"Campaign: {sheet.Xp} XP" };
+                if (sheet.Traits.Count > 0) parts.Add("Traits: " + string.Join(", ", sheet.Traits));
+                if (sheet.Injuries.Count > 0) parts.Add("Injuries: " + string.Join(", ", sheet.Injuries));
+                ImGui.TextDisabled(string.Join("   ", parts));
+                ImGui.PopTextWrapPos();
+            }
 
             if (TableTooltipOverlay.VisibleTokens(unit).Count > 0)
             {
@@ -2917,6 +2988,10 @@ public class RaylibRenderer
                 TableTooltipOverlay.DrawTokenLines(unit, ImGui.GetContentRegionAvail().X);
             }
         }
+
+        // What all of that took, for next frame's window height (scroll offset included, so a card that
+        // did have to scroll still reports its whole height).
+        _unitInfoContentH = ImGui.GetCursorPosY() - ImGui.GetStyle().ItemSpacing.Y + ImGui.GetStyle().WindowPadding.Y;
         ImGui.End();
     }
 

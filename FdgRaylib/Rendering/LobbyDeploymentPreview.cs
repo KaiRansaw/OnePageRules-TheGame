@@ -10,8 +10,9 @@ namespace FdgRaylib.Rendering;
 /// <para>
 /// The zones come from the engine's own <see cref="AdvancedDeployment"/> - the book diagrams for THIS game
 /// (GF / AoF draw the long-table pages, GF: Firefight / AoF: Skirmish the square-table pages) - and from
-/// the same order of precedence the engine's ChooseMapSideStage uses: a map that carries a zone for every
-/// side keeps its own; three or four sides play the free-for-all corners; two sides use the pick.
+/// the same order of precedence the engine's ChooseMapSideStage uses: three or four sides play the
+/// free-for-all corners; two sides use the pick. A map never decides deployment (Kai, 2026-11-07) - zones
+/// an old map still carries are ignored by the engine, so the preview ignores them too.
 /// </para>
 /// </summary>
 internal static class LobbyDeploymentPreview
@@ -43,18 +44,13 @@ internal static class LobbyDeploymentPreview
     internal readonly record struct Plan(IReadOnlyList<IZone> Zones, string Note);
 
     /// <summary>
-    /// The deployment the game will use, for a standard game. <paramref name="map"/> is the chosen map
-    /// (null for Random). Horde-like modes return no zones: their callers draw Horde's own circles.
+    /// The deployment the game will use, for a standard game - whatever map is chosen, since a map has no
+    /// say in deployment. Horde-like modes return no zones: their callers draw Horde's own circles.
     /// </summary>
     internal static Plan For(EGameSystem system, EGameMode mode, EDeploymentStyle style, int sides,
-        float tableW, float tableH, TerrainLayoutFile? map)
+        float tableW, float tableH)
     {
         if (GameSystemInfo.IsHordeLike(mode)) return new Plan(Array.Empty<IZone>(), "");
-
-        int needed = Math.Max(2, sides);
-        if (map is { DeploymentZones.Count: > 0 } && map.DeploymentZones.Count >= needed)
-            return new Plan(Array.Empty<IZone>(),
-                "This map has its own deployment zones; the game uses them instead of the Deployment pick.");
 
         if (sides >= 3 && !GameSystemInfo.IsQuest(system))
             return new Plan(Array.Empty<IZone>(),

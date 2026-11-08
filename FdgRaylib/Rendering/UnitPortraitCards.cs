@@ -114,6 +114,28 @@ internal sealed class UnitPortraitCards
     internal CardEvent DrawCardGrid(string id, IReadOnlyList<UnitFileEntry> units, string faction, int selected,
         Func<int, string?>? tag = null)
     {
+        var cards = new List<Card>(units.Count);
+        for (int i = 0; i < units.Count; i++)
+        {
+            UnitFileEntry unit = units[i];
+            (string name, string facts) = CardCaption(unit);
+            cards.Add(new Card(name, unit.Name, facts, () => StatsTooltip(unit), tag?.Invoke(i)));
+        }
+        return DrawCardGrid(id, cards, faction, selected);
+    }
+
+    /// <summary>
+    /// One card, already worded: what it is called, which unit's picture it shows, the small line under the
+    /// name, the hover text (built only while the card is hovered), an optional tag over the picture (and its colour), and whether the card is
+    /// dimmed (a destroyed unit). Lets a screen that holds live units rather than a saved list - the
+    /// in-game Army Lists - draw the very same cards.
+    /// </summary>
+    internal readonly record struct Card(string Name, string PictureName, string Facts, Func<string> Tooltip,
+        string? Tag = null, Vector4? TagColor = null, bool Dimmed = false);
+
+    /// <summary>The same grid as above, for cards the caller has worded itself.</summary>
+    internal CardEvent DrawCardGrid(string id, IReadOnlyList<Card> cards, string faction, int selected)
+    {
         Vector2 size = CardSize;
         float cardW = size.X, cardH = size.Y, picH = cardW * 0.9f;
         float lineH = ImGui.GetTextLineHeight();
@@ -122,9 +144,9 @@ internal sealed class UnitPortraitCards
         int clicked = -1, doubleClicked = -1;
 
         ImGui.PushID(id);
-        for (int i = 0; i < units.Count; i++)
+        for (int i = 0; i < cards.Count; i++)
         {
-            UnitFileEntry unit = units[i];
+            Card card = cards[i];
             if (i % columns != 0) ImGui.SameLine(0f, CardGap);
             ImGui.PushID(i);
             Vector2 p0 = ImGui.GetCursorScreenPos();
@@ -138,23 +160,25 @@ internal sealed class UnitPortraitCards
 
             dl.AddRectFilled(p0, p1, ImGui.GetColorU32(new Vector4(0.12f, 0.12f, 0.14f, 1f)), 4f);
             Vector2 i0 = p0 + new Vector2(3f, 3f), i1 = new(p1.X - 3f, p0.Y + 3f + picH);
-            DrawPicture(dl, i0, i1, unit.Name, faction);
+            DrawPicture(dl, i0, i1, card.PictureName, faction);
 
             dl.PushClipRect(p0, p1, true);
-            if (tag?.Invoke(i) is { Length: > 0 } word)
-            {
-                Vector2 ts = ImGui.CalcTextSize(word);
-                dl.AddRectFilled(i0, i0 + ts + new Vector2(6f, 2f), ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.75f)));
-                dl.AddText(i0 + new Vector2(3f, 1f), ImGui.GetColorU32(ImGuiTheme.HeaderAccent), word);
-            }
-            (string name, string facts) = CardCaption(unit);
             float y = i1.Y + 3f;
-            foreach (string line in WrapTwoLines(name, cardW - 8f))
+            foreach (string line in WrapTwoLines(card.Name, cardW - 8f))
             {
                 dl.AddText(new Vector2(p0.X + 4f, y), ImGui.GetColorU32(ImGuiCol.Text), line);
                 y += lineH;
             }
-            dl.AddText(new Vector2(p0.X + 4f, p0.Y + cardH - lineH - 3f), ImGui.GetColorU32(ImGuiCol.TextDisabled), facts);
+            dl.AddText(new Vector2(p0.X + 4f, p0.Y + cardH - lineH - 3f), ImGui.GetColorU32(ImGuiCol.TextDisabled), card.Facts);
+            // A destroyed unit stays on the list but reads as spent.
+            if (card.Dimmed) dl.AddRectFilled(p0, p1, ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.55f)), 4f);
+            // The tag last, so it stays readable over a dimmed card.
+            if (card.Tag is { Length: > 0 } word)
+            {
+                Vector2 ts = ImGui.CalcTextSize(word);
+                dl.AddRectFilled(i0, i0 + ts + new Vector2(6f, 2f), ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.75f)));
+                dl.AddText(i0 + new Vector2(3f, 1f), ImGui.GetColorU32(card.TagColor ?? ImGuiTheme.HeaderAccent), word);
+            }
             dl.PopClipRect();
 
             uint border = i == selected ? ImGui.GetColorU32(ImGuiTheme.HeaderAccent)
@@ -162,7 +186,7 @@ internal sealed class UnitPortraitCards
                 : ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.34f, 1f));
             dl.AddRect(p0, p1, border, 4f, ImDrawFlags.None, i == selected ? 3f : 1.5f);
 
-            if (hovered) UiText.TooltipWrapped(StatsTooltip(unit), 440f);
+            if (hovered) UiText.TooltipWrapped(card.Tooltip(), 440f);
             ImGui.PopID();
         }
         ImGui.PopID();

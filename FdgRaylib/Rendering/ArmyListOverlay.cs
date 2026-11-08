@@ -18,6 +18,11 @@ namespace FdgRaylib.Rendering;
 /// special rules, RNG/ATK/AP/SPE weapon table), but live — model counts, wounds, weapon counts,
 /// destroyed units, activation state and status tokens all track the current game state.
 ///
+/// <para>Cards view (In-Game Mockup, 2026-11-07): a tab per side ("Your army - name" first), the units as
+/// the shared portrait cards (<see cref="UnitPortraitCards"/>) tagged Activated / Shaken / In reserve /
+/// DESTROYED (dimmed); hover = quick stats, click = the full printed card in its own panel on the right.
+/// Table view: one row per unit.</para>
+///
 /// <para>An overlay window covering the TABLE AREA only (user feedback on v1's fullscreen modal):
 /// the right column — resolver panel, log, chat — stays visible and clickable beside it, and the
 /// 85%-alpha background lets the board ghost through (each card body sits darker and near-solid
@@ -34,9 +39,6 @@ namespace FdgRaylib.Rendering;
 /// </summary>
 public sealed class ArmyListOverlay
 {
-    private const float MinCardWidth = 420f;   // roughly the printed card's proportions
-    private const int   MaxColumns   = 4;
-
     // Slice 3: the printed list's second mode — one row per unit. A display preference like the
     // ViewSettings toggles, so it persists across opens (and games) within the session.
     private static bool _tableMode;
@@ -51,10 +53,6 @@ public sealed class ArmyListOverlay
     // Same core-catalog resolver the tooltip overlay holds, for resolving token display info.
     private readonly IRuleResolver _ruleResolver = CoreRuleCatalog.CreateResolver();
 
-    // Measured card heights from the previous frame, keyed by unit — masonry packing needs heights
-    // BEFORE drawing, so cards pack on last frame's measurements (self-correcting after one frame;
-    // new units start on a line-count estimate).
-    private readonly Dictionary<UnitID, float> _cardHeights = new();
 
     private static readonly Vector4 ActivatedRed  = new(1f, 0.30f, 0.30f, 1f);   // tooltip's red
 
@@ -78,7 +76,7 @@ public sealed class ArmyListOverlay
         _colorForPlayer  = colorForPlayer;
         _localPlayerIDs  = localPlayerIDs;
         _resolverOverlay = resolverOverlay;
-        _cardHeights.Clear();
+        _clicked.Clear();
     }
 
     public void Open()   => IsOpen = true;
@@ -172,7 +170,9 @@ public sealed class ArmyListOverlay
             {
                 Color c = _colorForPlayer(slot.PlayerID);
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, 1f));
-                bool selected = ImGui.BeginTabItem($"{slot.Name}##slot{slot.SlotID}");
+                // "Your army" / the enemy's name: the mockup's your-army / enemy-army switch, one tab a side.
+                string tabLabel = _localPlayerIDs.Contains(slot.PlayerID) ? $"Your army - {slot.Name}" : slot.Name;
+                bool selected = ImGui.BeginTabItem($"{tabLabel}##slot{slot.SlotID}");
                 ImGui.PopStyleColor();
 
                 if (selected)
@@ -210,9 +210,11 @@ public sealed class ArmyListOverlay
         ImGui.SameLine();
         ImGui.SetCursorPosY(rowY);
         if (ImGui.RadioButton("Cards", !_tableMode)) _tableMode = false;
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Portrait cards; click one to see the whole unit on the right.");
         ImGui.SameLine();
         ImGui.SetCursorPosY(rowY);
         if (ImGui.RadioButton("Table", _tableMode)) _tableMode = true;
+        if (ImGui.IsItemHovered()) UiText.Tooltip("One row per unit: stats, loadout and special rules side by side.");
 
         // One close button (user feedback v4: not a separate chip). Normally a quiet
         // "Return to Game (L)"; while the engine waits on YOU (it never pauses), it grows the
@@ -274,7 +276,8 @@ public sealed class ArmyListOverlay
 
         // One scroll region per player AND mode (stable IDs), so each tab keeps its own scroll
         // position and switching modes doesn't inherit a stale offset.
-        ImGui.BeginChild($"##list{slot.SlotID}{(_tableMode ? "t" : "c")}");
+        ImGui.BeginChild($"##list{slot.SlotID}{(_tableMode ? "t" : "c")}", Vector2.Zero, ImGuiChildFlags.None,
+            _tableMode ? ImGuiWindowFlags.None : ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         if (_tableMode)
         {
@@ -282,28 +285,117 @@ public sealed class ArmyListOverlay
         }
         else
         {
-            int columns = ArmyListLayout.ColumnCount(ImGui.GetContentRegionAvail().X, MinCardWidth, MaxColumns);
-            float estimate = ImGui.GetTextLineHeightWithSpacing();
-            var heights = units
-                .Select(u => _cardHeights.TryGetValue(u.ID, out float h) ? h : estimate * 10f)
-                .ToList();
-            int[] columnOf = ArmyListLayout.PackColumns(heights, columns);
-
-            if (ImGui.BeginTable("##cards", columns, ImGuiTableFlags.SizingStretchSame))
-            {
-                ImGui.TableNextRow();
-                for (int c = 0; c < columns; c++)
-                {
-                    ImGui.TableSetColumnIndex(c);
-                    for (int i = 0; i < units.Count; i++)
-                        if (columnOf[i] == c)
-                            DrawCard(units[i]);
-                }
-                ImGui.EndTable();
-            }
+            DrawPortraitView(slot, army, units);
         }
 
         ImGui.EndChild();
+    }
+
+    // ── Portrait view (Kai, 2026-11-07): cards on the left, the clicked unit in full on the right ────
+
+    /// <summary>The clicked unit per player tab, so switching sides and back keeps each one's pick.</summary>
+    private readonly Dictionary<int, UnitID> _clicked = new();
+
+    /// <summary>The shared portrait cards (the lobby's and Choose Army's): hover = stats, click = full info.</summary>
+    private readonly UnitPortraitCards _portraits = new();
+
+    private void DrawPortraitView(IPlayerSlotInfo slot, ArmyData? army, IReadOnlyList<IUnit> units)
+    {
+        Vector2 avail = ImGui.GetContentRegionAvail();
+        float gap = 10f;
+        float infoW = Math.Clamp(avail.X * 0.38f, Math.Min(330f, avail.X * 0.5f), 620f);
+        float cardsW = Math.Max(120f, avail.X - infoW - gap);
+
+        _clicked.TryGetValue(slot.SlotID, out UnitID clickedId);
+        int selected = -1;
+        var cards = new List<UnitPortraitCards.Card>(units.Count);
+        for (int i = 0; i < units.Count; i++)
+        {
+            IUnit unit = units[i];
+            if (unit.ID.Equals(clickedId)) selected = i;
+            (string? tag, Vector4 color) = CardTag(unit, _tableState!.Progress);
+            cards.Add(new UnitPortraitCards.Card(unit.Name,
+                unit is UnitData { CampaignTypeIfRenamed: { } type } ? type : unit.Name,
+                CardFacts(unit), () => LiveTooltip(unit), tag, color, Dimmed: !unit.Models.Any(m => m.GetIsAlive())));
+        }
+
+        ImGui.BeginChild("##portraitcards", new Vector2(cardsW, avail.Y));
+        UnitPortraitCards.CardEvent hit = _portraits.DrawCardGrid($"##p{slot.SlotID}", cards, army?.Faction ?? "", selected);
+        ImGui.EndChild();
+        if (hit.Clicked >= 0)
+        {
+            if (hit.Clicked == selected) _clicked.Remove(slot.SlotID);
+            else _clicked[slot.SlotID] = units[hit.Clicked].ID;
+        }
+
+        ImGui.SameLine(0f, gap);
+        ImGui.BeginChild("##clickedunit", new Vector2(0f, avail.Y), ImGuiChildFlags.Borders);
+        UiText.Disabled("CLICKED UNIT");
+        IUnit? shown = units.FirstOrDefault(u => u.ID.Equals(clickedId));
+        if (shown == null)
+        {
+            UiText.Wrapped("Click a unit card to see everything about it here. Hover a card for a quick look.");
+        }
+        else
+        {
+            DrawCard(shown);
+        }
+        ImGui.EndChild();
+    }
+
+    /// <summary>
+    /// The word over a live unit's card: DESTROYED, In reserve, Shaken or Activated - the first that
+    /// applies, in that order (the full state is in the hover and the clicked-unit panel). Null for a unit
+    /// that is simply ready to act.
+    /// </summary>
+    internal static (string? Tag, Vector4 Color) CardTag(IUnit unit, IGameProgress progress)
+    {
+        if (!unit.Models.Any(m => m.GetIsAlive())) return ("DESTROYED", new Vector4(0.95f, 0.25f, 0.25f, 1f));
+        if (UnitActivation.IsInReserve(unit)) return ("In reserve", ReserveBlue);
+        if (unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)) return ("Shaken", new Vector4(0.85f, 0.63f, 0.40f, 1f));
+        if (UnitActivation.HasActivated(progress, unit)) return ("Activated", ActivatedRed);
+        return (null, Vector4.One);
+    }
+
+    /// <summary>The small line under a live card's name: models standing, and points when carried.</summary>
+    internal static string CardFacts(IUnit unit)
+    {
+        int live = unit.Models.Count(m => m.GetIsAlive()), total = unit.Models.Count;
+        string models = $"{live}/{total} model{(total == 1 ? "" : "s")}";
+        return unit is UnitData { PointCost: > 0 } ud ? $"{models} - {ud.PointCost}pts" : models;
+    }
+
+    /// <summary>A live unit's quick-look hover: name and models, Quality / Defense, wounds, every weapon as
+    /// the shoot panel prints it, and its special rules. Straight from the table, nothing guessed.</summary>
+    internal static string LiveTooltip(IUnit unit)
+    {
+        int live = unit.Models.Count(m => m.GetIsAlive()), total = unit.Models.Count;
+        var lines = new List<string>
+        {
+            $"{unit.Name} [{(live == total ? total.ToString() : $"{live}/{total}")}]"
+                + (unit is UnitData { PointCost: > 0 } ud ? $" - {ud.PointCost} pts" : ""),
+            $"Quality {unit.Quality}+   Defense {unit.Defense}+",
+        };
+        if (live > 0 && unit.RemainingWounds < unit.MaxWounds)
+            lines.Add($"Wounds {WoundFormat.Fraction(unit.RemainingWounds, unit.MaxWounds)}");
+        if (unit is UnitData { HeroAttachment: { } ha })
+            lines.Add(HeroMarkerRenderer.FormatHeroNameLine(ha.Name, ha.PointCost));
+        var weapons = unit.AllWeapons();
+        if (weapons.Count > 0)
+        {
+            lines.Add("");
+            foreach (var group in weapons.GroupBy(w => w.Name))
+                lines.Add(group.First().GetWeaponNameAndStats(group.Count()));
+        }
+        var rules = PlayerFacingRules(unit.RuleDefinitions);
+        if (rules.Count > 0)
+        {
+            lines.Add("");
+            lines.Add(string.Join(", ", rules.Select(r => r.RequestedName)));
+        }
+        lines.Add("");
+        lines.Add(live == 0 ? "Destroyed. Click for the full unit." : "Click for the full unit.");
+        return string.Join("\n", lines);
     }
 
     // ── Table mode (slice 3): the printed list's condensed one-row-per-unit form ────────────────────
@@ -420,7 +512,10 @@ public sealed class ArmyListOverlay
 
     // The hero tag + hero-own-rules pair, shared between the card's sub-block and the table row's
     // Special Rules cell.
-    private void DrawHeroSummary(IUnit unit)
+    private void DrawHeroSummary(IUnit unit) => DrawHeroSummary(unit, SystemSlug(_tableState));
+
+    /// <summary>The joined hero's tag, wounds and own rules (shared with the in-game Active Unit card).</summary>
+    internal static void DrawHeroSummary(IUnit unit, string? systemSlug)
     {
         if (unit.JoinedHeroModelId is not { } heroId) return;
         IModel? hero = unit.Models.FirstOrDefault(m => m.ID.Equals(heroId));
@@ -436,7 +531,7 @@ public sealed class ArmyListOverlay
 
         var heroRules = PlayerFacingRules(hero.RuleDefinitions);
         if (heroRules.Count > 0)
-            DrawWrappedSegments(RuleSegmentsFor(heroRules), ImGui.GetContentRegionAvail().X);
+            DrawWrappedSegments(RuleSegmentsFor(heroRules, systemSlug), ImGui.GetContentRegionAvail().X);
     }
 
     // Header row WITHOUT TableHeadersRow's interactive header widgets: these columns don't sort or
@@ -453,13 +548,15 @@ public sealed class ArmyListOverlay
     }
 
     /// <summary>The comma-joined hoverable segment list for a set of resolved rules.</summary>
-    private List<RuleHoverText.Segment> RuleSegmentsFor(IReadOnlyList<ResolvedRule> rules)
-    {
-        // #420: OPR's own wording for the system being played, not the authored summary.
-        string? slug = _tableState?.Progress is { } progress
-            ? GameSystemInfo.Slug(progress.GameSystem)
-            : null;
+    private List<RuleHoverText.Segment> RuleSegmentsFor(IReadOnlyList<ResolvedRule> rules) =>
+        RuleSegmentsFor(rules, SystemSlug(_tableState));
 
+    /// <summary>#420: OPR's own wording for the system being played, not the authored summary.</summary>
+    private static string? SystemSlug(ITableState? table) =>
+        table?.Progress is { } progress ? GameSystemInfo.Slug(progress.GameSystem) : null;
+
+    private static List<RuleHoverText.Segment> RuleSegmentsFor(IReadOnlyList<ResolvedRule> rules, string? slug)
+    {
         var segments = new List<RuleHoverText.Segment>();
         foreach (ResolvedRule rule in rules)
         {
@@ -529,10 +626,8 @@ public sealed class ArmyListOverlay
 
         if (destroyed) ImGui.PopStyleVar();
 
-        // Cache the drawn height (plus spacing) for next frame's masonry packing.
         Vector2 cardMin = ImGui.GetItemRectMin();
         Vector2 cardMax = ImGui.GetItemRectMax();
-        _cardHeights[unit.ID] = (cardMax.Y - cardMin.Y) + ImGui.GetStyle().ItemSpacing.Y;
 
         if (destroyed)
         {
@@ -662,7 +757,9 @@ public sealed class ArmyListOverlay
         ImGui.Spacing();
     }
 
-    private void DrawWeaponTable(IUnit unit)
+    /// <summary>The printed list's RNG / ATK / AP / SPE weapon table, live counts (shared with the in-game
+    /// Active Unit card).</summary>
+    internal static void DrawWeaponTable(IUnit unit)
     {
         var weapons = unit.AllWeapons();   // living models only — counts shrink with casualties
         if (weapons.Count == 0) return;

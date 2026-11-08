@@ -33,6 +33,17 @@ public static class UnitStatBlockRenderer
     public static void Draw(IUnit unit, bool includeRuleDescriptions, float descriptionWrapWidth = 300f,
         QuestProgress? quest = null, string? systemSlug = null)
     {
+        DrawHeader(unit, quest);
+        DrawWeaponsAndRules(unit, includeRuleDescriptions, descriptionWrapWidth, systemSlug);
+    }
+
+    /// <summary>
+    /// The top of the stat block alone: name, models / Quality / Defense / points, wounds, which model is
+    /// carrying damage, and Advance / Rush. The in-game Active Unit card draws this beside the portrait
+    /// and its own weapons table under it.
+    /// </summary>
+    public static void DrawHeader(IUnit unit, QuestProgress? quest = null)
+    {
         ImGui.TextUnformatted(unit.Name);
 
         int live = unit.Models.Count(m => m.GetIsAlive());
@@ -49,8 +60,6 @@ public static class UnitStatBlockRenderer
         if (WoundedModelReadout.CardLine(unit) is { } woundedLine)
             UiText.Colored(new Vector4(1f, 0.72f, 0.35f, 1f), woundedLine);
         DrawMobility(unit, quest);
-
-        DrawWeaponsAndRules(unit, includeRuleDescriptions, descriptionWrapWidth, systemSlug);
     }
 
     // Read-only, non-logging: the move queries ask the rule graph what Fast / Slow / Crippled do, and the
@@ -140,6 +149,17 @@ public static class UnitStatBlockRenderer
             }
         }
 
+        DrawSpecialRules(unit, includeRuleDescriptions, wrap, systemSlug);
+    }
+
+    /// <summary>
+    /// "Special Rules:" and the unit's own rules, each name hoverable with OPR's wording for
+    /// <paramref name="systemSlug"/>'s game (plain names when <paramref name="hoverable"/> is false).
+    /// </summary>
+    public static void DrawSpecialRules(IUnit unit, bool hoverable, float wrapWidth, string? systemSlug)
+    {
+        bool includeRuleDescriptions = hoverable;
+        float wrap = Math.Max(120f, wrapWidth);
         // Unit-wide special rules (live #042 ResolvedRules), minus the engine-internal Disembark/Embark
         // abilities attached to every unit -- same filter the hover tooltip uses.
         var rules = unit.RuleDefinitions

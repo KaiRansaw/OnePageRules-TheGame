@@ -7,6 +7,8 @@ namespace FdgRaylib.Rendering;
 
 /// <summary>
 /// A flat top-down picture of a table: surface, grid, deployment zones, terrain and objective markers.
+/// The zones drawn are always the lobby's Deployment pick (or Horde's), never a map's own: deployment is
+/// picked in the lobby (Kai, 2026-11-07), and zones an old map carries are ignored by the game.
 ///
 /// <para>
 /// Lifted out of the lobby's own preview so the <see cref="MapPickerScreen"/>'s tiles and the lobby's
@@ -31,7 +33,7 @@ public static class MapThumbnail
     /// <summary>Which deployment zones to paint when the layout carries none of its own.</summary>
     public enum EFallbackZones
     {
-        /// <summary>None - the map decides, and it has not.</summary>
+        /// <summary>None - no zones drawn (the Map Maker's own pictures: a map holds no deployment).</summary>
         None,
         /// <summary>The books' two bands along the long edges.</summary>
         Standard,
@@ -68,21 +70,7 @@ public static class MapThumbnail
         dl.PushClipRect(P(0, tableH), P(tableW, 0), true);
 
         uint zoneA = U32(80, 160, 255, 70), zoneB = U32(255, 110, 90, 70);
-        var mapZones = layout?.DeploymentZones;
-        if (mapZones is { Count: >= 1 })
-        {
-            for (int k = 0; k < mapZones.Count; k++)
-            {
-                // Every piece: a zone can be an L or a T, and drawing only its first rectangle would
-                // show a tile that disagrees with the map it is a picture of.
-                foreach (MapZoneRect r in mapZones[k].AllParts())
-                {
-                    dl.AddRectFilled(P(MathF.Min(r.Left, r.Right), MathF.Max(r.Bottom, r.Top)),
-                        P(MathF.Max(r.Left, r.Right), MathF.Min(r.Bottom, r.Top)), k % 2 == 0 ? zoneA : zoneB);
-                }
-            }
-        }
-        else if (deploymentZones is { Count: > 0 } && fallbackZones != EFallbackZones.Horde)
+        if (deploymentZones is { Count: > 0 } && fallbackZones != EFallbackZones.Horde)
         {
             // The lobby's Deployment pick, drawn in its real shape (book diagrams for this game).
             for (int k = 0; k < deploymentZones.Count; k++)

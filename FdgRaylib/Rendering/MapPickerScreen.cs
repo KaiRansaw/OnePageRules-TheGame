@@ -8,7 +8,7 @@ namespace FdgRaylib.Rendering;
 /// <summary>
 /// Picking the table you will fight on (wish list, "Select Map"; "Choose Army and Select Map Mockup"): a
 /// grid of map pictures with <b>Random</b> first, and on the right a big preview of the selected map -
-/// its size, terrain pieces (hover one to see what it is), objectives and deployment zones - with
+/// its size, terrain pieces (hover one to see what it is), objectives and the lobby's deployment zones - with
 /// USE THIS MAP under it. Reached from the lobby's Map button; Back returns there unchanged.
 ///
 /// <para>
@@ -225,7 +225,7 @@ public sealed class MapPickerScreen : IAppScreen
     }
 
     private LobbyDeploymentPreview.Plan ZonesFor(TerrainLayoutFile? layout, float tw, float th) =>
-        LobbyDeploymentPreview.For(_request.System, _request.Mode, _request.Deployment, _request.Sides, tw, th, layout);
+        LobbyDeploymentPreview.For(_request.System, _request.Mode, _request.Deployment, _request.Sides, tw, th);
 
     private void DrawPreview(float tw, float th)
     {

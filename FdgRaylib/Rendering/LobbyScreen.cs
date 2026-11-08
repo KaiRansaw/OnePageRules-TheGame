@@ -2075,12 +2075,9 @@ public class LobbyScreen : IAppScreen
         bool mapObjectives = !horde && layout != null && layout.Objectives is { Count: > 0 }
             && _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
         int sides = LobbyDeploymentPreview.Sides(_viewModel.PlayerInfos.Select(p => (int)p.TeamNumber));
-        bool isMapMode = _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
+        // Always the lobby's Deployment pick: a map never decides deployment (Kai, 2026-11-07).
         LobbyDeploymentPreview.Plan plan = LobbyDeploymentPreview.For(_viewModel.GameSystem, _viewModel.GameMode,
-            _viewModel.DeploymentStyle, sides, tw, th, isMapMode ? layout : null);
-        // The map's own zones, when the engine will use them (a zone for every side, as ChooseMapSideStage).
-        bool mapZones = !horde && isMapMode && layout != null
-            && layout.DeploymentZones.Count >= Math.Max(2, sides);
+            _viewModel.DeploymentStyle, sides, tw, th);
         string objectiveNote = horde ? "5 fixed objectives"
             : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
             : _viewModel.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced
@@ -2112,18 +2109,6 @@ public class LobbyScreen : IAppScreen
             dl.AddCircleFilled(P(tw / 2, th / 2), 9f * scale, zoneA, 40);
             foreach (var (cx, cz) in new[] { (0f, 0f), (tw, 0f), (0f, th), (tw, th) })
                 dl.AddCircleFilled(P(cx, cz), 9f * scale, zoneB, 40);
-        }
-        else if (mapZones)
-        {
-            for (int k = 0; k < layout!.DeploymentZones.Count; k++)
-            {
-                // Every piece - a zone may be an L or a T, and the preview has to be the map.
-                foreach (FDG.SaveLoad.MapZoneRect r in layout.DeploymentZones[k].AllParts())
-                {
-                    dl.AddRectFilled(P(MathF.Min(r.Left, r.Right), MathF.Max(r.Bottom, r.Top)),
-                        P(MathF.Max(r.Left, r.Right), MathF.Min(r.Bottom, r.Top)), k % 2 == 0 ? zoneA : zoneB);
-                }
-            }
         }
         else
         {
@@ -2535,9 +2520,9 @@ public class LobbyScreen : IAppScreen
     }
 
     /// <summary>
-    /// The map row: what is chosen, and the button that opens the picker. The map's own objectives and
-    /// deployment zones come with it - CustomMapRules.FixedObjectives is already what the objective
-    /// stages read - so there is nothing else to set here.
+    /// The map row: what is chosen, and the button that opens the picker. The map's own objectives come
+    /// with it - CustomMapRules.FixedObjectives is already what the objective stages read. Deployment is
+    /// NOT the map's: it is the Deployment setting on this tab, whatever map is picked.
     /// </summary>
     private void DrawMapChoice()
     {
