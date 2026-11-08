@@ -68,17 +68,11 @@ public class LobbyScreen : IAppScreen
     private readonly UnitPortraitCards _seatCards = new();
     private int _selectedSeat;
 
-    /// <summary>The lists THIS machine handed to a seat, by player id. The host reads every seat's list off
-    /// its own view model (<see cref="LobbyViewModel_Host.GetSeats"/>); a joined friend's machine only ever
-    /// holds the lists it sent itself, so that is what it can show.</summary>
-    private readonly Dictionary<Guid, ArmyListFile> _sentArmies = new();
-
-    /// <summary>Every army this screen assigns goes through here, so the seat's list can be shown.</summary>
-    private void SetSeatArmy(PlayerID playerID, ArmyListFile army)
-    {
-        _sentArmies[playerID.ID] = army;
+    /// <summary>Every army this screen assigns goes through here. The seat window reads the list back
+    /// from the view model (<see cref="ILobbyViewModel.GetSeatArmy"/>), which on a joined friend's
+    /// machine holds every seat's list as the host sends it.</summary>
+    private void SetSeatArmy(PlayerID playerID, ArmyListFile army) =>
         _viewModel!.UpdateArmyListFile(playerID, army);
-    }
 
     /// <summary>Fast-Play / Extra Actions switched on with nothing under them ticked yet - the sub-choices
     /// stay shown until the switch goes off again.</summary>
@@ -133,7 +127,6 @@ public class LobbyScreen : IAppScreen
         _servedForSystem = null;
         _selectedSeat = 0;
         _seatCards.ClearSelection();
-        _sentArmies.Clear();
         _fastPlayOn = _extraActionsOn = false;
         _ = ArmyCatalogCache.Current;
         viewModel.OnLaunched += game => _pendingGame = game;
@@ -358,26 +351,29 @@ public class LobbyScreen : IAppScreen
             ? $"{info.ArmyListSummary.ArmyName} - {info.ArmyListSummary.FactionName} - {info.ArmyListSummary.PointCost} pts"
             : "no army yet", wrap: false);
 
-        (ArmyListFile? army, string why) = SeatArmy(info);
+        (ArmyListFile? army, string why) = SeatArmy(_viewModel, info.PlayerID);
         _seatCards.Draw($"seat{info.PlayerID.ID}", army, ImGui.GetContentRegionAvail(), why);
     }
 
-    /// <summary>The list a seat is bringing, as far as this machine knows it, or why it can't be shown.</summary>
-    private (ArmyListFile? Army, string Why) SeatArmy(LobbyPlayerInfoSummary info)
+    internal const string NoSeatArmyText = "No army chosen for this seat yet.";
+    internal const string LoadingSeatArmyText = "Loading army...";
+    internal const string UnreadableSeatArmyText = "Couldn't read this army - check both PCs run the same build.";
+    internal const string ResumeSeatArmyText = "Resuming a save: the armies are the ones in the save.";
+
+    /// <summary>The list a seat is bringing, as far as this machine knows it, or why it can't be shown.
+    /// The same on the host and on a joined player's machine: both read the view model, and a joined
+    /// player's view model holds every seat's list as the host sends it.</summary>
+    internal static (ArmyListFile? Army, string Why) SeatArmy(ILobbyViewModel viewModel, PlayerID seat)
     {
-        if (_viewModel!.IsResumeMode)
-            return (null, "Resuming a save: the armies are the ones in the save.");
-        if (_viewModel is LobbyViewModel_Host host)
+        if (viewModel.IsResumeMode) return (null, ResumeSeatArmyText);
+        SeatArmyView view = viewModel.GetSeatArmy(seat);
+        return view.Status switch
         {
-            foreach (LobbyViewModel_Host.SeatSnapshot seat in host.GetSeats())
-                if (seat.PlayerID == info.PlayerID)
-                    return (seat.Army, "No army chosen for this seat yet.");
-            return (null, "No army chosen for this seat yet.");
-        }
-        if (_sentArmies.TryGetValue(info.PlayerID.ID, out ArmyListFile? mine)) return (mine, "");
-        return (null, _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID)
-            ? "No army chosen for this seat yet."
-            : "Only the host's screen can show other players' lists.");
+            ESeatArmyStatus.Ready => (view.Army, ""),
+            ESeatArmyStatus.Loading => (null, LoadingSeatArmyText),
+            ESeatArmyStatus.Unreadable => (null, UnreadableSeatArmyText),
+            _ => (null, NoSeatArmyText),
+        };
     }
 
     /// <summary>

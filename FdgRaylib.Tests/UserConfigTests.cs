@@ -427,6 +427,7 @@ public class UserConfigTests
         public void SetPlayerType(PlayerID playerID, EPlayerType playerType,
             EAiProfile aiProfile = EAiProfile.SoloRules) => throw new NotSupportedException();
         public bool CheckCanSetPlayerType(PlayerID playerID) => false;
+        public SeatArmyView GetSeatArmy(PlayerID playerID) => throw new NotSupportedException();
         public bool TryResumeGame(out string? failReason) => throw new NotSupportedException();
     }
     [Test]
