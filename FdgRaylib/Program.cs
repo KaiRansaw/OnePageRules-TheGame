@@ -2,7 +2,6 @@ using System.Text.Json;
 using FdgRaylib.Cli;
 using FdgRaylib.Config;
 using FdgRaylib.Import;
-using FdgRaylib.ListServer;
 using FdgRaylib.Quest;
 using FdgRaylib.Rendering;
 using FDG;
@@ -1316,77 +1315,122 @@ else
 {
     var renderer = new RaylibRenderer();
 
-    // ── Main Menu ──────────────────────────────────────────────────────────────
-    // The Game Type the player picked on the menu's tiles, applied to the lobby once the host dialog
-    // has made one. Null means "whatever the lobby defaults to": the campaign screens reach the host
-    // dialog on their own terms and must not inherit a tile clicked earlier in the session.
+    // ── Main Menu -> game screen -> lobby ───────────────────────────────────────────
+    // Kai, 2026-11-07: two family tiles; each opens the game screen with its three games and every mode as
+    // a button. A mode button that plays a game goes STRAIGHT to the lobby - the Host dialog is gone; the
+    // host starts silently on the name in Settings and the fixed port, and only a failure says anything.
+    //
+    // Back goes to the previous screen everywhere (renderer.GoTo / GoBack keep the history). The round
+    // trips a screen makes to a helper and back (lobby -> Choose Army -> lobby) stay plain NavigateTo, so
+    // they don't stack up.
+
+    // What the next lobby is pointed at. Set right before StartHost and consumed by it; null means
+    // "whatever the saved settings say" (Load Game and Join never set them).
     EGameSystem? pendingGameSystem = null;
-    // Where the Host dialog was opened from, so its Cancel can go back there.
-    IAppScreen? hostOpenedFrom = null;
-    void OpenHost()
-    {
-        IAppScreen? from = renderer.CurrentScreen;
-        if (from != null && !ReferenceEquals(from, renderer.HostModal)) hostOpenedFrom = from;
-        renderer.NavigateTo(renderer.HostModal);
-    }
-    // Set beside it when the mode-select screen picked a mode (Army vs Army / Horde). Applied to the
-    // lobby in the same place and cleared the same way, so a lobby reached any other way is unaffected.
     EGameMode? pendingGameMode = null;
+    // Where the lobby was started from: a campaign screen's mission returns there at game over.
+    IAppScreen? hostOrigin = null;
 
-    // Kai's mock, 2026-11-02: a system tile opens that system's MODES rather than going straight to a
-    // lobby. The four with a Campaign Rules book get the three-mode screen; the two Quest systems keep
-    // today's path, because their modes are different words entirely (missions, hero building) and he
-    // is designing those screens himself.
-    renderer.MainMenu.OnGameTypeClicked = system =>
+    // The live lobby view model, host or client (#279). Tearing this down IS load-bearing: disposing it
+    // stops the host's listener (releasing the port for the next lobby) or closes the client's connection
+    // (freeing its roster slot on the host).
+    ILobbyViewModel? activeLobby = null;
+    void TeardownLobby()
     {
-        if (system is EGameSystem.GFStarQuest or EGameSystem.AoFQuest)
+        activeLobby?.Dispose();
+        activeLobby = null;
+    }
+
+    // What the last launched game was set up with, for the Game Over card's Rematch (Kai, 2026-11-07).
+    RematchPlan? lastLaunch = null;
+
+    /// <summary>Starts a host on the saved name and the fixed port and goes to the lobby. Every path that
+    /// used to open the Host dialog comes here. On failure (the port is taken) a message says why and the
+    /// player stays where they are.</summary>
+    bool StartHost(EGameSystem? system, EGameMode? mode)
+    {
+        pendingGameSystem = system;
+        pendingGameMode = mode;
+        hostOrigin = renderer.CurrentScreen;
+        // Release any previous lobby's listener first (#279), so this one can bind the port.
+        TeardownLobby();
+        if (renderer.HostStarter.TryCreate(out string error)) return true;
+        pendingGameSystem = null;
+        pendingGameMode = null;
+        // A campaign mission that couldn't start must not leave its armies waiting for the next lobby.
+        LobbyScreen.ClearPending();
+        renderer.ShowMessage("Could not start the game", error);
+        return false;
+    }
+
+    renderer.HostStarter.OnCreated = lobby =>
+    {
+        IAppScreen? origin = hostOrigin;
+        hostOrigin = null;
+        // After a campaign mission the game-over card says Continue and goes back to that campaign, not to
+        // the main menu (and the Esc menu says Return to Campaign). Decided by where the lobby was
+        // started: a Quest campaign screen, or Mission Setup (a strike-team campaign).
+        renderer.GameOverReturnTo =
+            ReferenceEquals(origin, renderer.Campaigns) ? renderer.Campaigns
+            : ReferenceEquals(origin, renderer.AoFCampaigns) ? renderer.AoFCampaigns
+            : ReferenceEquals(origin, renderer.MissionSetup) ? renderer.StrikeTeams
+            : null;
+        activeLobby = lobby;
+        renderer.LobbyScreen.SetViewModel(lobby);
+        // The lobby opens already pointed at the game and mode that were picked. Cleared either way, so a
+        // later lobby reached another way keeps its own default.
+        if (pendingGameSystem is { } picked)
+            LobbyScreen.ApplyGameSystem(lobby, picked);
+        // After ApplyGameSystem, which resets the mode along with the points and the allowed systems.
+        if (pendingGameMode is { } mode) LobbyScreen.ApplyGameMode(lobby, mode);
+        pendingGameSystem = null;
+        pendingGameMode = null;
+        // #410: a campaign army waiting to be played takes the host's own slot, with the points limit
+        // raised to fit it. Must follow ApplyGameSystem, which resets the points and the allowed
+        // systems, and cannot live in SetViewModel, which clears the auto-army marks and then re-applies
+        // the saved host settings over the top.
+        renderer.LobbyScreen.ApplyPendingCampaignArmy();
+        // Rematch: the same seats and armies as the game that just ended.
+        renderer.LobbyScreen.ApplyPendingRematch();
+        renderer.GoTo(renderer.LobbyScreen);
+    };
+
+    // ── Main menu ─────────────────────────────────────────────────────────────────────────────────────
+    renderer.MainMenu.OnFamilyClicked = family =>
+    {
+        renderer.GameSelect.Open(family);
+        renderer.GoTo(renderer.GameSelect);
+    };
+    renderer.GameSelect.OnBack = renderer.GoBack;
+
+    renderer.GameSelect.OnMode = (system, mode) =>
+    {
+        switch (mode)
         {
-            renderer.QuestLanding.Open(system);
-            renderer.NavigateTo(renderer.QuestLanding);
-            return;
+            case GameScreen.EMode.ArmyVsArmy:
+                StartHost(system, EGameMode.Standard);
+                break;
+            case GameScreen.EMode.Horde:
+                StartHost(system, GameSystemInfo.IsQuest(system) ? EGameMode.StarQuestHorde : EGameMode.Horde);
+                break;
+            case GameScreen.EMode.Mission:
+                // One mission state machine serves both Quest systems; which system is playing decides the
+                // book, the heroes and the wording (#418).
+                StartHost(system, EGameMode.StarQuestMission);
+                break;
+            case GameScreen.EMode.Campaign:
+                if (GameSystemInfo.IsQuest(system))
+                    renderer.GoTo(system == EGameSystem.AoFQuest ? renderer.AoFCampaigns : renderer.Campaigns);
+                else
+                {
+                    renderer.StrikeTeams.Open(system);
+                    renderer.GoTo(renderer.StrikeTeams);
+                }
+                break;
+            case GameScreen.EMode.BuildHeroes:
+                renderer.GoTo(system == EGameSystem.AoFQuest ? renderer.AoFHeroBuilder : renderer.HeroBuilder);
+                break;
         }
-        renderer.ModeSelect.Open(system);
-        renderer.NavigateTo(renderer.ModeSelect);
-    };
-
-    renderer.ModeSelect.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
-    renderer.ModeSelect.OnArmyVsArmy = system =>
-    {
-        pendingGameSystem = system;
-        pendingGameMode = EGameMode.Standard;
-        OpenHost();
-    };
-    renderer.ModeSelect.OnHorde = system =>
-    {
-        pendingGameSystem = system;
-        pendingGameMode = EGameMode.Horde;
-        OpenHost();
-    };
-    renderer.ModeSelect.OnCampaign = system =>
-    {
-        renderer.StrikeTeams.Open(system);
-        renderer.NavigateTo(renderer.StrikeTeams);
-    };
-
-    // The Quest landing's doors are the ones the main menu used to carry directly. Nothing new behind
-    // them - this exists so the Hero Builder and the Quest campaigns stay reachable now that their
-    // buttons have left the main menu.
-    renderer.QuestLanding.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
-    renderer.QuestLanding.OnHeroes = system => renderer.MainMenu.OnHeroesClicked?.Invoke(system);
-    renderer.QuestLanding.OnCampaign = system => renderer.MainMenu.OnCampaignsClicked?.Invoke(system);
-    renderer.QuestLanding.OnMission = system =>
-    {
-        pendingGameSystem = system;
-        // One mission state machine serves both Quest systems; which system is playing decides the book,
-        // the heroes and the wording (#418), and that rides on pendingGameSystem rather than on the mode.
-        pendingGameMode = EGameMode.StarQuestMission;
-        OpenHost();
-    };
-    renderer.QuestLanding.OnHorde = system =>
-    {
-        pendingGameSystem = system;
-        pendingGameMode = EGameMode.StarQuestHorde;
-        OpenHost();
     };
 
     // The lobby's Select Map button. The picker is its own screen rather than a dropdown because a
@@ -1403,62 +1447,26 @@ else
         renderer.NavigateTo(renderer.LobbyScreen);
     };
 
-    renderer.MainMenu.OnMapMakerClicked = () => renderer.NavigateTo(renderer.MapMaker);
-    renderer.MapMaker.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
-    renderer.MainMenu.OnSettingsClicked = () => renderer.NavigateTo(renderer.Settings);
-    renderer.Settings.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.MainMenu.OnMapMakerClicked = () => renderer.GoTo(renderer.MapMaker);
+    renderer.MapMaker.OnBack = renderer.GoBack;
+    renderer.MainMenu.OnSettingsClicked = () => renderer.GoTo(renderer.Settings);
+    renderer.Settings.OnBack = renderer.GoBack;
 
-    renderer.MainMenu.OnHostClicked = () =>
-    {
-        pendingGameSystem = null;
-        OpenHost();
-    };
+    renderer.MainMenu.OnArmyForgeClicked = () => renderer.GoTo(renderer.ArmyForge);
 
-    renderer.MainMenu.OnArmyBuilderClicked = () =>
-        renderer.NavigateTo(renderer.ArmyBuilder);
+    // #418: one Hero Builder and one campaign screen per Quest system.
+    renderer.HeroBuilder.OnBack = renderer.GoBack;
+    renderer.AoFHeroBuilder.OnBack = renderer.GoBack;
+    renderer.Campaigns.OnBack = renderer.GoBack;
+    renderer.AoFCampaigns.OnBack = renderer.GoBack;
 
-    renderer.MainMenu.OnArmyForgeClicked = () =>
-        renderer.NavigateTo(renderer.ArmyForge);
+    // #414: a Quest campaign mission is a game of THAT Quest system, in Mission mode (Kai, 2026-11-07:
+    // "PLAY NEXT MISSION goes straight into a lobby already set to Mission mode with the party filled
+    // in" - before this the mode was left to the player, and the campaign did not move on if they forgot).
+    renderer.Campaigns.OnPlay = () => StartHost(renderer.Campaigns.System, EGameMode.StarQuestMission);
+    renderer.AoFCampaigns.OnPlay = () => StartHost(renderer.AoFCampaigns.System, EGameMode.StarQuestMission);
 
-    renderer.MainMenu.OnCombatCalculatorClicked = () =>
-        renderer.NavigateTo(renderer.CombatCalculator);
-
-    // #418: one Hero Builder and one campaign screen per Quest system, picked by the menu button.
-    renderer.MainMenu.OnHeroesClicked = system =>
-        renderer.NavigateTo(system == FDG.EGameSystem.AoFQuest
-            ? renderer.AoFHeroBuilder : renderer.HeroBuilder);
-    renderer.HeroBuilder.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-    renderer.AoFHeroBuilder.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-
-    renderer.MainMenu.OnCampaignsClicked = system =>
-        renderer.NavigateTo(system == FDG.EGameSystem.AoFQuest
-            ? renderer.AoFCampaigns : renderer.Campaigns);
-    renderer.Campaigns.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-    renderer.AoFCampaigns.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-
-    // #414: a Quest campaign mission is a game of THAT Quest system. This passed null, so the lobby
-    // opened on whatever game type was last used; the party picker only draws for a Quest system, so
-    // the party the campaign screen had just readied (LobbyScreen.PendingParty) was dropped without a
-    // word. #418 makes the system the screen's own rather than a constant.
-    renderer.Campaigns.OnPlay = () =>
-    {
-        pendingGameSystem = renderer.Campaigns.System;
-        OpenHost();
-    };
-    renderer.AoFCampaigns.OnPlay = () =>
-    {
-        pendingGameSystem = renderer.AoFCampaigns.System;
-        OpenHost();
-    };
-
-    renderer.MainMenu.OnStrikeTeamsClicked = () =>
-        renderer.NavigateTo(renderer.StrikeTeams);
-    renderer.StrikeTeams.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
+    renderer.StrikeTeams.OnBack = renderer.GoBack;
     // #452: a campaign army is built in the locked Army Forge. The build's own callbacks update the
     // campaign screen's wizard; routing them back to that screen happens here, where the screen graph
     // lives, so neither screen has to know about the other's navigation.
@@ -1473,69 +1481,44 @@ else
         renderer.NavigateTo(renderer.ArmyForge);
         return true;
     };
-    // #435: "Play next mission" on the campaign screen now opens Mission Setup, which is where the
-    // forces, the difficulty and the map are chosen. The campaign screen only says which campaign.
+    // #435: "Play next mission" on the campaign screen opens Mission Setup, which is where the forces,
+    // the difficulty and the map are chosen. The campaign screen only says which campaign.
     renderer.StrikeTeams.OnPlay = (path, others) =>
     {
         renderer.MissionSetup.Open(path, others);
-        renderer.NavigateTo(renderer.MissionSetup);
+        renderer.GoTo(renderer.MissionSetup);
     };
     renderer.MissionSetup.OnBack = () =>
     {
         renderer.StrikeTeams.ReturnToCampOnShow();   // back to the camp it came from, not the campaign list
-        renderer.NavigateTo(renderer.StrikeTeams);
+        renderer.GoBack();
     };
     // #435: Start Mission. Mission Setup has already recorded both armies, the map and the auto-launch
-    // flag on LobbyScreen, so all that is left is a host. Opened silently on the saved settings - the
-    // campaign flow is "straight into the game", with no Host Server dialog and no table screen. If the
-    // port is taken the dialog comes up after all, which is the only recovery there is for that.
-    renderer.MissionSetup.OnStart = system =>
+    // flag on LobbyScreen, so all that is left is a host - and the lobby launches itself unseen.
+    renderer.MissionSetup.OnStart = system => StartHost(system, null);
+
+    // Join a Game: a small popup over the main menu.
+    renderer.ClientModal.Behind = renderer.MainMenu;
+    renderer.MainMenu.OnClientClicked = () => renderer.GoTo(renderer.ClientModal);
+    renderer.ClientModal.OnCancel = renderer.GoBack;
+    renderer.ClientModal.OnConnected = lobby =>
     {
-        pendingGameSystem = system;
-        if (!renderer.HostModal.TryCreateSilently()) OpenHost();
+        renderer.GameOverReturnTo = null;   // a joined game is never this machine's campaign mission
+        TeardownLobby();
+        activeLobby = lobby;
+        renderer.LobbyScreen.SetViewModel(lobby);
+        // The lobby's Back goes to the main menu, not back into the popup.
+        renderer.ReturnTo(renderer.MainMenu);
+        renderer.GoTo(renderer.LobbyScreen);
     };
-
-    renderer.MainMenu.OnClientClicked = () =>
-        renderer.NavigateTo(renderer.ClientModal);
-
-    // The public-listing heartbeat (#271), when the host ticked "List publicly". Stopped on every
-    // lobby/game exit path below; a missed path only means the entry lingers until the registry's
-    // 90s TTL, so this is belt-and-braces rather than load-bearing.
-    PublicListingService? activeListing = null;
-    NatPortMapper? activeMapper = null;
-    // The live lobby view model, host or client (#279). Unlike the listing, tearing this down IS
-    // load-bearing: disposing it stops the host's listener (releasing the port for the next lobby)
-    // or closes the client's connection (freeing its roster slot on the host). Before this, an
-    // abandoned host lobby kept serving the port as a zombie while the next lobby's listener
-    // silently failed to bind - joins and chat went to a lobby no UI was bound to.
-    ILobbyViewModel? activeLobby = null;
-    void TeardownLobby()
-    {
-        StopListing();
-        activeLobby?.Dispose();
-        activeLobby = null;
-    }
-    // `blocking` is for app exit only: it waits for the router to confirm the UPnP removal, which there
-    // is no later moment to do. Every in-session call leaves it false - waiting on a slow router there
-    // froze the UI for most of a second on the way back to the main menu.
-    void StopListing(bool blocking = false)
-    {
-        activeListing?.Dispose();
-        activeListing = null;
-        // Removes the UPnP port mapping too (#271), so we don't leave a router port open past the
-        // session. Best-effort; a missed path just leaves the mapping to the router's lease TTL.
-        if (blocking) activeMapper?.DisposeBlocking();
-        else activeMapper?.Dispose();
-        activeMapper = null;
-    }
 
     // ── Load Game (work item #052): pick a .fdgsave, resume it as host ───────────
     // Shared by the main menu's Load Game and the in-game menu's Load (#246); the latter tears the
     // current game down and returns to the menu before calling this. Opens the in-game Load Game
     // screen (tiles with a board preview) instead of a file dialog; picking a tile calls LoadSavedGame.
-    void LoadGameFlow() => renderer.NavigateTo(renderer.LoadGame);
+    void LoadGameFlow() => renderer.GoTo(renderer.LoadGame);
 
-    renderer.LoadGame.OnBack = () => renderer.NavigateTo(renderer.MainMenu);
+    renderer.LoadGame.OnBack = renderer.GoBack;
     renderer.LoadGame.OnLoad = path => LoadSavedGame(path);
 
     void LoadSavedGame(string path)
@@ -1565,22 +1548,28 @@ else
         // Release any previous lobby's listener/connection first (#279), so this host can bind.
         TeardownLobby();
 
-        FDGHost host = new FDGHost();
+        FDGHost host = new FDGHost(port: HostStarter.Port);
         Task hostTask = host.StartAsync();
 
-        // Same silent-bind-failure guard as HostModal.CreateServer (#279): a port conflict faults the
-        // task before its first await, and discarding it would open a lobby around a dead server.
+        // Same silent-bind-failure guard as HostStarter (#279): a port conflict faults the task before
+        // its first await, and discarding it would open a lobby around a dead server.
         if (hostTask.IsFaulted)
         {
             Console.WriteLine($"Host failed to start: {hostTask.Exception?.GetBaseException().Message}");
+            renderer.LoadGame.ShowError($"Could not start the game: network port {HostStarter.Port} is already in use. Is another copy of the game open?");
             return;
         }
 
+        // A loaded game is not this machine's campaign mission, even if the last game was one.
+        renderer.GameOverReturnTo = null;
+        lastLaunch = null;   // and it has no fresh set-up to rematch
         // #310: the saved player name, same as a fresh host lobby uses.
         var lobby = new LobbyViewModel_Host(UserConfig.Current.PlayerName, "Loaded Game", "", host, loadedStore);
         activeLobby = lobby;
         renderer.LobbyScreen.SetViewModel(lobby);
-        renderer.NavigateTo(renderer.LobbyScreen);
+        // Back from this lobby goes to the main menu (Kai's list: "main menu for Load Game & Join").
+        renderer.ReturnTo(renderer.MainMenu);
+        renderer.GoTo(renderer.LobbyScreen);
     }
 
     renderer.MainMenu.OnLoadGameClicked = LoadGameFlow;
@@ -1642,7 +1631,7 @@ else
         // Release the old lobby's networking (and port) before the new one binds.
         TeardownLobby();
 
-        FDGHost host = new FDGHost();
+        FDGHost host = new FDGHost(port: HostStarter.Port);
         Task hostTask = host.StartAsync();
         if (hostTask.IsFaulted)
         {
@@ -1666,75 +1655,14 @@ else
 
     renderer.MainMenu.OnQuitClicked = renderer.RequestClose;
 
-    // ── Army Builder ───────────────────────────────────────────────────────────
-    renderer.ArmyBuilder.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
 
     // ── Army Forge (#153) ────────────────────────────────────────────────────────
-    renderer.ArmyForge.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
+    renderer.ArmyForge.OnBack = renderer.GoBack;
+    // Not reachable from any menu (Kai: the Army Forge stays, the Army Builder goes; the Combat
+    // Calculator is off the menu on purpose). Their Back still works if something opens them.
+    renderer.ArmyBuilder.OnBack = renderer.GoBack;
+    renderer.CombatCalculator.OnBack = renderer.GoBack;
 
-    // ── Combat Calculator (#397) ─────────────────────────────────────────────────
-    renderer.CombatCalculator.OnBack = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-
-    // ── Host Modal ─────────────────────────────────────────────────────────────
-    // Cancel goes back where the Host dialog was opened from - a campaign's Play next mission, a mode
-    // screen - not always to the main menu (found 2026-11-06).
-    renderer.HostModal.OnCancel = () =>
-    {
-        IAppScreen back = hostOpenedFrom ?? renderer.MainMenu;
-        hostOpenedFrom = null;
-        renderer.NavigateTo(back);
-    };
-
-    renderer.HostModal.OnCreated = (lobby, listing, mapper) =>
-    {
-        // QA: after a campaign mission the game-over card says Continue and goes back to that campaign,
-        // not to the main menu. Where the host was opened from tells us whether this is a campaign
-        // mission: a Quest campaign screen, or Mission Setup (a strike-team campaign, which opens the host
-        // silently, so it is still the current screen here).
-        IAppScreen? origin = hostOpenedFrom ?? renderer.CurrentScreen;
-        renderer.GameOverReturnTo =
-            ReferenceEquals(origin, renderer.Campaigns) ? renderer.Campaigns
-            : ReferenceEquals(origin, renderer.AoFCampaigns) ? renderer.AoFCampaigns
-            : ReferenceEquals(origin, renderer.MissionSetup) ? renderer.StrikeTeams
-            : null;
-        hostOpenedFrom = null;
-        TeardownLobby();
-        activeLobby = lobby;
-        activeListing = listing;
-        activeMapper = mapper;
-        renderer.LobbyScreen.SetViewModel(lobby);
-        // The menu's tile, if that is how we got here: the lobby opens already pointed at that game's
-        // armies, points and modes rather than at the Grimdark Future default. Cleared either way, so a
-        // later lobby reached another way keeps its own default.
-        if (pendingGameSystem is { } picked)
-            LobbyScreen.ApplyGameSystem(lobby, picked);
-        // After ApplyGameSystem, which resets the mode along with the points and the allowed systems.
-        if (pendingGameMode is { } mode) LobbyScreen.ApplyGameMode(lobby, mode);
-        pendingGameSystem = null;
-        pendingGameMode = null;
-        // #410: a campaign army waiting to be played takes the host's own slot, with the points limit
-        // raised to fit it. Must follow ApplyGameSystem, which resets the points and the allowed
-        // systems, and cannot live in SetViewModel, which clears the auto-army marks and then re-applies
-        // the saved host settings over the top.
-        renderer.LobbyScreen.ApplyPendingCampaignArmy();
-        renderer.NavigateTo(renderer.LobbyScreen);
-    };
-
-    // ── Client Modal ───────────────────────────────────────────────────────────
-    renderer.ClientModal.OnCancel = () =>
-        renderer.NavigateTo(renderer.MainMenu);
-
-    renderer.ClientModal.OnConnected = lobby =>
-    {
-        renderer.GameOverReturnTo = null;   // a joined game is never this machine's campaign mission
-        TeardownLobby();
-        activeLobby = lobby;
-        renderer.LobbyScreen.SetViewModel(lobby);
-        renderer.NavigateTo(renderer.LobbyScreen);
-    };
 
     // ── Choose Army ────────────────────────────────────────────────────────────
     // The lobby's Army cell is a button now, not a dropdown: it hands the choice to a screen of its
@@ -1764,16 +1692,46 @@ else
     renderer.LobbyScreen.OnBack = () =>
     {
         // Backing out must actually shut the networking down (#279): stop the host's listener /
-        // close the client's connection, not just the listing heartbeat.
+        // close the client's connection.
         TeardownLobby();
-        renderer.NavigateTo(renderer.MainMenu);
+        // Back to whatever opened it: the game screen, a Quest campaign, Mission Setup (whose lobby only
+        // shows when its auto-launch stopped on a problem), or the main menu for Load Game and Join.
+        renderer.GoBack();
     };
 
-    // Covers game-over, escape-menu quit-to-menu, and escape-menu load (#271, #279).
+    // Covers game-over, escape-menu quit-to-menu, escape-menu load and Rematch (#279).
     renderer.OnGameExited = TeardownLobby;
 
     renderer.LobbyScreen.OnGameLaunched = (tableState, colorFunc, log, overlay, taskDisplay, presentationPlayer, saveGame, chatUI) =>
+    {
+        // Rematch: remember what this game was set up with while the lobby still has it.
+        // A resume launch (Load Game, or Take Back's relaunch) leaves it alone: Load Game clears it itself,
+        // and a Take Back is still the same game as far as a rematch goes.
+        if (activeLobby is LobbyViewModel_Host { IsResumeMode: false } host)
+            lastLaunch = new RematchPlan(host.GameSystem, host.GameMode, renderer.GameOverReturnTo, host.GetSeats(),
+                renderer.LobbyScreen.CurrentPartyPicks());
         renderer.TransitionToGame(tableState, colorFunc, log, overlay, taskDisplay, presentationPlayer, saveGame, chatUI);
+    };
+
+    // ── Game Over: Rematch (Kai, 2026-11-07) ─────────────────────────────────────────────────────
+    // A new lobby, not the old one re-armed: a lobby runs one game (the engine refuses a second launch
+    // on it) and the old game's store is spent. So the old game is torn down and a fresh host lobby opens
+    // with the same game, mode, settings (the saved host settings - the ones this game launched with),
+    // the same seats and the same armies, waiting for LAUNCH.
+    renderer.RematchUnavailableReason = () =>
+        activeLobby is not LobbyViewModel_Host ? "Only the host can start a rematch."
+        : lastLaunch == null ? "A loaded game can't be rematched - start it again from the game screen."
+        : lastLaunch.Campaign != null ? "A campaign mission is played from the campaign: press Continue."
+        : null;
+    renderer.OnRematchRequested = () =>
+    {
+        if (lastLaunch is not { Campaign: null } plan || activeLobby is not LobbyViewModel_Host) return;
+        renderer.ExitCurrentGame();   // also tears the old lobby down (OnGameExited)
+        LobbyScreen.PendingRematch = new LobbyScreen.RematchSeats(plan.Seats, plan.PartyPicks);
+        // The lobby's Back goes where the game screen's would have.
+        renderer.ReturnTo(renderer.GameSelect);
+        if (!StartHost(plan.System, plan.Mode)) LobbyScreen.PendingRematch = null;
+    };
 
     renderer.LobbyScreen.OnGameEnded = result => renderer.ShowGameOver(result);
 
@@ -1867,9 +1825,10 @@ else
     }
     finally
     {
-        // App exit: send the polite delist so the entry vanishes now, not at TTL (#271), and wait for
-        // the router to drop the port mapping - the process is about to end, so a background removal
-        // would die with it.
-        StopListing(blocking: true);
+        TeardownLobby();
     }
 }
+
+/// <summary>What a launched game was set up with, for the Game Over card's Rematch.</summary>
+internal sealed record RematchPlan(EGameSystem System, EGameMode Mode, FdgRaylib.Rendering.IAppScreen? Campaign,
+    IReadOnlyList<LobbyViewModel_Host.SeatSnapshot> Seats, IReadOnlyDictionary<Guid, List<string>> PartyPicks);

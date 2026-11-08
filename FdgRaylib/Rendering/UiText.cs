@@ -55,6 +55,21 @@ internal static class UiText
         ImGui.EndTooltip();
     }
 
+    /// <summary>A tooltip wrapped at a readable width, for the sentence-long hovers (Settings, controls,
+    /// the game screen).</summary>
+    internal static unsafe void TooltipWrapped(string text, float width = 420f)
+    {
+        ImGui.BeginTooltip();
+        // The menus draw with the big menu font pushed; a hover is body text whatever screen it is on.
+        bool body = RaylibRenderer.BodyFont.NativePtr != null;
+        if (body) ImGui.PushFont(RaylibRenderer.BodyFont);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + width);
+        ImGui.TextUnformatted(text);
+        ImGui.PopTextWrapPos();
+        if (body) ImGui.PopFont();
+        ImGui.EndTooltip();
+    }
+
     /// <summary>Wrapped at the content edge - <c>ImGui.TextWrapped</c> without the format pass.</summary>
     internal static void Wrapped(string text)
     {

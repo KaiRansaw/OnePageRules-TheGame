@@ -672,7 +672,10 @@ public class TacticalOverlayController
         // #247: V is the master reach toggle, handled here rather than in any one resolver so it works
         // identically while moving, placing, and idle. The placement panel's checkbox drives the same flag.
         if (wantKeys && ImGui.IsKeyPressed(TacticalOverlayConfig.ReachToggleKey))
+        {
             ViewSettings.ShowReachOverlay = !ViewSettings.ShowReachOverlay;
+            ViewSettings.Save();
+        }
 
         // #247: the hover anchor. Captured here (input phase, hover state fresh) and consumed by DrawField
         // on the next canvas pass. No dwell — see TacticalOverlayConfig.HoverPreviewDelaySeconds.

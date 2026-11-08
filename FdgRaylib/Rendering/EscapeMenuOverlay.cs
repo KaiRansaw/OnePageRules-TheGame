@@ -14,8 +14,10 @@ namespace FdgRaylib.Rendering;
 /// playing. Gameplay input is suppressed via <see cref="EscapeRouter.MenuOpen"/> checks at the canvas
 /// and hotkey sites; the full-screen dim window also blocks clicks from reaching windows behind it.</para>
 ///
-/// <para>Contents: Resume, Save Game (host only), Load Game (host only), Options, Report a Bug (#226),
-/// Return to Main Menu, Quit to Desktop. (The army list deliberately has no
+/// <para>Contents (Kai, 2026-11-07): Resume, Save Game (host only), Load Game (host only), Settings (the
+/// shared Settings screen, drawn inside this menu so the game keeps running), Return to Main Menu - or
+/// Return to Campaign during a campaign mission - and Quit to Desktop. "Report a Bug" left the menu; the
+/// bug-report code is kept (and its disclosure tested) but nothing opens it now. (The army list deliberately has no
 /// row here - the always-visible bottom-left "Army Lists (L)" button beside "Menu (Esc)" is its
 /// discoverable home, owner-ruled 2026-08-02.)</para>
 /// </summary>
@@ -25,6 +27,12 @@ public sealed class EscapeMenuOverlay
     private Confirm _confirm = Confirm.None;
     private bool _inOptions;
     private bool _inBugReport;
+
+    /// <summary>The shared Settings screen; its tabs are drawn inside this menu.</summary>
+    public SettingsScreen? Settings;
+
+    /// <summary>True during a campaign mission: the leave button reads "Return to Campaign".</summary>
+    public Func<bool>? InCampaign;
 
     // Bug-report view state (#226). The description survives leaving and re-entering the view
     // within a session (typing it is the expensive part); it clears when a send starts, because
@@ -49,16 +57,6 @@ public sealed class EscapeMenuOverlay
         $"Saved Game (*{GameSaveFile.EXTENSION_WITH_PERIOD})",
         new[] { $"*{GameSaveFile.EXTENSION_WITH_PERIOD}" });
 
-    // Options-panel dependencies: the tactical overlay (Threat + field-anchor toggles) and the audio
-    // manager (master volume). Wired in TransitionToGame; audio may be null/disabled.
-    private TacticalOverlay.TacticalOverlayController? _tactical;
-    private AudioManager? _audio;
-    public void AttachOptions(TacticalOverlay.TacticalOverlayController tactical, AudioManager? audio)
-    {
-        _tactical = tactical;
-        _audio    = audio;
-    }
-
     // The bug reporter (#226), one per launched game like the save hook above; null hides the row.
     private BugReport.BugReporter? _bugReporter;
     public void AttachBugReport(BugReport.BugReporter? bugReporter) => _bugReporter = bugReporter;
@@ -79,7 +77,7 @@ public sealed class EscapeMenuOverlay
         {
             // Escape steps back one level: out of a confirm, then out of a sub-view, then the menu.
             if (_confirm != Confirm.None) _confirm = Confirm.None;
-            else if (_inOptions) _inOptions = false;
+            else if (_inOptions) { Settings?.CommitName(); _inOptions = false; }
             else if (_inBugReport) _inBugReport = false;
             else Close();   // fall through so the popup gets its CloseCurrentPopup this frame
         }
@@ -92,8 +90,8 @@ public sealed class EscapeMenuOverlay
             ImGui.OpenPopup("##escmenu");
 
         // Options and the bug-report box are wider than the plain button column.
-        float menuW = _inOptions || _inBugReport
-            ? MathF.Min(440f, screenW * 0.9f) : MathF.Min(360f, screenW * 0.8f);
+        float menuW = _inOptions ? MathF.Min(820f, screenW * 0.92f)
+            : _inBugReport ? MathF.Min(440f, screenW * 0.9f) : MathF.Min(360f, screenW * 0.8f);
         ImGui.SetNextWindowPos(new Vector2(screenW * 0.5f, screenH * 0.5f), ImGuiCond.Always,
             new Vector2(0.5f, 0.5f));
         ImGui.SetNextWindowSize(new Vector2(menuW, 0f), ImGuiCond.Always);
@@ -107,7 +105,7 @@ public sealed class EscapeMenuOverlay
             if (IsOpen)
             {
                 if (_confirm != Confirm.None) DrawConfirm();
-                else if (_inOptions) DrawOptions();
+                else if (_inOptions) DrawSettings();
                 else if (_inBugReport) DrawBugReport();
                 else DrawMainList();
             }
@@ -119,6 +117,8 @@ public sealed class EscapeMenuOverlay
 
         ImGui.PopStyleColor();
     }
+
+    private string LeaveLabel => InCampaign?.Invoke() == true ? "Return to Campaign" : "Return to Main Menu";
 
     private void DrawMainList()
     {
@@ -148,88 +148,31 @@ public sealed class EscapeMenuOverlay
             ImGui.Spacing();
         }
 
-        if (FullWidthButton("Options")) _inOptions = true;
-        if (_bugReporter != null && FullWidthButton("Report a Bug"))
+        if (FullWidthButton("Settings"))
         {
-            _inBugReport = true;
-            _bugSent = false;
+            Settings?.OnShown();   // re-read the saved name
+            _inOptions = true;
         }
-        if (FullWidthButton("Return to Main Menu")) _confirm = Confirm.ReturnToMenu;
+        if (FullWidthButton(LeaveLabel)) _confirm = Confirm.ReturnToMenu;
         if (FullWidthButton("Quit to Desktop")) _confirm = Confirm.Quit;
     }
 
-    private void DrawOptions()
+    private void DrawSettings()
     {
-        DrawTitle("Options");
+        DrawTitle("Settings");
         ImGui.Spacing();
-
-        SectionHeader("Display");
-        ImGui.Checkbox("Unit labels (N)", ref ViewSettings.ShowLabels);
-        ImGui.Checkbox("Table grid", ref ViewSettings.ShowGrid);
-        ImGui.Checkbox("Show all tokens (T, dev)", ref ViewSettings.ShowAllTokens);
-        ImGui.Checkbox("Victory fireworks", ref ViewSettings.ShowVictoryFireworks);
-
-        // #344: how long a settled dice panel stays up. Shown as a multiplier of the tuned default rather
-        // than in seconds - the actual lifetime varies with the roll (a panel carrying modifier chips
-        // already lingers longer), so a seconds figure would be a lie for most rolls.
-        ImGui.SliderFloat("Dice popup time", ref ViewSettings.DiceLingerScale,
-            ViewSettings.DiceLingerMin, ViewSettings.DiceLingerMax, "%.2fx");
-        UiText.Disabled("1.00x is the default. Hovering the dice always freezes them.");
-        ImGui.SliderFloat("Game speed", ref ViewSettings.GameSpeed, 0.25f, 2f, "%.2fx");
-        UiText.Disabled("Lower it to follow the bot's turns more easily.");
-
-        if (_tactical != null)
-        {
-            SectionHeader("Tactical overlay");
-            ImGui.Checkbox("Weapon reach (B)", ref ViewSettings.ShowReachOverlay);
-            UiText.Disabled("Ghosts while moving/placing; any unit you hover.");
-
-            // #247: "Threat frontiers (F)" and "Anchor field on my position" are both gone. The red
-            // frontier layer was outdated once the reach field could answer the same question in one
-            // vocabulary, and pinning an enemy is now the gesture that asks for the target-anchored
-            // picture -- so there is no second layer to toggle and no mode left to set.
-        }
-
-        SectionHeader("Camera");
-        ImGui.SliderFloat("Camera key speed", ref ViewSettings.CameraSpeed, 0.25f, 3f, "%.2fx");
-        ImGui.Checkbox("Invert tilt (Shift+Q / Shift+E)", ref ViewSettings.InvertTilt);
-
-        SectionHeader("Audio");
-        if (_audio != null && _audio.Enabled)
-        {
-            float vol = _audio.MasterVolume;
-            if (ImGui.SliderFloat("Master volume", ref vol, 0f, 1f, "%.2f"))
-                _audio.SetMasterVolume(vol);
-        }
-        else
-        {
-            UiText.Disabled("Audio unavailable.");
-        }
-
-        SectionHeader("Controls");
-        UiText.Disabled("F1: list of all controls");
-        UiText.Disabled("WASD: move camera   Q/E: turn (3D)");
-        UiText.Disabled("Shift+W/S: zoom   Shift+Q/E: tilt (3D)");
-        UiText.Disabled("V or F3: switch 2D / 3D   Ctrl+S: quick save");
-        UiText.Disabled("Alt+drag: measure");
-        UiText.Disabled("Alt+wheel: zoom");
-        UiText.Disabled("Middle-drag: pan");
-        UiText.Disabled("L: army lists (all players)");
-        UiText.Disabled("N labels   T tokens   B weapon reach   M measure");
-        // #326: G toggles Group/Single -- it is Ctrl+wheel that cycles the formation (#277). The old line
-        // said "G: cycle formation", which named the wrong key for the wrong action.
-        UiText.Disabled("G: group / single mode (during moves)");
-        UiText.Disabled("Ctrl+wheel: cycle formation (group moves)");
-        UiText.Disabled($"{Resolvers.ResolverHotkeys.CycleHint}: pick model (single moves)");
-        UiText.Disabled("Click a model: switch to it (single moves)");
-        UiText.Disabled($"{Resolvers.ResolverKeybinds.Confirm.Hint}: auto-assign / confirm");
-        UiText.Disabled($"{Resolvers.ResolverKeybinds.Back.Hint}: undo / back out");
-        UiText.Disabled("Esc: open this menu");
-
+        float h = MathF.Min(ImGui.GetIO().DisplaySize.Y * 0.62f, 640f);
+        ImGui.BeginChild("##escsettings", new Vector2(0f, h));
+        Settings?.DrawBody();
+        ImGui.EndChild();
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
-        if (FullWidthButton("Back")) _inOptions = false;
+        if (FullWidthButton("Back to the menu"))
+        {
+            Settings?.CommitName();
+            _inOptions = false;
+        }
     }
 
     // The bug-report view (#226): a description box, one Send button, and an honest status line.
@@ -336,8 +279,9 @@ public sealed class EscapeMenuOverlay
     {
         (string title, string question) = _confirm switch
         {
-            Confirm.ReturnToMenu => ("Return to Main Menu",
-                "Leave this game and return to the main menu? This ends the game for all players."),
+            Confirm.ReturnToMenu => (LeaveLabel, InCampaign?.Invoke() == true
+                ? "Leave this mission and go back to the campaign? The mission ends here."
+                : "Leave this game and return to the main menu? This ends the game for all players."),
             Confirm.LoadGame => ("Load Game",
                 "Load a saved game? This ends the current game for all players, then opens a file to resume."),
             _ => ("Quit to Desktop",
@@ -404,15 +348,6 @@ public sealed class EscapeMenuOverlay
             path += GameSaveFile.EXTENSION_WITH_PERIOD;
 
         File.WriteAllText(path, json);
-    }
-
-    // A small labelled divider between Options sections (SeparatorText isn't in this ImGui binding).
-    private static void SectionHeader(string text)
-    {
-        ImGui.Spacing();
-        UiText.Disabled(text);
-        ImGui.Separator();
-        ImGui.Spacing();
     }
 
     private static void DrawTitle(string text)

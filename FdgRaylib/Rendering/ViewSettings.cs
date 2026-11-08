@@ -41,8 +41,7 @@ public static class ViewSettings
     /// showing had finished, on a client whose engine is still waiting. So the knob moves the part that is
     /// purely "how long you get to re-read it", which is what the setting is actually for.</para>
     ///
-    /// <para>Session-scoped like every other flag here, deliberately: these are display toggles, not saved
-    /// preferences (<c>UserConfig</c> holds the lobby/host settings).</para>
+    /// <para>Saved with the other Settings choices since 2026-11-07 (<see cref="Save"/>).</para>
     /// </summary>
     public static float DiceLingerScale = 1f;
 
@@ -58,6 +57,42 @@ public static class ViewSettings
 
     /// <summary>Flips Shift+Q / Shift+E tilt.</summary>
     public static bool InvertTilt = false;
+
+    /// <summary>Master volume, 0..1 (Settings > Sound). Applied to the audio device by the renderer.</summary>
+    public static float MasterVolume = 1f;
+
+    /// <summary>Copies the saved Settings choices in (once, when the window opens).</summary>
+    public static void Load(Config.ViewPreferences p)
+    {
+        ShowLabels = p.ShowLabels;
+        ShowGrid = p.ShowGrid;
+        ShowAllTokens = p.ShowAllTokens;
+        ShowVictoryFireworks = p.ShowVictoryFireworks;
+        DiceLingerScale = Math.Clamp(p.DiceLingerScale, DiceLingerMin, DiceLingerMax);
+        GameSpeed = Math.Clamp(p.GameSpeed, 0.25f, 2f);
+        ShowReachOverlay = p.ShowReachOverlay;
+        CameraSpeed = Math.Clamp(p.CameraSpeed, 0.25f, 3f);
+        InvertTilt = p.InvertTilt;
+        MasterVolume = Math.Clamp(p.MasterVolume, 0f, 1f);
+    }
+
+    /// <summary>Writes the current choices to the config file - called on every change, so there is no
+    /// Save button (Kai, 2026-11-07). Hotkey toggles (N, T, B) call it too.</summary>
+    public static void Save()
+    {
+        Config.ViewPreferences p = Config.UserConfig.Current.View;
+        p.ShowLabels = ShowLabels;
+        p.ShowGrid = ShowGrid;
+        p.ShowAllTokens = ShowAllTokens;
+        p.ShowVictoryFireworks = ShowVictoryFireworks;
+        p.DiceLingerScale = DiceLingerScale;
+        p.GameSpeed = GameSpeed;
+        p.ShowReachOverlay = ShowReachOverlay;
+        p.CameraSpeed = CameraSpeed;
+        p.InvertTilt = InvertTilt;
+        p.MasterVolume = MasterVolume;
+        Config.UserConfig.Save();
+    }
 
     /// <summary>Shortest the dice panels may linger: a third of the default (#344).</summary>
     public const float DiceLingerMin = 1f / 3f;

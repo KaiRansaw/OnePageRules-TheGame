@@ -105,10 +105,16 @@ public class TableTooltipOverlay
         // with the menu's Options panel.
         bool wantKeys = !ImGui.GetIO().WantCaptureKeyboard && !EscapeRouter.MenuOpen;
         if (wantKeys && ImGui.IsKeyPressed(ImGuiKey.N))
+        {
             ViewSettings.ShowLabels = !ViewSettings.ShowLabels;
+            ViewSettings.Save();
+        }
 
         if (wantKeys && ImGui.IsKeyPressed(ImGuiKey.T))
+        {
             ViewSettings.ShowAllTokens = !ViewSettings.ShowAllTokens;
+            ViewSettings.Save();
+        }
 
         var hoveredUnit    = hitTester.HoveredUnit;
         var hoveredModel   = hitTester.HoveredModel;
@@ -153,7 +159,7 @@ public class TableTooltipOverlay
         // Draw tooltip, once the mouse has settled on the thing. A card that pops the instant the pointer
         // crosses a base covers whatever you were reading on the way past, so it waits for a short dwell -
         // long enough that sweeping over the table stays clear, short enough not to feel sticky.
-        if (Settled(hoveredUnit as object ?? hoveredObjective as object ?? hoveredTerrain))
+        if (!SuppressHover && Settled(hoveredUnit as object ?? hoveredObjective as object ?? hoveredTerrain))
         {
             // Not while placing models: the card opened over the very spot being placed on - the ghost or
             // a unit just put down - and covered the zone (found 2026-11-06). Right-click still shows it.
@@ -178,6 +184,9 @@ public class TableTooltipOverlay
         // only the name text is gated on ViewSettings.ShowLabels.
         DrawUnitOverlays();
     }
+
+    /// <summary>True while the game-over card is up, so no hover card opens over it.</summary>
+    public bool SuppressHover;
 
     /// <summary>How long the pointer has to rest on something before its card opens.</summary>
     public static float HoverDelaySeconds = 0.35f;

@@ -107,6 +107,7 @@ public static class DiceTray
     public static void Reset()
     {
         Entries.Clear();
+        Archived.Clear();
         _open = null;
         _lastRound = null;
         _pins.Clear();
@@ -121,8 +122,90 @@ public static class DiceTray
     private static void Add(Entry e)
     {
         Entries.Add(e);
-        if (Entries.Count > MaxEntries) Entries.RemoveAt(0);
+        if (Entries.Count > MaxEntries)
+        {
+            // The tab only draws the newest MaxEntries, but Save Battle Report writes the WHOLE game, so
+            // a line that scrolls off the tab is kept here rather than thrown away.
+            Archived.Add(Entries[0]);
+            Entries.RemoveAt(0);
+        }
     }
+
+    /// <summary>Entries that have scrolled off the tab, oldest first (kept for <see cref="ExportText"/>).</summary>
+    private static readonly List<Entry> Archived = new();
+
+    /// <summary>
+    /// Kai, 2026-11-07 (Game Over "Save Battle Report"): the whole battle report as plain text, oldest
+    /// first - every line, every attack with its sum and every die, the way the hover cards show them.
+    /// ASCII only (it is the same text the game draws).
+    /// </summary>
+    public static string ExportText()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (Entry e in Archived.Concat(Entries))
+        {
+            switch (e.Kind)
+            {
+                case Kind.Divider:
+                    sb.AppendLine();
+                    sb.AppendLine($"=== {e.Text} ===");
+                    break;
+                case Kind.Attack:
+                    ExportAttack(sb, e);
+                    break;
+                default:
+                    sb.AppendLine(e.Text);
+                    foreach (string d in e.Details) sb.AppendLine("    " + d);
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    private static void ExportAttack(System.Text.StringBuilder sb, Entry e)
+    {
+        string target = e.TargetName.Length > 0 ? e.TargetName : "the target";
+        string head = e.Heading.Length > 0 ? e.Heading
+            : $"{(e.AttackerName.Length > 0 ? e.AttackerName : "A unit")}{(e.Melee ? " fights " : " shoots ")}{target}";
+        sb.AppendLine(e.Weapons.Length > 0 ? $"{head}, with {e.Weapons}" : head);
+
+        var res = new System.Text.StringBuilder();
+        if (e.HasHits) res.Append($"{Num(e.Hits)}/{Num(e.Attacks)} hit. ");
+        if (e.HasSaves)
+        {
+            float wounds = MathF.Max(0f, e.SaveTotal - e.Saves - e.Ignored);
+            res.Append($"{target} {(e.TargetName.EndsWith('s') ? "save" : "saves")} {Num(e.Saves)}/{Num(e.SaveTotal)}");
+            if (e.Ignored > 0f) res.Append($", ignores {Num(e.Ignored)}");
+            res.Append(wounds > 0f ? $", taking {Num(wounds)} {Plural(wounds, "wound", "wounds")}" : ", taking no wounds");
+            if (e.Lost > 0) res.Append($" and losing {e.Lost} {Plural(e.Lost, "model", "models")}");
+            res.Append('.');
+        }
+        else if (e.HasHits && e.Hits <= 0f) res.Append("No damage.");
+        else if (e.Lost > 0) res.Append($"{target} loses {e.Lost} {Plural(e.Lost, "model", "models")}.");
+        if (e.Routed) res.Append($" {target} routs!");
+        if (res.Length > 0) sb.AppendLine("    " + res.ToString().Trim());
+
+        foreach (var (d, who, _) in e.Rolls)
+        {
+            string line = $"    {who}: {d.Label} ({d.SuccessThreshold}+)";
+            if (d.ModifierTags is { Count: > 0 }) line += " [" + string.Join(", ", d.ModifierTags) + "]";
+            if (d.Mode != ERandomnessType.Realistic)
+                line += $" - about {Num(d.Successes)} of {Num(d.Total)} (average)";
+            else
+            {
+                var faces = new List<int>();
+                for (int i = 0; i < d.FaceCounts.Count; i++)
+                    for (int k = 0; k < (int)MathF.Round(d.FaceCounts[i]); k++) faces.Add(d.SideMin + i);
+                faces.Sort((a, b) => b.CompareTo(a));
+                line += $" - rolled {string.Join(" ", faces)} - {d.ResultSummary ?? $"{Num(d.Successes)} of {Num(d.Total)} succeed"}";
+            }
+            sb.AppendLine(line);
+        }
+    }
+
+    /// <summary>True while the game-over card is up: the report's hover cards stay shut so none of
+    /// them sits over the card.</summary>
+    public static bool SuppressHover;
 
     // ── Building the report from the beats ───────────────────────────────────────────────────────────
 
@@ -461,7 +544,7 @@ public static class DiceTray
 
         float bottom = ImGui.GetCursorScreenPos().Y - ImGui.GetStyle().ItemSpacing.Y;
         // #464: the line's own breakdown, anywhere on it except a highlighted word (which has its own).
-        if (!overWord && e.Details.Count > 0 && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
+        if (!overWord && !SuppressHover && e.Details.Count > 0 && ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
             && ImGui.IsMouseHoveringRect(start, new Vector2(start.X + width, bottom)))
         {
             ImGui.BeginTooltip();
@@ -553,7 +636,7 @@ public static class DiceTray
         ImGui.SetCursorScreenPos(new Vector2(start.X, end.Y));
         ImGui.Dummy(new Vector2(width, 0f));
 
-        if (hovered && e.Rolls.Count > 0)
+        if (hovered && e.Rolls.Count > 0 && !SuppressHover)
         {
             ImGui.BeginTooltip();
             DrawBreakdown(e);
@@ -743,6 +826,7 @@ public static class DiceTray
     private static bool HoverRuleTooltip(Entry e, List<(Vector2 Min, Vector2 Max)> rects, List<int> rectPieces,
         Dictionary<int, (string Name, string? TermText)> hotNames)
     {
+        if (SuppressHover) return false;
         Vector2 mouse = ImGui.GetMousePos();
         int hit = rects.FindIndex(r => mouse.X >= r.Min.X && mouse.X <= r.Max.X
             && mouse.Y >= r.Min.Y && mouse.Y <= r.Max.Y);

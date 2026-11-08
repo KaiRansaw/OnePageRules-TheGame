@@ -120,8 +120,8 @@ void main()
     }
 
     /// <summary>
-    /// Mouse: middle-drag orbits (right-drag too, unless the active tool uses right-click), Shift+middle-drag
-    /// pans, Alt+wheel zooms (plain wheel too while no table tool wants it for rotating). Keys: arrows move
+    /// Mouse: middle-drag orbits; right-drag (unless the active tool uses right-click) and Shift+middle-drag
+    /// pan, Alt+wheel zooms (plain wheel too while no table tool wants it for rotating). Keys: arrows move
     /// over the table; WASD / Q-E also move and turn while no decision panel is open (its letter hotkeys
     /// would clash).
     /// </summary>
@@ -234,7 +234,7 @@ void main()
             if (ImGui.SmallButton("West")) SetPreset(EPreset.West);
             ImGui.SameLine();
             if (ImGui.SmallButton("East")) SetPreset(EPreset.East);
-            ImGui.TextDisabled("Middle or right-drag: rotate   Shift+middle-drag: pan   Alt+wheel: zoom   Arrows/WASD: move   Q/E: turn");
+            ImGui.TextDisabled("Middle-drag: rotate   Right-drag or Shift+middle-drag: pan   Alt+wheel: zoom   Arrows/WASD: move   Q/E: turn");
         }
         ImGui.End();
     }

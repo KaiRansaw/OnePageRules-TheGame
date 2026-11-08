@@ -51,7 +51,8 @@ public class RaylibRenderer
     public ArmyBuilderScreen ArmyBuilder  { get; } = new();
     public ArmyForgeScreen   ArmyForge    { get; } = new();
     public CombatCalculatorScreen CombatCalculator { get; } = new();
-    public HostModal         HostModal    { get; } = new();
+    /// <summary>Starts a hosted game straight into the lobby (the Host dialog is gone, Kai 2026-11-07).</summary>
+    public HostStarter       HostStarter  { get; } = new();
     public ClientModal       ClientModal  { get; } = new();
     public LobbyScreen       LobbyScreen  { get; } = new();
     public ArmyPickerScreen  ArmyPicker   { get; } = new();
@@ -69,16 +70,13 @@ public class RaylibRenderer
     /// <summary>#435 - the campaign's Mission Setup step: your force, their force, the map, go.</summary>
     public MissionSetupScreen MissionSetup { get; } = new();
 
-    /// <summary>A system's modes: Army vs Army, Horde, Campaign (Kai's mock, 2026-11-02).</summary>
-    public ModeSelectScreen ModeSelect { get; } = new();
+    /// <summary>A family's three games side by side, every mode a button (Kai, 2026-11-07, "Option A").</summary>
+    public GameScreen GameSelect { get; } = new();
 
     /// <summary>The map editor, given a front door on the main menu.</summary>
     public MapMakerScreen MapMaker { get; } = new();
 
     public SettingsScreen Settings { get; } = new();
-
-    /// <summary>A Quest system's doors, until Kai designs its own screen.</summary>
-    public QuestLandingScreen QuestLanding { get; } = new();
 
     /// <summary>The table you will fight on, picked from thumbnails.</summary>
     public MapPickerScreen MapPicker { get; } = new();
@@ -198,7 +196,7 @@ public class RaylibRenderer
     {
         _takeBackInProgress = false;
         ExitGame();
-        NavigateTo(MainMenu);
+        ReturnTo(MainMenu);
     }
     // Set from the engine thread when the game ends (see ShowGameOver); read on the main thread to draw
     // the game-over overlay. Non-null = game finished, result string to display.
@@ -239,10 +237,26 @@ public class RaylibRenderer
 
         // In-game menu actions. Returning to the menu and quitting both tear the game down first; these
         // reuse the exact pair the game-over card uses (ExitGame + NavigateTo) so there's one teardown path.
-        _escapeMenu.OnReturnToMainMenu = () => { ExitGame(); NavigateTo(MainMenu); };
+        // During a campaign mission the leave button goes back to that campaign (Kai, 2026-11-07), the
+        // same place the game-over card's Continue goes.
+        _escapeMenu.OnReturnToMainMenu = () => LeaveGameTo(GameOverReturnTo);
+        _escapeMenu.InCampaign = () => GameOverReturnTo != null;
+        _escapeMenu.Settings = Settings;
         _escapeMenu.OnQuitToDesktop    = RequestClose;
         // Load ends the current game, returns to the menu, then runs the shared load-from-file flow.
-        _escapeMenu.OnLoadGame = () => { ExitGame(); NavigateTo(MainMenu); OnLoadGameRequested?.Invoke(); };
+        _escapeMenu.OnLoadGame = () => { ExitGame(); ReturnTo(MainMenu); OnLoadGameRequested?.Invoke(); };
+    }
+
+    /// <summary>
+    /// Ends the game and goes to <paramref name="campaign"/> (a Quest campaign list or the strike-team
+    /// camp) when it was a campaign mission, otherwise to the main menu. Shared by the Esc menu and the
+    /// game-over card so the two can't disagree.
+    /// </summary>
+    private void LeaveGameTo(IAppScreen? campaign)
+    {
+        ExitGame();
+        if (campaign == StrikeTeams) StrikeTeams.ReturnToCampOnShow();   // its camp, not the campaign list
+        ReturnTo(campaign ?? MainMenu);
     }
 
     /// <summary>The screen showing now (null before the first navigation).</summary>
@@ -255,10 +269,81 @@ public class RaylibRenderer
     /// </summary>
     public IAppScreen? GameOverReturnTo { get; set; }
 
+    /// <summary>
+    /// Plain switch to <paramref name="screen"/>, leaving the Back history alone. Used for the round
+    /// trips a screen makes to a helper and back (lobby -> Choose Army -> lobby, the locked Forge).
+    /// </summary>
     public void NavigateTo(IAppScreen screen)
     {
         _currentScreen = screen;
         screen.OnShown();
+    }
+
+    // Back history (Kai, 2026-11-07: "every Back button goes to the previous screen"). GoTo remembers
+    // the screen being left; GoBack returns to it. ReturnTo unwinds to a screen already in the history (or
+    // starts over from it), so arriving back at the campaign or the main menu after a game never leaves
+    // stale entries behind.
+    private ScreenHistory? _historyStore;
+    private ScreenHistory History => _historyStore ??= new ScreenHistory(MainMenu);
+
+    /// <summary>Forward navigation: the screen being left becomes what Back returns to.</summary>
+    public void GoTo(IAppScreen screen)
+    {
+        History.Forward(_currentScreen, screen);
+        NavigateTo(screen);
+    }
+
+    /// <summary>Back: the screen this one was opened from, or the main menu when there is none.</summary>
+    public void GoBack() => NavigateTo(History.Back());
+
+    /// <summary>Go to <paramref name="screen"/>, dropping everything opened after it.</summary>
+    public void ReturnTo(IAppScreen screen)
+    {
+        History.Unwind(screen);
+        NavigateTo(screen);
+    }
+
+    /// <summary>The screen Back would go to now (null = the main menu).</summary>
+    public IAppScreen? PreviousScreen => History.Previous;
+
+    // A plain message box over whatever screen is up (the only thing left of the Host dialog: "could
+    // not start the game"). Main thread.
+    private string? _messageTitle, _messageText;
+
+    /// <summary>Shows a small OK box over the current screen.</summary>
+    public void ShowMessage(string title, string text)
+    {
+        _messageTitle = title;
+        _messageText = text;
+    }
+
+    private void DrawMessageBox()
+    {
+        if (_messageText == null) return;
+        const string id = "##appmessage";
+        if (!ImGui.IsPopupOpen(id)) ImGui.OpenPopup(id);
+        ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize * 0.5f, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(MathF.Min(520f, ImGui.GetIO().DisplaySize.X * 0.9f), 0f), ImGuiCond.Always);
+        if (ImGui.BeginPopupModal(id, ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize
+                | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings))
+        {
+            ImGui.PushFont(LargeFont);
+            ImGui.TextUnformatted(_messageTitle ?? "");
+            ImGui.PopFont();
+            ImGui.Spacing();
+            ImGui.PushTextWrapPos(0f);
+            ImGui.TextUnformatted(_messageText);
+            ImGui.PopTextWrapPos();
+            ImGui.Spacing();
+            if (ImGui.Button("OK", new Vector2(ImGui.GetContentRegionAvail().X, 40f))
+                || ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.Escape, false))
+            {
+                _messageText = null;
+                _messageTitle = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
+        }
     }
 
     // The owning unit rides along with the colour so DrawModels can ask whether the model is actually in
@@ -407,8 +492,6 @@ public class RaylibRenderer
         _tacticalOverlay.AttachMovementResolver(resolverOverlay?.MovementResolver);
         // #230: lets the field anchor on a placement's ghosts when no move job is running.
         _tacticalOverlay.AttachResolverOverlay(resolverOverlay);
-        // The menu's Options panel drives the tactical toggles (Threat, field anchor) and master volume.
-        _escapeMenu.AttachOptions(_tacticalOverlay, _audio);
         // #280: preview sharing rides the overlay (built at launch by GameGuiWiring.AttachPreviews).
         _previewPublisher = resolverOverlay?.PreviewPublisher;
         _remotePreviews   = resolverOverlay?.RemotePreviews;
@@ -564,6 +647,9 @@ public class RaylibRenderer
         _lastLogCount          = 0;
         _gameOverResult        = null;
         _gameOverNote          = null;
+        _gameOverHidden        = false;
+        _battleReportSavedTo   = null;
+        _battleReportError     = null;
         _inGame                = false;
 
         // Every game teardown funnels through here (game-over card, escape-menu quit-to-menu,
@@ -885,7 +971,7 @@ public class RaylibRenderer
         // stays resizable so a toggle drops it back to a windowed 1280x720 and back.
         // ToggleBorderlessWindowed must be called after InitWindow; it sizes the window to the monitor.
         Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
-        Raylib.InitWindow(1280, 720, "Future of Dark Grimness");
+        Raylib.InitWindow(1280, 720, "OnePageRules - The Game");
         // 60, not 30. Raylib samples the mouse once per frame and rlImGui hands ImGui that sample, so
         // the frame interval is also the input interval: at 30 a click shorter than 33ms could be pressed
         // and released between two samples and vanish entirely, which read as "I have to click twice"
@@ -921,6 +1007,10 @@ public class RaylibRenderer
         // App-wide audio device + presentation cue bank (placeholder until real assets land in
         // Assets/Sounds/). No-ops gracefully if no audio device is available.
         _audio = new AudioManager();
+        // Settings choices saved last time (Display / Gameplay / Camera / Sound).
+        ViewSettings.Load(UserConfig.Current.View);
+        _audio.SetMasterVolume(ViewSettings.MasterVolume);
+        Settings.Audio = _audio;
         PresentationSoundCues.LoadInto(_audio);
         // UI chrome cues (button clicks, toggles, canvas commits) share the same device; the static
         // UiSound facade lets any screen/resolver voice one without being handed the AudioManager.
@@ -1184,9 +1274,6 @@ public class RaylibRenderer
                         DiceTray.AddNote(why,
                             saved != null ? new Vector4(0.47f, 0.86f, 0.47f, 1f) : new Vector4(1f, 0.63f, 0.47f, 1f));
                     }
-                    // O: show or hide the Star Quest mission window. (M is the measuring tool.)
-                    if (keysOk && !kio.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.O, false))
-                        QuestMissionPanel.Open = !QuestMissionPanel.Open;
                     // F1: the controls list.
                     if (!kio.WantCaptureKeyboard && ImGui.IsKeyPressed(ImGuiKey.F1, false))
                         _showControlsHelp = !_showControlsHelp;
@@ -1220,6 +1307,10 @@ public class RaylibRenderer
                 // Wounds to assign are a decision too: they take the Actions window.
                 GuiAssignWoundsResolver.Dock = new Vector4(rightX, infoH, rightW, actionsH);
                 if (infoH > 0) DrawUnitInfoPanel(infoUnit, rightX, 0, rightW, infoH);
+                // Nothing hovers over the Game Over card (an attack card used to stay open on top of it).
+                bool gameOverUp = _gameOverResult != null && !_gameOverHidden;
+                _tooltipOverlay.SuppressHover = gameOverUp;
+                DiceTray.SuppressHover = gameOverUp;
                 _tooltipOverlay.ShowUnitCard = u => _selectedInfoUnit = u;
                 _tooltipOverlay.ClearSelection = () => _selectedInfoUnit = null;
                 _tooltipOverlay.UpdateLayout(tl.Scale, tl.OriginX, tl.OriginY, TableHIn);
@@ -1288,6 +1379,8 @@ public class RaylibRenderer
                 // In-game menu (Esc). Opens only when no context claimed Escape this frame, and never
                 // over the game-over card (that has its own Return to Main Menu button). Drawn last so
                 // its dim + window sit above every other in-game overlay.
+                // The menu never sits over the Game Over card (it has its own buttons).
+                if (_gameOverResult != null && _escapeMenu.IsOpen) _escapeMenu.Close();
                 bool justOpenedMenu = false;
                 if (_gameOverResult == null && EscapeRouter.ShouldOpenMenu())
                 {
@@ -1296,6 +1389,7 @@ public class RaylibRenderer
                 }
                 _escapeMenu.Draw(screenW, screenH, justOpenedMenu);
                 if (_showControlsHelp) DrawControlsHelp(screenW, screenH);
+                DrawMessageBox();
 
                 if (_takeBackInProgress) DrawTakeBackCurtain(screenW, screenH);
 
@@ -1313,6 +1407,7 @@ public class RaylibRenderer
                 // its lobby view-model raises the same game-ended signal, so draw the overlay here too so
                 // that pre-launch case isn't silently stuck (QF8). No-op when nothing has ended.
                 DrawGameOverOverlay(screenW, screenH);
+                DrawMessageBox();
                 rlImGui.End();
             }
 
@@ -1499,8 +1594,8 @@ public class RaylibRenderer
     /// shows the same list, and two copies of a keybind list go out of step the first time a key moves -
     /// at which point the list is worse than nothing, because a player trusts it and blames themselves.
     /// </summary>
-    private static (string Keys, string What)[] ControlsHelp =>
-        ControlsReference.All.Select(c => (c.Keys, c.What)).ToArray();
+    private static (string Keys, string What, string Tip)[] ControlsHelp =>
+        ControlsReference.All.Select(c => (c.Keys, c.What, c.Tip)).ToArray();
 
     private void DrawControlsHelp(int screenW, int screenH)
     {
@@ -1512,13 +1607,15 @@ public class RaylibRenderer
         {
             if (ImGui.BeginTable("##controls", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
             {
-                foreach (var (keys, what) in ControlsHelp)
+                foreach (var (keys, what, tip) in ControlsHelp)
                 {
                     ImGui.TableNextRow();
                     ImGui.TableNextColumn();
                     ImGui.TextUnformatted(keys);
+                    if (ImGui.IsItemHovered()) UiText.TooltipWrapped(tip);
                     ImGui.TableNextColumn();
                     ImGui.TextDisabled(what);
+                    if (ImGui.IsItemHovered()) UiText.TooltipWrapped(tip);
                 }
                 ImGui.EndTable();
             }
@@ -2237,12 +2334,25 @@ public class RaylibRenderer
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize |
             ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav);
+        // Once the game is over the card has its own buttons; the menu must not open over it.
+        ImGui.BeginDisabled(_gameOverResult != null);
         if (ImGui.Button("Menu (Esc)"))
             _escapeMenu.Open();
         // #329: the discoverable way into the army list, beside the menu (the hotkey is L).
         ImGui.SameLine();
         if (ImGui.Button("Army Lists (L)"))
             _armyListOverlay.Toggle();
+        ImGui.EndDisabled();
+        if (_gameOverResult != null && _gameOverHidden)
+        {
+            // "Look at the table" hid the card; this brings it back.
+            ImGui.SameLine();
+            ImGui.PushStyleColor(ImGuiCol.Button, ImGuiTheme.ButtonCommit);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGuiTheme.ButtonCommitHover);
+            if (ImGui.Button("Show results")) _gameOverHidden = false;
+            ImGui.PopStyleColor(2);
+            if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Bring the Game Over card back.");
+        }
         if (_gameOverResult == null && !_armyListOverlay.IsOpen)
         {
             // 2D / 3D switch.
@@ -2486,38 +2596,52 @@ public class RaylibRenderer
         }
     }
 
+    // Game Over card extras (Kai, 2026-11-07): Look at the table hides the card (Show results in the
+    // bottom bar brings it back), Rematch, Save Battle Report. Main thread only.
+    private bool _gameOverHidden;
+    private string? _battleReportSavedTo;
+    private string? _battleReportError;
+
+    /// <summary>Why Rematch can't be offered for this game, or null when it can. Program.cs answers.</summary>
+    public Func<string?>? RematchUnavailableReason;
+
+    /// <summary>Rematch was pressed: Program.cs ends this game and opens a fresh lobby with the same
+    /// game, settings, seats and armies. Invoked at the end of the frame's ImGui pass.</summary>
+    public Action? OnRematchRequested;
+    private bool _rematchPending;
+
     // Centered "Game Over" card shown once the game ends. The board stays visible behind it; the player
     // must click through to leave (no auto-return), at which point we tear down and return to the menu.
     // #235: draggable (position forced only when it appears) so the final board can be inspected.
     private void DrawGameOverOverlay(int screenW, int screenH)
     {
         string? result = _gameOverResult;
-        if (result == null) return;
+        if (result == null || _gameOverHidden) return;
 
         // A recovery note (#187) is a wrapped absolute path, so the card grows to hold it.
         string? note = _gameOverNote;
         List<(string Name, Vector4 Color, string Line)> summary = GameOverSummary();
-        float summaryH = summary.Count * (ImGui.GetTextLineHeightWithSpacing() + 2f) + (summary.Count > 0 ? 16f : 0f);
-        var size = new Vector2(Math.Min(460f, screenW * 0.8f), (note == null ? 165f : 255f) + summaryH);
+        float width = Math.Min(560f, screenW * 0.8f);
         // Centred on the table area, under the win banner (centred on the whole screen it sat off to the
         // right of the banner, over the table edge - found 2026-11-06).
         int areaW = ComputeLayout(screenW, screenH).AreaW;
-        ImGui.SetNextWindowPos(new Vector2((areaW - size.X) / 2f, (screenH - size.Y) / 2f), ImGuiCond.Appearing);
-        ImGui.SetNextWindowSize(size, ImGuiCond.Always);
+        ImGui.SetNextWindowPos(new Vector2(areaW / 2f, screenH / 2f), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(width, 0f), ImGuiCond.Always);
         ImGui.Begin("Game Over##overlay",
             ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoSavedSettings);
+        float size = width;
 
         ImGui.PushFont(LargeFont);
-        CenteredText(size.X, "Game Over");
+        CenteredText(size, "Game Over");
         ImGui.PopFont();
 
         ImGui.Spacing();
         // Center the result line when it fits; long results fall back to left-aligned wrapping.
         if (ImGui.CalcTextSize(result).X <= ImGui.GetContentRegionAvail().X)
-            CenteredText(size.X, result);
+            CenteredText(size, result);
         else
-            ImGui.TextWrapped(result);
+            UiText.Wrapped(result);
         ImGui.Spacing();
 
         // Who finished where: each side's objectives and the units it still has on the table - the "why"
@@ -2528,9 +2652,9 @@ public class RaylibRenderer
             ImGui.Spacing();
             foreach (var (name, color, line) in summary)
             {
-                ImGui.TextColored(color, name);
+                UiText.Colored(color, name, wrap: false);
                 ImGui.SameLine();
-                ImGui.TextDisabled(line);
+                UiText.Disabled(line);
             }
         }
         ImGui.Spacing();
@@ -2540,23 +2664,94 @@ public class RaylibRenderer
             ImGui.Separator();
             ImGui.Spacing();
             ImGui.PushTextWrapPos(0f);
-            ImGui.TextDisabled(note);
+            UiText.Disabled(note, wrap: false);
             ImGui.PopTextWrapPos();
             ImGui.Spacing();
         }
 
-        float btnH = 44f;
-        // Pin the button to the bottom of the card.
-        ImGui.SetCursorPosY(size.Y - btnH - ImGui.GetStyle().WindowPadding.Y);
-        IAppScreen? back = GameOverReturnTo;
-        if (ImGui.Button(back != null ? "Continue" : "Return to Main Menu", new Vector2(ImGui.GetContentRegionAvail().X, btnH)))
+        if (_battleReportSavedTo != null || _battleReportError != null)
         {
-            ExitGame();
-            if (back == StrikeTeams) StrikeTeams.ReturnToCampOnShow();   // its camp, not the campaign list
-            NavigateTo(back ?? MainMenu);
+            ImGui.PushTextWrapPos(0f);
+            if (_battleReportSavedTo != null)
+                UiText.Colored(new Vector4(0.47f, 0.86f, 0.47f, 1f), $"Battle report saved to:\n{_battleReportSavedTo}", wrap: false);
+            else
+                UiText.Colored(new Vector4(1f, 0.55f, 0.45f, 1f), _battleReportError!, wrap: false);
+            ImGui.PopTextWrapPos();
+            ImGui.Spacing();
         }
 
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Three smaller buttons on one row, the main one under them. Only once a game exists: the card can
+        // also come up in a lobby whose host vanished, where there is no table to look at or report on.
+        if (_inGame) DrawGameOverExtras(result, note, summary);
+
+        IAppScreen? back = GameOverReturnTo;
+        if (ImGui.Button(back != null ? "Continue" : "Return to Main Menu", new Vector2(ImGui.GetContentRegionAvail().X, 44f)))
+            LeaveGameTo(back);
+
         ImGui.End();
+
+        if (_rematchPending)
+        {
+            _rematchPending = false;
+            OnRematchRequested?.Invoke();
+        }
+    }
+
+    private void DrawGameOverExtras(string result, string? note, List<(string Name, Vector4 Color, string Line)> summary)
+    {
+        float gap = ImGui.GetStyle().ItemSpacing.X;
+        float third = (ImGui.GetContentRegionAvail().X - gap * 2f) / 3f;
+        if (ImGui.Button("Look at the table", new Vector2(third, 36f))) _gameOverHidden = true;
+        if (ImGui.IsItemHovered())
+            UiText.TooltipWrapped("Hide this card to see the final board. \"Show results\" in the bottom-left bar brings it back.");
+        ImGui.SameLine();
+        string? noRematch = RematchUnavailableReason?.Invoke() ?? (OnRematchRequested == null ? "Rematch isn't available here." : null);
+        ImGui.BeginDisabled(noRematch != null);
+        if (ImGui.Button("Rematch", new Vector2(third, 36f))) _rematchPending = true;
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(noRematch ?? "Back to the lobby with the same game, settings, players and armies, ready to launch again.");
+        ImGui.SameLine();
+        if (ImGui.Button("Save Battle Report", new Vector2(third, 36f))) SaveBattleReport(result, note, summary);
+        if (ImGui.IsItemHovered())
+            UiText.TooltipWrapped("Write the whole battle report, every roll included, to a text file in the Saved Games folder.");
+        ImGui.Spacing();
+    }
+
+    /// <summary>Save Battle Report: the result, the per-player lines and the whole report, as plain text,
+    /// next to the saved games.</summary>
+    private void SaveBattleReport(string result, string? note, List<(string Name, Vector4 Color, string Line)> summary)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("BATTLE REPORT");
+            if (_tableState?.Progress is { } progress)
+                sb.AppendLine($"{GameSystemInfo.DisplayName(progress.GameSystem)} - {GameSystemInfo.ModeLabel(progress.GameMode, progress.GameSystem)}");
+            sb.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+            sb.AppendLine();
+            sb.AppendLine("Result: " + result);
+            foreach (var (name, _, line) in summary) sb.AppendLine($"  {name} {line}");
+            if (note != null) { sb.AppendLine(); sb.AppendLine(note); }
+            sb.AppendLine();
+            sb.AppendLine("--- Everything that happened, oldest first ---");
+            sb.Append(DiceTray.ExportText());
+
+            string path = Path.Combine(FdgRaylib.SaveLoad.SavePaths.FolderPath,
+                $"Battle Report {DateTime.Now:yyyy-MM-dd HH-mm-ss}.txt");
+            File.WriteAllText(path, sb.ToString());
+            _battleReportSavedTo = path;
+            _battleReportError = null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.WriteLine($"Save battle report failed: {ex.Message}");
+            _battleReportSavedTo = null;
+            _battleReportError = "Could not write the battle report file: " + ex.Message;
+        }
     }
 
     // The round summary card (2026-11-07): after each round, what changed - objectives held, VP, units lost.

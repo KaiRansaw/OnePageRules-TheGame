@@ -7,22 +7,13 @@ using ImGuiNET;
 namespace FdgRaylib.Rendering;
 
 /// <summary>
-/// The Star Quest mission window: what the party has to do, what the table is doing to them, and what the
-/// letters on the markers mean. Open for the whole game.
-///
-/// <para>The objectives are rolled openly at set-up - the players need them to lay the table out - so
-/// there is nothing to hide and no reason to make the player remember a banner that flashed once in round
-/// one. Same for the weather, the event and the alert level: they change how every activation plays, so
-/// they stay on screen instead of living in the log.</para>
-///
-/// <para>Drawn as an ImGui window so it can be moved, folded and scrolled; it remembers where you put it
-/// between sessions like the other panels.</para>
+/// The Quest mission's contents - what the party has to do, what the table is doing to them, and what the
+/// letters on the markers mean - drawn into the in-game Mission tab. (It used to be a floating window as
+/// well, flipped with the O key; that window had stopped drawing long ago and the dead key went on
+/// 2026-11-07.)
 /// </summary>
 public static class QuestMissionPanel
 {
-    /// <summary>Whether the window is shown (toggled with M, or from the controls list).</summary>
-    public static bool Open = true;
-
     private static readonly Vector4 Gold = new(1f, 0.86f, 0.5f, 1f);
     private static readonly Vector4 Dim = new(0.62f, 0.63f, 0.66f, 1f);
     private static readonly Vector4 Good = new(0.45f, 0.88f, 0.45f, 1f);
@@ -45,26 +36,6 @@ public static class QuestMissionPanel
         ("Po", "Poisoned - on activating, a 4+ costs it a wound", new Vector4(0.43f, 0.78f, 0.27f, 1f)),
         ("Si", "Silenced - -2 to casting this round", new Vector4(0.78f, 0.47f, 0.90f, 1f)),
     };
-
-    /// <summary>Draws the window. Does nothing outside a Star Quest game.</summary>
-    public static void Draw(ITableState? table, int screenW, int screenH)
-    {
-        if (!Open || table?.Progress.Quest is not { } q) return;
-
-        ImGui.SetNextWindowSize(new Vector2(screenW * 0.21f, screenH * 0.34f), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowPos(new Vector2(14f, screenH * 0.30f), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowBgAlpha(0.93f);
-        bool open = Open;
-        if (!ImGui.Begin("Mission", ref open, ImGuiWindowFlags.NoFocusOnAppearing))
-        {
-            Open = open;
-            ImGui.End();
-            return;
-        }
-        Open = open;
-        DrawBody(q);
-        ImGui.End();
-    }
 
     /// <summary>The mission's contents (objectives, conditions, marker key), drawn into the current window -
     /// the in-game Mission tab.</summary>

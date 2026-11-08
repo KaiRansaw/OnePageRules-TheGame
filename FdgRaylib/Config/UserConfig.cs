@@ -28,15 +28,18 @@ public sealed class UserConfig
     /// <summary>The name this player joins and hosts under. Written back whenever you host or join.</summary>
     public string PlayerName { get; set; } = DefaultPlayerName;
 
-    /// <summary>Host dialog: the server name shown to joiners.</summary>
+    /// <summary>Retired with the Host dialog (2026-11-07): the lobby is now named after the player. Kept so
+    /// an older config file still reads.</summary>
     public string ServerName { get; set; } = DefaultServerName;
 
-    /// <summary>Host dialog: the listen port (#189).</summary>
+    /// <summary>Retired with the Host dialog (2026-11-07): every game hosts on the fixed
+    /// <c>NetworkProtocol.DefaultPort</c>. Kept so an older config file still reads.</summary>
     public int Port { get; set; } = NetworkProtocol.DefaultPort;
     /// <summary>The last host address joined successfully, so Join opens on it (a friend's Tailscale name).</summary>
     public string LastHostAddress { get; set; } = "";
 
-    /// <summary>Host dialog: the "List publicly" tick (#271). The password is deliberately never stored.</summary>
+    /// <summary>Retired with the Host dialog (2026-11-07): nothing is ever listed publicly now (Tailscale
+    /// only). Kept so an older config file still reads; nothing reads it.</summary>
     public bool ListPublicly { get; set; }
 
     /// <summary>Display: start in borderless-windowed fullscreen. F11 toggles it at runtime and writes the
@@ -51,6 +54,10 @@ public sealed class UserConfig
     public string CalculatorSystemA { get; set; } = GameSystems.GrimdarkFuture;
 
     public string CalculatorSystemB { get; set; } = GameSystems.GrimdarkFuture;
+
+    /// <summary>The Settings screen's Display / Gameplay / Camera / Sound choices (Kai, 2026-11-07: "Changes
+    /// save as you make them"). Loaded into <c>ViewSettings</c> when the window opens.</summary>
+    public ViewPreferences View { get; set; } = new();
 
     /// <summary>The lobby settings panel, as the last hosted (non-resume) game left it.</summary>
     public HostGameSettings HostSettings { get; set; } = HostGameSettings.FromDefaults();
@@ -162,6 +169,24 @@ public sealed class UserConfig
             Console.WriteLine($"Could not write {path} ({ex.Message}); settings won't be remembered.");
         }
     }
+}
+
+/// <summary>
+/// The Settings screen's display and play preferences, as saved (#310 store). Defaults match the
+/// game's built-in ones, so a fresh install looks the same as before this was remembered.
+/// </summary>
+public sealed class ViewPreferences
+{
+    public bool ShowLabels { get; set; } = true;
+    public bool ShowGrid { get; set; } = true;
+    public bool ShowAllTokens { get; set; }
+    public bool ShowVictoryFireworks { get; set; } = true;
+    public float DiceLingerScale { get; set; } = 1f;
+    public float GameSpeed { get; set; } = 1f;
+    public bool ShowReachOverlay { get; set; } = true;
+    public float CameraSpeed { get; set; } = 1f;
+    public bool InvertTilt { get; set; }
+    public float MasterVolume { get; set; } = 1f;
 }
 
 /// <summary>

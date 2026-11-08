@@ -69,9 +69,8 @@ public class LobbyScreen : IAppScreen
 
     // Host connection info shown so the host knows what address to share (QF9). The port mirrors
     // CommandProtocol.TEMP_PORT (internal to the engine assembly, so it's restated here).
-    /// <summary>The port this host is listening on: the Host dialog saves its choice to the config before
-    /// the lobby opens (it showed a fixed 6389 whatever port was really in use - found 2026-11-06).</summary>
-    private static int ListenPort => UserConfig.Current.Port;
+    /// <summary>The port this host is listening on - fixed since the Host dialog went (2026-11-07).</summary>
+    private static int ListenPort => HostStarter.Port;
     private string? _lanAddresses;                 // computed once, lazily
     private volatile string _publicAddress = "checking...";
     private bool _publicFetchStarted;
@@ -1165,6 +1164,86 @@ public class LobbyScreen : IAppScreen
     /// </para>
     /// </summary>
     public static bool PendingAutoLaunch;
+
+    /// <summary>Drops every campaign hand-off waiting for the next lobby - used when the host could not be
+    /// started, so a failed campaign mission cannot leak its armies or its auto-launch into a later lobby.</summary>
+    public static void ClearPending()
+    {
+        PendingParty = null;
+        PendingCampaignArmy = null;
+        PendingCampaignEnemyArmy = null;
+        PendingTerrainMode = null;
+        PendingTerrainLayoutPath = null;
+        PendingDeploymentStyle = null;
+        PendingMissionCardGame = null;
+        PendingAutoLaunch = false;
+        PendingRematch = null;
+    }
+
+    /// <summary>The seats and armies a Rematch re-creates, and each seat's picked heroes (Quest).</summary>
+    public sealed record RematchSeats(IReadOnlyList<LobbyViewModel_Host.SeatSnapshot> Seats,
+        IReadOnlyDictionary<Guid, List<string>> PartyPicks);
+
+    /// <summary>Set by the Game Over card's Rematch; consumed by <see cref="ApplyPendingRematch"/>.</summary>
+    public static RematchSeats? PendingRematch;
+
+    /// <summary>The hero files each seat has picked (Quest), keyed by player id - for Rematch.</summary>
+    public IReadOnlyDictionary<Guid, List<string>> CurrentPartyPicks() =>
+        _partyPicks.ToDictionary(kv => kv.Key, kv => kv.Value.ToList());
+
+    /// <summary>
+    /// Rematch (Kai, 2026-11-07: "back to the same lobby, same armies"): re-seats this fresh lobby the way
+    /// the last game was seated - same order, bots with the same AI, the same teams, colours and armies.
+    /// The settings already match: they are the saved host settings, which the last launch wrote
+    /// (<see cref="PersistHostSettings"/>), and the points limit is put back after the mode's default.
+    /// <para>A friend who joined over the network has to join again (their connection ended with the old
+    /// game), so a network seat is not re-created; their old army is not kept either - it is theirs.</para>
+    /// </summary>
+    public void ApplyPendingRematch()
+    {
+        RematchSeats? plan = PendingRematch;
+        PendingRematch = null;
+        if (plan == null || _viewModel is not { HasHostPrivileges: true } vm || vm.IsResumeMode) return;
+        if (vm.PlayerInfos.Count == 0 || plan.Seats.Count == 0) return;
+
+        vm.SetArmyPoints(UserConfig.Current.HostSettings.ArmyPoints);
+        bool quest = GameSystemInfo.IsQuest(vm.GameSystem);
+        // Teams go on once every seat exists: the lobby refuses a team number above the seat count.
+        var teams = new List<(PlayerID Id, ETeamOption Team)>();
+
+        for (int i = 0; i < plan.Seats.Count; i++)
+        {
+            LobbyViewModel_Host.SeatSnapshot seat = plan.Seats[i];
+            PlayerID id;
+            if (i == 0)
+                id = vm.PlayerInfos[0].PlayerID;   // the host's own seat (#405: always row 0)
+            else
+            {
+                if (seat.PlayerType == EPlayerType.Network) continue;
+                var before = vm.PlayerInfos.Select(p => p.PlayerID.ID).ToHashSet();
+                if (seat.PlayerType == EPlayerType.AI) vm.AddAiPlayer(seat.AiProfile);
+                else vm.AddLocalPlayer();
+                if (vm.PlayerInfos.FirstOrDefault(p => !before.Contains(p.PlayerID.ID)) is not { } added) continue;
+                id = added.PlayerID;
+            }
+
+            _autoArmiedSlots.Add(id.ID);
+            if (seat.TeamNumber != ETeamOption.None) teams.Add((id, seat.TeamNumber));
+            if (seat.ColorIndex >= 0) vm.SetPlayerColor(id, seat.ColorIndex);
+
+            // A Quest hero seat re-picks its heroes from their files (they may have levelled up in the game
+            // just played); everyone else gets the army they played with.
+            if (quest && seat.PlayerType != EPlayerType.AI
+                && plan.PartyPicks.TryGetValue(seat.PlayerID.ID, out List<string>? heroes) && heroes.Count > 0)
+            {
+                _partyPicks.Remove(id.ID);
+                PendingParty = heroes.ToList();
+                continue;
+            }
+            if (seat.Army != null) vm.UpdateArmyListFile(id, seat.Army);
+        }
+        foreach (var (id, team) in teams) vm.SetPlayerTeam(id, team);
+    }
 
     /// <summary>
     /// #410 - gives the host's own slot the campaign army the campaign screen chose, and raises the
