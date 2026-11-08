@@ -315,6 +315,42 @@ public class QuestHeroSyncTests
         Assert.That(saved.Chapters[0].Restarts, Is.EqualTo(0));
     }
 
+    /// <summary>Batch E: the journal's "What happened" is written by the game - XP, loot and money come
+    /// from the sheet as it went in against the sheet as it came out - and filed on the mission played.</summary>
+    [Test]
+    public void AWonMission_WritesWhatHappenedOnThatMission()
+    {
+        StartedCampaign(missions: 2);
+        SetGameMode(EGameMode.StarQuestMission);
+        QuestHero hero = NewHeroOnDisk("Vex", h =>
+        {
+            h.CampaignName = TestCampaign;
+            h.CampaignDifficulty = 2;
+            h.CampaignPrimary = 3;
+            h.Xp = 1;
+            h.Credits = 5;
+        });
+        QuestHero after = ReadBack(hero);
+        after.LastOutcome = "success";
+        after.Xp = 5;
+        after.Credits = 15;
+        after.Items.Add("Med Kit");
+        PlaceHero(after);
+
+        QuestHeroSync.WriteBack(_table);
+
+        QuestCampaign saved = ReloadCampaign();
+        CampaignMission played = saved.Chapters[0].MissionPlan[0];
+        Assert.That(played.Records, Has.Count.EqualTo(1));
+        CampaignMissionRecord r = played.Records[0];
+        Assert.That(r.Outcome, Is.EqualTo("success"));
+        Assert.That(r.Xp, Is.EqualTo(new[] { "Vex +4" }));
+        Assert.That(r.Money, Is.EqualTo(new[] { "Vex +10" }));
+        Assert.That(r.Loot, Is.EqualTo(new[] { "Vex: Med Kit" }));
+        Assert.That(saved.Chapters[0].MissionPlan[1].Records, Is.Empty, "the next mission is untouched");
+        Assert.That(ReadBack(hero).CampaignPrimary, Is.EqualTo(3), "mid-chapter, the next Play sets the objectives again");
+    }
+
     [Test]
     public void WritingTwiceForOneMission_DoesNotRecordTheMissionTwice()
     {

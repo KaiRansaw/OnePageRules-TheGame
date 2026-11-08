@@ -30,82 +30,10 @@ public static class StarQuestData
     /// <summary>The 12 playable classes (not the "Default Skills" bucket).</summary>
     public static IEnumerable<SqClass> Classes => Set.Classes;
 
-    /// <summary>The three groups the faction list is folded into, in the order they are shown.</summary>
-    public static readonly string[] FactionGroups = { "Humanity", "Chaos", "Xenos", "Other" };
+    /// <summary>The Army Forge race groups, in Army Forge's order (see <see cref="QuestDataSet.FactionGroups"/>).</summary>
+    public static IReadOnlyList<string> FactionGroups => Set.FactionGroups;
 
-    // Which group each Star Quest faction belongs to. Anything not listed (a new faction, a
-    // renamed one) falls into "Other" rather than disappearing from the picker.
-    internal static readonly Dictionary<string, string> GroupByFaction = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Humanity: the Empire's armies, its brotherhood chapters, and the human underworld.
-        ["Badland Nomads"] = "Humanity",
-        ["Battle Brothers"] = "Humanity",
-        ["Berserker Clans"] = "Humanity",
-        ["Blessed Sisters"] = "Humanity",
-        ["Blood Brothers"] = "Humanity",
-        ["Blood Prime Brothers"] = "Humanity",
-        ["Brute Coalitions"] = "Humanity",
-        ["City Runners"] = "Humanity",
-        ["Custodian Brothers"] = "Humanity",
-        ["DAO Union"] = "Humanity",
-        ["Human Defense Force"] = "Humanity",
-        ["Human Inquisition"] = "Humanity",
-        ["Knight Brothers"] = "Humanity",
-        ["Knight Prime Brothers"] = "Humanity",
-        ["Machine Cults"] = "Humanity",
-        ["Mega-Corps"] = "Humanity",
-        ["Mercenaries"] = "Humanity",
-        ["Prime Brothers"] = "Humanity",
-        ["Psycho Cults"] = "Humanity",
-        ["Rebel Guerrillas"] = "Humanity",
-        ["Security Forces"] = "Humanity",
-        ["Shadow Leagues"] = "Humanity",
-        ["Watch Brothers"] = "Humanity",
-        ["Watch Prime Brothers"] = "Humanity",
-        ["Wolf Brothers"] = "Humanity",
-        ["Wolf Prime Brothers"] = "Humanity",
-        ["Worker Unions"] = "Humanity",
-
-        // Chaos: the wormhole powers, their daemons, and the humans who fell to them.
-        ["Change Disciples"] = "Chaos",
-        ["Dark Brothers"] = "Chaos",
-        ["Dark Prime Brothers"] = "Chaos",
-        ["Havoc Brothers"] = "Chaos",
-        ["Infected Colonies"] = "Chaos",
-        ["Lust Disciples"] = "Chaos",
-        ["Plague Disciples"] = "Chaos",
-        ["War Disciples"] = "Chaos",
-        // OPR 3.6.0 dropped the "Wormhole" prefix; the old names stay so a hero saved under one still
-        // lands in Chaos rather than Other.
-        ["Daemons of Change"] = "Chaos",
-        ["Daemons of Lust"] = "Chaos",
-        ["Daemons of Plague"] = "Chaos",
-        ["Daemons of War"] = "Chaos",
-        ["Wormhole Daemons of Change"] = "Chaos",
-        ["Wormhole Daemons of Lust"] = "Chaos",
-        ["Wormhole Daemons of Plague"] = "Chaos",
-        ["Wormhole Daemons of War"] = "Chaos",
-
-        // Xenos: everything that is neither human nor of the wormhole.
-        ["Alien Hives"] = "Xenos",
-        ["Dark Elf Raiders"] = "Xenos",
-        ["Dwarf Guilds"] = "Xenos",
-        ["Elven Jesters"] = "Xenos",
-        ["Eternal Dynasty"] = "Xenos",
-        ["Goblin Reclaimers"] = "Xenos",
-        ["High Elf Fleets"] = "Xenos",
-        ["Jackals"] = "Xenos",
-        ["Orc Marauders"] = "Xenos",
-        ["Ratmen Clans"] = "Xenos",
-        ["Robot Legions"] = "Xenos",
-        ["Saurian Starhost"] = "Xenos",       // 3.5.x name
-        ["Saurian Starhosts"] = "Xenos",      // 3.6.0 renamed it
-        ["Shortling Federations"] = "Xenos",
-        ["Soul-Snatcher Cults"] = "Xenos",
-        ["Voidspace Stalkers"] = "Xenos",     // new faction in 3.6.0
-    };
-
-    /// <summary>Which of <see cref="FactionGroups"/> a faction belongs to.</summary>
+    /// <summary>Which Army Forge race group a faction belongs to.</summary>
     public static string GroupOf(SqFaction faction) => Set.GroupOf(faction);
 
     public static string Folder => Set.Folder;
@@ -171,8 +99,8 @@ public sealed class SqFaction
 {
     public string Uid { get; set; } = "";
     public string Faction { get; set; } = "";
-    /// <summary>OPR's raceGroup for the faction ("Aliens", "Humans"...). Informational; the picker groups
-    /// by <see cref="StarQuestData.GroupOf"/>, not by this.</summary>
+    /// <summary>Army Forge's raceGroup for the faction ("Aliens", "Humans"...) - what the Hero Builder's
+    /// faction picker groups by (<see cref="QuestDataSet.GroupOf"/>).</summary>
     public string? Race { get; set; }
     public string? Version { get; set; }
     public List<SqHero> Heroes { get; set; } = new();

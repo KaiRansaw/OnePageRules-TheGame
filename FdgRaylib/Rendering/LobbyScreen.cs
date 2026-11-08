@@ -863,6 +863,16 @@ public class LobbyScreen : IAppScreen
 
         IReadOnlyList<LobbyPlayerInfoSummary> players = _viewModel.PlayerInfos;
 
+        // Batch E: a Quest campaign chapter's planned enemy goes to the first bot seat, once.
+        if (PendingQuestEnemyArmy is { } enemyPath && GameSystemInfo.IsQuest(_viewModel.GameSystem)
+            && players.FirstOrDefault(p => p.PlayerType == EPlayerType.AI
+                && _viewModel.CheckCanModifyPlayerIDInfo(p.PlayerID)) is { } bot)
+        {
+            PendingQuestEnemyArmy = null;
+            _autoArmiedSlots.Add(bot.PlayerID.ID);
+            if (LoadArmyFile(enemyPath) is { } enemy) SetSeatArmy(bot.PlayerID, enemy);
+        }
+
         foreach (LobbyPlayerInfoSummary info in players)
         {
             // Star Quest: a human row plays a party of heroes, picked by hand - no starter army.
@@ -1221,6 +1231,13 @@ public class LobbyScreen : IAppScreen
     public static List<string>? PendingParty;
 
     /// <summary>
+    /// Batch E - set by the Quest Campaigns screen when the chapter being played names its enemy army:
+    /// the first bot seat of the next Quest lobby gets that army instead of a random one. Consumed once
+    /// by <see cref="AutoArmyNewSlots"/> and cleared; null leaves the bot's army to the usual roll.
+    /// </summary>
+    public static string? PendingQuestEnemyArmy;
+
+    /// <summary>
     /// #410 - set by the campaign screen when "Play next mission" is pressed: the path of the army file
     /// the host should start the next lobby with. Consumed once by
     /// <see cref="ApplyPendingCampaignArmy"/> and cleared, so a lobby opened any other way is unaffected.
@@ -1268,6 +1285,7 @@ public class LobbyScreen : IAppScreen
     public static void ClearPending()
     {
         PendingParty = null;
+        PendingQuestEnemyArmy = null;
         PendingCampaignArmy = null;
         PendingCampaignEnemyArmy = null;
         PendingTerrainMode = null;
@@ -1454,7 +1472,7 @@ public class LobbyScreen : IAppScreen
         if (open)
         {
             if (_savedHeroes.Count == 0)
-                UiText.Disabled("No heroes yet - make some in Star Quest Heroes (main menu).");
+                UiText.Disabled($"No heroes yet - make some with Build Heroes under {GameSystemInfo.DisplayName(_viewModel.GameSystem)} (main menu).");
             bool changed = false;
             foreach (var (path, hero) in _savedHeroes)
             {
@@ -1472,7 +1490,7 @@ public class LobbyScreen : IAppScreen
             if (changed) SendParty(info.PlayerID, picks);
         }
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            UiText.Tooltip("Your party: pick 2 to 4 heroes made in Star Quest Heroes.");
+            UiText.Tooltip($"Your party: pick 2 to 4 heroes made with Build Heroes ({GameSystemInfo.DisplayName(_viewModel.GameSystem)}).");
 
         // The closed combo only has room for the names, so the party is listed under it in full. You pick
         // a hero by reading its level, race and points, and then those facts disappeared the moment the

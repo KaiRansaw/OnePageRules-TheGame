@@ -153,20 +153,21 @@ public class AoFQuestHeroDataTests
 
     // ── The faction picker ───────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Batch E: the picker groups by Army Forge's own raceGroup, in Army Forge's order (its Quest page
+    /// sorts the group names ascending). Pinned from the live API on 2026-11-07
+    /// (/api/army-books?filters=official&amp;gameSystemSlug=age-of-fantasy-quest). This replaced the
+    /// eight hand-made AoF groups this test used to pin - Kai dropped our own groupings.
+    /// </summary>
     [Test]
-    public void EveryFaction_LandsInAGroupThatThePickerDraws()
+    public void Factions_AreGroupedAndOrderedTheWayArmyForgeDoes()
     {
-        // The picker only draws its own group list, so a faction grouped as anything else disappears
-        // from the screen entirely rather than looking wrong.
-        var ungrouped = AoF.Factions.Where(f => AoF.GroupOf(f) == "Other").Select(f => f.Faction).ToList();
-        Assert.That(ungrouped, Is.Empty,
-            "these AoF: Quest factions have no group - add them to QuestDataSet's AoF map: "
-            + string.Join(", ", ungrouped));
-
-        var groups = AoF.Factions.Select(f => AoF.GroupOf(f)).Distinct();
-        Assert.That(groups, Is.SubsetOf(AoF.FactionGroups));
-        Assert.That(AoF.FactionGroups, Is.Not.EqualTo(Sq.FactionGroups),
-            "fantasy factions do not sort into Humanity / Chaos / Xenos");
+        Assert.That(AoF.FactionGroups, Is.EqualTo(new[]
+            { "Beastfolk", "Daemons", "Dwarves", "Elves", "Greenskins", "Guilds", "Havoc", "Humans", "Outsiders", "Undead" }));
+        Assert.That(AoF.Factions.Where(f => AoF.GroupOf(f) == QuestDataSet.UnknownGroup).Select(f => f.Faction), Is.Empty,
+            "every AoF: Quest hero book has a race group on Army Forge");
+        Assert.That(AoF.GroupOf(AoF.Factions.First(f => f.Faction == "Halflings")), Is.EqualTo("Outsiders"));
+        Assert.That(AoF.GroupOf(AoF.Factions.First(f => f.Faction == "Mercenaries")), Is.EqualTo("Guilds"));
     }
 
     // ── Building a hero ──────────────────────────────────────────────────────────────────────────

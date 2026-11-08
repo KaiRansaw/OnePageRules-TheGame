@@ -8,15 +8,21 @@ using ImGuiNET;
 namespace FdgRaylib.Rendering;
 
 /// <summary>
-/// Star Quest heroes (main menu > Heroes). Two views:
+/// The Hero Builder, one per Quest game (GF: Star Quest and AoF: Quest). Batch E rebuilt it in the Army
+/// Forge look from Kai's "Hero Builder Mockup" (wish list, 2026-11-07):
 /// <list type="bullet">
-/// <item><b>My Heroes</b> - a card for every saved hero: level, class, XP, credits. New / Edit / Delete.</item>
-/// <item><b>Hero editor</b> - pick a faction's hero, name it, give it a class (stat bonuses), pick its
-/// starter skills and weapon upgrades, and see the finished hero sheet update live. Save writes a
-/// <c>.fdghero</c> file to heroes/GF Star Quest.</item>
+/// <item>A top bar: Back, the screen's name, the game, Shop and + New Hero.</item>
+/// <item>The live <b>hero sheet</b> always on the left: portrait, level / class, XP / money / points,
+/// Qua Def Tou Pow Str Dex Wil, weapons, rules, skills, items, injuries - hover = book wording.</item>
+/// <item>On the right one of three views: <b>My Heroes</b> (portrait cards; Edit, Delete - asks, and warns
+/// when the hero is in a campaign), <b>New / Edit Hero</b> in four tabbed steps (1 Hero &amp; Name,
+/// 2 Class, 3 Starter Skills, 4 Gear) with a line that always says what is still missing and Next /
+/// SAVE HERO, or the <b>Shop</b>.</item>
 /// </list>
-/// A hero that has already played (XP, a level-up or a finished mission) can only be renamed here - its
-/// build is locked so progress can't be lost by rebuilding it.
+/// Factions are grouped and ordered exactly as Army Forge does it (<see cref="QuestDataSet.FactionGroups"/>).
+/// A hero that has already played (XP, a level-up or a finished mission) can only be renamed and given
+/// its new skills here - its build is locked so progress can't be lost by rebuilding it.
+/// <para>Rental layout (plain ImGui). What each part shows, and where the buttons go, is the permanent part.</para>
 /// </summary>
 public sealed class HeroBuilderScreen : IAppScreen
 {
@@ -47,21 +53,28 @@ public sealed class HeroBuilderScreen : IAppScreen
     private enum EView { List, Edit, Shop }
     private EView _view = EView.List;
 
+    /// <summary>The four steps of New Hero, in order (the tab labels).</summary>
+    internal static readonly string[] StepNames = { "1. Hero & Name", "2. Class", "3. Starter Skills", "4. Gear" };
+    private int _step;
+
     // Shop (#414). Kai's call: the books only open a shop between waves and between chapters, so a
     // one-off party could earn credits with nowhere to spend them until its next game's first wave
     // ended. This is a convenience beyond the books rather than a rule, which is why it lives here on
     // the hero sheet and changes nothing about the two in-game shops.
-    private int _shopHero = -1;
+    private int _shopHero;
 
     // My Heroes
     private List<(string Path, QuestHero Hero)> _saved = new();
+    private List<QuestCampaign> _campaigns = new();
     private int _selected = -1;
-    private bool _confirmDelete;
+    private int _deleteIndex = -1;
+    private bool _openDelete;
 
     // Editor
     private string? _editingPath;
-    private QuestHero? _locked;              // a hero that has played: rename only
+    private QuestHero? _locked;              // a hero that has played: rename only (and new skills)
     private SqFaction? _faction;
+    private SqFaction? _browseFaction;       // the faction whose heroes step 1 is showing
     private SqHero? _base;
     private SqClass? _class;
     private readonly HashSet<string> _skills = new();
@@ -72,12 +85,15 @@ public sealed class HeroBuilderScreen : IAppScreen
     private string _message = "";
     private bool _messageIsError;
 
+    private readonly UnitPortraitCards _cards = new();
+
     private static readonly Vector4 TextBright = new(0.95f, 0.95f, 0.93f, 1f);
     private static readonly Vector4 TextDim = new(0.62f, 0.63f, 0.66f, 1f);
     private static readonly Vector4 Accent = new(0.45f, 0.68f, 1f, 1f);
     private static readonly Vector4 Good = new(0.45f, 0.88f, 0.45f, 1f);
     private static readonly Vector4 Bad = new(1f, 0.55f, 0.45f, 1f);
     private static readonly Vector4 Gold = new(1f, 0.86f, 0.5f, 1f);
+    private static readonly Vector4 Title = new(0.55f, 0.85f, 0.80f, 1f);
 
     private static uint U(Vector4 c) => ImGui.ColorConvertFloat4ToU32(c);
 
@@ -91,105 +107,198 @@ public sealed class HeroBuilderScreen : IAppScreen
     private void Reload()
     {
         _saved = HeroPaths.LoadAll(GameType);
+        _campaigns = CampaignPaths.LoadAll(GameType).Select(e => e.Campaign).ToList();
         if (_selected >= _saved.Count) _selected = _saved.Count - 1;
-        _confirmDelete = false;
+        if (_selected < 0 && _saved.Count > 0) _selected = 0;
     }
+
+    private QuestCampaign? CampaignOf(string heroPath) => CampaignPaths.CampaignOf(GameType, heroPath, _campaigns);
+
+    // ── Frame ─────────────────────────────────────────────────────────────────────────────────────────
 
     public void Draw(int screenW, int screenH)
     {
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.07f, 0.08f, 0.10f, 1f));
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
         ImGui.Begin("##HeroBuilder", ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse |
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        bool useMenuFont = RaylibRenderer.MenuFontPx > 0f;
-        ImFontPtr headFont = useMenuFont ? RaylibRenderer.MenuFont : ImGui.GetFont();
-        float margin = screenW * 0.025f;
-        float titlePx = screenH * 0.05f;
-        ImDrawListPtr wdl = ImGui.GetWindowDrawList();
-        wdl.AddText(headFont, titlePx, new Vector2(margin, screenH * 0.035f), U(TextBright),
-            _view == EView.Shop ? "SHOP" :
-            _view == EView.List ? (System == EGameSystem.AoFQuest ? "AOF: QUEST HEROES" : "STAR QUEST HEROES") : _editingPath == null ? "NEW HERO" : "EDIT HERO");
-        string sub = Data.LoadError ?? (_view switch
+        DrawTopBar();
+        ImGui.Separator();
+
+        Vector2 avail = ImGui.GetContentRegionAvail();
+        float spacing = ImGui.GetStyle().ItemSpacing.X;
+        float leftW = MathF.Min(MathF.Max(UiChrome.Em(22f), avail.X * 0.30f), avail.X * 0.45f);
+
+        // The hero sheet, always: the hero being built, the selected hero, or the one in the shop.
+        ImGui.BeginChild("##sheet", new Vector2(leftW, avail.Y), ImGuiChildFlags.Borders);
+        DrawSheet(SheetHero());
+        ImGui.EndChild();
+
+        ImGui.SameLine(0, spacing);
+        ImGui.BeginChild("##right", new Vector2(0, avail.Y), ImGuiChildFlags.None);
+        Vector2 right = ImGui.GetContentRegionAvail();
+        switch (_view)
         {
-            EView.Shop => "Buy, sell and hand things between your heroes. Selling pays full price.",
-            EView.List => $"{_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}",   // no folder path: a player has no use for it
-            _ => "Pick a hero, give it a name and a class, then choose its starter skills and gear.",
-        });
-        wdl.AddText(ImGui.GetFont(), ImGui.GetFontSize(), new Vector2(margin, screenH * 0.035f + titlePx + 6f),
-            U(Data.LoadError != null ? Bad : TextDim), sub);
+            case EView.List: DrawList(right); break;
+            case EView.Edit: DrawEditor(right); break;
+            case EView.Shop: DrawShop(right); break;
+        }
+        ImGui.EndChild();
 
-        float top = screenH * 0.14f;
-        float bottomBarH = screenH * 0.09f;
-        float bodyH = screenH - top - bottomBarH;
-
-        if (_view == EView.List) DrawList(margin, top, screenW - margin * 2f, bodyH);
-        else if (_view == EView.Shop) DrawShop(margin, top, screenW - margin * 2f, bodyH);
-        else DrawEditor(margin, top, screenW - margin * 2f, bodyH);
-
-        DrawBottomBar(screenW, screenH, margin, bottomBarH);
-
+        DrawDeleteModal();
         ImGui.End();
-        ImGui.PopStyleColor();
+    }
+
+    private QuestHero? SheetHero() => _view switch
+    {
+        EView.Edit => Compose(),
+        EView.Shop => _saved.Count > 0 ? _saved[Math.Clamp(_shopHero, 0, _saved.Count - 1)].Hero : null,
+        _ => _selected >= 0 && _selected < _saved.Count ? _saved[_selected].Hero : null,
+    };
+
+    /// <summary>Back, the screen's name, the game, the status line; Shop and + New Hero on the right.</summary>
+    private void DrawTopBar()
+    {
+        bool esc = ImGui.IsKeyPressed(ImGuiKey.Escape, false) && !ImGui.GetIO().WantTextInput
+            && !ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopup);
+        float rowH = UiChrome.ButtonSize("Back").Y;
+        // Back goes to the screen you came from; inside the editor or the shop it first goes back to the
+        // hero list (the same as Cancel), because that is the screen those were opened from.
+        if (UiButton.Back("Back", UiChrome.ButtonSize("Back")) || esc)
+        {
+            if (_view == EView.List) OnBack?.Invoke();
+            else { _view = EView.List; _message = ""; Reload(); }
+        }
+        ImGui.SameLine();
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (rowH - ImGui.GetTextLineHeight()) / 2f);
+        string title = _view switch
+        {
+            EView.Shop => "HERO SHOP",
+            EView.Edit => _editingPath == null ? "NEW HERO" : "EDIT HERO",
+            _ => "MY HEROES",
+        };
+        UiText.Colored(Title, title, wrap: false);
+        ImGui.SameLine();
+        UiText.Disabled($"   {GameSystemInfo.DisplayName(System)}   -   {_saved.Count} hero{(_saved.Count == 1 ? "" : "es")}", wrap: false);
+        if (Data.LoadError is { } err) { ImGui.SameLine(); UiText.Colored(Bad, "   " + err, wrap: false); }
+
+        string[] buttons = { "Shop", "+ New Hero" };
+        float rightW = buttons.Sum(b => UiChrome.ButtonSize(b).X) + ImGui.GetStyle().ItemSpacing.X * buttons.Length;
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - rightW));
+        // SameLine put the cursor at the title's lowered line; lift it back level with Back.
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - (rowH - ImGui.GetTextLineHeight()) / 2f);
+        // #414: the shop. Disabled with no heroes, because there is nobody to shop for.
+        ImGui.BeginDisabled(_saved.Count == 0 || _view == EView.Edit);
+        if (UiButton.Navigate("Shop", UiChrome.ButtonSize("Shop")))
+        {
+            _shopHero = Math.Max(0, _selected);
+            _view = EView.Shop;
+            _message = "";
+        }
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(_saved.Count == 0 ? "Make a hero first." : _view == EView.Edit
+                ? "Save or cancel the hero you are building first."
+                : $"Buy, sell and hand things (and {MoneyWord}) between your heroes.", 320f);
+        ImGui.SameLine();
+        ImGui.BeginDisabled(_view == EView.Edit);
+        if (UiButton.Confirm("+ New Hero", UiChrome.ButtonSize("+ New Hero"))) StartNew();
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped("Build a new hero in four steps: hero and name, class, starter skills, gear.", 320f);
+
+        if (_message.Length > 0) UiText.Colored(_messageIsError ? Bad : Good, _message);
     }
 
     // ── My Heroes ─────────────────────────────────────────────────────────────────────────────────────
 
-    private void DrawList(float x, float y, float w, float h)
+    private void DrawList(Vector2 size)
     {
-        ImGui.SetCursorPos(new Vector2(x, y));
-        ImGui.BeginChild("##heroGrid", new Vector2(w, h));
+        float buttonH = UiChrome.ButtonSize("Edit selected").Y + ImGui.GetStyle().ItemSpacing.Y * 2f;
+        UiText.Colored(TextBright, "MY HEROES - click to view, double-click to edit");
+        ImGui.BeginChild("##heroCards", new Vector2(0, size.Y - buttonH - ImGui.GetTextLineHeightWithSpacing()), ImGuiChildFlags.Borders);
         if (_saved.Count == 0)
+            UiText.Disabled("No heroes yet. Click \"+ New Hero\" to make your first one.");
+        else
         {
-            ImGui.SetCursorPos(new Vector2(0, h * 0.4f));
-            UiText.Disabled("No heroes yet. Click \"New Hero\" to make your first one.");
-        }
-        const int columns = 4;
-        float gap = 12f;
-        float cardW = (w - ImGui.GetStyle().ScrollbarSize - gap * (columns - 1)) / columns;
-        float lh = ImGui.GetTextLineHeightWithSpacing();
-        float cardH = lh * 6.2f;
-        for (int i = 0; i < _saved.Count; i++)
-        {
-            ImGui.SetCursorPos(new Vector2(i % columns * (cardW + gap), i / columns * (cardH + gap)));
-            DrawHeroCard(i, _saved[i].Hero, cardW, cardH);
+            var cards = _saved.Select(e =>
+            {
+                QuestHero h = e.Hero;
+                QuestCampaign? camp = CampaignOf(e.Path);
+                return new UnitPortraitCards.Card(h.Name, h.BaseHeroName, $"Lvl {h.Level} {h.Class}",
+                    () => HeroTooltip(h, camp), camp != null ? "in campaign" : null, Faction: h.Faction);
+            }).ToList();
+            // A hero's picture is filed under its base hero and its own faction, the same files the table uses.
+            UnitPortraitCards.CardEvent hit = _cards.DrawCardGrid("heroes", cards, "", _selected);
+            if (hit.Clicked >= 0) _selected = hit.Clicked;
+            if (hit.DoubleClicked >= 0) StartEdit(hit.DoubleClicked);
         }
         ImGui.EndChild();
+
+        bool has = _selected >= 0 && _selected < _saved.Count;
+        ImGui.BeginDisabled(!has);
+        if (UiButton.Navigate("Edit selected", UiChrome.ButtonSize("Edit selected"))) StartEdit(_selected);
+        ImGui.SameLine();
+        if (UiButton.Back("Delete", UiChrome.ButtonSize("Delete")))
+        {
+            _deleteIndex = _selected;
+            _openDelete = true;
+        }
+        ImGui.EndDisabled();
+        ImGui.SameLine();
+        UiText.Disabled("Delete asks first, and warns if the hero is in a campaign.", wrap: false);
     }
 
-    private void DrawHeroCard(int index, QuestHero hero, float w, float h)
+    private string HeroTooltip(QuestHero h, QuestCampaign? campaign)
     {
-        Vector2 p0 = ImGui.GetCursorScreenPos();
-        bool clicked = ImGui.InvisibleButton($"##hero{index}", new Vector2(w, h));
-        bool hovered = ImGui.IsItemHovered();
-        if (clicked) { _selected = index; _confirmDelete = false; }
-        if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) StartEdit(index);
-
-        ImDrawListPtr dl = ImGui.GetWindowDrawList();
-        Vector2 p1 = p0 + new Vector2(w, h);
-        dl.AddRectFilled(p0, p1, U(hovered ? new Vector4(0.15f, 0.15f, 0.17f, 1f) : new Vector4(0.11f, 0.11f, 0.13f, 1f)), 6f);
-        dl.AddRectFilled(p0, new Vector2(p0.X + 5f, p1.Y), U(Accent), 6f, ImDrawFlags.RoundCornersLeft);
-        if (index == _selected) dl.AddRect(p0, p1, U(Good), 6f, ImDrawFlags.None, 2.5f);
-
-        float lh = ImGui.GetTextLineHeightWithSpacing();
-        float tx = p0.X + 14f, ty = p0.Y + 8f;
-        dl.AddText(new Vector2(tx, ty), U(TextBright), Fit(hero.Name, w - 24f));
-        dl.AddText(new Vector2(tx, ty + lh), U(Gold), $"Level {hero.Level}  {hero.Class}");
-        dl.AddText(new Vector2(tx, ty + lh * 2), U(TextDim), Fit($"{hero.Faction} - {hero.BaseHeroName}", w - 24f));
-        int next = hero.Level < QuestProgression.MaxLevel ? QuestProgression.XpForLevel[hero.Level + 1] : hero.Xp;
-        dl.AddText(new Vector2(tx, ty + lh * 3), U(TextDim), $"XP {hero.Xp}/{next}    {hero.Credits}{Money}    {hero.Points}pts");
-        dl.AddText(new Vector2(tx, ty + lh * 4), U(TextDim),
-            $"Q{hero.Quality}+ D{hero.Defense}+ Pow{hero.Power} Str{hero.Strength}+ Dex{hero.Dexterity}+ Wil{hero.Willpower}+");
-        if (hero.Injuries.Count > 0)
-            dl.AddText(new Vector2(tx, ty + lh * 5), U(Bad), Fit("Injured: " + string.Join(", ", hero.Injuries), w - 24f));
+        var lines = new List<string>
+        {
+            $"{h.Name} - Level {h.Level} {h.Class}",
+            $"{h.Faction} - {h.BaseHeroName}",
+            $"XP {h.Xp} - {h.Credits}{Money} - {h.Points} pts",
+            $"Qua {h.Quality}+  Def {h.Defense}+  Tou {h.Tough}  Pow {h.Power}  Str {h.Strength}+  Dex {h.Dexterity}+  Wil {h.Willpower}+",
+        };
+        if (h.Items.Count > 0) lines.Add("Items: " + string.Join(", ", h.Items));
+        if (h.Injuries.Count > 0) lines.Add("Injuries: " + string.Join(", ", h.Injuries));
+        if (campaign != null) lines.Add($"In campaign \"{campaign.Name}\".");
+        return string.Join("\n", lines);
     }
 
-    private static string Fit(string s, float width)
+    private const string DeleteTitle = "Delete hero?";
+
+    private void DrawDeleteModal()
     {
-        if (ImGui.CalcTextSize(s).X <= width) return s;
-        while (s.Length > 3 && ImGui.CalcTextSize(s + "...").X > width) s = s[..^1];
-        return s + "...";
+        if (_openDelete) { ImGui.OpenPopup(DeleteTitle); _openDelete = false; }
+        if (!ImGui.BeginPopupModal(DeleteTitle, ImGuiWindowFlags.AlwaysAutoResize)) return;
+        if (_deleteIndex < 0 || _deleteIndex >= _saved.Count) { ImGui.CloseCurrentPopup(); ImGui.EndPopup(); return; }
+        (string path, QuestHero hero) = _saved[_deleteIndex];
+        ImGui.TextUnformatted($"Delete {hero.Name}? This can't be undone.");
+        if (CampaignOf(path) is { } camp)
+            UiText.Colored(Bad, $"{hero.Name} is in the campaign \"{camp.Name}\". That campaign will be missing this hero.", wrap: false);
+        ImGui.Spacing();
+        if (UiButton.Back("Delete", UiChrome.ButtonSize("Delete")))
+        {
+            Delete(_deleteIndex);
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.SameLine();
+        if (UiButton.Navigate("Cancel", UiChrome.ButtonSize("Cancel"))) ImGui.CloseCurrentPopup();
+        ImGui.EndPopup();
+    }
+
+    private void Delete(int index)
+    {
+        string name = _saved[index].Hero.Name;
+        try
+        {
+            File.Delete(_saved[index].Path);
+            _message = $"Deleted {name}.";
+            _messageIsError = false;
+        }
+        catch (Exception ex) { _message = "Couldn't delete: " + ex.Message; _messageIsError = true; }
+        Reload();
     }
 
     // ── Shop (#414) ───────────────────────────────────────────────────────────────────────────────────
@@ -197,104 +306,11 @@ public sealed class HeroBuilderScreen : IAppScreen
     // Kai's call, and a convenience rather than a rule: the books open a shop between Horde waves and
     // between campaign chapters, so a hero that finished a one-off game with credits had nowhere to spend
     // them until its next game's first wave ended. Nothing about the two in-game shops changes.
-    //
-    // All the arithmetic is QuestShop's, shared with the campaign screen's shop and tested once - this
-    // draws buttons and writes the sheet back to disk.
 
-    private void DrawShop(float x, float y, float w, float h)
+    private void DrawShop(Vector2 size)
     {
         if (_saved.Count == 0) { _view = EView.List; return; }
-        _shopHero = Math.Clamp(_shopHero, 0, _saved.Count - 1);
-
-        // Hero tabs, each showing what it can spend.
-        ImGui.SetCursorPos(new Vector2(x, y));
-        for (int i = 0; i < _saved.Count; i++)
-        {
-            if (i > 0) ImGui.SameLine();
-            bool sel = i == _shopHero;
-            if (sel) ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.25f, 0.4f, 0.65f, 1f));
-            if (ImGui.Button($"{_saved[i].Hero.Name}  ({_saved[i].Hero.Credits}{Money})##shop{i}")) _shopHero = i;
-            if (sel) ImGui.PopStyleColor();
-        }
-
-        (string path, QuestHero hero) = _saved[_shopHero];
-        float lh = ImGui.GetTextLineHeightWithSpacing();
-        float top = y + lh * 1.8f;
-
-        ImGui.SetCursorPos(new Vector2(x, top));
-        ImGui.BeginChild("##sqbuy", new Vector2(w * 0.62f, h - lh * 1.8f), ImGuiChildFlags.Borders);
-        UiText.Colored(TextDim,
-            $"FOR SALE - LEVEL {hero.Level}, TIER {QuestProgression.TierUnlocked(hero.Level)} "
-            + "(higher tiers unlock at levels 2 / 5 / 9)");
-        foreach ((QuestItemInfo item, string? whyNot) in QuestShop.Stock(hero))
-        {
-            ImGui.BeginDisabled(whyNot != null);
-            if (UiButton.NavigateSmall($"Buy {item.Cost}c##sqb{item.Name}") && QuestShop.Buy(hero, item))
-                SaveSheet(path, hero);
-            ImGui.EndDisabled();
-            ImGui.SameLine();
-            UiText.Colored(whyNot != null ? TextDim : TextBright, $"{item.Name}  (tier {item.Tier})");
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip(WrapText(whyNot == null ? item.Description : whyNot + "\n\n" + item.Description));
-        }
-        ImGui.EndChild();
-
-        ImGui.SetCursorPos(new Vector2(x + w * 0.62f + 12f, top));
-        ImGui.BeginChild("##sqcarry", new Vector2(w * 0.38f - 12f, h - lh * 1.8f), ImGuiChildFlags.Borders);
-        UiText.Colored(TextDim, $"{hero.Name.ToUpperInvariant()} CARRIES ({hero.Credits}{Money})");
-        if (hero.Items.Count == 0) UiText.Disabled("Nothing.");
-        // Grouped so three Med Kits are one row; ToList because the buttons below mutate the list.
-        foreach (IGrouping<string, string> group in hero.Items.GroupBy(i => i).ToList())
-        {
-            QuestItemInfo? info = QuestItems.Find(group.Key);
-            // An item this build doesn't know has no price, so it can be handed over but not sold -
-            // guessing a price would invent credits, and calling it 0 would destroy the item.
-            ImGui.BeginDisabled(info == null);
-            if (UiButton.NavigateSmall($"Sell +{info?.SellValue ?? 0}c##sqs{group.Key}")
-                && QuestShop.Sell(hero, group.Key))
-            {
-                SaveSheet(path, hero);
-            }
-            ImGui.EndDisabled();
-            ImGui.SameLine();
-            ImGui.TextUnformatted(group.Count() > 1 ? $"{group.Key} x{group.Count()}" : group.Key);
-            if (info != null && ImGui.IsItemHovered()) UiText.Tooltip(WrapText(info.Description));
-
-            foreach ((string otherPath, QuestHero other) in _saved.Where(e => e.Path != path).ToList())
-            {
-                ImGui.SameLine();
-                if (ImGui.SmallButton($"> {other.Name}##sqg{group.Key}{otherPath}")
-                    && QuestShop.Give(hero, other, group.Key))
-                {
-                    SaveSheet(path, hero);
-                    SaveSheet(otherPath, other);
-                }
-            }
-        }
-
-        // Credits follow the same "hand it to someone else" shape as items.
-        if (_saved.Count > 1 && hero.Credits > 0)
-        {
-            ImGui.Dummy(new Vector2(0f, lh * 0.4f));
-            UiText.Colored(TextDim, "HAND OVER CREDITS");
-            foreach ((string otherPath, QuestHero other) in _saved.Where(e => e.Path != path).ToList())
-            {
-                foreach (int amount in new[] { 5, 10 })
-                {
-                    ImGui.BeginDisabled(hero.Credits < amount);
-                    if (UiButton.NavigateSmall($"{amount}c > {other.Name}##sqc{amount}{otherPath}")
-                        && QuestShop.GiveCredits(hero, other, amount) > 0)
-                    {
-                        SaveSheet(path, hero);
-                        SaveSheet(otherPath, other);
-                    }
-                    ImGui.EndDisabled();
-                    ImGui.SameLine();
-                }
-                ImGui.NewLine();
-            }
-        }
-        ImGui.EndChild();
+        QuestShopPanel.Draw(System, _saved, ref _shopHero, moneyHandOver: true, SaveSheet, size.X, size.Y);
     }
 
     /// <summary>Writes one hero sheet back to its file, reporting a failure rather than losing it quietly.</summary>
@@ -305,101 +321,16 @@ public sealed class HeroBuilderScreen : IAppScreen
         _messageIsError = true;
     }
 
-    /// <summary>Hard-wraps a tooltip, which ImGui will otherwise draw as one very long line.</summary>
-    private static string WrapText(string text)
-    {
-        var lines = new List<string>();
-        string line = "";
-        foreach (string word in text.Split(' '))
-        {
-            if (line.Length + word.Length > 60) { lines.Add(line); line = ""; }
-            line = line.Length == 0 ? word : line + " " + word;
-        }
-        if (line.Length > 0) lines.Add(line);
-        return string.Join("\n", lines);
-    }
-
-    // ── Bottom bar ────────────────────────────────────────────────────────────────────────────────────
-
-    private void DrawBottomBar(int screenW, int screenH, float margin, float barH)
-    {
-        Vector2 btn = new(screenW * 0.13f, barH * 0.55f);
-        float by = screenH - barH + (barH - btn.Y) * 0.5f;
-        bool esc = ImGui.IsKeyPressed(ImGuiKey.Escape, false) && !ImGui.GetIO().WantTextInput;
-
-        ImGui.SetCursorPos(new Vector2(margin, by));
-        if (_view == EView.List)
-        {
-            if (UiButton.Back("Back", btn) || esc) OnBack?.Invoke();
-            // #414: the shop. Disabled with no heroes, because there is nobody to shop for.
-            ImGui.BeginDisabled(_saved.Count == 0);
-            ImGui.SetCursorPos(new Vector2(margin + btn.X + 10f, by));
-            if (UiButton.Navigate("Shop", btn))
-            {
-                if (_shopHero < 0) _shopHero = Math.Max(0, _selected);
-                _view = EView.Shop;
-                _message = "";
-            }
-            ImGui.EndDisabled();
-            float rx = screenW - margin - btn.X;
-            ImGui.SetCursorPos(new Vector2(rx, by));
-            if (UiButton.Confirm("New Hero", btn)) StartNew();
-            bool has = _selected >= 0 && _selected < _saved.Count;
-            ImGui.BeginDisabled(!has);
-            ImGui.SetCursorPos(new Vector2(rx - btn.X - 10f, by));
-            if (UiButton.Navigate("Edit", btn)) StartEdit(_selected);
-            ImGui.SetCursorPos(new Vector2(rx - (btn.X + 10f) * 2f, by));
-            if (UiButton.Back(_confirmDelete ? "Really delete?" : "Delete", btn))
-            {
-                if (_confirmDelete && has) Delete(_selected);
-                else _confirmDelete = true;
-            }
-            ImGui.EndDisabled();
-        }
-        else if (_view == EView.Shop)
-        {
-            if (UiButton.Back("Back", btn) || esc) { _view = EView.List; _message = ""; }
-            if (_message.Length > 0)
-            {
-                Vector2 ts = ImGui.CalcTextSize(_message);
-                ImGui.SetCursorPos(new Vector2(screenW - margin - ts.X, by + (btn.Y - ts.Y) / 2f));
-                UiText.Colored(_messageIsError ? Bad : Good, _message);
-            }
-        }
-        else
-        {
-            if (UiButton.Back("Cancel", btn) || esc) { _view = EView.List; _message = ""; }
-            ImGui.SetCursorPos(new Vector2(screenW - margin - btn.X, by));
-            string? problem = SaveProblem();
-            ImGui.BeginDisabled(problem != null);
-            if (UiButton.Confirm("Save Hero", btn)) Save();
-            ImGui.EndDisabled();
-            string line = problem ?? _message;
-            if (line.Length > 0)
-            {
-                Vector2 ts = ImGui.CalcTextSize(line);
-                ImGui.SetCursorPos(new Vector2(screenW - margin - btn.X - 16f - ts.X, by + (btn.Y - ts.Y) / 2f));
-                UiText.Colored(problem != null ? TextDim : _messageIsError ? Bad : Good, line);
-            }
-        }
-    }
-
-    private void Delete(int index)
-    {
-        try { File.Delete(_saved[index].Path); }
-        catch (Exception ex) { _message = "Couldn't delete: " + ex.Message; }
-        Reload();
-    }
-
-    // ── Editor ────────────────────────────────────────────────────────────────────────────────────────
+    // ── Editor logic ──────────────────────────────────────────────────────────────────────────────────
 
     private void StartNew()
     {
         _editingPath = null;
         _locked = null;
-        _faction = null; _base = null; _class = null;
+        _faction = null; _base = null; _class = null; _browseFaction = null;
         _skills.Clear(); _picks.Clear();
         _name = ""; _filter = ""; _message = "";
+        _step = 0;
         _view = EView.Edit;
     }
 
@@ -411,6 +342,7 @@ public sealed class HeroBuilderScreen : IAppScreen
         _editingPath = path;
         _name = hero.Name;
         _faction = Data.Factions.FirstOrDefault(f => f.Uid == hero.FactionUid);
+        _browseFaction = _faction;
         _base = _faction?.Heroes.FirstOrDefault(h => h.Id == hero.BaseHeroId);
         _class = Data.ClassById(hero.ClassId);
         bool played = hero.Xp > 0 || hero.Level > 1 || hero.Missions > 0;
@@ -481,13 +413,24 @@ public sealed class HeroBuilderScreen : IAppScreen
         return picks;
     }
 
-    private string? SaveProblem()
+    /// <summary>What is still missing before the hero can be saved, in step order, or null.</summary>
+    private string? SaveProblem() => SaveProblem(_name, _locked != null, _base != null, _class?.Skills, _skills.Count);
+
+    /// <summary>
+    /// The missing-line wording, pure so it is pinned by a test: name and hero (step 1), class (step 2),
+    /// starter skills (step 3). Gear (step 4) is optional and never missing.
+    /// </summary>
+    internal static string? SaveProblem(string name, bool locked, bool hasBase, int? classSkills, int skillsPicked)
     {
-        if (_name.Trim().Length == 0) return "Give the hero a name.";
-        if (_locked != null) return null;
-        if (_base == null) return "Pick a hero from the list on the left.";
-        if (_class == null) return "Pick a class.";
-        if (_skills.Count < _class.Skills) return $"Pick {_class.Skills - _skills.Count} more starter skill{(_class.Skills - _skills.Count == 1 ? "" : "s")}.";
+        if (locked) return name.Trim().Length == 0 ? "Give the hero a name (step 1)." : null;
+        if (!hasBase) return "Pick a base hero (step 1).";
+        if (name.Trim().Length == 0) return "Give the hero a name (step 1).";
+        if (classSkills is not int need) return "Pick a class (step 2).";
+        if (skillsPicked < need)
+        {
+            int more = need - skillsPicked;
+            return $"Pick {more} more starter skill{(more == 1 ? "" : "s")} (step 3).";
+        }
         return null;
     }
 
@@ -508,12 +451,17 @@ public sealed class HeroBuilderScreen : IAppScreen
             }
             hero.SourceFile = path;
             File.WriteAllText(path, hero.ToJson());
-            if (renamed) File.Delete(_editingPath!);
+            if (renamed)
+            {
+                File.Delete(_editingPath!);
+                RenameInCampaigns(_editingPath!, path);
+            }
             _editingPath = path;
             Reload();
             _selected = _saved.FindIndex(e => string.Equals(e.Path, path, StringComparison.OrdinalIgnoreCase));
             _view = EView.List;
-            _message = "";
+            _message = $"Saved {hero.Name}.";
+            _messageIsError = false;
         }
         catch (Exception ex)
         {
@@ -522,25 +470,77 @@ public sealed class HeroBuilderScreen : IAppScreen
         }
     }
 
-    private void DrawEditor(float x, float y, float w, float h)
+    /// <summary>A renamed hero gets a new file; the campaign that holds it follows it to the new file, so
+    /// renaming never quietly drops a hero from its campaign.</summary>
+    private void RenameInCampaigns(string oldPath, string newPath)
     {
-        float gap = 14f;
-        float c1 = w * 0.24f, c2 = w * 0.40f, c3 = w - c1 - c2 - gap * 2f;
+        string oldKey = Path.GetFullPath(oldPath);
+        foreach ((string file, QuestCampaign c) in CampaignPaths.LoadAll(GameType))
+        {
+            bool changed = false;
+            for (int i = 0; i < c.HeroFiles.Count; i++)
+            {
+                if (!string.Equals(Path.GetFullPath(c.HeroFiles[i]), oldKey, StringComparison.OrdinalIgnoreCase)) continue;
+                c.HeroFiles[i] = newPath;
+                changed = true;
+            }
+            if (changed) CampaignPaths.Save(file, c);
+        }
+    }
 
-        ImGui.SetCursorPos(new Vector2(x, y));
-        ImGui.BeginChild("##pickHero", new Vector2(c1, h), ImGuiChildFlags.Borders);
-        DrawHeroPicker();
+    // ── Editor drawing: four tabbed steps ─────────────────────────────────────────────────────────────
+
+    private void DrawEditor(Vector2 size)
+    {
+        // The step tabs. A hero that has played only has its name (step 1) and its new skills (step 3).
+        for (int i = 0; i < StepNames.Length; i++)
+        {
+            if (i > 0) ImGui.SameLine();
+            bool sel = i == _step;
+            bool off = _locked != null && (i == 1 || i == 3);
+            ImGui.BeginDisabled(off);
+            if (sel) ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.25f, 0.4f, 0.65f, 1f));
+            string label = _locked != null && i == 2 ? "3. New Skills" : StepNames[i];
+            if (ImGui.Button($"{label}##step{i}", new Vector2(UiChrome.Em(10f), 0f))) _step = i;
+            if (sel) ImGui.PopStyleColor();
+            ImGui.EndDisabled();
+            if (off && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.Tooltip("This hero has already played, so its build is locked.");
+        }
+        if (_locked != null && (_step == 1 || _step == 3)) _step = 0;
+
+        float footH = UiChrome.ButtonSize("Next").Y + ImGui.GetStyle().ItemSpacing.Y * 2f;
+        ImGui.BeginChild("##stepBody", new Vector2(0, ImGui.GetContentRegionAvail().Y - footH), ImGuiChildFlags.Borders);
+        switch (_step)
+        {
+            case 0: DrawStepHero(); break;
+            case 1: DrawStepClass(); break;
+            case 2: if (_locked != null) DrawNewSkillPicks(_locked); else DrawStepSkills(); break;
+            default: DrawStepGear(); break;
+        }
         ImGui.EndChild();
 
-        ImGui.SetCursorPos(new Vector2(x + c1 + gap, y));
-        ImGui.BeginChild("##choices", new Vector2(c2, h), ImGuiChildFlags.Borders);
-        DrawChoices();
-        ImGui.EndChild();
-
-        ImGui.SetCursorPos(new Vector2(x + c1 + c2 + gap * 2f, y));
-        ImGui.BeginChild("##sheet", new Vector2(c3, h), ImGuiChildFlags.Borders);
-        DrawSheet(Compose());
-        ImGui.EndChild();
+        // Footer: Cancel, what is still missing, Next / SAVE HERO.
+        if (UiButton.Back("Cancel", UiChrome.ButtonSize("Cancel"))) { _view = EView.List; _message = ""; }
+        string? problem = SaveProblem();
+        bool last = _step == StepNames.Length - 1 || (_locked != null && _step == 2);
+        string next = last ? "SAVE HERO" : "Next";
+        ImGui.SameLine();
+        string line = problem ?? (last ? "Ready to save." : "Everything needed is done - Next, or save from the last step.");
+        UiText.Colored(problem != null ? Gold : Good, line, wrap: false);
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), ImGui.GetWindowWidth() - UiChrome.ButtonSize(next).X - ImGui.GetStyle().WindowPadding.X));
+        if (last)
+        {
+            ImGui.BeginDisabled(problem != null);
+            if (UiButton.Confirm(next, UiChrome.ButtonSize(next))) Save();
+            ImGui.EndDisabled();
+        }
+        else if (UiButton.Navigate(next, UiChrome.ButtonSize(next)))
+        {
+            _step++;
+            if (_locked != null && _step == 1) _step = 2;
+        }
     }
 
     private static void Header(string text)
@@ -558,181 +558,190 @@ public sealed class HeroBuilderScreen : IAppScreen
         return faction.Heroes.Where(h => h.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
-    private void DrawHeroPicker()
+    /// <summary>Step 1: the hero's name, then the factions (Army Forge's groups and order) on the left and the
+    /// chosen faction's base heroes as portrait cards on the right.</summary>
+    private void DrawStepHero()
     {
-        Header("1. HERO");
-        if (_locked != null)
-        {
-            ImGui.PushTextWrapPos(0f);
-            UiText.Colored(TextBright, $"{_locked.BaseHeroName}");
-            UiText.Disabled(_locked.Faction);
-            ImGui.Spacing();
-            UiText.Disabled("This hero has already played, so its build is locked. You can still rename it.");
-            ImGui.PopTextWrapPos();
-            return;
-        }
-        ImGui.SetNextItemWidth(-1f);
-        ImGui.InputTextWithHint("##filter", "Search factions or heroes...", ref _filter, 64);
-        ImGui.BeginChild("##factionList");
-        string f = _filter.Trim();
-
-        // 53 factions in one flat list is a scroll with no landmarks, so they fold into Humanity, Chaos
-        // and Xenos first. A search opens everything that matches; otherwise only the group holding the
-        // faction already picked is open.
-        foreach (string group in Data.FactionGroups)
-        {
-            var factions = Data.Factions
-                .Where(fc => Data.GroupOf(fc) == group)
-                .OrderBy(fc => fc.Faction, StringComparer.OrdinalIgnoreCase)
-                .Select(fc => (Faction: fc, Heroes: Matching(fc, f)))
-                .Where(x => x.Heroes.Count > 0)
-                .ToList();
-            if (factions.Count == 0) continue;
-
-            ImGuiTreeNodeFlags groupFlags = ImGuiTreeNodeFlags.SpanAvailWidth;
-            if (f.Length > 0 || (_faction != null && Data.GroupOf(_faction) == group))
-                groupFlags |= ImGuiTreeNodeFlags.DefaultOpen;
-            int heroCount = factions.Sum(x => x.Heroes.Count);
-            if (!ImGui.TreeNodeEx($"{group.ToUpperInvariant()}  ({factions.Count} factions, {heroCount} heroes)##grp{group}", groupFlags))
-                continue;
-
-            foreach (var (fac, heroes) in factions)
-            {
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.SpanAvailWidth;
-                if (f.Length > 0 || _faction == fac) flags |= ImGuiTreeNodeFlags.DefaultOpen;
-                if (!ImGui.TreeNodeEx($"{fac.Faction}##{fac.Uid}", flags)) continue;
-                foreach (SqHero hero in heroes)
-                {
-                    bool sel = _base == hero;
-                    // The name is cut with "..." to leave room for the points (they overlapped at 1280x720).
-                    float room = ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize($"{hero.Cost}pts").X - 16f;
-                    string shown = LobbyScreen.FitWithEllipsis($"  {hero.Name}", room);
-                    if (ImGui.Selectable($"{shown}##{fac.Uid}{hero.Id}", sel))
-                    {
-                        if (_base != hero) { _picks.Clear(); }
-                        _faction = fac;
-                        _base = hero;
-                    }
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.BeginTooltip();
-                        ImGui.TextUnformatted($"{hero.Name}  ({hero.Cost}pts)");
-                        foreach (SqWeapon wpn in hero.Weapons) UiText.Disabled(wpn.ToQuest().Label());
-                        UiText.Disabled(string.Join(", ", hero.Rules));
-                        ImGui.EndTooltip();
-                    }
-                    ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize($"{hero.Cost}pts").X + ImGui.GetCursorPosX() - 4f);
-                    UiText.Disabled($"{hero.Cost}pts");
-                }
-                ImGui.TreePop();
-            }
-            ImGui.TreePop();
-        }
-        ImGui.EndChild();
-    }
-
-    private void DrawChoices()
-    {
-        Header("2. NAME");
-        ImGui.SetNextItemWidth(-1f);
+        Header("NAME");
+        ImGui.SetNextItemWidth(UiChrome.Em(20f));
         ImGui.InputTextWithHint("##heroName", "Hero name", ref _name, 40);
 
         if (_locked != null)
         {
-            DrawNewSkillPicks(_locked);
+            Header("HERO");
+            UiText.Colored(TextBright, $"{_locked.BaseHeroName}");
+            UiText.Disabled(_locked.Faction);
+            UiText.Disabled("This hero has already played a mission, so its build is locked. Renaming still works.");
             return;
         }
 
-        Header("3. CLASS");
+        Header("BASE HERO");
+        UiText.Disabled("Factions grouped exactly as Army Forge groups them. Pick a base hero. Locked once the hero has played a mission (renaming still works).");
+        ImGui.SetNextItemWidth(UiChrome.Em(20f));
+        ImGui.InputTextWithHint("##filter", "Search factions or heroes...", ref _filter, 64);
+
+        Vector2 avail = ImGui.GetContentRegionAvail();
+        float listW = MathF.Min(UiChrome.Em(18f), avail.X * 0.4f);
+        ImGui.BeginChild("##factionList", new Vector2(listW, avail.Y), ImGuiChildFlags.Borders);
+        string f = _filter.Trim();
+        foreach (string group in Data.FactionGroups)
+        {
+            // Inside a group the books keep Army Forge's order - the order the hero file holds them in.
+            var factions = Data.Factions.Where(fc => Data.GroupOf(fc) == group && Matching(fc, f).Count > 0).ToList();
+            if (factions.Count == 0) continue;
+            UiText.Colored(Accent, group.ToUpperInvariant());
+            foreach (SqFaction fac in factions)
+            {
+                bool sel = _browseFaction == fac;
+                if (ImGui.Selectable($"   {fac.Faction}  ({Matching(fac, f).Count})##{fac.Uid}", sel)) _browseFaction = fac;
+            }
+            ImGui.Spacing();
+        }
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+        ImGui.BeginChild("##baseHeroes", new Vector2(0, avail.Y), ImGuiChildFlags.Borders);
+        if (_browseFaction == null)
+            UiText.Disabled("Pick a faction on the left to see its heroes.");
+        else
+        {
+            SqFaction fac = _browseFaction;
+            UiText.Colored(TextBright, $"{Data.GroupOf(fac)}  >  {fac.Faction}");
+            List<SqHero> heroes = Matching(fac, f);
+            var cards = heroes.Select(h => new UnitPortraitCards.Card(h.Name, h.Name, $"{h.Cost} pts",
+                () => BaseHeroTooltip(h))).ToList();
+            int selected = _faction == fac && _base != null ? heroes.IndexOf(_base) : -1;
+            UnitPortraitCards.CardEvent hit = _cards.DrawCardGrid("base", cards, fac.Faction, selected);
+            if (hit.Clicked >= 0)
+            {
+                SqHero pick = heroes[hit.Clicked];
+                if (_base != pick) _picks.Clear();
+                _faction = fac;
+                _base = pick;
+            }
+        }
+        ImGui.EndChild();
+    }
+
+    private static string BaseHeroTooltip(SqHero hero)
+    {
+        var lines = new List<string> { $"{hero.Name} - {hero.Cost} pts" };
+        foreach (SqWeapon wpn in hero.Weapons) lines.Add(wpn.ToQuest().Label());
+        if (hero.Rules.Count > 0) lines.Add(string.Join(", ", hero.Rules));
+        if (hero.Gear.Count > 0) lines.Add("Gear: " + string.Join(", ", hero.Gear));
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>Step 2: the classes as cards; hover a card for its full feature text.</summary>
+    private void DrawStepClass()
+    {
+        Header("CLASS");
+        UiText.Disabled("Pick a class. Hover a card for its full feature text.");
         float avail = ImGui.GetContentRegionAvail().X;
-        float cardW = (avail - 8f) / 2f;
+        int columns = Math.Max(1, (int)((avail + 8f) / (UiChrome.Em(16f) + 8f)));
+        float cardW = (avail - 8f * (columns - 1)) / columns;
         float lh = ImGui.GetTextLineHeight();
         int i = 0;
         foreach (SqClass cls in Data.Classes)
         {
-            if (i % 2 == 1) ImGui.SameLine(0f, 8f);
+            if (i % columns != 0) ImGui.SameLine(0f, 8f);
             DrawClassCard(cls, cardW, lh * 3.4f + 12f);
             i++;
         }
+    }
 
-        if (_class != null)
+    /// <summary>Step 3: the class's starter skills; full ones grey out.</summary>
+    private void DrawStepSkills()
+    {
+        if (_class == null)
         {
-            Header($"4. STARTER SKILLS  (pick {_class.Skills})");
-            SqSkill? feat = Data.ClassFeat(_class);
-            if (feat != null)
-            {
-                ImGui.PushTextWrapPos(0f);
-                UiText.Colored(Accent, $"{feat.Name} (class feature, always known)");
-                UiText.Disabled(feat.Rule);
-                ImGui.PopTextWrapPos();
-                ImGui.Spacing();
-            }
-            foreach (SqSkill s in Data.ClassSkills(_class, 0))
-            {
-                bool on = _skills.Contains(s.Name);
-                bool full = !on && _skills.Count >= _class.Skills;
-                ImGui.BeginDisabled(full);
-                if (ImGui.Checkbox($"{s.Name} ({QuestDataSet.SkillStat(s)})##sk{s.Id}", ref on))
-                {
-                    if (on) _skills.Add(s.Name); else _skills.Remove(s.Name);
-                }
-                ImGui.EndDisabled();
-                ImGui.Indent(26f);
-                ImGui.PushTextWrapPos(0f);
-                UiText.Disabled(s.Rule);
-                ImGui.PopTextWrapPos();
-                ImGui.Unindent(26f);
-            }
+            Header("STARTER SKILLS");
+            UiText.Disabled("Pick a class first (step 2) - the class decides the skills.");
+            return;
         }
-
-        if (_base != null)
+        Header($"STARTER SKILLS  (pick {_class.Skills})");
+        UiText.Disabled($"Pick {_class.Skills} starter skill{(_class.Skills == 1 ? "" : "s")}. Full ones grey out.");
+        SqSkill? feat = Data.ClassFeat(_class);
+        if (feat != null)
         {
-            Header("5. GEAR UPGRADES  (optional, adds points)");
-            bool any = false;
-            var sofar = new List<(SqSection, SqOption)>();
-            foreach (var (key, section) in Sections())
+            ImGui.PushTextWrapPos(0f);
+            UiText.Colored(Accent, $"{feat.Name} (class feature, always known)");
+            UiText.Disabled(feat.Rule);
+            ImGui.PopTextWrapPos();
+            ImGui.Spacing();
+        }
+        foreach (SqSkill s in Data.ClassSkills(_class, 0))
+        {
+            bool on = _skills.Contains(s.Name);
+            bool full = !on && _skills.Count >= _class.Skills;
+            ImGui.BeginDisabled(full);
+            if (ImGui.Checkbox($"{s.Name} ({QuestDataSet.SkillStat(s)})##sk{s.Id}", ref on))
             {
-                any = true;
-                bool multi = QuestDataSet.IsMultiPick(section);
-                var (lw, lr, _) = QuestDataSet.Loadout(_base, sofar);
-                if (!QuestDataSet.HasTargets(section, lw, lr))
+                if (on) _skills.Add(s.Name); else _skills.Remove(s.Name);
+            }
+            ImGui.EndDisabled();
+            ImGui.Indent(26f);
+            ImGui.PushTextWrapPos(0f);
+            UiText.Disabled(s.Rule);
+            ImGui.PopTextWrapPos();
+            ImGui.Unindent(26f);
+        }
+    }
+
+    /// <summary>Step 4: the optional gear upgrades - the base hero's own upgrade options, with the same
+    /// "replace / upgrade with" sections the Army Forge shows.</summary>
+    private void DrawStepGear()
+    {
+        Header("GEAR UPGRADES  (optional, adds points)");
+        if (_base == null)
+        {
+            UiText.Disabled("Pick a base hero first (step 1) - the hero decides the gear.");
+            return;
+        }
+        bool any = false;
+        var sofar = new List<(SqSection, SqOption)>();
+        foreach (var (key, section) in Sections())
+        {
+            any = true;
+            bool multi = QuestDataSet.IsMultiPick(section);
+            var (lw, lr, _) = QuestDataSet.Loadout(_base, sofar);
+            if (!QuestDataSet.HasTargets(section, lw, lr))
+            {
+                UiText.Disabled($"{section.Label}  (needs {string.Join(" and ", section.Targets ?? new List<string>())} first)");
+                ImGui.Spacing();
+                continue;
+            }
+            if (_picks.TryGetValue(key, out var have))
+                foreach (int o in have.OrderBy(i => i))
+                    if (o >= 0 && o < section.Opts.Count) sofar.Add((section, section.Opts[o]));
+            UiText.Colored(TextBright, section.Label);
+            if (!_picks.TryGetValue(key, out var chosen)) chosen = new List<int>();
+            ImGui.Indent(10f);
+            if (!multi)
+            {
+                bool none = chosen.Count == 0;
+                if (ImGui.RadioButton($"None##{key.Item1}{key.Item2}", none)) _picks.Remove(key);
+            }
+            for (int o = 0; o < section.Opts.Count; o++)
+            {
+                SqOption opt = section.Opts[o];
+                string label = $"{opt.Label}  +{opt.Cost ?? 0}pts##{key.Item1}{key.Item2}o{o}";
+                bool on = chosen.Contains(o);
+                if (multi)
                 {
-                    UiText.Disabled($"{section.Label}  (needs {string.Join(" and ", section.Targets ?? new List<string>())} first)");
-                    ImGui.Spacing();
-                    continue;
-                }
-                if (_picks.TryGetValue(key, out var have))
-                    foreach (int o in have.OrderBy(i => i))
-                        if (o >= 0 && o < section.Opts.Count) sofar.Add((section, section.Opts[o]));
-                UiText.Colored(TextBright, section.Label);
-                if (!_picks.TryGetValue(key, out var chosen)) chosen = new List<int>();
-                ImGui.Indent(10f);
-                if (!multi)
-                {
-                    bool none = chosen.Count == 0;
-                    if (ImGui.RadioButton($"None##{key.Item1}{key.Item2}", none)) _picks.Remove(key);
-                }
-                for (int o = 0; o < section.Opts.Count; o++)
-                {
-                    SqOption opt = section.Opts[o];
-                    string label = $"{opt.Label}  +{opt.Cost ?? 0}pts##{key.Item1}{key.Item2}o{o}";
-                    bool on = chosen.Contains(o);
-                    if (multi)
+                    if (ImGui.Checkbox(label, ref on))
                     {
-                        if (ImGui.Checkbox(label, ref on))
-                        {
-                            if (on) chosen.Add(o); else chosen.Remove(o);
-                            _picks[key] = chosen;
-                        }
+                        if (on) chosen.Add(o); else chosen.Remove(o);
+                        _picks[key] = chosen;
                     }
-                    else if (ImGui.RadioButton(label, on))
-                        _picks[key] = new List<int> { o };
                 }
-                ImGui.Unindent(10f);
-                ImGui.Spacing();
+                else if (ImGui.RadioButton(label, on))
+                    _picks[key] = new List<int> { o };
             }
-            if (!any) UiText.Disabled("This hero has no gear options.");
+            ImGui.Unindent(10f);
+            ImGui.Spacing();
         }
+        if (!any) UiText.Disabled("This hero has no gear options.");
     }
 
     /// <summary>A hero that levelled up with "+1 Skill" picks its new skills here: its class's skills and the
@@ -741,7 +750,12 @@ public sealed class HeroBuilderScreen : IAppScreen
     {
         int free = hero.SkillSlots - hero.Skills.Count;
         SqClass? cls = Data.ClassById(hero.ClassId);
-        if (free <= 0 || cls == null) return;
+        if (free <= 0 || cls == null)
+        {
+            Header("NEW SKILLS");
+            UiText.Disabled("No new skills to pick. A level-up that gives \"+1 Skill\" opens a pick here.");
+            return;
+        }
         int tierCap = QuestProgression.TierUnlocked(hero.Level);
         Header($"NEW SKILLS  (pick {free})");
         UiText.Disabled($"Level {hero.Level} unlocks tier {tierCap} skills.");
@@ -784,19 +798,26 @@ public sealed class HeroBuilderScreen : IAppScreen
         // name rides along after it - otherwise there is nothing on screen that reads as "Fighter".
         string title = string.IsNullOrEmpty(cls.BaseName) || cls.BaseName == cls.Name
             ? cls.Name : $"{cls.Name}  ({cls.BaseName})";
+        SqSkill? feat = Data.ClassFeat(cls);
         dl.AddText(p0 + new Vector2(8f, 6f), U(TextBright), Fit(title, w - 16f));
         dl.AddText(p0 + new Vector2(8f, 6f + lh + 2f), U(Gold), Fit(ClassBonusText(cls), w - 16f));
-        dl.AddText(p0 + new Vector2(8f, 6f + (lh + 2f) * 2), U(TextDim), Fit(cls.Description ?? "", w - 16f));
-        if (hovered && !string.IsNullOrEmpty(cls.Description))
+        dl.AddText(p0 + new Vector2(8f, 6f + (lh + 2f) * 2), U(TextDim), Fit(feat != null ? "Feature: " + feat.Name : cls.Description ?? "", w - 16f));
+        if (hovered)
         {
             ImGui.BeginTooltip();
             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 26f);
-            ImGui.TextUnformatted(cls.Description);
-            SqSkill? feat = Data.ClassFeat(cls);
+            if (!string.IsNullOrEmpty(cls.Description)) ImGui.TextUnformatted(cls.Description);
             if (feat != null) UiText.Colored(Accent, $"{feat.Name}: {feat.Rule}", wrap: false);
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
         }
+    }
+
+    private static string Fit(string s, float width)
+    {
+        if (ImGui.CalcTextSize(s).X <= width) return s;
+        while (s.Length > 3 && ImGui.CalcTextSize(s + "...").X > width) s = s[..^1];
+        return s + "...";
     }
 
     private static string ClassBonusText(SqClass c)
@@ -837,14 +858,21 @@ public sealed class HeroBuilderScreen : IAppScreen
         Header("HERO SHEET");
         if (hero == null)
         {
-            UiText.Disabled("Pick a hero to see its sheet.");
+            UiText.Disabled(_view == EView.Edit ? "Pick a base hero (step 1) to see its sheet." : "Pick a hero to see its sheet.");
             return;
         }
+        float portrait = MathF.Min(UiChrome.Em(7f), ImGui.GetContentRegionAvail().X * 0.4f);
+        _cards.DrawPortrait(hero.BaseHeroName, hero.Faction, new Vector2(portrait, portrait));
+        ImGui.SameLine();
+        ImGui.BeginGroup();
         ImGui.PushTextWrapPos(0f);
         UiText.Colored(TextBright, hero.Name.Length > 0 ? hero.Name : "(no name yet)");
         UiText.Colored(Gold, $"Level {hero.Level}  {(hero.Class.Length > 0 ? hero.Class : "(no class)")}");
         UiText.Disabled($"{hero.Faction} - {hero.BaseHeroName}");
+        int next = hero.Level < QuestProgression.MaxLevel ? QuestProgression.XpForLevel[hero.Level + 1] : hero.Xp;
+        UiText.Disabled($"XP {hero.Xp} / {next} - {hero.Credits} {MoneyWord} - {hero.Points} pts");
         ImGui.PopTextWrapPos();
+        ImGui.EndGroup();
         ImGui.Spacing();
 
         // Stat boxes.
@@ -868,15 +896,6 @@ public sealed class HeroBuilderScreen : IAppScreen
             dl.AddText(new Vector2(b0.X + (box - vs.X) / 2f, b0.Y + lh + 5f), U(TextBright), stats[i].Item2);
         }
         ImGui.Dummy(new Vector2(avail, lh * 2.4f + 4f));
-        UiText.Disabled($"{hero.Points} pts   -   {hero.Credits}{Money} {MoneyWord}   -   XP {hero.Xp}");
-
-        Header("SPECIAL RULES");
-        if (hero.Rules.Count > 0)
-            RuleHoverText.DrawWrapped(RuleSegments(hero, hero.Rules), ImGui.GetContentRegionAvail().X);
-        else ImGui.TextUnformatted("-");
-        ImGui.PushTextWrapPos(0f);
-        if (hero.Gear.Count > 0) UiText.Disabled("Gear: " + string.Join(", ", hero.Gear));
-        ImGui.PopTextWrapPos();
 
         Header("WEAPONS");
         if (ImGui.BeginTable("##weapons", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
@@ -900,30 +919,43 @@ public sealed class HeroBuilderScreen : IAppScreen
             ImGui.EndTable();
         }
 
-        Header("SKILLS");
+        Header("SPECIAL RULES");
+        if (hero.Rules.Count > 0)
+            RuleHoverText.DrawWrapped(RuleSegments(hero, hero.Rules), ImGui.GetContentRegionAvail().X);
+        else ImGui.TextUnformatted("-");
         ImGui.PushTextWrapPos(0f);
+        if (hero.Gear.Count > 0) UiText.Disabled("Gear: " + string.Join(", ", hero.Gear));
+        ImGui.PopTextWrapPos();
+
+        Header("SKILLS");
         var feat = hero.ClassFeat.Length > 0 ? Data.SkillByName(hero.ClassFeat) : null;
-        if (feat != null) { UiText.Colored(Accent, $"{feat.Name} (feature)"); UiText.Disabled(feat.Rule); }
+        if (feat != null)
+        {
+            UiText.Colored(Accent, $"{feat.Name} (class feature, always known)");
+            if (ImGui.IsItemHovered()) UiText.TooltipWrapped(feat.Rule);
+        }
         foreach (string name in hero.Skills)
         {
             SqSkill? s = Data.SkillByName(name);
             UiText.Colored(Accent, s != null ? $"{s.Name} ({QuestDataSet.SkillStat(s)})" : name);
-            if (s != null) UiText.Disabled(s.Rule);
+            if (s != null && ImGui.IsItemHovered()) UiText.TooltipWrapped(s.Rule);
         }
         if (feat == null && hero.Skills.Count == 0) UiText.Disabled("Pick a class to get skills.");
-        ImGui.Spacing();
+        ImGui.PushTextWrapPos(0f);
         UiText.Disabled("Common skills (every hero): Discover, Push, Scurry.");
         if (hero.Caster > 0)
             UiText.Disabled($"Casts spells from the {hero.Faction} spell list.");
         ImGui.PopTextWrapPos();
 
-        if (hero.Items.Count > 0 || hero.Injuries.Count > 0)
+        Header("ITEMS / INJURIES");
+        if (hero.Items.Count == 0 && hero.Injuries.Count == 0) UiText.Disabled("None.");
+        foreach (IGrouping<string, string> g in hero.Items.GroupBy(i => i))
         {
-            Header("ITEMS & INJURIES");
-            ImGui.PushTextWrapPos(0f);
-            if (hero.Items.Count > 0) ImGui.TextUnformatted("Items: " + string.Join(", ", hero.Items));
-            if (hero.Injuries.Count > 0) UiText.Colored(Bad, "Injuries: " + string.Join(", ", hero.Injuries));
-            ImGui.PopTextWrapPos();
+            ImGui.TextUnformatted(g.Count() > 1 ? $"{g.Key} x{g.Count()}" : g.Key);
+            if (QuestItems.Find(g.Key) is { } info && ImGui.IsItemHovered()) UiText.TooltipWrapped(info.Description);
         }
+        foreach (string injury in hero.Injuries) UiText.Colored(Bad, "Injury: " + injury);
+        ImGui.Spacing();
+        UiText.Disabled("Updates live while you build. Hover any rule, skill or item for its book wording.");
     }
 }

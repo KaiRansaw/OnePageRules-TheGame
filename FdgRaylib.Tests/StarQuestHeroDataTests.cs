@@ -186,15 +186,21 @@ public class StarQuestHeroDataTests
             "rules with no description: " + string.Join("; ", missing.Distinct().Take(20)));
     }
 
-    /// <summary>Every faction lands in one of the picker's real groups; "Other" means the grouping table
-    /// missed a rename or a new faction and the picker shows it in a catch-all bucket.</summary>
+    /// <summary>
+    /// Batch E: the picker groups by Army Forge's own raceGroup, in Army Forge's order (its Quest page
+    /// sorts the group names ascending; books keep the API's order inside a group). Pinned from the live
+    /// API on 2026-11-07 (/api/army-books?filters=official&amp;gameSystemSlug=grimdark-future-star-quest).
+    /// This replaced the Humanity / Chaos / Xenos split this test used to check - Kai dropped it.
+    /// </summary>
     [Test]
-    public void EveryFaction_HasAPickerGroup()
+    public void Factions_AreGroupedAndOrderedTheWayArmyForgeDoes()
     {
-        var ungrouped = StarQuestData.Factions
-            .Where(f => StarQuestData.GroupOf(f) == "Other")
-            .Select(f => f.Faction)
-            .ToList();
-        Assert.That(ungrouped, Is.Empty, "factions falling into Other: " + string.Join(", ", ungrouped));
+        Assert.That(StarQuestData.FactionGroups, Is.EqualTo(new[]
+            { "Aliens", "Battleborn", "Beastfolk", "Daemons", "Dwarves", "Elves", "Gangs", "Greenskins", "Havocbound", "Humans", "Primeborn" }));
+        var unknown = StarQuestData.Factions.Where(f => StarQuestData.GroupOf(f) == QuestDataSet.UnknownGroup).Select(f => f.Faction);
+        Assert.That(unknown, Is.Empty, "every Star Quest hero book has a race group on Army Forge");
+        var humans = StarQuestData.Factions.Where(f => StarQuestData.GroupOf(f) == "Humans").Select(f => f.Faction).ToList();
+        Assert.That(humans, Is.EqualTo(new[] { "Blessed Sisters", "Custodian Brothers", "Human Defense Force", "Human Inquisition", "Machine Cults" }),
+            "Army Forge's books, in its order");
     }
 }

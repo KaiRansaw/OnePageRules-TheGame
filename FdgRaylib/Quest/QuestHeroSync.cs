@@ -19,6 +19,7 @@ public static class QuestHeroSync
     {
         if (!ReferenceEquals(table, _lastTable)) { WrittenThisGame.Clear(); _lastTable = table; }
         var heroes = new List<QuestHero>();
+        var knockedOut = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (IUnit unit in table.Units.Objects)
         {
             if (unit is not UnitData data || data.QuestHeroJson == null) continue;
@@ -26,6 +27,7 @@ public static class QuestHeroSync
             if (hero?.SourceFile == null || !WrittenThisGame.Add(hero.SourceFile)) continue;
             if (!File.Exists(hero.SourceFile)) continue;
             heroes.Add(hero);
+            if (!data.GetIsAlive()) knockedOut.Add(hero.SourceFile);
         }
 
         // Campaign missions: record the result once per campaign, then update the heroes' campaign state.
@@ -43,7 +45,12 @@ public static class QuestHeroSync
             if (CampaignPaths.Find(group.First().GameType, group.Key) is not { } found) continue;
             QuestCampaign campaign = found.Campaign;
             string outcome = group.Any(h => h.LastOutcome == "success") ? "success" : "failed";
-            bool chapterEnded = campaign.RecordMission(outcome);
+            // Batch E: the journal's "What happened", from the finished game and each hero's sheet as it
+            // went in (still on disk - it is written below) and as it came out.
+            CampaignMissionRecord record = CampaignMissionRecord.From(table.Progress.Quest ?? new QuestProgress(),
+                group.Select(h => (CampaignPaths.LoadHero(h.SourceFile!), h, knockedOut.Contains(h.SourceFile!))),
+                outcome, DateTime.Now);
+            bool chapterEnded = campaign.RecordMission(outcome, record);
             CampaignPaths.Save(found.Path, campaign);
             foreach (QuestHero hero in group)
             {
@@ -53,6 +60,8 @@ public static class QuestHeroSync
                 hero.WoundsTaken = 0;
                 hero.PowerLeft = -1;
                 if (outcome == "success") { hero.CampaignName = ""; hero.CampaignDifficulty = 0; }
+                hero.CampaignPrimary = 0;
+                hero.CampaignSecondary = 0;
             }
         }
 

@@ -36,22 +36,17 @@ public sealed class QuestDataSet
     private readonly object _gate = new();
     private readonly string _heroesFile;
     private readonly string _rulesFile;
-    private readonly string[] _factionGroups;
-    private readonly IReadOnlyDictionary<string, string> _groupByFaction;
 
     private bool _loaded;
     private List<SqFaction> _factions = new();
     private SqRules _rules = new();
 
-    private QuestDataSet(EGameSystem system, string folderName, string heroesFile, string rulesFile,
-        string[] factionGroups, IReadOnlyDictionary<string, string> groupByFaction)
+    private QuestDataSet(EGameSystem system, string folderName, string heroesFile, string rulesFile)
     {
         System = system;
         FolderName = folderName;
         _heroesFile = heroesFile;
         _rulesFile = rulesFile;
-        _factionGroups = factionGroups;
-        _groupByFaction = groupByFaction;
     }
 
     /// <summary>Which Quest system this dataset belongs to.</summary>
@@ -72,13 +67,31 @@ public sealed class QuestDataSet
     /// <summary>The playable classes (not the "Default Skills" bucket).</summary>
     public IEnumerable<SqClass> Classes => Rules.Classes.Where(c => c.Name != "Default Skills");
 
-    /// <summary>The groups the faction list is folded into, in the order they are shown.</summary>
-    public IReadOnlyList<string> FactionGroups => _factionGroups;
+    /// <summary>
+    /// The groups the faction list is folded into, in the order they are shown - Army Forge's own.
+    /// <para>
+    /// Batch E (Kai, 2026-11-07: "Factions sorted EXACTLY the way the official Army Forge groups and orders
+    /// them... No extra groupings of our own"). The group is each army book's <c>raceGroup</c>, which the
+    /// hero import already stores on every faction (<see cref="SqFaction.Race"/>, from
+    /// <c>/api/army-books?filters=official&amp;gameSystemSlug=...</c>). Army Forge's Quest hero page
+    /// (<c>/quest/&lt;slug&gt;</c>) groups the books that have units by <c>raceGroup || "Unknown"</c> and
+    /// shows the groups in lodash <c>orderBy</c> order of their names - a plain ascending string sort,
+    /// which is ordinal here. Inside a group the books keep the API's own order, which is the order the
+    /// import wrote them to the hero file, so the picker walks <see cref="Factions"/> as it is.
+    /// </para>
+    /// <para>This replaces two hand-made maps (Humanity / Chaos / Xenos, and an AoF set of eight) that
+    /// were our own invention and that Kai dropped.</para>
+    /// </summary>
+    public IReadOnlyList<string> FactionGroups =>
+        Factions.Select(GroupOf).Distinct().OrderBy(g => g, StringComparer.Ordinal).ToList();
 
-    /// <summary>Which of <see cref="FactionGroups"/> a faction belongs to. Anything unlisted (a new
-    /// faction, a renamed one) falls into "Other" rather than disappearing from the picker.</summary>
+    /// <summary>The Army Forge race group a faction belongs to; "Unknown" (Army Forge's own word) when the
+    /// book has none.</summary>
     public string GroupOf(SqFaction faction) =>
-        _groupByFaction.TryGetValue(faction.Faction, out string? group) ? group : "Other";
+        string.IsNullOrWhiteSpace(faction.Race) ? UnknownGroup : faction.Race!;
+
+    /// <summary>What Army Forge calls a book with no race group.</summary>
+    public const string UnknownGroup = "Unknown";
 
     // ── The registry ──────────────────────────────────────────────────────────────────────────────
 
@@ -107,12 +120,10 @@ public sealed class QuestDataSet
         new[] { For(EGameSystem.GFStarQuest), For(EGameSystem.AoFQuest) };
 
     private static QuestDataSet CreateStarQuest() => new(
-        EGameSystem.GFStarQuest, "StarQuest", "StarQuestHeroes.json", "StarQuestRules.json",
-        StarQuestFactionGroups, StarQuestGroupByFaction);
+        EGameSystem.GFStarQuest, "StarQuest", "StarQuestHeroes.json", "StarQuestRules.json");
 
     private static QuestDataSet CreateAoFQuest() => new(
-        EGameSystem.AoFQuest, "AoFQuest", "AoFQuestHeroes.json", "AoFQuestRules.json",
-        AoFQuestFactionGroups, AoFQuestGroupByFaction);
+        EGameSystem.AoFQuest, "AoFQuest", "AoFQuestHeroes.json", "AoFQuestRules.json");
 
     // ── Loading ───────────────────────────────────────────────────────────────────────────────────
 
@@ -307,84 +318,4 @@ public sealed class QuestDataSet
     public static bool IsMultiPick(SqSection s) =>
         s.Label.Contains(" any", StringComparison.OrdinalIgnoreCase);
 
-    // ── Faction groups, per system ────────────────────────────────────────────────────────────────
-
-    private static readonly string[] StarQuestFactionGroups = { "Humanity", "Chaos", "Xenos", "Other" };
-
-    /// <summary>
-    /// AoF: Quest's faction picker groups. Information design, so it is Kai's to change - it is this
-    /// one map and the list above, and nothing reads the group names for anything but the picker's
-    /// headings.
-    /// </summary>
-    private static readonly string[] AoFQuestFactionGroups =
-    {
-        "Humans", "Elves", "Dwarves & Halflings", "Greenskins", "Undead", "Chaos", "Beasts", "Other",
-    };
-
-    private static readonly Dictionary<string, string> AoFQuestGroupByFaction =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            // Humans: the empires, the city states, the mercenary companies and the zealots.
-            ["Chivalrous Kingdoms"] = "Humans",
-            ["Crazed Zealots"] = "Humans",
-            ["Duchies of Vinci"] = "Humans",
-            ["Eternal Wardens"] = "Humans",
-            ["Furious Tribes"] = "Humans",
-            ["Hidden Syndicates"] = "Humans",
-            ["Hired Guards"] = "Humans",
-            ["Human Empire"] = "Humans",
-            ["Kingdom of Angels"] = "Humans",
-            ["Mercenaries"] = "Humans",
-            ["Merchant Unions"] = "Humans",
-            ["Outskirt Raiders"] = "Humans",
-            ["Trade Federations"] = "Humans",
-            ["Treasure Hunters"] = "Humans",
-
-            // Elves, including the two that went their own way.
-            ["Dark Elves"] = "Elves",
-            ["Deep-Sea Elves"] = "Elves",
-            ["High Elves"] = "Elves",
-            ["Shadow Stalkers"] = "Elves",
-            ["Wood Elves"] = "Elves",
-
-            // The small folk and the mountain holds.
-            ["Dwarves"] = "Dwarves & Halflings",
-            ["Havoc Dwarves"] = "Dwarves & Halflings",
-            ["Sky-City Dwarves"] = "Dwarves & Halflings",
-            ["Volcanic Dwarves"] = "Dwarves & Halflings",
-            ["Halflings"] = "Dwarves & Halflings",
-            ["Shortling Alliances"] = "Dwarves & Halflings",
-
-            ["Brute Clans"] = "Greenskins",
-            ["Goblins"] = "Greenskins",
-            ["Ogres"] = "Greenskins",
-            ["Orcs"] = "Greenskins",
-
-            ["Ghostly Undead"] = "Undead",
-            ["Mummified Undead"] = "Undead",
-            ["Ossified Undead"] = "Undead",
-            ["Vampiric Undead"] = "Undead",
-
-            // The four powers, their daemons and the warriors who follow them.
-            ["Change Disciples"] = "Chaos",
-            ["Lust Disciples"] = "Chaos",
-            ["Plague Disciples"] = "Chaos",
-            ["War Disciples"] = "Chaos",
-            ["Daemons of Change"] = "Chaos",
-            ["Daemons of Lust"] = "Chaos",
-            ["Daemons of Plague"] = "Chaos",
-            ["Daemons of War"] = "Chaos",
-            ["Havoc Warriors"] = "Chaos",
-
-            ["Beastmen"] = "Beasts",
-            ["Dragon Empire"] = "Beasts",
-            ["Ratmen"] = "Beasts",
-            ["Saurians"] = "Beasts",
-        };
-
-    /// <summary>Star Quest's map stays where it was written, next to its own roster's documentation;
-    /// this dataset just reads it. Keyed on the faction name, because that is what the roster file
-    /// carries.</summary>
-    private static IReadOnlyDictionary<string, string> StarQuestGroupByFaction =>
-        StarQuestData.GroupByFaction;
 }

@@ -127,11 +127,12 @@ internal sealed class UnitPortraitCards
     /// <summary>
     /// One card, already worded: what it is called, which unit's picture it shows, the small line under the
     /// name, the hover text (built only while the card is hovered), an optional tag over the picture (and its colour), and whether the card is
-    /// dimmed (a destroyed unit). Lets a screen that holds live units rather than a saved list - the
+    /// dimmed (a destroyed unit), and optionally the faction its picture is filed under when the cards
+    /// come from different books (a Quest party). Lets a screen that holds live units rather than a saved list - the
     /// in-game Army Lists - draw the very same cards.
     /// </summary>
     internal readonly record struct Card(string Name, string PictureName, string Facts, Func<string> Tooltip,
-        string? Tag = null, Vector4? TagColor = null, bool Dimmed = false);
+        string? Tag = null, Vector4? TagColor = null, bool Dimmed = false, string? Faction = null);
 
     /// <summary>The same grid as above, for cards the caller has worded itself.</summary>
     internal CardEvent DrawCardGrid(string id, IReadOnlyList<Card> cards, string faction, int selected)
@@ -160,7 +161,8 @@ internal sealed class UnitPortraitCards
 
             dl.AddRectFilled(p0, p1, ImGui.GetColorU32(new Vector4(0.12f, 0.12f, 0.14f, 1f)), 4f);
             Vector2 i0 = p0 + new Vector2(3f, 3f), i1 = new(p1.X - 3f, p0.Y + 3f + picH);
-            DrawPicture(dl, i0, i1, card.PictureName, faction);
+            // A card may name its own faction (a party of heroes from different books); else the grid's.
+            DrawPicture(dl, i0, i1, card.PictureName, card.Faction ?? faction);
 
             dl.PushClipRect(p0, p1, true);
             float y = i1.Y + 3f;
