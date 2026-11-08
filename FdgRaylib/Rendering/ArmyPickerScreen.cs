@@ -10,6 +10,10 @@ namespace FdgRaylib.Rendering;
 /// needs - a search box, a faction filter, the three facts you choose on in aligned columns, and a
 /// preview of the selected list beside the table.
 ///
+/// <para>Batch B (wish list "Choose Army"): the table has Army / Faction / Units / Points, over-limit lists
+/// grey and last but still pickable; the right side shows the faction strip, points, unit count, a
+/// legal / over-limit badge, the list as portrait unit cards (hover = stats, click = full unit), SELECT ARMY.</para>
+///
 /// <para>It owns no lobby state. <see cref="Open"/> hands it a snapshot of what to show, and a pick
 /// leaves through <see cref="OnPicked"/>; the lobby does the loading and the assigning, because it is
 /// the one that knows which player slot asked.</para>
@@ -68,7 +72,7 @@ public class ArmyPickerScreen : IAppScreen
 
         float margin   = 14f;
         float headerH  = MathF.Max(48f, ImGui.GetFontSize() * 2.2f);
-        float previewW = MathF.Max(320f, screenW * 0.28f);
+        float previewW = MathF.Max(420f, screenW * 0.45f);
         float tableW   = screenW - previewW - margin * 3f;
         float contentY = margin + headerH + margin;
         float contentH = MathF.Max(120f, screenH - contentY - margin);
@@ -87,6 +91,7 @@ public class ArmyPickerScreen : IAppScreen
         ImGui.SetCursorPos(new Vector2(screenW - margin * 2f - closeW - 6f, 5f));
         if (UiButton.Back("CLOSE", new Vector2(closeW, headerH - 12f)))
             OnCancel?.Invoke();
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Back to the lobby without changing this seat's army.");
         ImGui.EndChild();
 
         // ── Left: search, filters, the table ──────────────────────────────────
@@ -102,6 +107,7 @@ public class ArmyPickerScreen : IAppScreen
         }
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * 0.55f);
         ImGui.InputTextWithHint("##search", "Search army or faction...", ref _search, 64);
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Type part of an army's name or faction to narrow the list.");
 
         ImGui.SameLine();
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * 0.45f);
@@ -116,14 +122,15 @@ public class ArmyPickerScreen : IAppScreen
             UiText.Disabled("No armies in this game type's folder yet.");
         else if (shown.Count == 0)
             UiText.Disabled("Nothing matches that search.");
-        else if (ImGui.BeginTable("##armies", 3,
+        else if (ImGui.BeginTable("##armies", 4,
                      ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV |
                      ImGuiTableFlags.SizingStretchProp,
                      new Vector2(0f, ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeightWithSpacing() * 1.4f)))
         {
-            ImGui.TableSetupColumn("Army", ImGuiTableColumnFlags.WidthStretch, 0.55f);
-            ImGui.TableSetupColumn("Faction", ImGuiTableColumnFlags.WidthStretch, 0.30f);
-            ImGui.TableSetupColumn("Points", ImGuiTableColumnFlags.WidthStretch, 0.15f);
+            ImGui.TableSetupColumn("Army", ImGuiTableColumnFlags.WidthStretch, 0.48f);
+            ImGui.TableSetupColumn("Faction", ImGuiTableColumnFlags.WidthStretch, 0.28f);
+            ImGui.TableSetupColumn("Units", ImGuiTableColumnFlags.WidthStretch, 0.10f);
+            ImGui.TableSetupColumn("Points", ImGuiTableColumnFlags.WidthStretch, 0.14f);
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableHeadersRow();
 
@@ -138,10 +145,16 @@ public class ArmyPickerScreen : IAppScreen
                 // previews; a double click is the shortcut past the Select button.
                 bool clicked = ImGui.Selectable($"{entry.FileName}##{entry.Path}", entry.Key == _selectedKey,
                     ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowDoubleClick);
+                bool rowHovered = ImGui.IsItemHovered();
                 ImGui.TableSetColumnIndex(1);
                 ImGui.TextUnformatted(entry.Faction);
                 ImGui.TableSetColumnIndex(2);
+                ImGui.TextUnformatted(entry.UnitCount.ToString());
+                ImGui.TableSetColumnIndex(3);
                 ImGui.TextUnformatted(entry.Points.ToString());
+                if (rowHovered)
+                    UiText.Tooltip(over ? $"Over the {_pointsLimit} pt limit - you can still pick it. Click to preview, double-click to pick."
+                                        : "Click to preview, double-click to pick.");
                 if (over) ImGui.PopStyleColor();
 
                 if (clicked)
@@ -170,87 +183,93 @@ public class ArmyPickerScreen : IAppScreen
         ImGui.PopStyleVar(3);
     }
 
-    private string? _unitsPath;
-    private IReadOnlyList<(string Name, int Models, int Points)>? _units;
+    private readonly UnitPortraitCards _cards = new();
+    private string? _loadedPath;
+    private FDG.ArmyBuilding.BuiltArmyFile? _loaded;
+    private IReadOnlyList<string> _problems = Array.Empty<string>();
 
-    private IReadOnlyList<(string Name, int Models, int Points)>? UnitsOf(string path)
+    /// <summary>The selected file, read once per selection (the catalog only keeps name, faction, points
+    /// and unit count), with its rule problems from the same check the lobby's launch gate runs.</summary>
+    private FDG.ArmyBuilding.BuiltArmyFile? Load(string path)
     {
-        if (path == _unitsPath) return _units;
-        _unitsPath = path;
-        _units = null;
+        if (path == _loadedPath) return _loaded;
+        _loadedPath = path;
+        _loaded = null;
+        _problems = Array.Empty<string>();
         try
         {
-            var file = System.Text.Json.JsonSerializer.Deserialize<FDG.ArmyBuilding.BuiltArmyFile>(
+            _loaded = System.Text.Json.JsonSerializer.Deserialize<FDG.ArmyBuilding.BuiltArmyFile>(
                 File.ReadAllText(path), FDG.Rules.Serialization.RuleJson.Options);
-            _units = file?.Units.Select(u => (u.Name, u.ModelCount, u.PointCost)).ToList();
+            if (_loaded != null)
+                _problems = FDG.ArmyBuilding.LaunchGate.OverridableProblems(new[] { ("", (FDG.SaveLoad.ArmyListFile?)_loaded) })
+                    .Select(p => p.StartsWith(": ", StringComparison.Ordinal) ? p[2..] : p).ToList();
         }
         catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { }
-        return _units;
+        return _loaded;
+    }
+
+    /// <summary>The badge: what it says, and whether it is the good kind.</summary>
+    internal static (string Text, bool Ok) Badge(int points, int pointsLimit, int problemCount)
+    {
+        if (pointsLimit > 0 && points > pointsLimit) return ($"OVER LIMIT ({points} / {pointsLimit} pts)", false);
+        if (problemCount > 0) return ($"{problemCount} PROBLEM{(problemCount == 1 ? "" : "S")}", false);
+        return ("LEGAL", true);
     }
 
     private void DrawPreview(List<ArmyCatalogEntry> shown)
     {
-        ImGui.PushStyleColor(ImGuiCol.Text, ImGuiTheme.HeaderAccent);
-        ImGui.TextUnformatted("PREVIEW");
-        ImGui.PopStyleColor();
-        ImGui.Separator();
-
         ArmyCatalogEntry? selected = null;
         foreach (ArmyCatalogEntry e in shown)
             if (e.Key == _selectedKey) { selected = e; break; }
 
         if (selected is not { } army)
         {
+            UiText.Colored(ImGuiTheme.HeaderAccent, "PREVIEW", wrap: false);
+            ImGui.Separator();
             UiText.Disabled("Pick a row to see it here.");
             return;
         }
 
+        // Art space: no faction art exists in the data yet, so the strip carries the faction's name.
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        float stripH = ImGui.GetTextLineHeight() * 2.2f;
+        Vector2 p1 = p0 + new Vector2(ImGui.GetContentRegionAvail().X, stripH);
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        dl.AddRectFilled(p0, p1, ImGui.GetColorU32(new Vector4(0.16f, 0.24f, 0.34f, 1f)), 6f);
+        Vector2 ts = ImGui.CalcTextSize(army.Faction);
+        dl.AddText(new Vector2(p0.X + 12f, p0.Y + (stripH - ts.Y) / 2f), ImGui.GetColorU32(ImGuiCol.Text), army.Faction);
+        ImGui.Dummy(p1 - p0);
+
         ImGui.TextUnformatted(army.FileName);
-        ImGui.Spacing();
-        UiText.Disabled($"Faction: {army.Faction}");
-        UiText.Disabled($"Points: {army.Points}");
-        if (_pointsLimit > 0 && army.Points > _pointsLimit)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.90f, 0.45f, 0.35f, 1f));
-            UiText.Wrapped($"Over the {_pointsLimit} pt limit for this game - you can still pick it.");
-            ImGui.PopStyleColor();
-        }
-        // #421: the heading is the file's name now, so the army's own stored name is only worth showing
-        // when it says something different - otherwise it is the same word twice.
+        // #421: the army's stored name only when it says something different from the file's.
         if (!string.Equals(army.Name, army.FileName, StringComparison.OrdinalIgnoreCase))
         {
-            ImGui.Spacing();
-            UiText.Disabled($"Saved as: {army.Name}");
+            ImGui.SameLine();
+            UiText.Disabled($"(saved as {army.Name})", wrap: false);
         }
 
-        // The units in the list (2026-11-06 - this was a "[ unit list: not read by the catalog yet ]"
-        // placeholder). The catalog only stores a file's name, faction and points, so the one selected
-        // file is opened here and kept until the selection changes - one small read per click, not one
-        // per file on the folder scan.
-        ImGui.Spacing();
-        IReadOnlyList<(string Name, int Models, int Points)>? units = UnitsOf(army.Path);
-        if (units == null) UiText.Disabled("Couldn't read this army's units.");
-        else
-        {
-            float listBottom = MathF.Max(48f, ImGui.GetFontSize() * 2.2f) + ImGui.GetStyle().ItemSpacing.Y * 2f;
-            float listH = MathF.Max(ImGui.GetFrameHeight() * 2f, ImGui.GetContentRegionAvail().Y - listBottom);
-            ImGui.BeginChild("##pickunits", new Vector2(-1f, listH));
-            foreach (var (name, models, points) in units)
-            {
-                ImGui.TextUnformatted(models > 1 ? $"{name} [{models}]" : name);
-                string pts = $"{points} pts";
-                ImGui.SameLine(); ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(), ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(pts).X));
-                UiText.Disabled(pts);
-            }
-            ImGui.EndChild();
-        }
+        FDG.ArmyBuilding.BuiltArmyFile? file = Load(army.Path);
+        UiText.Disabled($"{army.Points} pts   -   {army.UnitCount} unit{(army.UnitCount == 1 ? "" : "s")}", wrap: false);
+        ImGui.SameLine();
+        (string badge, bool ok) = Badge(army.Points, _pointsLimit, _problems.Count);
+        UiText.Colored(ok ? new Vector4(0.45f, 0.85f, 0.45f, 1f) : new Vector4(0.95f, 0.55f, 0.35f, 1f), "[" + badge + "]", wrap: false);
+        if (ImGui.IsItemHovered())
+            UiText.TooltipWrapped(ok
+                ? "Within the points limit, and the Army Forge check finds no problems."
+                : (_pointsLimit > 0 && army.Points > _pointsLimit
+                    ? $"Over this game's {_pointsLimit} pt limit - you can still pick it, but LAUNCH stays greyed until the limit is raised.\n"
+                    : "")
+                  + string.Join("\n", _problems));
 
-        // The button pins to the bottom of the panel: the one thing this screen is for.
         float btnH = MathF.Max(48f, ImGui.GetFontSize() * 2.2f);
-        float remaining = ImGui.GetContentRegionAvail().Y - btnH;
-        if (remaining > 0f) ImGui.Dummy(new Vector2(1f, remaining));
+        float cardsH = MathF.Max(ImGui.GetFrameHeight() * 3f,
+            ImGui.GetContentRegionAvail().Y - btnH - ImGui.GetStyle().ItemSpacing.Y * 2f);
+        _cards.Draw("pickcards", file, new Vector2(ImGui.GetContentRegionAvail().X, cardsH),
+            "Couldn't read this army's units.");
+
         if (UiButton.Confirm("SELECT ARMY", new Vector2(-1f, btnH)))
             OnPicked?.Invoke(army);
+        if (ImGui.IsItemHovered()) UiText.Tooltip("Give this army to the seat and go back to the lobby.");
     }
 
     private void DrawFactionFilter()
@@ -261,11 +280,17 @@ public class ArmyPickerScreen : IAppScreen
                 factions.Add(e.Faction);
         factions.Sort(StringComparer.OrdinalIgnoreCase);
 
-        if (!UiCombo.Begin("##faction", _faction.Length == 0 ? "All factions" : _faction)) return;
+        bool open = UiCombo.Begin("##faction", _faction.Length == 0 ? "All factions" : _faction);
+        if (!open)
+        {
+            if (ImGui.IsItemHovered()) UiText.Tooltip("Show only one faction's armies.");
+            return;
+        }
         foreach (string f in factions)
         {
             string label = f.Length == 0 ? "All factions" : f;
             if (ImGui.Selectable(label, f == _faction)) _faction = f;
+            if (ImGui.IsItemHovered()) UiText.Tooltip(f.Length == 0 ? "Show every faction's armies." : $"Show only {f} armies.");
         }
         ImGui.EndCombo();
     }
@@ -273,9 +298,18 @@ public class ArmyPickerScreen : IAppScreen
     private void DrawSortCombo()
     {
         string[] names = { "Sort: Name", "Sort: Points up", "Sort: Points down" };
-        if (!UiCombo.Begin("##sort", names[Math.Clamp(_sort, 0, names.Length - 1)])) return;
+        string[] tips = { "A to Z by name.", "Smallest army first.", "Biggest army first." };
+        bool open = UiCombo.Begin("##sort", names[Math.Clamp(_sort, 0, names.Length - 1)]);
+        if (!open)
+        {
+            if (ImGui.IsItemHovered()) UiText.Tooltip("How the list is ordered. Lists over the points limit always come last.");
+            return;
+        }
         for (int i = 0; i < names.Length; i++)
+        {
             if (ImGui.Selectable(names[i], i == _sort)) _sort = i;
+            if (ImGui.IsItemHovered()) UiText.Tooltip(tips[i]);
+        }
         ImGui.EndCombo();
     }
 

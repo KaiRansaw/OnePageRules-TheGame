@@ -17,8 +17,9 @@ namespace FdgRaylib;
 /// would reject. Null means the file has no such field, which means Grimdark Future
 /// (<see cref="FDG.ArmyBuilding.GameSystems.Normalize"/>) - compare through that, never raw.
 /// </param>
+/// <param name="UnitCount">How many units the list has (Choose Army's Units column).</param>
 public readonly record struct ArmyCatalogEntry(
-    string Path, string Name, string Faction, int Points, string? GameSystem = null)
+    string Path, string Name, string Faction, int Points, string? GameSystem = null, int UnitCount = 0)
 {
     /// <summary>
     /// Identity used to tell "another player already has this army" without knowing where they loaded it
@@ -154,7 +155,7 @@ public sealed class ArmyCatalog
             // guarantee, and it covers the ones already on disk in the old location as well as any that
             // get moved by hand.
             if (isCampaignArmy) return null;
-            return new ArmyCatalogEntry(path, name, faction, points, gameSystem);
+            return new ArmyCatalogEntry(path, name, faction, points, gameSystem, unitCount);
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {

@@ -1435,9 +1435,9 @@ else
 
     // The lobby's Select Map button. The picker is its own screen rather than a dropdown because a
     // map is a picture - a name in a list says nothing about the table you are about to fight on.
-    renderer.LobbyScreen.OnSelectMapRequested = (system, background, horde, current) =>
+    renderer.LobbyScreen.OnSelectMapRequested = request =>
     {
-        renderer.MapPicker.Open(system, background, horde, current);
+        renderer.MapPicker.Open(request);
         renderer.NavigateTo(renderer.MapPicker);
     };
     renderer.MapPicker.OnBack = () => renderer.NavigateTo(renderer.LobbyScreen);

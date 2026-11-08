@@ -45,7 +45,8 @@ public static class MapThumbnail
     /// </summary>
     public static void Draw(ImDrawListPtr dl, Vector2 topLeft, Vector2 size,
         float tableW, float tableH, TerrainLayoutFile? layout, ETableBackground background,
-        EFallbackZones fallbackZones = EFallbackZones.Standard, bool showObjectives = true)
+        EFallbackZones fallbackZones = EFallbackZones.Standard, bool showObjectives = true,
+        IReadOnlyList<IZone>? deploymentZones = null)
     {
         if (size.X <= 2f || size.Y <= 2f) return;
 
@@ -80,6 +81,12 @@ public static class MapThumbnail
                         P(MathF.Max(r.Left, r.Right), MathF.Min(r.Bottom, r.Top)), k % 2 == 0 ? zoneA : zoneB);
                 }
             }
+        }
+        else if (deploymentZones is { Count: > 0 } && fallbackZones != EFallbackZones.Horde)
+        {
+            // The lobby's Deployment pick, drawn in its real shape (book diagrams for this game).
+            for (int k = 0; k < deploymentZones.Count; k++)
+                DrawShape(dl, deploymentZones[k], k % 2 == 0 ? zoneA : zoneB, P, scale);
         }
         else if (fallbackZones == EFallbackZones.Horde)
         {
@@ -160,11 +167,21 @@ public static class MapThumbnail
     /// rectangles as quads. Kept as a copy of that logic rather than a new one, because a thumbnail that
     /// draws a piece differently from the big preview is worse than no thumbnail.
     /// </summary>
-    private static void DrawShape(ImDrawListPtr dl, IZone shape, uint color,
+    public static void DrawShape(ImDrawListPtr dl, IZone shape, uint color,
         Func<float, float, Vector2> P, float scale)
     {
         switch (shape)
         {
+            // Before RectangularZone: both derive from it, and that case would draw their bounding box.
+            case MultiRectZone multi:
+                foreach (RectangularZone part in multi.Parts) DrawShape(dl, part, color, P, scale);
+                break;
+            case PolygonZone poly:
+                foreach (IReadOnlyList<Float2> part in poly.Vertices)
+                    for (int i = 1; i + 1 < part.Count; i++)
+                        dl.AddTriangleFilled(P(part[0].X, part[0].Y), P(part[i].X, part[i].Y),
+                            P(part[i + 1].X, part[i + 1].Y), color);
+                break;
             case RectangularZone r:
                 dl.AddRectFilled(P(r.Left, r.Top), P(r.Right, r.Bottom), color);
                 break;

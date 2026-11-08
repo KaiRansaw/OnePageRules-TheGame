@@ -12,10 +12,6 @@ using FdgRaylib.Config;
 using FdgRaylib.Rendering.Presentation;
 using FdgRaylib.Rendering.Resolvers;
 using ImGuiNET;
-using System.Net;
-using System.Net.Http;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Text.Json;
 using FDG.Rules.Serialization;
 using Raylib_cs;
@@ -67,13 +63,27 @@ public class LobbyScreen : IAppScreen
     // on the next frame - and so a slot whose roll found nothing is asked once, not every frame.
     private readonly HashSet<Guid> _autoArmiedSlots = new();
 
-    // Host connection info shown so the host knows what address to share (QF9). The port mirrors
-    // CommandProtocol.TEMP_PORT (internal to the engine assembly, so it's restated here).
-    /// <summary>The port this host is listening on - fixed since the Host dialog went (2026-11-07).</summary>
-    private static int ListenPort => HostStarter.Port;
-    private string? _lanAddresses;                 // computed once, lazily
-    private volatile string _publicAddress = "checking...";
-    private bool _publicFetchStarted;
+    // Batch B (wish list "Lobby": "Click a seat = that player's army list shows in a window under the map
+    // preview, above LAUNCH. Any player's, enemies included").
+    private readonly UnitPortraitCards _seatCards = new();
+    private int _selectedSeat;
+
+    /// <summary>The lists THIS machine handed to a seat, by player id. The host reads every seat's list off
+    /// its own view model (<see cref="LobbyViewModel_Host.GetSeats"/>); a joined friend's machine only ever
+    /// holds the lists it sent itself, so that is what it can show.</summary>
+    private readonly Dictionary<Guid, ArmyListFile> _sentArmies = new();
+
+    /// <summary>Every army this screen assigns goes through here, so the seat's list can be shown.</summary>
+    private void SetSeatArmy(PlayerID playerID, ArmyListFile army)
+    {
+        _sentArmies[playerID.ID] = army;
+        _viewModel!.UpdateArmyListFile(playerID, army);
+    }
+
+    /// <summary>Fast-Play / Extra Actions switched on with nothing under them ticked yet - the sub-choices
+    /// stay shown until the switch goes off again.</summary>
+    private bool _fastPlayOn, _extraActionsOn;
+
 
     // Light-blue accent used to make section/column headers read as headers. Shared with the
     // Host/Client dialogs via ImGuiTheme so every screen uses one accent.
@@ -121,7 +131,10 @@ public class LobbyScreen : IAppScreen
         _botArmyPicker = null;
         _autoArmiedSlots.Clear();
         _servedForSystem = null;
-        _resetSections = true;   // Connection closed, the rest open, every time the lobby opens
+        _selectedSeat = 0;
+        _seatCards.ClearSelection();
+        _sentArmies.Clear();
+        _fastPlayOn = _extraActionsOn = false;
         _ = ArmyCatalogCache.Current;
         viewModel.OnLaunched += game => _pendingGame = game;
         // Fires on the engine thread; the renderer just records it and reacts on the main thread.
@@ -194,9 +207,8 @@ public class LobbyScreen : IAppScreen
 
         // Fonts are baked for the monitor at startup and the panel scales below are tuned for a
         // fullscreen window; a smaller window scales the lobby down proportionally instead of
-        // overflowing (truncated columns, oversized rows). This must ride the per-window
-        // SetWindowFontScale calls: io.FontGlobalScale is latched at NewFrame, so setting it inside
-        // Draw and restoring before returning never rendered (the old 1.2x was a silent no-op).
+        // overflowing. This must ride the per-window SetWindowFontScale calls: io.FontGlobalScale is
+        // latched at NewFrame.
         float ws         = WindowToMonitorScale(screenW, screenH);
         float panelScale = 1.5f * ws;  // the "~50% bigger" panels, as tuned at fullscreen
 
@@ -206,53 +218,40 @@ public class LobbyScreen : IAppScreen
         float framePadY    = ImGui.GetStyle().FramePadding.Y;
         float naturalBtnH  = fontSize + framePadY * 2;
         float headerH      = MathF.Max(40f, naturalBtnH + 12f);
-        // The bottom action bar (LAUNCH, and why it is greyed) ~50% taller than a standard button, so
-        // the one control that starts the game is the easiest thing on the screen to hit.
+        // LAUNCH ~50% taller than a standard button: the one control that starts the game.
         float actionH      = MathF.Max(45f, (naturalBtnH + 6f) * 1.5f);
 
-        // Three columns, the way the screen reads: what you SET on the left (mode, points, table,
-        // rules), WHO is playing and with which army in the wide middle, and WHERE you will fight on
-        // the right. Previously the settings were a right-hand rail and the map was a quarter-panel
-        // sharing the bottom with chat; the map is a thing you look at while choosing armies, so it
-        // gets a column of its own and the player rows get the height chat used to take.
-        // Floors keep the side columns usable when the window is small; the middle absorbs the rest.
-        float leftW        = MathF.Max(280f, screenW * 0.24f);
-        float rightW       = MathF.Max(300f, screenW * 0.26f);
-        // Clamped, not just subtracted: at a small enough window the two floored side columns can eat
-        // the whole width, and a negative child size means "fill minus this" to ImGui, which would
-        // silently invert the layout rather than overflow visibly.
+        // Three columns (Lobby Mockup, option B + "Players 3"): the settings tabs on the left, the seat
+        // cards in the middle, and on the right the map preview, the selected seat's army list, LAUNCH.
+        float leftW        = MathF.Max(280f, screenW * 0.22f);
+        float rightW       = MathF.Max(340f, screenW * 0.36f);
         float midW         = MathF.Max(240f, screenW - leftW - rightW - margin * 4f);
         float headerW      = screenW - margin * 2f;
         float contentY     = margin + headerH + margin;
-        // The right column runs to the bottom margin, because LAUNCH lives inside it now (under the
-        // map preview) rather than in a full-width bar below everything. The left and middle columns
-        // stop short of the bottom to leave the "can't launch yet" line its own band - the one thing
-        // still worth the full width, since a blocker can be a sentence long.
         float contentH     = MathF.Max(80f, screenH - contentY - margin);
         float columnsH     = MathF.Max(80f, contentH - actionH - margin);
 
-        // ── Header ────────────────────────────────────────────────────────────
+        // ── Header: "<Game> - <Mode> - <points>" ──────────────────────────────
         ImGui.SetCursorPos(new Vector2(margin, margin));
-        // NoScrollbar: the Back button + window padding just overflow headerH, which would otherwise
-        // draw a phantom scrollbar right next to Back.
         ImGui.BeginChild("##header", new Vector2(headerW, headerH), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        float headerFontH  = headerH * 0.65f;
-        float headerScale  = headerFontH / baseFontSize; // window-scale factor that renders at headerFontH px
+        float headerFontH  = headerH * 0.6f;
+        float headerScale  = headerFontH / baseFontSize;
         ImGui.SetWindowFontScale(headerScale);
         ImGui.SetCursorPosY((headerH - headerFontH) * 0.5f);
-        // Draw() has already returned if there is no view model; the ! restates that for the null
-        // analysis, which cannot see across the call.
-        ImGui.TextUnformatted(_viewModel!.ServerName);
-        // One-line summary of the game being set up, readable even with the settings collapsed.
-        ImGui.SameLine(0f, 24f * ws);
-        ImGui.SetWindowFontScale(headerScale * 0.7f);
-        ImGui.SetCursorPosY((headerH - headerFontH * 0.7f) * 0.5f);
-        UiText.Disabled(GameSummary());
+        // Draw() has already returned if there is no view model.
+        ImGui.TextUnformatted(HeaderTitle(_viewModel!.GameSystem, _viewModel.GameMode, _viewModel.ArmyPoints));
+        if (!_viewModel.HasHostPrivileges)
+        {
+            // A joined friend: whose table this is.
+            ImGui.SameLine(0f, 24f * ws);
+            ImGui.SetWindowFontScale(headerScale * 0.7f);
+            ImGui.SetCursorPosY((headerH - headerFontH * 0.7f) * 0.5f);
+            UiText.Disabled("at " + _viewModel.ServerName);
+        }
         ImGui.SetWindowFontScale(ws);
 
-        // CalcTextSize ignores SetWindowFontScale, so apply ws to the measured width by hand.
         float backH = headerH - 8f;
         float backW = (ImGui.CalcTextSize("Back").X + 36f) * ws + UiButton.CapsWidth(backH);
         ImGui.SetCursorPos(new Vector2(headerW - backW - 4f, 4f));
@@ -261,43 +260,48 @@ public class LobbyScreen : IAppScreen
             PersistHostSettings();
             OnBack?.Invoke();
         }
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped("Leave the lobby and go back to the screen you came from. Friends who joined are disconnected.");
 
         ImGui.EndChild();
 
-        // ── Left column: settings ─────────────────────────────────────────────
+        // ── Left column: settings tabs ────────────────────────────────────────
         ImGui.SetCursorPos(new Vector2(margin, contentY));
-        ImGui.BeginChild("##settings", new Vector2(leftW, columnsH),
-            ImGuiChildFlags.Borders, ImGuiWindowFlags.AlwaysVerticalScrollbar);
-        ImGui.SetWindowFontScale(panelScale);  // settings fields ~50% bigger than the rest of the lobby
+        ImGui.BeginChild("##settings", new Vector2(leftW, columnsH), ImGuiChildFlags.Borders);
+        ImGui.SetWindowFontScale(panelScale);
         DrawSettings(leftW);
         ImGui.EndChild();
-        _resetSections = false;
 
-        // ── Middle column: players and their armies ───────────────────────────
+        // ── Middle column: seat cards ─────────────────────────────────────────
         float midX = margin * 2f + leftW;
         ImGui.SetCursorPos(new Vector2(midX, contentY));
         ImGui.BeginChild("##players", new Vector2(midW, columnsH), ImGuiChildFlags.Borders);
-        ImGui.SetWindowFontScale(panelScale);  // rows + font ~50% bigger than the rest of the lobby
+        ImGui.SetWindowFontScale(panelScale);
         DrawPlayerList(midW, panelScale);
         ImGui.EndChild();
 
-        // ── Right column: map preview, with LAUNCH directly under it ──────────
-        // Kai's mock, 2026-11-02: "put it as a button below Map Preview". The two belong together -
-        // the map is the last thing you look at before starting, so the button that starts it sits
-        // under the picture rather than across the bottom of the whole screen.
+        // ── Right column: map preview, the selected seat's army list, LAUNCH ──
         float rightX = margin * 3f + leftW + midW;
-        float previewH = MathF.Max(80f, contentH - actionH - margin);
+        float rightH = MathF.Max(80f, contentH - actionH - margin);
+        float previewH = MathF.Max(80f, rightH * 0.38f);
+        float listH = MathF.Max(60f, rightH - previewH - margin);
         ImGui.SetCursorPos(new Vector2(rightX, contentY));
         ImGui.BeginChild("##mappreview", new Vector2(rightW, previewH), ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.SetWindowFontScale(panelScale * 0.8f);
+        ImGui.SetWindowFontScale(panelScale * 0.7f);
         DrawMapPreview();
         ImGui.EndChild();
 
         ImGui.SetCursorPos(new Vector2(rightX, contentY + previewH + margin));
-        // No border on the launch child - the button itself fills the panel and provides the visual edge.
+        ImGui.BeginChild("##seatarmy", new Vector2(rightW, listH), ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetWindowFontScale(panelScale * 0.7f);
+        DrawSelectedSeatArmy();
+        ImGui.EndChild();
+
+        ImGui.SetCursorPos(new Vector2(rightX, contentY + rightH + margin));
         ImGui.BeginChild("##launch", new Vector2(rightW, actionH), ImGuiChildFlags.None);
-        ImGui.SetWindowFontScale(panelScale);  // match the other panels
+        ImGui.SetWindowFontScale(panelScale);
         DrawLaunch(rightW, actionH);
         ImGui.EndChild();
 
@@ -322,6 +326,58 @@ public class LobbyScreen : IAppScreen
 
         ImGui.End();
         ImGui.PopStyleVar(5);
+    }
+
+    /// <summary>The header (wish list: "the header shows &lt;Game&gt; - &lt;Mode&gt; - &lt;points&gt;"), the mode
+    /// named the way the game screen's button named it.</summary>
+    internal static string HeaderTitle(EGameSystem system, EGameMode mode, int points) =>
+        $"{GameSystemInfo.DisplayName(system)}  -  {HeaderModeLabel(mode)}  -  {points} pts";
+
+    internal static string HeaderModeLabel(EGameMode mode) => mode switch
+    {
+        EGameMode.Standard => "Army vs Army",
+        EGameMode.Horde or EGameMode.StarQuestHorde => "Horde Mode",
+        EGameMode.StarQuestMission => "Play a Mission",
+        _ => mode.ToString(),
+    };
+
+    /// <summary>
+    /// The window under the map preview: the selected seat's army list as portrait cards, with the clicked
+    /// unit's full info beside them. Any seat, enemies included (wish list).
+    /// </summary>
+    private void DrawSelectedSeatArmy()
+    {
+        IReadOnlyList<LobbyPlayerInfoSummary> players = _viewModel!.PlayerInfos;
+        if (players.Count == 0) { UiText.Disabled("No seats yet."); return; }
+        _selectedSeat = Math.Clamp(_selectedSeat, 0, players.Count - 1);
+        LobbyPlayerInfoSummary info = players[_selectedSeat];
+
+        UiText.Colored(HeaderAccent, $"SEAT {_selectedSeat + 1} - {info.PlayerName}", wrap: false);
+        ImGui.SameLine();
+        UiText.Disabled(info.ArmyListSummary.IsAssigned
+            ? $"{info.ArmyListSummary.ArmyName} - {info.ArmyListSummary.FactionName} - {info.ArmyListSummary.PointCost} pts"
+            : "no army yet", wrap: false);
+
+        (ArmyListFile? army, string why) = SeatArmy(info);
+        _seatCards.Draw($"seat{info.PlayerID.ID}", army, ImGui.GetContentRegionAvail(), why);
+    }
+
+    /// <summary>The list a seat is bringing, as far as this machine knows it, or why it can't be shown.</summary>
+    private (ArmyListFile? Army, string Why) SeatArmy(LobbyPlayerInfoSummary info)
+    {
+        if (_viewModel!.IsResumeMode)
+            return (null, "Resuming a save: the armies are the ones in the save.");
+        if (_viewModel is LobbyViewModel_Host host)
+        {
+            foreach (LobbyViewModel_Host.SeatSnapshot seat in host.GetSeats())
+                if (seat.PlayerID == info.PlayerID)
+                    return (seat.Army, "No army chosen for this seat yet.");
+            return (null, "No army chosen for this seat yet.");
+        }
+        if (_sentArmies.TryGetValue(info.PlayerID.ID, out ArmyListFile? mine)) return (mine, "");
+        return (null, _viewModel.CheckCanModifyPlayerIDInfo(info.PlayerID)
+            ? "No army chosen for this seat yet."
+            : "Only the host's screen can show other players' lists.");
     }
 
     /// <summary>
@@ -377,7 +433,7 @@ public class LobbyScreen : IAppScreen
         float headerH = ImGui.GetTextLineHeightWithSpacing() + 4f;
         // A card needs: header, name, army button, faction/points, team, actions - six lines plus
         // padding. Below that floor the grid scrolls instead of clipping a card's buttons away.
-        float cardH = MathF.Max(ImGui.GetTextLineHeightWithSpacing() * 6.4f + 24f,
+        float cardH = MathF.Max(ImGui.GetTextLineHeightWithSpacing() * 8f + 24f,
                                 (availH - headerH - gap * 2f) / 2f);
 
         // Column headers - the thing Kai asked for above the lists.
@@ -476,7 +532,7 @@ public class LobbyScreen : IAppScreen
             for (int seat = 0; seat < players.Count; seat++)
                 _viewModel.SetPlayerTeam(players[seat].PlayerID, (ETeamOption)(seat % 2 + 1));
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("Two sides: the grid's left column against its right column.\n" +
                            "Needs at least three seats.");
 
@@ -487,7 +543,7 @@ public class LobbyScreen : IAppScreen
                 _viewModel.SetPlayerTeam(players[seat].PlayerID,
                     (ETeamOption)Math.Min(seat + 1, TeamOptions.MaxTeamNumber));
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("Everyone for themselves - each seat on its own team.\n" +
                            "Needs at least three seats.");
 
@@ -513,18 +569,27 @@ public class LobbyScreen : IAppScreen
         }
 
         LobbyPlayerInfoSummary info = players[seat];
+        bool selected = seat == _selectedSeat;
+        if (selected) ImGui.PushStyleColor(ImGuiCol.Border, HeaderAccent);
         ImGui.BeginChild($"##card", size, ImGuiChildFlags.Borders,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        if (selected) ImGui.PopStyleColor();
         // A child window's font scale MULTIPLIES its parent's, and the players column already sets
         // panelScale - so inside a card the base is 1. Passing panelScale down (as the card did) squared
         // it on every card that hit a SetWindowFontScale: the read-only header (a network seat, or every
         // seat on a joined friend's screen) and any fitted name - found 2026-11-05 playing host vs friend.
         panelScale = 1f;
 
-        // ── Header: which seat, who is holding the controls, and the Active switch ──
+        // ── Faction strip (Players 3): the seat's colour with its faction. No faction art exists in the
+        // data yet, so the strip carries the colour and the name rather than a made-up picture. ──
+        DrawFactionStrip(info, effectiveColor[seat]);
+
+        // ── Header: which seat, who is holding the controls, and Remove ──
         ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
         ImGui.TextUnformatted($"SEAT {seat + 1}");
         ImGui.PopStyleColor();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped("Click anywhere on a seat card (not on a button) to show that player's army list under the map.");
 
         ImGui.SameLine();
         DrawSeatCrewToggle(info, panelScale);
@@ -532,18 +597,16 @@ public class LobbyScreen : IAppScreen
         bool canSwitchOff = SeatCanSwitchOff(seat, players.Count);
         if (seat >= 2 && _viewModel!.CheckCanRemovePlayer(info.PlayerID))
         {
-            string label = "Active";
-            float switchW = ImGui.CalcTextSize(label).X + ImGui.GetFrameHeight() + 14f;
+            string label = "Remove";
+            float switchW = ImGui.CalcTextSize(label).X + ImGui.GetStyle().FramePadding.X * 2f + 14f;
             ImGui.SameLine(MathF.Max(0f, ImGui.GetContentRegionAvail().X + ImGui.GetCursorPosX() - switchW));
             ImGui.BeginDisabled(!canSwitchOff);
-            bool active = true;
-            if (UiButton.Checkbox(label, ref active) && !active)
-                _viewModel.RemovePlayer(info.PlayerID);
+            if (UiButton.NavigateSmall(label)) _viewModel.RemovePlayer(info.PlayerID);
             ImGui.EndDisabled();
-            if (ImGui.IsItemHovered())
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 UiText.Tooltip(canSwitchOff
-                    ? "Switch this seat off to play with fewer players."
-                    : $"Switch seat {players.Count} off first - seats come off the end.");
+                    ? "Take this seat out of the game, to play with fewer players."
+                    : $"Remove seat {players.Count} first - seats come off the end.");
         }
 
         ImGui.Separator();
@@ -586,21 +649,58 @@ public class LobbyScreen : IAppScreen
             ImGui.BeginDisabled(!_viewModel.HasHostPrivileges);
             if (UiButton.NavigateSmall("Local"))
                 _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.Local);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.Tooltip("A human at this computer plays this saved seat.\n" + LocalPlayerTooltip);
             ImGui.SameLine();
             if (UiButton.NavigateSmall("Tactician"))
                 _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Tactician);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.Tooltip("Hand this saved seat to the Tactician bot.\n" + TacticianBotTooltip);
             ImGui.SameLine();
             if (UiButton.NavigateSmall("Strategist"))
                 _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI, EAiProfile.Strategist);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.Tooltip("Hand this saved seat to the Strategist bot.\n" + StrategistBotTooltip);
             ImGui.SameLine();
             if (UiButton.NavigateSmall("DerpBot"))
                 _viewModel.SetSavedSlotPlayerType(info.PlayerID, EPlayerType.AI,
                     GameSystemInfo.IsQuest(_viewModel.GameSystem) ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.Tooltip("Hand this saved seat to the official OPR bot.\n" + OfficialAiTooltip);
             ImGui.EndDisabled();
         }
 
+        // Clicking the card itself (not one of its controls) shows this seat's list under the map.
+        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem)
+            && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemHovered())
+            SelectSeat(seat);
+
         ImGui.EndChild();
         ImGui.PopID();
+    }
+
+    private void SelectSeat(int seat)
+    {
+        if (seat == _selectedSeat) return;
+        _selectedSeat = seat;
+        _seatCards.ClearSelection();
+    }
+
+    /// <summary>The coloured band across the top of a seat card: the seat's colour, its faction's name.</summary>
+    private static void DrawFactionStrip(LobbyPlayerInfoSummary info, int colorIndex)
+    {
+        Color c = PlayerColorOptions.ColorFor(colorIndex);
+        float h = ImGui.GetTextLineHeight() * 1.6f;
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        Vector2 p1 = p0 + new Vector2(ImGui.GetContentRegionAvail().X, h);
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        dl.AddRectFilled(p0, p1, U32(new Color(c.R, c.G, c.B, (byte)150)), 4f);
+        string faction = info.ArmyListSummary.IsAssigned ? info.ArmyListSummary.FactionName : "No army yet";
+        Vector2 ts = ImGui.CalcTextSize(faction);
+        dl.PushClipRect(p0, p1, true);
+        dl.AddText(new Vector2(p0.X + 8f, p0.Y + (h - ts.Y) / 2f), U32(255, 255, 255), faction);
+        dl.PopClipRect();
+        ImGui.Dummy(new Vector2(p1.X - p0.X, h));
     }
 
     /// <summary>
@@ -630,7 +730,7 @@ public class LobbyScreen : IAppScreen
                     GameSystemInfo.IsQuest(_viewModel.GameSystem)
                         ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip(isBot
                 ? "A bot is playing this seat. Click to take it yourself.\n" + OfficialAiTooltip
                 : "You are playing this seat. Click to hand it to a bot.\n" +
@@ -650,24 +750,22 @@ public class LobbyScreen : IAppScreen
         bool isNextSeat = SeatCanSwitchOn(seat, _viewModel.PlayerInfos.Count);
 
         ImGui.BeginDisabled(!canAdd || !isNextSeat);
-        bool active = false;
-        if (UiButton.Checkbox("Active", ref active) && active)
+        if (UiButton.Navigate("+ Add a seat", new Vector2(-1f, 0f)))
         {
             _viewModel.AddAiPlayer(GameSystemInfo.IsQuest(_viewModel.GameSystem)
                 ? EAiProfile.StarQuest : EAiProfile.SoloCoOp);
         }
         ImGui.EndDisabled();
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip(isNextSeat
-                ? "Switch this seat on to add a player. It arrives as a bot;\n" +
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.Tooltip(!canAdd
+                ? "Only the host adds seats (and a resumed save keeps its seats)."
+                : isNextSeat
+                ? "Add a player in this seat. It arrives as a bot;\n" +
                   "the Player/Bot button on its card changes that."
-                : $"Switch seat {_viewModel.PlayerInfos.Count + 1} on first - seats fill in order.");
+                : $"Add seat {_viewModel.PlayerInfos.Count + 1} first - seats fill in order.");
 
-        if (canAdd && isNextSeat)
-        {
-            ImGui.Spacing();
-            UiText.Disabled("Off - not in the game.");
-        }
+        ImGui.Spacing();
+        UiText.Disabled("Empty - not in the game.");
 
         ImGui.EndChild();
     }
@@ -844,7 +942,7 @@ public class LobbyScreen : IAppScreen
             return;
         }
 
-        if (LoadArmyFile(pick.Path) is { } army) _viewModel.UpdateArmyListFile(playerID, army);
+        if (LoadArmyFile(pick.Path) is { } army) SetSeatArmy(playerID, army);
     }
 
     /// <summary>Reads a .fdgarmy off disk, or null if it can't be read. Deserialized as BuiltArmyFile so a
@@ -880,7 +978,7 @@ public class LobbyScreen : IAppScreen
         ImGui.TextUnformatted(summary.PointCost.ToString());
         if (status != ELobbyPointsStatus.Ok) ImGui.PopStyleColor();
 
-        if (ImGui.IsItemHovered()
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)
             && LobbyPointsStatus.Tooltip(status, summary.PointCost, pointsLimit) is string tip)
         {
             UiText.Tooltip(tip);
@@ -1064,7 +1162,7 @@ public class LobbyScreen : IAppScreen
         string shown = FitWithEllipsis(cellLabel, ImGui.GetContentRegionAvail().X - ImGui.GetStyle().FramePadding.X * 2f - 8f);
         bool pressed = UiButton.Navigate($"{shown}##army{row}", new Vector2(-1f, 0f));
         if (missing) ImGui.PopStyleColor();
-        if (shown != cellLabel && ImGui.IsItemHovered()) UiText.Tooltip(cellLabel);
+        if (shown != cellLabel && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.Tooltip(cellLabel);
         if (pressed)
         {
             // Snapshot what the picker needs before leaving the lobby, so it never reaches back into
@@ -1076,7 +1174,7 @@ public class LobbyScreen : IAppScreen
             PickCurrentKey   = currentKey;
             OnChooseArmyRequested?.Invoke();
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip($"Choose this player's army from armies\\{ArmyPaths.FolderNameFor(_viewModel.GameSystem)}.");
     }
 
@@ -1111,7 +1209,7 @@ public class LobbyScreen : IAppScreen
         if (entry.Key != PickCurrentKey && LoadArmyFile(entry.Path) is { } army)
         {
             _autoArmiedSlots.Add(playerID.ID);
-            _viewModel.UpdateArmyListFile(playerID, army);
+            SetSeatArmy(playerID, army);
         }
         _pickingFor = null;
     }
@@ -1240,7 +1338,7 @@ public class LobbyScreen : IAppScreen
                 PendingParty = heroes.ToList();
                 continue;
             }
-            if (seat.Army != null) vm.UpdateArmyListFile(id, seat.Army);
+            if (seat.Army != null) SetSeatArmy(id, seat.Army);
         }
         foreach (var (id, team) in teams) vm.SetPlayerTeam(id, team);
     }
@@ -1283,7 +1381,7 @@ public class LobbyScreen : IAppScreen
         PlayerID host = _viewModel.PlayerInfos[0].PlayerID;
         // Campaign games have no points limit; the lobby still has one, so lift it clear of the army.
         if (army.TotalPoints > _viewModel.ArmyPoints) _viewModel.SetArmyPoints(army.TotalPoints);
-        _viewModel.UpdateArmyListFile(host, army);
+        SetSeatArmy(host, army);
         // Mark it the way every other deliberate assignment does, so the starter-army roll leaves it be.
         _autoArmiedSlots.Add(host.ID);
 
@@ -1314,7 +1412,7 @@ public class LobbyScreen : IAppScreen
                 p.PlayerID.ID != host.ID && p.PlayerType == EPlayerType.AI
                 && !_autoArmiedSlots.Contains(p.PlayerID.ID)) is not { } botRow) return;
         if (enemy.TotalPoints > _viewModel.ArmyPoints) _viewModel.SetArmyPoints(enemy.TotalPoints);
-        _viewModel.UpdateArmyListFile(botRow.PlayerID, enemy);
+        SetSeatArmy(botRow.PlayerID, enemy);
         _autoArmiedSlots.Add(botRow.PlayerID.ID);
     }
     private List<(string Path, FDG.Quest.QuestHero Hero)>? _savedHeroes;
@@ -1373,7 +1471,7 @@ public class LobbyScreen : IAppScreen
             ImGui.EndCombo();
             if (changed) SendParty(info.PlayerID, picks);
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("Your party: pick 2 to 4 heroes made in Star Quest Heroes.");
 
         // The closed combo only has room for the names, so the party is listed under it in full. You pick
@@ -1404,7 +1502,7 @@ public class LobbyScreen : IAppScreen
         FDG.ArmyBuilding.BuiltArmyFile party = FDG.Quest.QuestArmy.Build(heroes,
             faction => FDG.Quest.QuestArmy.BookForHeroFaction(books, faction, _viewModel.GameSystem),
             _viewModel.GameSystem);
-        _viewModel!.UpdateArmyListFile(playerID, party);
+        SetSeatArmy(playerID, party);
     }
 
     private static void DrawArmyCell(ArmyListSummary summary, bool isResume, float baseScale)
@@ -1415,7 +1513,7 @@ public class LobbyScreen : IAppScreen
         TextFitted(summary.ArmyName, baseScale);
         if (missing) ImGui.PopStyleColor();
 
-        if (missing && ImGui.IsItemHovered())
+        if (missing && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip(LobbyArmySource.NoArmyTooltip);
     }
 
@@ -1428,7 +1526,7 @@ public class LobbyScreen : IAppScreen
         TextFitted(summary.FactionName, baseScale);
         if (wrongSystem) ImGui.PopStyleColor();
 
-        if (wrongSystem && ImGui.IsItemHovered())
+        if (wrongSystem && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip(LobbyArmySource.WrongSystemTooltip(summary, allowed));
     }
 
@@ -1463,6 +1561,8 @@ public class LobbyScreen : IAppScreen
             ImGui.OpenPopup(popupId);
         }
         ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.Tooltip(canModify ? "Pick this seat's army colour on a colour wheel." : "Only that player (or the host) can change this colour.");
 
         if (ImGui.BeginPopup(popupId))
         {
@@ -1531,10 +1631,14 @@ public class LobbyScreen : IAppScreen
             {
                 if (ImGui.Selectable(TeamLabel(n, playerCount), n == (int)info.TeamNumber))
                     _viewModel.SetPlayerTeam(info.PlayerID, (ETeamOption)n);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    UiText.Tooltip($"Put {info.PlayerName} on {TeamLabel(n, playerCount)}. Seats on the same team play as one side.");
             }
             ImGui.EndCombo();
         }
         ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.Tooltip(canModify ? "Which side this seat plays on." : "Which side this seat plays on (set by the host or that player).");
     }
 
     /// <summary>"Team 2", or in Horde "Defenders" (the first slot's team) and "Horde".</summary>
@@ -1568,300 +1672,318 @@ public class LobbyScreen : IAppScreen
             ImGui.SetScrollHereY(1f);
     }
 
+    /// <summary>
+    /// The settings column (Lobby Mockup, option B): tabs Game / Table / Rules / Advanced / Connect. A
+    /// setting the game or mode being set up does not have is not drawn at all; a tab with nothing in it
+    /// for this game is not drawn either. Every setting and every option has a hover - book wording where
+    /// it is a rule (<see cref="LobbyBookText"/>), plain words where it is an app setting or house rule.
+    /// </summary>
     private void DrawSettings(float panelW)
     {
         bool isHost = _viewModel!.HasHostPrivileges;
-        // #265: resuming a save launches from the SAVED settings - the setup ones are already spent and
-        // the rules ones would change a game in progress (see GameSettings.WithResumeOverridesFrom). The
-        // engine ignores edits to them either way; disabling the controls stops the panel implying
-        // otherwise. The battlefield is the one exception, drawn live below.
+        // #265: resuming a save launches from the SAVED settings; the controls are disabled so the panel
+        // does not imply otherwise. The battlefield is the one exception.
         bool locked = !isHost || _viewModel.IsResumeMode;
-
-        float innerPad = 8f;
-        ImGui.SetCursorPos(new Vector2(innerPad, innerPad));
-
-        // Host-only: what address to give players. Drawn outside the disabled block so the copy buttons work.
-        if (isHost && Section("Connection", defaultOpen: false))
-            DrawHostConnectionInfo(panelW - innerPad * 2);
+        EGameSystem system = _viewModel.GameSystem;
+        EGameMode mode = _viewModel.GameMode;
 
         if (isHost && _viewModel.IsResumeMode)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
-            UiText.Wrapped("Resuming a save - settings are fixed, except the battlefield.");
-            ImGui.PopStyleColor();
-        }
-
+            UiText.Colored(HeaderAccent, "Resuming a save - settings are fixed, except the battlefield.");
         if (!isHost)
-        {
             UiText.Disabled("The host sets these. You pick your army and colour on your seat card.");
-            ImGui.Spacing();
-        }
 
-        ImGui.BeginDisabled(locked);
+        if (!ImGui.BeginTabBar("##settingstabs")) return;
 
-        if (Section("Game"))
+        if (Tab("Game", "How big the game is: the points each army is built to."))
         {
-        DrawGameSystemCombo();
-        DrawEnumCombo("Game Mode",     _viewModel.GameMode,       mode => ApplyGameMode(_viewModel, mode),
-            displayName: GameModeLabel,
-            explicitOrder: GameSystemInfo.Modes(_viewModel.GameSystem),
-            tooltip: "Which kind of game to play within the Game Type.\n" +
-                     "Standard: the normal game - four rounds, most objectives wins.\n" +
-                     "Horde: survive twelve rounds against waves of enemies. The first player slot\n" +
-                     "(and anyone on its team) defends from the table centre; every other team is\n" +
-                     "the enemy horde, arriving at the table corners and coming back every 3 rounds.");
+            DrawGameTab(locked);
+            ImGui.EndTabItem();
+        }
+        if (Tab("Table", "The table: map, look, deployment" +
+                (LobbyDeploymentPreview.MissionCardsApply(system, mode) ? " and mission cards." : ".")))
+        {
+            DrawTableTab(isHost, locked);
+            ImGui.EndTabItem();
+        }
+        if (Tab("Rules", "Dice, and the house rules that change the books' rules for this game."))
+        {
+            DrawRulesTab(locked);
+            ImGui.EndTabItem();
+        }
+        if (HasAdvancedTab(system, mode)
+            && Tab("Advanced", "Optional rules from this game's Advanced Rulebook."))
+        {
+            DrawAdvancedTab(locked);
+            ImGui.EndTabItem();
+        }
+        if (isHost && Tab("Connect", "The address friends type into Join a Game to come to this lobby."))
+        {
+            DrawConnectTab();
+            ImGui.EndTabItem();
+        }
+        ImGui.EndTabBar();
+    }
 
-        // Play Style stays editable when resuming a save (host only): Game Master adds testing tools
-        // without changing any rule, so a saved game can be reopened with them on.
-        ImGui.EndDisabled();
-        ImGui.BeginDisabled(!isHost);
-        // Play Style is gone from the lobby: the Game Master tools are in every game now, as a tab in the
-        // host's right column (players who join over the network don't get it).
-        ImGui.EndDisabled();
+    /// <summary>A tab with its hover. Returns true while it is the open tab (call EndTabItem then).</summary>
+    private static bool Tab(string label, string tooltip)
+    {
+        bool open = ImGui.BeginTabItem(label);
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(tooltip);
+        return open;
+    }
+
+    /// <summary>Whether the Advanced tab has anything for this game: Fast-Play, King of the Hill or Extra Actions.</summary>
+    internal static bool HasAdvancedTab(EGameSystem system, EGameMode mode) =>
+        LobbyDeploymentPreview.FastPlayApplies(system)
+        || LobbyDeploymentPreview.KingOfTheHillApplies(system, mode)
+        || LobbyDeploymentPreview.ExtraActionsApply(system, mode);
+
+    private void DrawGameTab(bool locked)
+    {
         ImGui.BeginDisabled(locked);
-
-        DrawIntField("Army Points",    _viewModel.ArmyPoints,    _viewModel.SetArmyPoints,
-            tooltip: "The point budget each player's army is built to. An army over this limit is\n" +
-                     "flagged red on its row and blocks the launch. Higher points means bigger battles.",
+        DrawIntField("Army Points", _viewModel!.ArmyPoints, _viewModel.SetArmyPoints,
+            tooltip: "The point budget each player's army is built to. An army over this limit is flagged red on\n" +
+                     "its seat card and blocks the launch. In a team game the limit is for the whole side.",
             step: 250);
         DrawPointPresets();
-        // Army Source is no longer offered: each Game Type takes its own game's armies (set with the type).
+        ImGui.EndDisabled();
+    }
 
-        }
+    private void DrawTableTab(bool isHost, bool locked)
+    {
+        EGameSystem system = _viewModel!.GameSystem;
+        EGameMode mode = _viewModel.GameMode;
 
-        if (Section("Table"))
-        {
-        // Kai's mock, 2026-11-02: one Select Map button where Terrain Mode, its sub-options and
-        // Objective Mode used to be. The picker is the whole decision now - a map carries its terrain,
-        // its objective markers and its deployment zones, so three settings collapse into one choice.
-        //
-        // HOUSE RULE, recorded in claude/house-rules.md: this drops the books' alternating terrain
-        // placement and alternating objective placement, which are real pre-game steps in all four
-        // books. Kai's call, knowingly: a drawn map is a better table than one two people assemble by
-        // clicking, and that placement is the slowest part of starting a game. Nothing is deleted - the
-        // modes still exist in the engine and a saved game resumes onto whatever it was launched with.
+        ImGui.BeginDisabled(locked);
         DrawMapChoice();
-
-        // Out of the `locked` gate. The terrain block that used to be here ended it before the
-        // battlefield's own host-only gate, and deleting that block took this line with it - so the
-        // Table section pushed one disabled level every frame and never popped it, and ImGui asserted
-        // "Missing EndDisabled()" the moment the lobby drew. Guarded by DisabledScopeBalanceTests.
         ImGui.EndDisabled();
 
-        // #265 table surface: cosmetic only, but a synced lobby setting so everyone sees one board.
-        // Host-gated only - being cosmetic is exactly why a resumed game may still re-pick it.
+        // #265 table surface: cosmetic only, so a resumed game may still re-pick it.
         ImGui.BeginDisabled(!isHost);
-        DrawEnumCombo("Battlefield",   _viewModel.TableBackground, _viewModel.SetTableBackground,
+        DrawEnumCombo("Battlefield", _viewModel.TableBackground, _viewModel.SetTableBackground,
             displayName: TableBackgrounds.Label,
-            tooltip: "The terrain type / table surface (Forest, Desert, Ice, Mars-Like, Urban, Barren).\n" +
-                     "Cosmetic - no effect on terrain placement or any rule. Randomized when the lobby opens.");
+            tooltip: "The look of the table surface. Cosmetic - no effect on terrain or any rule.\n" +
+                     "Picked at random each time a lobby opens.",
+            optionTooltip: b => $"{TableBackgrounds.Label(b)}: how the table surface looks. Cosmetic only.");
         ImGui.EndDisabled();
 
         ImGui.BeginDisabled(locked);
-
-        // The Advanced Rulebooks' 18 deployment styles (Kai's screenshots, 2026-11-05). GF: Firefight and
-        // AoF: Skirmish print one square-table set, Grimdark Future and Age of Fantasy their own long-table
-        // set; the Quest games have no Advanced book, so no dropdown there.
-        if (AdvancedDeployment.Available(_viewModel.GameSystem))
+        // Deployment is picked here (wish list, "Lobby"), from THIS game's book pages only: the engine's
+        // AdvancedDeployment draws GF / AoF on their long-table diagrams and GF: Firefight / AoF: Skirmish on
+        // their square-table ones. Horde and the Quest modes place the sides their own way - no setting.
+        if (LobbyDeploymentPreview.DeploymentApplies(system, mode))
         {
-            ImGui.BeginDisabled(!isHost);
-            var order = new[]
-            {
-                EDeploymentStyle.Core, EDeploymentStyle.RandomStandard, EDeploymentStyle.RandomStrategic,
-                EDeploymentStyle.RandomAsymmetric,
-            }.Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Standard))
-             .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Strategic))
-             .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Asymmetric)).ToArray();
+            var order = new[] { EDeploymentStyle.Core }
+                .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Standard)).Append(EDeploymentStyle.RandomStandard)
+                .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Strategic)).Append(EDeploymentStyle.RandomStrategic)
+                .Concat(AdvancedDeployment.InFamily(EDeploymentFamily.Asymmetric)).Append(EDeploymentStyle.RandomAsymmetric)
+                .ToArray();
             DrawEnumCombo("Deployment", _viewModel.DeploymentStyle, _viewModel.SetDeploymentStyle,
                 displayName: AdvancedDeployment.Name, explicitOrder: order,
-                tooltip: "Where each side deploys - the Advanced Rules' deployment styles.\n" +
-                         "Standard and Strategic are balanced; Asymmetric leaves one side surrounded or\n" +
-                         "outnumbered. A Random choice rolls one die at the start of the game.\n" +
-                         "Two-player games only; a map with its own deployment zones keeps them.");
-            ImGui.EndDisabled();
+                tooltip: "Where each side sets up. The core rules' layout, or one of the Advanced Rulebook's 18\n" +
+                         "deployment styles for " + GameSystemInfo.DisplayName(system) + ". Two-sided games; the map\n" +
+                         "preview shows the zones. Hover an entry for the book's words.",
+                optionTooltip: LobbyBookText.Deployment);
         }
 
-        // The Mission Cards (Kai, 2026-11-05): the two fixed-deck games. A standard game only.
-        if (FDG.Missions.MissionCardCatalog.Available(_viewModel.GameSystem) && _viewModel.GameMode == EGameMode.Standard)
+        if (LobbyDeploymentPreview.MissionCardsApply(system, mode))
         {
-            ImGui.BeginDisabled(!isHost);
             DrawEnumCombo("Mission Cards", _viewModel.MissionCardGame, _viewModel.SetMissionCardGame,
                 displayName: FDG.Missions.MissionCardCatalog.Name,
-                tooltip: "Play with the Mission Cards: six objectives, four rounds, and victory points from cards.\n" +
-                         "Battle of Wits - each player has their own deck and three cards of their own.\n" +
-                         "Total Domination - one shared deck; three cards everyone races to complete.\n" +
-                         "The other six: build your own 18-card deck, hold a hand of 5, play 3 (one may be face down),\n" +
-                         "each with a twist - challenges, hidden cards, sending cards back, recovering discards,\n" +
-                         "a bigger hand for whoever holds more objectives, or Hero-only paragon cards.\n" +
-                         "At the end you also get 1 VP per objective you control. Most VP wins.");
-            ImGui.EndDisabled();
+                tooltip: LobbyBookText.MissionCardsIntro + "\nHover an entry for that game type.",
+                optionTooltip: LobbyBookText.MissionCards);
         }
-        }
+        ImGui.EndDisabled();
+    }
 
-        if (Section("Rules"))
-        {
-        DrawEnumCombo("Randomness",    _viewModel.RandomnessType, _viewModel.SetRandomnessType,
-            tooltip: "How dice are resolved.\n" +
-                     "Realistic: real dice are rolled - whole hits, swingy and unpredictable.\n" +
-                     "Probabilistic: results use expected values - smoother, less luck.");
-        // Shooting is no longer offered: the official rules have every weapon group's target declared
-        // before rolling (Declare First), which the lobby now always uses.
+    private void DrawRulesTab(bool locked)
+    {
+        EGameSystem system = _viewModel!.GameSystem;
+        ImGui.BeginDisabled(locked);
 
-        // #201 cover proximity house rules (default on). Inside the disabled block: host-only.
+        DrawEnumCombo("Randomness", _viewModel.RandomnessType, _viewModel.SetRandomnessType,
+            tooltip: "How the game settles dice rolls. An app setting, not a book rule.",
+            optionTooltip: r => r == ERandomnessType.Realistic
+                ? "Realistic: real dice are rolled - whole hits, swingy and unpredictable. How the books play."
+                : "Probabilistic: results use expected values - smoother, less luck. Not how the books play.");
+
         bool coverProximity = _viewModel.CoverProximityExceptions;
         if (UiButton.Checkbox("Cover Proximity Rules", ref coverProximity))
             _viewModel.SetCoverProximityExceptions(coverProximity);
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("House rule (default on): cover the shooter's muzzle hugs (< 2in to the exit)\n" +
-                             "grants nothing unless the target hugs the same piece, and cover shared by\n" +
-                             "shooter and target grants nothing when they are closer than 6in.");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(LobbyBookText.WithBook(
+                "House rule (default on): cover that the shooter's muzzle hugs (under 2\" to the exit) gives nothing " +
+                "unless the target hugs the same piece, and cover shared by shooter and target gives nothing when " +
+                "they are closer than 6\".", LobbyBookText.CoreCover(system)));
 
-        // #384 see-through-allies house rule (default off = official rules).
         bool seeThroughAllies = _viewModel.SeeThroughFriendlyUnits;
         if (UiButton.Checkbox("See-Through Allies", ref seeThroughAllies))
             _viewModel.SetSeeThroughFriendlyUnits(seeThroughAllies);
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("House rule (default off): shots see through ALL friendly units.\n" +
-                             "Off (official rules): only the shooting unit's own models and the target\n" +
-                             "unit are ignored for line of sight - every other unit, friendly or\n" +
-                             "enemy, blocks it.");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped("House rule (default off): shots see through ALL friendly units. Off: only the " +
+                "shooting unit's own models and the target unit are ignored for line of sight - every other unit, " +
+                "friendly or enemy, blocks it.");
 
-        // #384 unlimited split fire house rule (default off).
         bool unlimitedSplitFire = _viewModel.UnlimitedSplitFire;
         if (UiButton.Checkbox("Unlimited Split Fire", ref unlimitedSplitFire))
             _viewModel.SetUnlimitedSplitFire(unlimitedSplitFire);
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("House rule (default off): a shooting unit may split its fire between any\n" +
-                             "number of enemy units. Off: at most 2 distinct units per shoot action.");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(LobbyBookText.WithBook(
+                "House rule (default off): a shooting unit may split its fire between any number of enemy units.",
+                LobbyBookText.CoreShooting(system)));
 
-        // Friendly-overlap house rule (default off).
         bool friendlyOverlap = _viewModel.FriendlyUnitsMayOverlap;
         if (UiButton.Checkbox("Friendly Units May Overlap", ref friendlyOverlap))
             _viewModel.SetFriendlyUnitsMayOverlap(friendlyOverlap);
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("House rule (default ON): your own units may finish a move within 1\" of\n" +
-                             "each other and may move past each other. Models still cannot END on top\n" +
-                             "of another model, and enemies still need the 1\" gap.\n" +
-                             "Turn it OFF for the rules as written: units may only be within 1\" of\n" +
-                             "another unit when charging - friendly units included.\n" +
-                             "On by default because the written rule is painful in Star Quest and\n" +
-                             "Quest, where every hero is its own unit and a party can never close up.");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(LobbyBookText.WithBook(
+                "House rule (default ON): your own units may finish a move within 1\" of each other and may move " +
+                "past each other. Models still cannot END on top of another model, and enemies still need the 1\" " +
+                "gap. On by default because the written rule is painful in the Quest games, where every hero is " +
+                "its own unit.", LobbyBookText.CoreUnitSpacing(system)));
 
-        // Game length (house rule when not 4). Standard games only - Horde and Quest keep their own.
-        int[] lengths = { 4, 5, 6, 8 };
-        int current = _viewModel.NumberOfRounds ?? 4;
-        ImGui.SetNextItemWidth(160f);
-        if (ImGui.BeginCombo("Game Length", current == 4 ? "4 rounds (book)" : $"{current} rounds"))
+        // Game length: standard games only - Horde and the Quest modes keep their own.
+        if (LobbyDeploymentPreview.GameLengthApplies(_viewModel.GameMode))
         {
-            foreach (int n in lengths)
-                if (ImGui.Selectable(n == 4 ? "4 rounds (book)" : $"{n} rounds", n == current))
-                    _viewModel.SetNumberOfRounds(n == 4 ? null : n);
-            ImGui.EndCombo();
-        }
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("House rule unless 4: how many rounds a standard game lasts. The books\n" +
-                             "play 4; the Advanced Rulebook's small-scale games suggest 6.\n" +
-                             "Horde Mode and the Quest games keep their own length.");
-        }
-
-        // #456: the Advanced Rules section is live now that the 3.6.0 Advanced books are in the project
-        // (2026-11-02). It holds the Fast-Play rules - the only Advanced rules built so far - and says plainly
-        // when the game being set up does not have them (Firefight, Skirmish and the Quests: their books do
-        // not print Fast-Play).
-        if (Section("Advanced Rules", defaultOpen: false))
-        {
-            EGameSystem system = _viewModel.GameSystem;
-            UiText.Colored(ImGuiTheme.HeaderAccent, "Fast-Play");
-            if (!FastPlay.BooksHaveIt(system))
+            int[] lengths = { 4, 5, 6, 8 };
+            int current = _viewModel.NumberOfRounds ?? 4;
+            ImGui.TextUnformatted("Game Length");
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.TooltipWrapped(LobbyBookText.WithBook("How many rounds a standard game lasts. Anything but 4 is a house rule.",
+                    LobbyBookText.CoreGameLength));
+            ImGui.SameLine();
+            FillRowItemWidth();
+            if (UiCombo.Begin("##gamelength", current == 4 ? "4 rounds (book)" : $"{current} rounds"))
             {
-                UiText.Wrapped($"{GameSystemInfo.DisplayName(system)} doesn't have the Fast-Play rules - only "
-                               + "Grimdark Future and Age of Fantasy do.");
+                foreach (int n in lengths)
+                {
+                    if (ImGui.Selectable(n == 4 ? "4 rounds (book)" : $"{n} rounds", n == current))
+                        _viewModel.SetNumberOfRounds(n == 4 ? null : n);
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        UiText.TooltipWrapped(n == 4
+                            ? "The book: " + LobbyBookText.CoreGameLength
+                            : $"House rule: the game ends after {n} rounds instead of 4.");
+                }
+                ImGui.EndCombo();
             }
-            else
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.TooltipWrapped(LobbyBookText.WithBook("How many rounds a standard game lasts. Anything but 4 is a house rule.",
+                    LobbyBookText.CoreGameLength));
+        }
+
+        ImGui.EndDisabled();
+    }
+
+    private void DrawAdvancedTab(bool locked)
+    {
+        EGameSystem system = _viewModel!.GameSystem;
+        EGameMode mode = _viewModel.GameMode;
+        ImGui.BeginDisabled(locked);
+
+        // Fast-Play (GF and AoF only). Its four rules appear once Fast-Play is on (Kai, 2026-11-07).
+        if (LobbyDeploymentPreview.FastPlayApplies(system))
+        {
+            bool move = _viewModel.FastPlayMovement, melee = _viewModel.FastPlayMelee,
+                 shoot = _viewModel.FastPlayShooting, terrain = _viewModel.FastPlaySimplifiedTerrain;
+            bool on = _fastPlayOn || move || melee || shoot || terrain;
+            bool master = on;
+            if (UiButton.Checkbox("Fast-Play", ref master))
             {
-                int from = FastPlay.RecommendedFromPoints(system) ?? 0;
-                UiText.Wrapped($"Speeds up big games: each unit is measured from one leader model. OPR "
-                               + $"recommends these from {from} pts. Every unit gets a leader you can change "
-                               + "before the game, and the leader is always the last of its models to die.");
-                bool move = _viewModel.FastPlayMovement, melee = _viewModel.FastPlayMelee,
-                     shoot = _viewModel.FastPlayShooting;
+                _fastPlayOn = master;
+                if (!master)
+                {
+                    _viewModel.SetFastPlay(false, false, false);
+                    _viewModel.SetFastPlaySimplifiedTerrain(false);
+                }
+            }
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.TooltipWrapped(LobbyBookText.FastPlayIntro(system) + "\nTurn it on, then pick any of the four rules.");
+
+            if (on && master)
+            {
+                ImGui.Indent();
                 bool changed = false;
-                changed |= UiButton.Checkbox("Leader-Based Shooting", ref shoot);
-                if (ImGui.IsItemHovered())
-                    UiText.Tooltip("Range and line of sight are measured from the leader only. If the leader can\n"
-                                   + "see the target, every weapon in range of it from the leader's spot may fire.");
-                changed |= UiButton.Checkbox("Leader-Based Melee", ref melee);
-                if (ImGui.IsItemHovered())
-                    UiText.Tooltip("Charge with the leader; the rest of the unit is placed around the enemy for you,\n"
-                                   + "and the target's models close in the same way. In melee every model strikes,\n"
-                                   + "wherever it stands.");
                 changed |= UiButton.Checkbox("Leader-Based Movement", ref move);
-                if (ImGui.IsItemHovered())
-                    UiText.Tooltip("Only the leader's move is measured. Place the rest of the unit anywhere you like,\n"
-                                   + "as long as it stays in coherency - and a charge still needs the leader to reach.");
-                bool terrain = _viewModel.FastPlaySimplifiedTerrain;
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(LobbyBookText.LeaderMovement);
+                changed |= UiButton.Checkbox("Leader-Based Melee", ref melee);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(LobbyBookText.LeaderMelee);
+                changed |= UiButton.Checkbox("Leader-Based Shooting", ref shoot);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(LobbyBookText.LeaderShooting);
+                if (changed) _viewModel.SetFastPlay(move, melee, shoot);
                 if (UiButton.Checkbox("Simplified Terrain", ref terrain))
                     _viewModel.SetFastPlaySimplifiedTerrain(terrain);
-                if (ImGui.IsItemHovered())
-                    UiText.Tooltip("Cover only counts for units standing INSIDE a piece of terrain - being behind\n"
-                                   + "a wall or another unit gives none. Buildings stay impassable (the book's\n"
-                                   + "garrisoning rules for buildings are not in the game).");
-                if (changed) _viewModel.SetFastPlay(move, melee, shoot);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(LobbyBookText.SimplifiedTerrain);
+                ImGui.Unindent();
             }
-
             ImGui.Spacing();
-            UiText.Colored(ImGuiTheme.HeaderAccent, "Multiplayer");
-            UiText.Wrapped("Three or four sides play a free-for-all: each picks a table corner to deploy in. "
-                           + "In a team game the points limit is for the whole side - split it however you like.");
+        }
+
+        if (LobbyDeploymentPreview.KingOfTheHillApplies(system, mode))
+        {
             bool king = _viewModel.KingOfTheHill;
             if (UiButton.Checkbox("King of the Hill (3-4 sides)", ref king))
                 _viewModel.SetKingOfTheHill(king);
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip("The player whose army is worth the most is the king. Shooting at or charging\n"
-                               + "one of the king's units earns a combat bonus point; once per activation, spend\n"
-                               + "one for +1 to every die in one of your rolls.");
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.TooltipWrapped(LobbyBookText.KingOfTheHill + "\n\n" + LobbyBookText.FreeForAll(system));
+            ImGui.Spacing();
+        }
 
-            if (!GameSystemInfo.IsQuest(_viewModel.GameSystem))
+        // Extra Actions: the eight appear once the switch is on.
+        if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
+        {
+            EExtraActions extra = _viewModel.ExtraActions;
+            bool on = _extraActionsOn || extra != EExtraActions.None;
+            bool master = on;
+            if (UiButton.Checkbox("Extra Actions", ref master))
             {
-                ImGui.Spacing();
-                UiText.Colored(ImGuiTheme.HeaderAccent, "Extra Actions");
-                UiText.Wrapped("More actions every unit may pick, on top of Hold, Advance, Rush and Charge. "
-                               + "Tick the ones you want in this game.");
-                EExtraActions extra = _viewModel.ExtraActions;
+                _extraActionsOn = master;
+                if (!master) _viewModel.SetExtraActions(EExtraActions.None);
+            }
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                UiText.TooltipWrapped(LobbyBookText.ExtraActionsIntro + "\nTurn it on, then tick the ones you want.");
+
+            if (on && master)
+            {
+                ImGui.Indent();
                 EExtraActions edited = extra;
                 foreach ((string name, EExtraActions flag) in FDG.ExtraActions.All)
                 {
-                    bool on = (edited & flag) != 0;
-                    if (UiButton.Checkbox(name + "##extra", ref on))
-                        edited = on ? edited | flag : edited & ~flag;
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.BeginTooltip();
-                        ImGui.PushTextWrapPos(ImGui.GetFontSize() * 28f);
-                        ImGui.TextUnformatted(FDG.ExtraActions.Describe(name));
-                        ImGui.PopTextWrapPos();
-                        ImGui.EndTooltip();
-                    }
+                    bool tick = (edited & flag) != 0;
+                    if (UiButton.Checkbox(name + "##extra", ref tick))
+                        edited = tick ? edited | flag : edited & ~flag;
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        UiText.TooltipWrapped(name + ": " + LobbyBookText.ExtraAction(name));
                 }
                 if (edited != extra) _viewModel.SetExtraActions(edited);
+                ImGui.Unindent();
             }
         }
 
         ImGui.EndDisabled();
     }
 
-    private bool _resetSections = true;
-
-    /// <summary>A collapsible settings group. Each time the lobby opens, Connection starts closed and the
-    /// rest start open, whatever they were left as last time.</summary>
-    private bool Section(string title, bool defaultOpen = true)
+    /// <summary>
+    /// Connect (wish list: "Connect just shows your Tailscale address for friends to copy"). No LAN, public
+    /// IP or port any more - friends only ever join over Tailscale.
+    /// </summary>
+    private static void DrawConnectTab()
     {
+        UiText.Wrapped("Friends join with Join a Game on their main menu, typing this address:");
         ImGui.Spacing();
-        if (_resetSections) ImGui.SetNextItemOpen(defaultOpen, ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.Text, HeaderAccent);
-        bool open = ImGui.CollapsingHeader(title + "##section");
-        ImGui.PopStyleColor();
-        return open;
+        IReadOnlyList<string> tailscale = FdgRaylib.Network.TailscaleInfo.Addresses();
+        if (tailscale.Count == 0)
+        {
+            UiText.Disabled("Tailscale isn't running on this computer. Start it to play with friends.");
+            return;
+        }
+        // A friend the machine is SHARED with can only use the full name (Tailscale's own docs), and their
+        // 100.x number for it may differ - so the full name leads when we can read it.
+        if (FdgRaylib.Network.TailscaleInfo.FullName() is { } full)
+        {
+            DrawCopyableAddress("", full, "tsname");
+            UiText.Disabled("or");
+        }
+        DrawCopyableAddress("", tailscale[0], "tsip");
     }
 
     /// <summary>Quick army sizes for the Game Type: 1k-10k for the big games, 250-2000 for the skirmish
@@ -1879,11 +2001,14 @@ public class LobbyScreen : IAppScreen
         if (UiCombo.Begin("##quicksize", isPreset ? Label(current) : "Custom"))
         {
             for (int pts = step; pts <= max; pts += step)
+            {
                 if (ImGui.Selectable(Label(pts), pts == current))
                     _viewModel.SetArmyPoints(pts);
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.Tooltip($"Set Army Points to {pts}.");
+            }
             ImGui.EndCombo();
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip(skirmish
                 ? "Common sizes for skirmish games (50 to 1000 points; Firefight is usually 200 or 300)."
                 : "Common army sizes (1000 to 10000 points).");
@@ -1949,8 +2074,13 @@ public class LobbyScreen : IAppScreen
         }
         bool mapObjectives = !horde && layout != null && layout.Objectives is { Count: > 0 }
             && _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
-        bool mapZones = !horde && layout != null && layout.DeploymentZones is { Count: >= 2 }
-            && _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
+        int sides = LobbyDeploymentPreview.Sides(_viewModel.PlayerInfos.Select(p => (int)p.TeamNumber));
+        bool isMapMode = _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
+        LobbyDeploymentPreview.Plan plan = LobbyDeploymentPreview.For(_viewModel.GameSystem, _viewModel.GameMode,
+            _viewModel.DeploymentStyle, sides, tw, th, isMapMode ? layout : null);
+        // The map's own zones, when the engine will use them (a zone for every side, as ChooseMapSideStage).
+        bool mapZones = !horde && isMapMode && layout != null
+            && layout.DeploymentZones.Count >= Math.Max(2, sides);
         string objectiveNote = horde ? "5 fixed objectives"
             : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
             : _viewModel.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced
@@ -1958,7 +2088,8 @@ public class LobbyScreen : IAppScreen
         // The table's real size (it said 6' x 4' for every game, square tables included), wrapped so the
         // line never runs past the column.
         ImGui.PushTextWrapPos(0f);
-        UiText.Disabled($"Map preview - {tw / 12f:0.#}' x {th / 12f:0.#}' - {terrainNote}, {objectiveNote}");
+        UiText.Disabled($"Map preview - {tw / 12f:0.#}' x {th / 12f:0.#}' - {terrainNote}, {objectiveNote}"
+            + (plan.Note.Length > 0 ? ". " + plan.Note : ""));
         ImGui.PopTextWrapPos();
 
         Vector2 p0 = ImGui.GetCursorScreenPos();
@@ -1996,9 +2127,9 @@ public class LobbyScreen : IAppScreen
         }
         else
         {
-            float d = FDG.GameWideConstants.DEPLOYMENT_DISTANCE_INCHES;
-            dl.AddRectFilled(P(0, d), P(tw, 0), zoneA);
-            dl.AddRectFilled(P(0, th), P(tw, th - d), zoneB);
+            // The Deployment pick, drawn from the book diagrams for this game (zone A first).
+            for (int k = 0; k < plan.Zones.Count; k++)
+                MapThumbnail.DrawShape(dl, plan.Zones[k], k % 2 == 0 ? zoneA : zoneB, P, scale);
         }
 
         // Terrain.
@@ -2059,36 +2190,8 @@ public class LobbyScreen : IAppScreen
         return U32(110, 110, 110, 200);
     }
 
-    private static void DrawPreviewZone(ImDrawListPtr dl, IZone shape, uint color, Func<float, float, Vector2> P, float scale)
-    {
-        switch (shape)
-        {
-            case RectangularZone r:
-                dl.AddRectFilled(P(r.Left, r.Top), P(r.Right, r.Bottom), color);
-                break;
-            case CircularZone c:
-                dl.AddCircleFilled(P(c.Center.X, c.Center.Y), c.Radius * scale, color, 24);
-                break;
-            case CompositeZone composite:
-                foreach (IZone part in composite.Parts) DrawPreviewZone(dl, part, color, P, scale);
-                break;
-            case RotatedZoneWrapper rot when rot.Inner is RectangularZone rr:
-            {
-                float a = rot.AngleDegrees * MathF.PI / 180f, cos = MathF.Cos(a), sin = MathF.Sin(a);
-                Vector2 Corner(float x, float z)
-                {
-                    float dx = x - rot.Pivot.X, dz = z - rot.Pivot.Y;
-                    return P(rot.Pivot.X + dx * cos - dz * sin, rot.Pivot.Y + dx * sin + dz * cos);
-                }
-                dl.AddQuadFilled(Corner(rr.Left, rr.Bottom), Corner(rr.Right, rr.Bottom),
-                    Corner(rr.Right, rr.Top), Corner(rr.Left, rr.Top), color);
-                break;
-            }
-            case RotatedZoneWrapper other:
-                foreach (IZone primitive in ((IZone)other).Primitives()) DrawPreviewZone(dl, primitive, color, P, scale);
-                break;
-        }
-    }
+    private static void DrawPreviewZone(ImDrawListPtr dl, IZone shape, uint color, Func<float, float, Vector2> P, float scale) =>
+        MapThumbnail.DrawShape(dl, shape, color, P, scale);
 
     /// <summary>A small accent-coloured group heading with a rule under it, e.g. "GAME", "TABLE".</summary>
     private static void SectionHeader(string title)
@@ -2108,42 +2211,6 @@ public class LobbyScreen : IAppScreen
     private static void FillRowItemWidth() =>
         ImGui.SetNextItemWidth(MathF.Max(60f, ImGui.GetContentRegionAvail().X));
 
-    // Shows the addresses a remote player would type into "Host Address", plus the listen port (QF9). LAN
-    // is computed once; the public IP is fetched once in the background and filled in when it returns.
-    private void DrawHostConnectionInfo(float contentW)
-    {
-        if (!_publicFetchStarted)
-        {
-            _publicFetchStarted = true;
-            _lanAddresses = ComputeLanAddresses();
-            StartPublicIpFetch();
-        }
-
-        UiText.Disabled("Share these with players:");
-
-        // Kai, 2026-11-05: friends join over Tailscale - that address first, since it is the one that
-        // works from anywhere without touching a router.
-        IReadOnlyList<string> tailscale = FdgRaylib.Network.TailscaleInfo.Addresses();
-        if (tailscale.Count > 0)
-        {
-            // A friend the machine is SHARED with can only use the full name (Tailscale's own docs), and
-            // their 100.x number for it may differ - so the full name leads when we can read it.
-            if (FdgRaylib.Network.TailscaleInfo.FullName() is { } full)
-                DrawCopyableAddress("Tailscale: ", full, "tsname");
-            DrawCopyableAddress(FdgRaylib.Network.TailscaleInfo.FullName() != null ? "  or:      " : "Tailscale: ", tailscale[0], "tsip");
-        }
-        else
-        {
-            ImGui.PushTextWrapPos(0f);
-            UiText.Disabled("Tailscale: not running (start it to play with friends anywhere)");
-            ImGui.PopTextWrapPos();
-        }
-
-        DrawCopyableAddress("LAN:    ", _lanAddresses ?? "unavailable", "lanip");
-        DrawCopyableAddress("Public: ", _publicAddress, "pubip");
-        ImGui.TextUnformatted($"Port:   {ListenPort}");
-    }
-
     // One "label address [Copy]" row with Copy pinned to the panel's right edge; a long address
     // slides under the button instead of pushing it off the panel at narrow window sizes. The full
     // string is copied regardless of how much of it is visible.
@@ -2158,50 +2225,6 @@ public class LobbyScreen : IAppScreen
         float right = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - copyW;
         if (textEnd + 8f < right) ImGui.SameLine(MathF.Max(0f, right));
         if (UiButton.NavigateSmall($"Copy##{id}")) ImGui.SetClipboardText(address);
-    }
-
-    // Up, non-loopback IPv4 unicast addresses - the LAN addresses a same-network player can reach.
-    private static string ComputeLanAddresses()
-    {
-        var addresses = new List<string>();
-        try
-        {
-            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus != OperationalStatus.Up) continue;
-                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-
-                foreach (UnicastIPAddressInformation ua in ni.GetIPProperties().UnicastAddresses)
-                {
-                    if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
-                    if (IPAddress.IsLoopback(ua.Address)) continue;
-                    if (FdgRaylib.Network.TailscaleInfo.IsTailscaleAddress(ua.Address)) continue;   // its own row
-                    addresses.Add(ua.Address.ToString());
-                }
-            }
-        }
-        catch
-        {
-            // Interface enumeration can throw on some platforms/permissions; fall through to "unavailable".
-        }
-
-        return addresses.Count > 0 ? string.Join(", ", addresses.Distinct()) : "unavailable";
-    }
-
-    // One-shot best-effort public-IP lookup. async void is deliberate: it's a fire-and-forget UI fetch with
-    // its own try/catch, and _publicAddress is volatile so the main thread picks up the result next frame.
-    private async void StartPublicIpFetch()
-    {
-        try
-        {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-            string ip = (await http.GetStringAsync("https://api.ipify.org").ConfigureAwait(false)).Trim();
-            _publicAddress = string.IsNullOrWhiteSpace(ip) ? "unavailable" : ip;
-        }
-        catch
-        {
-            _publicAddress = "unavailable";
-        }
     }
 
     private void DrawLaunch(float panelW, float panelH)
@@ -2386,7 +2409,7 @@ public class LobbyScreen : IAppScreen
         int v = current;
         if (ImGui.SliderInt("##TerrainCount", ref v, 0, FDG.Stages.PlaceTerrainStage.MaxAlternatingPieceCount) && v != current)
             setter(v);
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("How many terrain pieces the players place, one at a time, alternating.\n" +
                              "More pieces means a denser, more cover-heavy board.");
     }
@@ -2405,37 +2428,6 @@ public class LobbyScreen : IAppScreen
         EPlayStyle.GameMaster => "Game Master",
         _ => style.ToString(),
     };
-
-    /// <summary>
-    /// The Game Type: which OPR game (Grimdark Future, Age of Fantasy, GF: Firefight...). Games whose rules
-    /// aren't in yet are listed greyed out. Picking one also points the Army Source at that game's armies.
-    /// </summary>
-    private void DrawGameSystemCombo()
-    {
-        ImGui.TextUnformatted("Game Type");
-        ImGui.SameLine();
-        FillRowItemWidth();
-        EGameSystem current = _viewModel.GameSystem;
-        if (UiCombo.Begin("##Game Type", GameSystemInfo.DisplayName(current)))
-        {
-            foreach (EGameSystem system in GameSystemInfo.DisplayOrder)
-            {
-                bool available = GameSystemInfo.IsAvailable(system);
-                string label = GameSystemInfo.DisplayName(system) + (available ? "" : "  (coming soon)");
-                ImGui.BeginDisabled(!available);
-                if (ImGui.Selectable(label, system == current) && available && system != current)
-                    ApplyGameSystem(_viewModel, system);
-                ImGui.EndDisabled();
-            }
-            ImGui.EndCombo();
-        }
-        if (ImGui.IsItemHovered())
-            UiText.Tooltip("Which OPR game to play.\n" +
-                           "Grimdark Future / Age of Fantasy: the full-size army games.\n" +
-                           "GF: Firefight: the skirmish version of Grimdark Future, played with\n" +
-                           "Grimdark Future armies.\n" +
-                           "Picking a game also sets the Army Source to that game's armies.");
-    }
 
     /// <summary>
     /// Point a lobby at a Game Type, with everything choosing one implies: the army source, the shooting
@@ -2498,7 +2490,7 @@ public class LobbyScreen : IAppScreen
         int t = total;
         if (ImGui.SliderInt("##TerrainPointsTotal", ref t, 0, FDG.Stages.PlaceTerrainStage.MaxPointsTotal) && t != total)
             viewModel.SetTerrainPointsTotal(t);
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("The total terrain points the players place between them, dealt out in\n" +
                              "placing order a turn's worth at a time - whoever wins the roll-off gets\n" +
                              "any remainder. 0 skips terrain placement entirely.");
@@ -2510,7 +2502,7 @@ public class LobbyScreen : IAppScreen
         int p = perTurn;
         if (ImGui.SliderInt("##TerrainPointsPerTurn", ref p, 1, FDG.Stages.PlaceTerrainStage.MaxPointsPerTurn) && p != perTurn)
             viewModel.SetTerrainPointsPerTurn(p);
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("How many terrain points each player spends on their turn - one big piece\n" +
                              "or several small ones. A piece costing more than this can still open a\n" +
                              "turn; the difference comes out of the player's next turn.");
@@ -2520,7 +2512,7 @@ public class LobbyScreen : IAppScreen
     /// Raised when the lobby's Select Map button is pressed. Program.cs opens
     /// <see cref="MapPickerScreen"/> and hands the answer back through <see cref="SetMap"/>.
     /// </summary>
-    public Action<EGameSystem, ETableBackground, bool, string?>? OnSelectMapRequested;
+    public Action<MapPickerScreen.Request>? OnSelectMapRequested;
 
     /// <summary>
     /// The chosen map applied to the lobby. Null is Random - which is <c>AutoFromLayout</c>, the mode
@@ -2558,15 +2550,17 @@ public class LobbyScreen : IAppScreen
         FillRowItemWidth();
         if (UiButton.Navigate(isMap ? MapDisplayName(current!) : "Random", new Vector2(-1f, 0f)))
         {
-            OnSelectMapRequested?.Invoke(_viewModel.GameSystem, _viewModel.TableBackground,
-                GameSystemInfo.IsHordeLike(_viewModel.GameMode), isMap ? current : null);
+            OnSelectMapRequested?.Invoke(new MapPickerScreen.Request(_viewModel.GameSystem, _viewModel.GameMode,
+                _viewModel.TableBackground, _viewModel.DeploymentStyle,
+                LobbyDeploymentPreview.Sides(_viewModel.PlayerInfos.Select(p => (int)p.TeamNumber)),
+                isMap ? current : null));
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
-            UiText.Tooltip("The table you will fight on.\n"
-                + "Random: the game lays out terrain when the mission starts.\n"
-                + "A map: its terrain, objective markers and deployment zones, exactly as drawn.\n"
-                + "Make maps in Map Maker, on the main menu.");
+            UiText.TooltipWrapped("The table you will fight on - opens Select Map.\n"
+                + "Random: the game lays out terrain when the game starts.\n"
+                + "A map: its terrain and objective markers, exactly as drawn. Only maps made for this game's "
+                + "table size are offered. Make maps in Map Maker, on the main menu.");
         }
     }
 
@@ -2675,7 +2669,7 @@ public class LobbyScreen : IAppScreen
                 if (!string.IsNullOrEmpty(path)) setter(path);
             }
         }
-        if (ImGui.IsItemHovered())
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip("Pick a saved terrain layout file. Its pieces are placed on the board\n" +
                              "verbatim - no roll-off, no alternating placement.");
     }
@@ -2699,7 +2693,7 @@ public class LobbyScreen : IAppScreen
         // #372: a hand-picked army marks the slot as served, so AutoArmyNewSlots never overwrites it on a
         // later frame (it would, for a slot whose army was loaded before the folder scan came back).
         _autoArmiedSlots.Add(playerID.ID);
-        _viewModel!.UpdateArmyListFile(playerID, loaded);
+        SetSeatArmy(playerID, loaded);
     }
 
     private void HandleLaunch(IFDGGame game)
@@ -2735,7 +2729,7 @@ public class LobbyScreen : IAppScreen
         int v = current;
         if (ImGui.InputInt($"##{label}", ref v, step, step * 4) && v != current)
             setter(Math.Max(0, v));
-        if (tooltip != null && ImGui.IsItemHovered())
+        if (tooltip != null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.Tooltip(tooltip);
     }
 
@@ -2749,20 +2743,34 @@ public class LobbyScreen : IAppScreen
     // build types (#243).
     private static void DrawEnumCombo<TEnum>(string label, TEnum current, Action<TEnum> setter,
         TEnum[]? debugLast = null, Func<TEnum, string>? displayName = null, string? tooltip = null,
-        TEnum[]? explicitOrder = null)
+        TEnum[]? explicitOrder = null, Func<TEnum, string>? optionTooltip = null)
         where TEnum : struct, Enum
     {
         ImGui.TextUnformatted(label);
+        if (tooltip != null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(tooltip);
         ImGui.SameLine();
         FillRowItemWidth();
 
         TEnum[] values = OrderComboValues(debugLast, explicitOrder);
-        string[] labels = values.Select(v => displayName?.Invoke(v) ?? v.ToString()).ToArray();
-        int idx = Math.Max(0, Array.IndexOf(values, current));
-        if (ImGui.Combo($"##{label}", ref idx, labels, labels.Length))
-            setter(values[idx]);
-        if (tooltip != null && ImGui.IsItemHovered())
-            UiText.Tooltip(tooltip);
+        string Label(TEnum v) => displayName?.Invoke(v) ?? v.ToString();
+        // A real combo rather than ImGui.Combo, so every option carries its own hover (wish list:
+        // "every option inside a setting has a hover tooltip").
+        if (UiCombo.Begin($"##{label}", Label(current), ImGuiComboFlags.HeightLarge))
+        {
+            foreach (TEnum v in values)
+            {
+                if (ImGui.Selectable($"{Label(v)}##{v}", EqualityComparer<TEnum>.Default.Equals(v, current)))
+                    setter(v);
+                if (optionTooltip != null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    string tip = optionTooltip(v);
+                    if (!string.IsNullOrEmpty(tip)) UiText.TooltipWrapped(tip);
+                }
+            }
+            ImGui.EndCombo();
+        }
+        if (tooltip != null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(tooltip);
     }
 
     private static TEnum[] OrderComboValues<TEnum>(TEnum[]? debugLast, TEnum[]? explicitOrder = null)
