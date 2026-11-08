@@ -42,6 +42,7 @@ public class CalculatorTextSafetyTests
         "FdgRaylib/Rendering/HeroBuilderScreen.cs",
         "FdgRaylib/Rendering/GameMasterPanel.cs",
         "FdgRaylib/Rendering/StrikeTeamScreen.cs",
+        "FdgRaylib/Rendering/MissionSetupScreen.cs",
     };
 
     // Every ImGui entry point that runs its argument through printf. TextUnformatted is the exception,

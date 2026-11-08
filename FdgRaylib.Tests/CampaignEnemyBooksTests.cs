@@ -86,10 +86,14 @@ public class CampaignEnemyBooksTests
             Assert.That(Path.GetFullPath(screen.CurrentPathForTest!), Is.EqualTo(Path.GetFullPath(mine)),
                 "the campaign itself - mission, journal - is still the player's.");
 
-            // One new Hero per army per mission: buying the enemy one must not use up the player's.
-            screen.HeroRecruitedForManagedForTest = true;
+            // One new Hero per army per mission: batch F keeps the allowance on each army's own file, so
+            // spending the enemy's cannot use up the player's.
+            BuiltArmyFile foeFile = StrikeTeamFiles.Load(theirs)!;
+            foeFile.StrikeTeam!.HeroRecruitedAfterMission = foeFile.StrikeTeam.Matches;
+            Assert.That(StrikeTeamFiles.Save(theirs, foeFile), Is.True);
+            Assert.That(CampaignEconomy.HeroRecruitUsed(StrikeTeamFiles.Load(theirs)!), Is.True);
+            Assert.That(CampaignEconomy.HeroRecruitUsed(StrikeTeamFiles.Load(mine)!), Is.False);
             screen.SwitchSideForTest(false);
-            Assert.That(screen.HeroRecruitedForManagedForTest, Is.False);
 
             // Reopening the campaign always starts on the player's side.
             screen.SwitchSideForTest(true);

@@ -96,27 +96,30 @@ public class CampaignCreationFlowTests
         StrikeTeamScreen screen = ScreenThatBuilds(new Queue<BuiltArmyFile>(new[] { ForgeArmy(), ForgeArmy() }), titles);
 
         screen.StartNew();
+        Assert.That(screen.NewTabForTest, Is.EqualTo(StrikeTeamScreen.ENewTab.Rules), "the wizard opens on 1. Rules.");
         screen.SetEndForTest(ECampaignType.PointLimited, 6);
         screen.OpeningNoteForTest = "The Reavers swore an oath.";
-        screen.BuildFreshForTest = true;
-        screen.ContinueFromSetup();
 
+        // 2. Your army - built in the Forge, which comes back to the wizard on the same tab.
+        screen.BuildYourArmy();
         Assert.That(screen.ViewForTest, Is.EqualTo(StrikeTeamScreen.EView.New),
-            "coming back from the Forge must not drop the campaign being made back to the list.");
-        Assert.That(screen.NewStepForTest, Is.EqualTo(StrikeTeamScreen.ENewStep.NameYours));
-
+            "coming back from the Forge keeps the wizard - it must not reset to the list.");
+        Assert.That(screen.NewTabForTest, Is.EqualTo(StrikeTeamScreen.ENewTab.YourArmy));
         screen.NewNameForTest = $"zz Reavers {tag}";
         Assert.That(screen.YourNameProblem(), Is.Null);
-        screen.BuildEnemy();
-        Assert.That(screen.NewStepForTest, Is.EqualTo(StrikeTeamScreen.ENewStep.NameEnemy));
-        Assert.That(titles, Is.EqualTo(new[] { "Your Army", "Enemy Army" }),
-            "the player's army is always built first (the spec: non-negotiable).");
 
+        // 3. The enemy.
+        Assert.That(screen.NewProblem(), Does.StartWith("The enemy:"));
+        screen.BuildEnemy();
+        Assert.That(screen.NewTabForTest, Is.EqualTo(StrikeTeamScreen.ENewTab.Enemy));
+        Assert.That(titles, Is.EqualTo(new[] { "Your Army", "Enemy Army" }), "the Forge is told which army it is building.");
         screen.EnemyNameForTest = $"zz Choir {tag}";
         Assert.That(screen.EnemyNameProblem(), Is.Null);
+        Assert.That(screen.NewProblem(), Is.Null, "plan as I go needs nothing more");
+
         screen.Finish();
 
-        Assert.That(screen.ViewForTest, Is.EqualTo(StrikeTeamScreen.EView.Camp), "Finish opens the new campaign.");
+        Assert.That(screen.ViewForTest, Is.EqualTo(StrikeTeamScreen.EView.Camp), "START CAMPAIGN opens the new campaign.");
         string mine = Remember(screen.CurrentPathForTest);
         StrikeTeamInfo you = StrikeTeamFiles.Load(mine)!.StrikeTeam!;
         string theirsPath = Remember(you.EnemyArmyFile);
@@ -126,11 +129,42 @@ public class CampaignCreationFlowTests
         Assert.That(rival.Name, Is.EqualTo($"zz Choir {tag}"));
         Assert.That(you.IsBot, Is.False);
         Assert.That(rival.IsBot, Is.True, "the enemy is the bot's army.");
+        Assert.That(you.GameSystem, Is.EqualTo(Game), "the game is the one the screen was opened for - no picker.");
         Assert.That(you.VpTarget, Is.EqualTo(6));
         Assert.That(rival.VpTarget, Is.EqualTo(6), "both armies carry the campaign's end condition.");
         Assert.That(you.Journal, Is.EqualTo("The Reavers swore an oath."), "the opening note is the first journal page.");
+        Assert.That(you.Plans, Is.Empty, "plan as I go: nothing planned up front.");
         Assert.That(Path.GetDirectoryName(mine), Is.EqualTo(Path.GetDirectoryName(theirsPath)));
         Assert.That(mine, Does.Contain(ArmyPaths.CampaignsDirectoryName), "campaign armies live in their own folder (#447).");
+    }
+
+    /// <summary>Tab 4, "Plan missions ahead": the planned missions and their briefings go into the campaign.</summary>
+    [Test]
+    public void MissionsPlannedAheadGoIntoTheCampaign()
+    {
+        string tag = Guid.NewGuid().ToString("N")[..6];
+        StrikeTeamScreen screen = ScreenThatBuilds(new Queue<BuiltArmyFile>(new[] { ForgeArmy(), ForgeArmy() }), new List<string>());
+        screen.StartNew();
+        screen.BuildYourArmy();
+        screen.NewNameForTest = $"zz Planner {tag}";
+        screen.BuildEnemy();
+        screen.EnemyNameForTest = $"zz Planned Foe {tag}";
+
+        screen.PlanningForTest = StrikeTeamScreen.EMissionPlanning.Ahead;
+        Assert.That(screen.NewProblem(), Does.StartWith("Missions:"), "planning ahead with nothing planned is not finished");
+        int d = 0;
+        Func<int> dice = () => (d++ % 6) + 1;
+        screen.DraftPlansForTest.Add(CampaignMissionGenerator.Generate(1, Game, dice));
+        screen.DraftPlansForTest.Add(CampaignMissionGenerator.Generate(2, Game, dice));
+        screen.DraftPlansForTest[1].Notes = "Hold the bridge.";
+        Assert.That(screen.NewProblem(), Is.Null);
+
+        screen.Finish();
+        string mine = Remember(screen.CurrentPathForTest);
+        StrikeTeamInfo you = StrikeTeamFiles.Load(mine)!.StrikeTeam!;
+        Remember(you.EnemyArmyFile);
+        Assert.That(you.Plans.Select(p => p.Mission), Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(CampaignJournal.NoteFor(you, 2), Is.EqualTo("Hold the bridge."), "a planned briefing becomes that mission's journal page.");
     }
 
     [Test]
@@ -140,7 +174,7 @@ public class CampaignCreationFlowTests
         StrikeTeamScreen screen = ScreenThatBuilds(new Queue<BuiltArmyFile>(new[] { ForgeArmy(), ForgeArmy() }), new List<string>());
 
         screen.StartNew();
-        screen.ContinueFromSetup();
+        screen.BuildYourArmy();
         screen.NewNameForTest = $"zz Quiet {tag}";
         screen.BuildEnemy();
         screen.EnemyNameForTest = $"zz Foe {tag}";
@@ -169,26 +203,20 @@ public class CampaignCreationFlowTests
         screen.Open(Game);
         screen.OnShown();
         screen.StartNew();
-        screen.BuildFreshForTest = false;
 
-        // Point the wizard at the one army we just wrote, and continue from it.
-        var armies = StrikeTeamFiles.LoadAll(Game).Where(a => a.Army.StrikeTeam == null).ToList();
-        int index = armies.FindIndex(a => Path.GetFullPath(a.Path) == Path.GetFullPath(onlyPath));
+        int index = screen.ArmyIndexForTest(onlyPath);
         Assume.That(index, Is.GreaterThanOrEqualTo(0));
-        typeof(StrikeTeamScreen).GetField("_newArmy", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .SetValue(screen, index);
-        screen.ContinueFromSetup();
+        screen.UseExistingArmy(index);
         screen.NewNameForTest = $"zz Mine {tag}";
 
         // Pick repeatedly: whatever else is in the folder, it must never be the list we started from.
         for (int i = 0; i < 20; i++)
         {
+            screen.EnemyNameForTest = "";
             screen.PickEnemyForMe();
-            if (screen.NewStepForTest != StrikeTeamScreen.ENewStep.NameEnemy) break;   // nothing else to pick
+            if (screen.EnemyNameForTest.Length == 0) break;   // nothing else to pick
             Assert.That(screen.EnemyNameForTest, Does.Not.StartWith($"zz Only {tag}"),
                 "the enemy must not be handed the same army the player started from.");
-            typeof(StrikeTeamScreen).GetField("_newStep", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-                .SetValue(screen, StrikeTeamScreen.ENewStep.NameYours);
         }
         Assert.That(File.Exists(onlyPath), Is.True, "starting from a folder army leaves the original untouched.");
         Assert.That(StrikeTeamFiles.Load(onlyPath)!.StrikeTeam, Is.Null);
@@ -199,10 +227,11 @@ public class CampaignCreationFlowTests
     {
         StrikeTeamScreen screen = ScreenThatBuilds(new Queue<BuiltArmyFile>(new[] { ForgeArmy(), ForgeArmy() }), new List<string>());
         screen.StartNew();
-        screen.ContinueFromSetup();
+        screen.BuildYourArmy();
 
         screen.NewNameForTest = "   ";
         Assert.That(screen.YourNameProblem(), Is.EqualTo("Name your army."));
+        Assert.That(screen.NewProblem(), Is.EqualTo("Your army: Name your army."), "the wizard's footer says what's missing");
 
         screen.NewNameForTest = "zz Same Name";
         screen.BuildEnemy();
@@ -210,6 +239,9 @@ public class CampaignCreationFlowTests
         Assert.That(screen.EnemyNameProblem(), Is.EqualTo("Give the enemy a different name from yours."));
         screen.EnemyNameForTest = "";
         Assert.That(screen.EnemyNameProblem(), Is.EqualTo("Name the enemy army."));
+
+        screen.Finish();
+        Assert.That(screen.ViewForTest, Is.EqualTo(StrikeTeamScreen.EView.New), "START CAMPAIGN does nothing while something is missing");
     }
 
     /// <summary>Backing out of the Forge returns to the wizard where it was, not to the list.</summary>
@@ -221,10 +253,10 @@ public class CampaignCreationFlowTests
         screen.OnBuildArmy = build => { build.OnCancel(); screen.OnShown(); return true; };
         screen.OnShown();
         screen.StartNew();
-        screen.ContinueFromSetup();
+        screen.BuildYourArmy();
 
         Assert.That(screen.ViewForTest, Is.EqualTo(StrikeTeamScreen.EView.New));
-        Assert.That(screen.NewStepForTest, Is.EqualTo(StrikeTeamScreen.ENewStep.Setup));
+        Assert.That(screen.NewTabForTest, Is.EqualTo(StrikeTeamScreen.ENewTab.YourArmy));
     }
 
     [Test]

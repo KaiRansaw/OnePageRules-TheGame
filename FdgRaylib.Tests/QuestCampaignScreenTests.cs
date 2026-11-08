@@ -36,8 +36,11 @@ public class QuestCampaignScreenTests
         string sq = QuestJournal.BookStructureLine(EGameSystem.GFStarQuest);
         Assert.That(sq, Does.Contain("D3+2 chapters, with chapters having D3+1 missions"));
         string aof = QuestJournal.BookStructureLine(EGameSystem.AoFQuest);
-        Assert.That(aof, Does.Contain("D3+1 missions"));
+        // Batch F: the AoFQ Campaign Builder v2.1.0 is in the project now, and prints the same sentence -
+        // so AoF: Quest quotes its own book (it used to state the roll without a quote).
+        Assert.That(aof, Is.EqualTo("Book (AoFQ Campaign Builder v2.1.0): \"Each campaign is made up to D3+2 chapters, with chapters having D3+1 missions.\""));
         Assert.That(aof, Does.Not.Contain("GFSQ"), "AoF: Quest never quotes the Star Quest book");
+        Assert.That(sq, Does.Contain("GFSQ Campaign Builder v2.1.0"));
         foreach (string line in new[] { sq, aof })
             Assert.That(line.All(ch => ch < 128), "game text is ASCII");
     }

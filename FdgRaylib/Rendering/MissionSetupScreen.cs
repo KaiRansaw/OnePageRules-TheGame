@@ -236,46 +236,66 @@ public sealed class MissionSetupScreen : IAppScreen
         ImGui.PopStyleColor();
     }
 
+    // The force cards (wish list: "your force and their force as portrait cards (click to bring / leave)").
+    private readonly UnitPortraitCards _yourCards = new();
+    private readonly UnitPortraitCards _theirCards = new();
+
+    /// <summary>A force card's tag: "coming", "stays home", or why it can't come. Pure, so it is pinned by
+    /// a test.</summary>
+    internal static string ForceTag(StrikeTeamInfo info, UnitFileEntry unit, StrikeUnit sheet) =>
+        CampaignRules.CannotBringToMission(unit) != null ? $"recovering ({sheet.MissionsOut})"
+        : IsComing(info, sheet) ? "coming"
+        : "stays home";
+
+    /// <summary>Flips one unit between coming and staying home. An empty Bringing list means "all of it"
+    /// (#427), so the first change writes the whole fieldable list out first.</summary>
+    internal static void ToggleComing(ArmyListFile army, StrikeTeamInfo info, StrikeUnit sheet)
+    {
+        if (info.Bringing.Count == 0) info.Bringing = Fieldable(army).Select(x => x.Sheet.Id).ToList();
+        if (!info.Bringing.Remove(sheet.Id)) info.Bringing.Add(sheet.Id);
+    }
+
+    /// <summary>Draws an army as force cards and returns the sheet whose card was clicked (a fieldable one), or null.</summary>
+    private static StrikeUnit? DrawForceCards(UnitPortraitCards widget, string id, BuiltArmyFile army, StrikeTeamInfo info)
+    {
+        var rows = army.Units
+            .Select(u => (Unit: u, Sheet: CampaignRules.Sheet(u)))
+            .Where(x => x.Sheet != null)
+            .Select(x => (x.Unit, Sheet: x.Sheet!))
+            .ToList();
+        var cards = rows.Select(r =>
+        {
+            string tag = ForceTag(info, r.Unit, r.Sheet);
+            bool resting = CampaignRules.CannotBringToMission(r.Unit) != null;
+            bool coming = !resting && IsComing(info, r.Sheet);
+            string facts = $"{r.Unit.PointCost} pts" + (r.Sheet.Level > 0 ? $" - Lv {r.Sheet.Level}" : "");
+            UnitFileEntry unit = r.Unit;
+            return new UnitPortraitCards.Card(unit.Name, CampaignRules.UnitTypeOf(unit, army.Book), facts,
+                () => UnitPortraitCards.StatsTooltip(unit).Replace("Click for the full unit.",
+                    resting ? CampaignRules.CannotBringToMission(unit)! : coming ? "Click to leave it at home." : "Click to bring it."),
+                tag, resting ? Bad : coming ? Good : TextDim, Dimmed: !coming);
+        }).ToList();
+        UnitPortraitCards.CardEvent hit = widget.DrawCardGrid(id, cards, army.Faction, -1);
+        if (hit.Clicked < 0) return null;
+        var picked = rows[hit.Clicked];
+        return CampaignRules.CannotBringToMission(picked.Unit) == null ? picked.Sheet : null;
+    }
+
     private void DrawYourForce(StrikeTeamInfo info, CampaignNumbers n)
     {
-        UiText.Colored(TextDim, "YOUR FORCE");
+        UiText.Colored(TextDim, "YOUR FORCE - click a card to bring it or leave it at home");
         ImGui.Separator();
 
-        foreach (UnitFileEntry unit in _army!.Units)
+        float under = ImGui.GetTextLineHeightWithSpacing() * 6f;
+        ImGui.BeginChild("##yourcards", new Vector2(0, -under), ImGuiChildFlags.None);
+        if (DrawForceCards(_yourCards, "##yours", _army!, info) is { } sheet)
         {
-            if (CampaignRules.Sheet(unit) is not { } sheet) continue;
-
-            // #427: a unit recovering under No Permadeath cannot be taken, and says why.
-            if (CampaignRules.CannotBringToMission(unit) is { } resting)
-            {
-                ImGui.PushID(sheet.Id);
-                UiText.Disabled($"{unit.Name}  ({unit.PointCost} pts)");
-                ImGui.SameLine();
-                UiText.Colored(Bad, resting);
-                ImGui.PopID();
-                continue;
-            }
-
-            bool coming = IsComing(info, sheet);
-            bool was = coming;
-            ImGui.PushID(sheet.Id);
-            string label = $"{unit.Name}  ({unit.PointCost} pts)"
-                           + (sheet.Level > 0 ? $"  [lvl {sheet.Level}]" : "");
-            if (UiButton.Checkbox(label, ref coming) && coming != was)
-            {
-                if (info.Bringing.Count == 0)
-                {
-                    info.Bringing = _army.Units.Select(u => CampaignRules.Sheet(u)?.Id ?? "")
-                        .Where(s => s.Length > 0).ToList();
-                }
-                if (coming) { if (!info.Bringing.Contains(sheet.Id)) info.Bringing.Add(sheet.Id); }
-                else info.Bringing.Remove(sheet.Id);
-                StrikeTeamFiles.Save(_path, _army);
-                // Your force sets the rival's floor, so its size moves the moment this does.
-                FillEnemyForce(randomize: false);
-            }
-            ImGui.PopID();
+            ToggleComing(_army!, info, sheet);
+            StrikeTeamFiles.Save(_path, _army!);
+            // Your force sets the rival's floor, so its size moves the moment this does.
+            FillEnemyForce(randomize: false);
         }
+        ImGui.EndChild();
 
         ImGui.Separator();
         int yours = PointsComing(_army, info);
@@ -355,25 +375,14 @@ public sealed class MissionSetupScreen : IAppScreen
                            + "difficulty. Without it they bring their most experienced units first.");
 
         ImGui.Separator();
-        foreach ((UnitFileEntry unit, StrikeUnit sheet) in Fieldable(_enemy))
+        float under = ImGui.GetTextLineHeightWithSpacing() * 7f;
+        ImGui.BeginChild("##theircards", new Vector2(0, -under), ImGuiChildFlags.None);
+        if (DrawForceCards(_theirCards, "##theirs", _enemy, foe) is { } sheet)
         {
-            bool coming = IsComing(foe, sheet);
-            bool was = coming;
-            ImGui.PushID("foe" + sheet.Id);
-            string label = $"{unit.Name}  ({unit.PointCost} pts)"
-                           + (sheet.Level > 0 ? $"  [lvl {sheet.Level}]" : "");
-            if (UiButton.Checkbox(label, ref coming) && coming != was)
-            {
-                if (foe.Bringing.Count == 0)
-                {
-                    foe.Bringing = Fieldable(_enemy).Select(x => x.Sheet.Id).ToList();
-                }
-                if (coming) { if (!foe.Bringing.Contains(sheet.Id)) foe.Bringing.Add(sheet.Id); }
-                else foe.Bringing.Remove(sheet.Id);
-                if (_enemyPath != null) StrikeTeamFiles.Save(_enemyPath, _enemy);
-            }
-            ImGui.PopID();
+            ToggleComing(_enemy, foe, sheet);
+            if (_enemyPath != null) StrikeTeamFiles.Save(_enemyPath, _enemy);
         }
+        ImGui.EndChild();
 
         ImGui.Separator();
         int theirs = PointsComing(_enemy, foe);
@@ -542,59 +551,73 @@ public sealed class MissionSetupScreen : IAppScreen
         ImGui.Separator();
     }
 
+    /// <summary>
+    /// "Select Map...": opens the shared Select Map screen (the lobby's) for this mission. Program.cs wires
+    /// it and hands the pick back through <see cref="SetMap"/>.
+    /// </summary>
+    public Action<MapPickerScreen.Request>? OnSelectMap;
+
+    /// <summary>The map picked on Select Map: a path, or null for Random (the table is laid out for you).</summary>
+    public void SetMap(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            _mapPath = null;
+            if (_terrainMode == ETerrainPlacementMode.LoadFromFile) _terrainMode = ETerrainPlacementMode.AutoFromLayout;
+        }
+        else
+        {
+            _mapPath = path;
+            _terrainMode = ETerrainPlacementMode.LoadFromFile;
+        }
+        if (_plan != null)
+        {
+            _plan.TerrainMode = _terrainMode;
+            _plan.MapName = _mapPath == null ? null : Path.GetFileNameWithoutExtension(_mapPath);
+            SavePlan();
+        }
+    }
+
     private void DrawMap()
     {
         UiText.Colored(TextDim, "THE MAP");
         ImGui.Separator();
 
-        ImGui.TextUnformatted("Terrain");
-        ImGui.SetNextItemWidth(-1f);
-        if (UiCombo.Begin("##terrainmode", TerrainModeLabel(_terrainMode)))
+        bool custom = _terrainMode == ETerrainPlacementMode.LoadFromFile && !string.IsNullOrEmpty(_mapPath);
+        ImGui.TextUnformatted("Map: " + (custom ? Path.GetFileNameWithoutExtension(_mapPath!) : "Random"));
+        ImGui.SameLine();
+        if (UiButton.NavigateSmall("Select Map..."))
         {
-            foreach (ETerrainPlacementMode mode in new[]
-                     {
-                         ETerrainPlacementMode.AutoFromLayout,
-                         ETerrainPlacementMode.Alternating,
-                         ETerrainPlacementMode.AlternatingPoints,
-                         ETerrainPlacementMode.LoadFromFile,
-                     })
-            {
-                if (ImGui.Selectable(TerrainModeLabel(mode), mode == _terrainMode))
-                {
-                    _terrainMode = mode;
-                    if (_plan != null) { _plan.TerrainMode = mode; SavePlan(); }
-                }
-            }
-            ImGui.EndCombo();
+            EGameSystem system = _army?.StrikeTeam?.GameSystem ?? EGameSystem.GrimdarkFuture;
+            OnSelectMap?.Invoke(new MapPickerScreen.Request(system, EGameMode.Standard, ETableBackground.Forest,
+                _plan?.DeploymentStyle ?? EDeploymentStyle.Core, 2, custom ? _mapPath : null));
         }
+        if (ImGui.IsItemHovered())
+            UiText.TooltipWrapped("Opens Select Map: Random, or one of your maps made for this game's table size.", 320f);
 
-        if (_terrainMode == ETerrainPlacementMode.LoadFromFile)
+        if (!custom)
         {
-            ImGui.TextUnformatted("Map");
+            ImGui.TextUnformatted("Terrain");
             ImGui.SetNextItemWidth(-1f);
-            string display = string.IsNullOrEmpty(_mapPath)
-                ? "(choose a map)"
-                : Path.GetFileNameWithoutExtension(_mapPath);
-            if (UiCombo.Begin("##mappick", display, ImGuiComboFlags.HeightLarge))
+            if (UiCombo.Begin("##terrainmode", TerrainModeLabel(_terrainMode)))
             {
-                IReadOnlyList<string> maps = FdgRaylib.SaveLoad.MapPaths.List();
-                if (maps.Count == 0) UiText.Disabled("No saved maps yet - make one in the map maker.");
-                foreach (string map in maps)
+                foreach (ETerrainPlacementMode mode in new[]
+                         {
+                             ETerrainPlacementMode.AutoFromLayout,
+                             ETerrainPlacementMode.Alternating,
+                             ETerrainPlacementMode.AlternatingPoints,
+                         })
                 {
-                    bool selected = string.Equals(map, _mapPath, StringComparison.OrdinalIgnoreCase);
-                    if (ImGui.Selectable($"{Path.GetFileNameWithoutExtension(map)}##{map}", selected))
+                    if (ImGui.Selectable(TerrainModeLabel(mode), mode == _terrainMode))
                     {
-                        _mapPath = map;
-                        if (_plan != null) { _plan.MapName = Path.GetFileNameWithoutExtension(map); SavePlan(); }
+                        _terrainMode = mode;
+                        if (_plan != null) { _plan.TerrainMode = mode; SavePlan(); }
                     }
+                    if (ImGui.IsItemHovered()) UiText.TooltipWrapped(TerrainModeHelp(mode), 320f);
                 }
                 ImGui.EndCombo();
             }
-            if (string.IsNullOrEmpty(_mapPath))
-                UiText.Colored(Bad, "Pick a map, or choose another terrain mode.");
         }
-
-        ImGui.Separator();
         UiText.Wrapped(TerrainModeHelp(_terrainMode));
     }
 

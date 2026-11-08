@@ -92,11 +92,9 @@ public static class QuestJournal
     }
 
     /// <summary>
-    /// The structure roll as the screen states it. Star Quest's is the GFSQ Campaign Builder v2.1.0's own
-    /// sentence. The AoFQ Campaign Builder v2.1.0 is not in this repository, so for AoF: Quest the screen
-    /// states the roll the game makes without quoting a book it can't show.
+    /// The structure roll as the screen states it, quoted from that game's own Campaign Builder v2.1.0. The
+    /// two books print the same sentence; each screen names its own book.
     /// </summary>
-    public static string BookStructureLine(EGameSystem system) => system == EGameSystem.AoFQuest
-        ? "The game rolls D3+2 chapters, each of D3+1 missions."
-        : "Book (GFSQ Campaign Builder v2.1.0): \"Each campaign is made up to D3+2 chapters, with chapters having D3+1 missions.\"";
+    public static string BookStructureLine(EGameSystem system) =>
+        $"Book ({(system == EGameSystem.AoFQuest ? "AoFQ" : "GFSQ")} Campaign Builder v2.1.0): \"Each campaign is made up to D3+2 chapters, with chapters having D3+1 missions.\"";
 }

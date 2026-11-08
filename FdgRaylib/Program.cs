@@ -1435,16 +1435,29 @@ else
 
     // The lobby's Select Map button. The picker is its own screen rather than a dropdown because a
     // map is a picture - a name in a list says nothing about the table you are about to fight on.
+    // Batch F: Mission Setup's "Select Map..." uses the same picker, so the picker's two callbacks are set
+    // by whichever screen opened it and go back there.
     renderer.LobbyScreen.OnSelectMapRequested = request =>
     {
+        renderer.MapPicker.OnBack = () => renderer.NavigateTo(renderer.LobbyScreen);
+        renderer.MapPicker.OnChosen = path =>
+        {
+            renderer.LobbyScreen.SetMap(path);
+            renderer.NavigateTo(renderer.LobbyScreen);
+        };
         renderer.MapPicker.Open(request);
         renderer.NavigateTo(renderer.MapPicker);
     };
-    renderer.MapPicker.OnBack = () => renderer.NavigateTo(renderer.LobbyScreen);
-    renderer.MapPicker.OnChosen = path =>
+    renderer.MissionSetup.OnSelectMap = request =>
     {
-        renderer.LobbyScreen.SetMap(path);
-        renderer.NavigateTo(renderer.LobbyScreen);
+        renderer.MapPicker.OnBack = () => renderer.NavigateTo(renderer.MissionSetup);
+        renderer.MapPicker.OnChosen = path =>
+        {
+            renderer.MissionSetup.SetMap(path);
+            renderer.NavigateTo(renderer.MissionSetup);
+        };
+        renderer.MapPicker.Open(request);
+        renderer.NavigateTo(renderer.MapPicker);
     };
 
     renderer.MainMenu.OnMapMakerClicked = () => renderer.GoTo(renderer.MapMaker);
