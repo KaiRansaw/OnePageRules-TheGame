@@ -36,7 +36,13 @@ internal static class ForgeUnitDetail
         ImGui.TextUnformatted($"{unit.Name} [{unit.ModelCount}]");
         ImGui.SameLine();
         UiText.Disabled($"({unit.PointCost} pts)");
+        DrawStatPills(unit);
+    }
 
+    /// <summary>The Quality / Defense (/ Tough) pills and the rule under them - <see cref="DrawHeader"/>
+    /// without the name line, for a panel that prints the name beside a portrait.</summary>
+    internal static void DrawStatPills(UnitFileEntry unit)
+    {
         UiChrome.DrawPill("Quality", $"{unit.Quality}+", ImGuiTheme.AccentBlue);
         ImGui.SameLine(0f, UiChrome.PillGap);
         UiChrome.DrawPill("Defense", $"{unit.Defense}+", ImGuiTheme.AccentBlue);

@@ -49,7 +49,9 @@ internal enum ESaveGuard
     EmptyList,
 }
 
-// #153 — the catalog army builder ("Army Forge"). Three-pane layout (roster | list | config).
+// #153 — the catalog army builder ("Army Forge"). UI rework batch C (2026-11-07) laid it out as Total War's
+// "army setup": the clicked unit on the left; Your Army (points bar + portrait cards) over the Unit Roster
+// (portrait cards in Army Forge's own category boxes, ForgeRosterCategories) on the right.
 //   P1: read-only book viewer.
 //   P2 (this): build a list — add/remove roster units, live points via ListCompiler, Save/Load the single
 //              embedded .fdgarmy (which then loads straight into the lobby's "Load Army"). Upgrade-option
@@ -103,6 +105,16 @@ public class ArmyForgeScreen : IAppScreen
     // definitions). Rebuilt whenever _book changes - a switch, a load, or a share-link import - since a
     // faction's own rules only exist in its own book.
     private RuleGlossary _glossary = RuleGlossary.Empty;
+
+    // The roster's Army Forge category boxes and each roster unit's card, both rebuilt with the book.
+    private IReadOnlyList<ForgeRosterCategories.Group> _rosterGroups = Array.Empty<ForgeRosterCategories.Group>();
+    private Dictionary<string, (UnitFileEntry Unit, List<ItemEntry> Items)> _rosterCards = new();
+
+    // The shared portrait-card widget (Batch B) - roster boxes, the army strip and the unit panel portrait.
+    private readonly UnitPortraitCards _cards = new();
+
+    // The legality badge toggles the problems list under the army strip.
+    private bool _showIssues;
     private BuilderList _list = null!; // set with the library (ctor test seam / EnsureLibrary)
     private string? _selectedRosterId;
     private int? _selectedListIndex;
@@ -271,6 +283,40 @@ public class ArmyForgeScreen : IAppScreen
     {
         _book = book;
         _glossary = RuleGlossary.Build(book);
+        _rosterGroups = ForgeRosterCategories.GroupBook(book);
+        _rosterCards = BuildRosterCards(book);
+    }
+
+    /// <summary>
+    /// Every roster unit compiled at its book size with no upgrades - what its card, its hover and its
+    /// read-only preview show. Built once per book rather than per frame. A unit the compiler cannot build
+    /// still gets its card from the book's own numbers, so no unit silently disappears from the roster.
+    /// </summary>
+    internal static Dictionary<string, (UnitFileEntry Unit, List<ItemEntry> Items)> BuildRosterCards(BookFile book)
+    {
+        var cards = new Dictionary<string, (UnitFileEntry, List<ItemEntry>)>();
+        foreach (RosterUnit unit in book.Units)
+        {
+            try
+            {
+                cards[unit.Id] = ListCompiler.CompileUnitDetailed(book,
+                    new BuilderUnit { RosterUnitId = unit.Id, ModelCount = unit.BaseModelCount });
+            }
+            catch (Exception)
+            {
+                cards[unit.Id] = (new UnitFileEntry
+                {
+                    Name = unit.Name,
+                    ModelCount = unit.BaseModelCount,
+                    PointCost = unit.BasePointCost,
+                    Quality = unit.Quality,
+                    Defense = unit.Defense,
+                    Weapons = unit.Weapons.ToList(),
+                    SpecialRules = unit.Rules.ToList(),
+                }, unit.Items.ToList());
+            }
+        }
+        return cards;
     }
 
     private void SwitchBook(int index)
@@ -856,38 +902,45 @@ public class ArmyForgeScreen : IAppScreen
         + $"{compiled.TotalPoints} / {build.Numbers.Treasury} pts spent  -  minimum {build.Numbers.MinimumSpend}  -  "
         + $"Heroes {compiled.Units.Count(FDG.Campaign.CampaignRules.IsHero)}/1";
 
+    /// <summary>
+    /// The campaign top bar: Back, the army being built and its game (the game is fixed, so nothing else on
+    /// screen would say which game this army is for), and the faction. The faction is the player's pick
+    /// while the army is empty and locked once it holds a unit (wish list: "game/faction locked") - to pick
+    /// another faction, remove the units first. The treasury lives in the points bar.
+    /// </summary>
     private void DrawCampaignToolbar(BuiltArmyFile compiled, IReadOnlyList<ListIssue> issues, CampaignBuild build)
     {
         float rowH = UiChrome.ButtonSize("Back").Y;
         if (UiButton.Back("Back", UiChrome.ButtonSize("Back"))) { CampaignCancel(); return; }
 
-        // The faction is still the player's choice; only the game is fixed.
+        ImGui.SameLine();
+        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
+        UiText.Colored(ImGuiTheme.HeaderAccent, $"{build.Title.ToUpperInvariant()}  -  {GameSystemInfo.DisplayName(build.System)}");
+
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
-        ImGui.SetNextItemWidth(UiChrome.Em(12f));
+        ImGui.SetNextItemWidth(UiChrome.Em(14f));
+        bool locked = _list.Units.Count > 0;
+        ImGui.BeginDisabled(locked);
         int visPos = Math.Max(0, Array.IndexOf(_visibleBooks, _bookIndex));
         if (ImGui.Combo("##forge-book", ref visPos, _visibleNames, _visibleNames.Length)
-            && _visibleBooks[visPos] != _bookIndex)
+            && _visibleBooks[visPos] != _bookIndex && !locked)
         {
-            int bi = _visibleBooks[visPos];
-            if (_list.Units.Count == 0) { SwitchBook(bi); _list.PointsLimit = build.Numbers.Treasury; }
-            else { _pendingBookIndex = bi; ImGui.OpenPopup("Switch book?"); }
+            SwitchBook(_visibleBooks[visPos]);
         }
-        DrawSwitchBookConfirm();
-        _list.PointsLimit = build.Numbers.Treasury;   // a confirmed book switch keeps the old limit
+        ImGui.EndDisabled();
+        if (locked && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(CampaignFactionLockedTip, 360f);
+        _list.PointsLimit = build.Numbers.Treasury;
 
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
         string? problem = CampaignContinueProblem(compiled);
         UiText.Colored(problem == null ? GreenText : WhiteText, CampaignHeader(build, compiled));
-
-        int errors = issues.Count(i => i.Severity == ListIssueSeverity.Error);
-        int warnings = issues.Count(i => i.Severity == ListIssueSeverity.Warning);
-        ImGui.SameLine();
-        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        if (errors > 0) UiText.Colored(RedText, $"[{errors} error{(errors == 1 ? "" : "s")}]");
-        else if (warnings > 0) UiText.Colored(YellowText, $"[{warnings} warning{(warnings == 1 ? "" : "s")}]");
     }
+
+    internal const string CampaignFactionLockedTip =
+        "The faction is locked once the army has a unit. Remove every unit to pick another faction.";
 
     /// <summary>The strip under the panes: why Continue is unavailable, and Continue itself, bottom right.</summary>
     private void DrawCampaignFooter(BuiltArmyFile compiled, float footerH)
@@ -909,7 +962,6 @@ public class ArmyForgeScreen : IAppScreen
 
     // ── Draw ────────────────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>#403: every entry into the Forge leads with the importer.</summary>
     /// <summary>
     /// #421: deliberately does NOT re-arm the import modal. Entering the Forge opens the Forge.
     /// </summary>
@@ -927,10 +979,7 @@ public class ArmyForgeScreen : IAppScreen
 
         ImGui.SetNextWindowPos(Vector2.Zero, ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(screenW, screenH), ImGuiCond.Always);
-        // #451: a campaign build has no "Army Forge" title bar - the spec removes it, and the header says
-        // which army and which game instead.
-        // 2026-11-06 look pass: no ImGui title strip on the free build either - it read as a debug window.
-        // The toolbar says "Army Forge" itself.
+        // No ImGui title strip - it read as a debug window. The top bar says what the screen is.
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse
             | ImGuiWindowFlags.NoTitleBar;
         ImGui.Begin("Army Forge", flags);
@@ -948,7 +997,7 @@ public class ArmyForgeScreen : IAppScreen
         }
         else
         {
-            DrawToolbar(compiled, issues);
+            DrawToolbar(compiled);
             ImGui.Separator();
             DrawPanes(compiled, rows, issues);
         }
@@ -956,41 +1005,32 @@ public class ArmyForgeScreen : IAppScreen
         ImGui.End();
     }
 
-    private void DrawToolbar(BuiltArmyFile compiled, IReadOnlyList<ListIssue> issues)
+    /// <summary>
+    /// The top bar, as the wish list has it: Back, the screen's name, game, faction, the army's name (typed
+    /// straight in - that is the rename), then New / Load / Import Link / Save on the right. The status line
+    /// (saved, load failed...) sits under it. Every modal the buttons open is drawn here too, at window
+    /// level, because ImGui only opens a popup from the ID stack that draws it.
+    /// </summary>
+    private void DrawToolbar(BuiltArmyFile compiled)
     {
-        // #403: chrome buttons at the shared size (#398's UiChrome.ButtonSize) - big enough to aim at
-        // without looking, and measured in the current font so they are the same button on a laptop and
-        // on a 4K display. They stand taller than a combo, so everything else on the row is centred
-        // against them rather than left hanging from the top edge.
+        // #403: chrome buttons at the shared size (#398's UiChrome.ButtonSize); everything else on the row
+        // is centred against them.
         float rowH = UiChrome.ButtonSize("Back").Y;
+        float spacing = ImGui.GetStyle().ItemSpacing.X;
 
         if (UiButton.Back("Back", UiChrome.ButtonSize("Back"))) OnBack?.Invoke();
-        ImGui.SameLine();
-        if (UiButton.Navigate("Save", UiChrome.ButtonSize("Save"))) Save(compiled);
-        ImGui.SameLine();
-        if (UiButton.Navigate("Load", UiChrome.ButtonSize("Load"))) Load();
-        ImGui.SameLine();
-        if (UiButton.Navigate("Import Link", UiChrome.ButtonSize("Import Link"))) OpenImportModal();
-
-        // #403: and the same popup on arrival, without a click.
-        if (_openImportOnShow)
-        {
-            _openImportOnShow = false;
-            OpenImportModal();
-        }
 
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.55f, 0.85f, 0.80f, 1f));
-        ImGui.TextUnformatted("ARMY FORGE");
-        ImGui.PopStyleColor();
+        UiText.Colored(new Vector4(0.55f, 0.85f, 0.80f, 1f), "ARMY FORGE");
+
         if (_showSystemCombo)
         {
             // #378: the game-system filter. Switching clears the list like a book switch, so it gets
             // the same confirm when the list is non-empty.
             ImGui.SameLine();
             CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
-            ImGui.SetNextItemWidth(UiChrome.Em(9f));
+            ImGui.SetNextItemWidth(UiChrome.Em(11f));
             int si = _systemIndex;
             string[] systemLabels = Systems.Select(s => s.Label).ToArray();
             if (ImGui.Combo("##forge-system", ref si, systemLabels, systemLabels.Length) && si != _systemIndex)
@@ -998,10 +1038,12 @@ public class ArmyForgeScreen : IAppScreen
                 if (_list.Units.Count == 0) SwitchSystem(si);
                 else { _pendingSystemIndex = si; ImGui.OpenPopup("Switch book?"); }
             }
+            if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Which game this army is for. Each game has its own books.", 320f);
         }
+
         ImGui.SameLine();
         CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
-        ImGui.SetNextItemWidth(UiChrome.Em(12f));
+        ImGui.SetNextItemWidth(UiChrome.Em(13f));
         // The dropdown shows the current system's books only; map the selection back to library indices.
         int visPos = Math.Max(0, Array.IndexOf(_visibleBooks, _bookIndex));
         if (ImGui.Combo("##forge-book", ref visPos, _visibleNames, _visibleNames.Length)
@@ -1011,58 +1053,99 @@ public class ArmyForgeScreen : IAppScreen
             if (_list.Units.Count == 0) SwitchBook(bi);
             else { _pendingBookIndex = bi; ImGui.OpenPopup("Switch book?"); }
         }
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("The faction (army book) this army is built from.", 320f);
+
+        // The army's name. Typing here renames the list; Save offers it as the file name.
+        ImGui.SameLine();
+        CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
+        string[] right = { "New", "Load", "Import Link", "Save" };
+        float rightW = right.Sum(label => UiChrome.ButtonSize(label).X) + spacing * right.Length;
+        float nameW = MathF.Max(UiChrome.Em(8f),
+            MathF.Min(UiChrome.Em(18f), ImGui.GetContentRegionAvail().X - rightW - spacing));
+        ImGui.SetNextItemWidth(nameW);
+        string name = _list.Name ?? string.Empty;
+        if (ImGui.InputTextWithHint("##forge-armyname", "Army name", ref name, 64)) _list.Name = name;
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("The army's name. Type to rename it; Save uses it as the file name.", 320f);
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(MathF.Max(ImGui.GetCursorPosX(),
+            ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - rightW + spacing));
+        if (UiButton.Navigate("New", UiChrome.ButtonSize("New")))
+        {
+            if (_list.Units.Count == 0 && string.IsNullOrEmpty(_list.Name)) NewList();
+            else ImGui.OpenPopup(NewArmyTitle);
+        }
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Start a new, empty army of the same game and faction.", 320f);
+        ImGui.SameLine();
+        if (UiButton.Navigate("Load", UiChrome.ButtonSize("Load"))) Load();
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Open a saved army list to edit it here.", 320f);
+        ImGui.SameLine();
+        if (UiButton.Navigate("Import Link", UiChrome.ButtonSize("Import Link"))) OpenImportModal();
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Bring in a list from an Army Forge share link.", 320f);
+        ImGui.SameLine();
+        if (UiButton.Confirm("Save", UiChrome.ButtonSize("Save"))) Save(compiled);
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped("Save this army into its game's armies folder.", 320f);
+
+        // #403: an import requested from outside Draw.
+        if (_openImportOnShow)
+        {
+            _openImportOnShow = false;
+            OpenImportModal();
+        }
+
+        if (_statusHint is not null)
+        {
+            // UiText.Colored, not TextColored: the line can carry a file name or an exception message,
+            // and a stray '%' in either would be eaten as a printf directive (#398).
+            UiText.Colored(StatusColor(_statusKind), _statusHint);
+        }
+
         DrawSwitchBookConfirm();
+        DrawNewArmyConfirm();
         // #421: the guard cannot be opened in the same frame the name modal closed.
         if (_openSaveGuardNextFrame)
         {
             _openSaveGuardNextFrame = false;
             ImGui.OpenPopup(SaveGuardTitle);
         }
-
         DrawImportModal();
         DrawSaveNameModal();
         DrawLoadFailedModal();
         DrawSaveGuardModal();
         DrawReopenDriftModal();
-        if (_statusHint is not null)
+    }
+
+    internal const string NewArmyTitle = "Start a new army?";
+
+    private void DrawNewArmyConfirm()
+    {
+        bool open = true;
+        if (!ImGui.BeginPopupModal(NewArmyTitle, ref open, ImGuiWindowFlags.AlwaysAutoResize)) return;
+        ImGui.TextUnformatted("This clears the army on screen. Anything not saved is lost.");
+        ImGui.Spacing();
+        if (UiButton.Confirm("New army", UiChrome.ButtonSize("New army")))
         {
-            ImGui.SameLine();
-            CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-            // UiText.Colored, not TextColored: the line can carry a file name or an exception message,
-            // and a stray '%' in either would be eaten as a printf directive (#398).
-            UiText.Colored(StatusColor(_statusKind), _statusHint);
+            NewList();
+            ImGui.CloseCurrentPopup();
         }
-
-        // Legality badge.
-        int errors = issues.Count(i => i.Severity == ListIssueSeverity.Error);
-        int warnings = issues.Count(i => i.Severity == ListIssueSeverity.Warning);
         ImGui.SameLine();
-        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        if (errors > 0) UiText.Colored(RedText, $"[{errors} error{(errors == 1 ? "" : "s")}]");
-        else if (warnings > 0) UiText.Colored(YellowText, $"[{warnings} warning{(warnings == 1 ? "" : "s")}]");
-        else UiText.Colored(GreenText, "[Legal]");
+        if (UiButton.Back("Cancel", UiChrome.ButtonSize("Cancel"))) ImGui.CloseCurrentPopup();
+        ImGui.EndPopup();
+    }
 
-        // Editable points limit (games run 1000-5000; the 1000 default was hard-coded until now).
-        // Advisory like everything else here (#003): over-cap only turns the header red.
-        ImGui.SameLine();
-        CenterOnToolbarRow(rowH, ImGui.GetFrameHeight());
-        // #403: InputInt puts its two step buttons INSIDE the item width, so the old flat 110px was the
-        // digits plus two buttons - and once the display scale grew the buttons there was nothing left
-        // for the number, which is how the limit came to be cut off. Ask for both explicitly: room for
-        // five digits AND the two buttons, measured in the font that is actually loaded.
-        float stepButtons = (ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X) * 2f;
-        ImGui.SetNextItemWidth(
-            stepButtons + ImGui.CalcTextSize("00000").X + (ImGui.GetStyle().FramePadding.X * 2f));
-        int limit = _list.PointsLimit;
-        if (ImGui.InputInt("pts limit", ref limit, 250) && limit > 0)
-            _list.PointsLimit = limit;
-
-        string header = PointsHeader(compiled.TotalPoints, _list.PointsLimit);
-        float headerW = ImGui.CalcTextSize(header).X;
-        ImGui.SameLine();
-        ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.GetStyle().WindowPadding.X - headerW);
-        CenterOnToolbarRow(rowH, ImGui.GetTextLineHeight());
-        UiText.Colored(compiled.TotalPoints > _list.PointsLimit ? RedText : WhiteText, header);
+    /// <summary>
+    /// New: an empty, unnamed army of the same game and faction at the same points limit. A deliberate fresh
+    /// start, so an earlier failed load no longer guards Save (#307) - the empty-list guard still does.
+    /// </summary>
+    internal void NewList()
+    {
+        EnsureLibrary();
+        _list = new BuilderList { PointsLimit = _list.PointsLimit, BookName = _book.Name };
+        _selectedListIndex = null;
+        _selectedRosterId = null;
+        _loadFailureMessage = null;
+        _failedLoadFingerprint = null;
+        SetStatus(EForgeStatusKind.Info, "New army started.");
     }
 
     /// <summary>
@@ -1117,67 +1200,183 @@ public class ArmyForgeScreen : IAppScreen
         ImGui.OpenPopup("Import from Army Forge");
     }
 
+    /// <summary>
+    /// The body, Total War "army setup" style (wish list, Army Forge Mockup): the clicked unit on the left;
+    /// on the right the Your Army box (points bar + the army's cards) over the Unit Roster (the book's cards
+    /// in Army Forge's category boxes, two columns).
+    /// </summary>
     private void DrawPanes(BuiltArmyFile compiled, IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
     {
         Vector2 avail = ImGui.GetContentRegionAvail();
         float spacing = ImGui.GetStyle().ItemSpacing.X;
-        float rosterW = avail.X * 0.24f;
-        float listW = avail.X * 0.36f;
+        float leftW = MathF.Min(MathF.Max(UiChrome.Em(22f), avail.X * 0.28f), avail.X * 0.45f);
 
-        ImGui.BeginChild("##forge-roster", new Vector2(rosterW, avail.Y), ImGuiChildFlags.Borders);
-        DrawRosterPane();
+        ImGui.BeginChild("##forge-unit", new Vector2(leftW, avail.Y), ImGuiChildFlags.Borders);
+        DrawUnitPanel(rows, issues);
         ImGui.EndChild();
 
         ImGui.SameLine(0, spacing);
-        ImGui.BeginChild("##forge-list", new Vector2(listW, avail.Y), ImGuiChildFlags.Borders);
-        DrawListPane(rows, issues, compiled.Units.Count);
+        ImGui.BeginGroup();
+        DrawArmyBox(compiled, rows, issues);
+        ImGui.Spacing();
+        UiText.Colored(WhiteText, "UNIT ROSTER");
+        ImGui.BeginChild("##forge-roster", new Vector2(0, 0), ImGuiChildFlags.Borders);
+        DrawRoster();
+        ImGui.EndChild();
+        ImGui.EndGroup();
+    }
+
+    // ── Your Army box ───────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// "YOUR ARMY", unit count, the points bar (used / limit, the limit typed in the bar; in a campaign the
+    /// treasury instead, not editable), the legality badge, then the army's cards. OPR has no unit cap, so
+    /// the cards wrap to a second row and then scroll.
+    /// </summary>
+    private void DrawArmyBox(BuiltArmyFile compiled, IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
+    {
+        Vector2 card = UnitPortraitCards.CardSize;
+        float innerW = MathF.Max(1f, ImGui.GetContentRegionAvail().X - ImGui.GetStyle().WindowPadding.X * 2f);
+        int stripRows = VisibleStripRows(UnitPortraitCards.RowsFor(rows.Count, innerW, card.X));
+        float stripH = stripRows * (card.Y + UnitPortraitCards.CardGap);
+        ImGui.BeginChild("##forge-army", new Vector2(0, ArmyBoxHeight(stripH)), ImGuiChildFlags.Borders,
+            ImGuiWindowFlags.NoScrollbar);
+
+        int unitCount = compiled.Units.Count;
+        UiText.Colored(WhiteText, "YOUR ARMY");
+        ImGui.SameLine();
+        UiText.Disabled($"{unitCount} unit{(unitCount == 1 ? "" : "s")}");
+
+        int limit = _list.PointsLimit;
+        PointsBarState bar = PointsBar(compiled.TotalPoints, limit);
+        string badge = LegalityBadge(issues);
+        int errors = issues.Count(i => i.Severity == ListIssueSeverity.Error);
+        int warnings = issues.Count(i => i.Severity == ListIssueSeverity.Warning);
+
+        // Right of the bar: "used /", the limit, the badge. Measured so the bar takes what is left.
+        float stepButtons = (ImGui.GetFrameHeight() + ImGui.GetStyle().ItemInnerSpacing.X) * 2f;
+        float limitW = _campaign == null
+            ? stepButtons + ImGui.CalcTextSize("00000").X + ImGui.GetStyle().FramePadding.X * 2f
+            : ImGui.CalcTextSize($"{limit} pts treasury").X;
+        string used = $"{compiled.TotalPoints} /";
+        float spacing = ImGui.GetStyle().ItemSpacing.X;
+        float tailW = ImGui.CalcTextSize(used).X + limitW + ImGui.CalcTextSize(" pts").X
+            + UiChrome.ButtonSize(badge).X + spacing * 4f;
+
+        ImGui.SameLine();
+        float barW = MathF.Max(UiChrome.Em(6f), ImGui.GetContentRegionAvail().X - tailW);
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, bar.Over ? new Vector4(0.80f, 0.25f, 0.25f, 1f)
+                                                             : new Vector4(0.45f, 0.65f, 0.80f, 1f));
+        ImGui.ProgressBar(bar.Fraction, new Vector2(barW, ImGui.GetFrameHeight()), bar.Label);
+        ImGui.PopStyleColor();
+        if (ImGui.IsItemHovered()) UiText.TooltipWrapped(bar.Over
+            ? $"Over the points limit by {bar.OverBy} pts."
+            : $"{bar.Left} pts left to spend.", 320f);
+
+        ImGui.SameLine();
+        UiText.Colored(bar.Over ? RedText : WhiteText, used);
+        ImGui.SameLine();
+        if (_campaign == null)
+        {
+            // Advisory like everything else here (#003): going over only turns the bar red.
+            ImGui.SetNextItemWidth(limitW);
+            if (ImGui.InputInt("##forge-limit", ref limit, 250) && limit > 0) _list.PointsLimit = limit;
+            if (ImGui.IsItemHovered()) UiText.TooltipWrapped("The game's points limit. Type a number or use - / +.", 320f);
+            ImGui.SameLine();
+            ImGui.TextUnformatted("pts");
+        }
+        else
+        {
+            UiText.Colored(bar.Over ? RedText : WhiteText, $"{limit} pts treasury");
+            if (ImGui.IsItemHovered()) UiText.TooltipWrapped(
+                "The campaign treasury. Anything you don't spend stays in it.", 320f);
+        }
+
+        ImGui.SameLine();
+        Vector4 badgeColor = errors > 0 ? RedText : warnings > 0 ? YellowText : GreenText;
+        ImGui.PushStyleColor(ImGuiCol.Text, badgeColor);
+        bool badgeHit = ImGui.Button(badge, UiChrome.ButtonSize(badge) with { Y = ImGui.GetFrameHeight() });
+        ImGui.PopStyleColor();
+        if (badgeHit && issues.Count > 0) _showIssues = !_showIssues;
+        if (ImGui.IsItemHovered())
+            UiText.TooltipWrapped(issues.Count == 0 ? "This army is legal."
+                : string.Join("\n", issues.Select(i => i.Message)) + "\n\nClick to list them under your army.", 460f);
+
+        // The cards.
+        ImGui.BeginChild("##forge-army-cards", new Vector2(0, stripH), ImGuiChildFlags.None);
+        if (rows.Count == 0)
+        {
+            UiText.Disabled("No units yet - click a roster card, then + ADD TO ARMY (or double-click it).");
+        }
+        else
+        {
+            UnitPortraitCards.CardEvent hit = _cards.DrawCardGrid("army", rows, _book.Faction,
+                _selectedListIndex ?? -1, i => ArmyCardTag(i, issues));
+            if (hit.Clicked >= 0)
+            {
+                _selectedListIndex = hit.Clicked;
+                _selectedRosterId = null;
+            }
+        }
         ImGui.EndChild();
 
-        ImGui.SameLine(0, spacing);
-        ImGui.BeginChild("##forge-config", new Vector2(0, avail.Y), ImGuiChildFlags.Borders);
-        DrawConfigPane(rows);
+        if (_showIssues && issues.Count > 0)
+        {
+            ImGui.BeginChild("##forge-issues", new Vector2(0, 0), ImGuiChildFlags.Borders);
+            ImGui.PushTextWrapPos(0f);
+            foreach (ListIssue issue in issues)
+                UiText.Colored(issue.Severity == ListIssueSeverity.Error ? RedText : YellowText, issue.Message);
+            ImGui.PopTextWrapPos();
+            ImGui.EndChild();
+        }
+        else _showIssues = false;
+
         ImGui.EndChild();
     }
 
-    private void DrawRosterPane()
+    /// <summary>The army box's height around a card strip of <paramref name="stripH"/>: header line, the
+    /// strip, and the problems list when it is open.</summary>
+    private float ArmyBoxHeight(float stripH)
     {
-        UiText.Disabled("ROSTER");
-        // At the top, not under the roster: with 40 units it sat a long scroll below where you picked one
-        // (found 2026-11-06). Double-clicking a unit still adds it too.
-        ImGui.SameLine();
-        ImGui.BeginDisabled(_selectedRosterId is null);
-        if (UiButton.Navigate("+ Add to list") && _selectedRosterId is not null)
-            AddToList(_selectedRosterId);
-        ImGui.EndDisabled();
-        ImGui.Separator();
-        foreach (RosterUnit unit in _book.Units)
+        var style = ImGui.GetStyle();
+        float header = ImGui.GetFrameHeight() + style.ItemSpacing.Y;
+        float issues = _showIssues ? ImGui.GetTextLineHeightWithSpacing() * 5f + style.WindowPadding.Y * 2f + style.ItemSpacing.Y : 0f;
+        return header + stripH + style.ItemSpacing.Y + issues + style.WindowPadding.Y * 2f;
+    }
+
+    /// <summary>The wish list's "wraps to a second row, then scrolls": at least one row (the empty-army
+    /// line sits in it), at most two.</summary>
+    internal static int VisibleStripRows(int rowsNeeded) => Math.Clamp(rowsNeeded, 1, 2);
+
+    /// <summary>The word over an army card's picture: a unit with a problem says "!", one half of a combined
+    /// unit says "Combined", a hero set to join a unit says "Joins".</summary>
+    private string? ArmyCardTag(int index, IReadOnlyList<ListIssue> issues)
+    {
+        if (issues.Any(x => x.UnitIndex == index && x.Severity == ListIssueSeverity.Error)) return "!";
+        if (index < _list.Units.Count && IsCombined(index)) return "Combined";
+        if (index < _list.Units.Count && !string.IsNullOrEmpty(_list.Units[index].JoinsUnitId)) return "Joins";
+        return null;
+    }
+
+    // ── Unit Roster ─────────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The book's units as cards in Army Forge's category boxes, two columns. A box goes in whichever column
+    /// is shorter so far, so the two run about even. Click = show it on the left; double-click = add it.
+    /// The book's spells and its data credit follow underneath, as before.
+    /// </summary>
+    private void DrawRoster()
+    {
+        if (ImGui.BeginTable("##roster-cols", 2, ImGuiTableFlags.SizingStretchSame))
         {
-            bool selected = unit.Id == _selectedRosterId;
-
-            // #403: full-block hit target, the same shape DrawListRow uses. The Selectable used to carry
-            // the NAME as its label, so it was one line tall and the stat line underneath was dead space
-            // that looked part of the row and did not select it. It is now an empty-label Selectable
-            // spanning both lines, drawn first with AllowOverlap, with the text painted back over it.
-            float lineH = ImGui.GetTextLineHeightWithSpacing();
-            Vector2 rowStart = ImGui.GetCursorPos();
-            ImGui.SetNextItemAllowOverlap();
-            if (ImGui.Selectable($"##roster-{unit.Id}", selected, ImGuiSelectableFlags.AllowDoubleClick,
-                    new Vector2(0f, lineH * 2f)))
+            ImGui.TableNextRow();
+            var columns = SplitIntoColumns(_rosterGroups.Select(g => g.Units.Count).ToList());
+            for (int col = 0; col < 2; col++)
             {
-                // Selecting a roster ("available") unit shows its read-only preview in the config pane; clear
-                // any list selection so the preview isn't masked by a still-selected list unit (list takes
-                // precedence in DrawConfigPane).
-                _selectedRosterId = unit.Id;
-                _selectedListIndex = null;
-                if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) AddToList(unit.Id);
+                ImGui.TableSetColumnIndex(col);
+                foreach (int g in columns[col]) DrawRosterBox(_rosterGroups[g]);
             }
-            ImGui.SetCursorPos(rowStart);
-
-            ImGui.TextUnformatted(unit.Name);
-            ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize($"{unit.BasePointCost}").X);
-            UiText.Disabled($"{unit.BasePointCost}");
-            // #403: no indent - the stats line up under the name they belong to.
-            UiText.Disabled($"Qua {unit.Quality}+ Def {unit.Defense}+");
+            ImGui.EndTable();
         }
 
         if (_book.Spells.Count > 0)
@@ -1198,145 +1397,132 @@ public class ArmyForgeScreen : IAppScreen
         }
     }
 
-    private void DrawListPane(IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues, int unitCount)
+    private void DrawRosterBox(ForgeRosterCategories.Group group)
     {
-        UiText.Disabled($"LIST  [{unitCount} unit{(unitCount == 1 ? "" : "s")}]");
-        ImGui.Separator();
-        if (_list.Units.Count == 0)
-        {
-            UiText.Wrapped("Your list is empty. Select a unit in the roster and click \"+ Add to list\".");
-            return;
-        }
-
-        int removeIndex = -1;
-        var rendered = new bool[_list.Units.Count];
-        for (int i = 0; i < _list.Units.Count && i < rows.Count; i++)
-        {
-            if (rendered[i]) continue;
-            int partner = CombinePartnerIndex(i);
-            if (partner >= 0 && partner < rows.Count)
-            {
-                // Combined pair: one grouped card (link tag + summed [size]/pts), then both editable sub-rows.
-                int baseIdx = string.IsNullOrEmpty(_list.Units[i].CombinedWithId) ? i : partner;
-                int copyIdx = baseIdx == i ? partner : i;
-                int totalModels = rows[baseIdx].ModelCount + rows[copyIdx].ModelCount;
-                int totalPts = rows[baseIdx].PointCost + rows[copyIdx].PointCost;
-
-                UiText.Colored(CyanText, "[Combined]");
-                ImGui.SameLine();
-                ImGui.TextUnformatted($"{rows[baseIdx].Name} [{totalModels}]");
-                string gpts = $"{totalPts}";
-                ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(gpts).X);
-                UiText.Disabled(gpts);
-
-                ImGui.Indent();
-                DrawListRow(baseIdx, rows, issues, ref removeIndex);
-                DrawListRow(copyIdx, rows, issues, ref removeIndex);
-                ImGui.Unindent();
-                ImGui.Separator();
-                rendered[baseIdx] = rendered[copyIdx] = true;
-            }
-            else
-            {
-                DrawListRow(i, rows, issues, ref removeIndex);
-                rendered[i] = true;
-            }
-        }
-        if (removeIndex >= 0) RemoveFromList(removeIndex);
-
-        if (issues.Count > 0)
-        {
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.PushTextWrapPos(0f);
-            foreach (ListIssue issue in issues)
-                UiText.Colored(issue.Severity == ListIssueSeverity.Error ? RedText : YellowText, issue.Message);
-            ImGui.PopTextWrapPos();
-        }
-    }
-
-    // One list-pane unit block: full-row select target + name/[size]/pts/remove + stat lines. Shared by
-    // standalone units and the sub-rows of a combined pair (which DrawListPane draws indented under a header).
-    private void DrawListRow(int i, IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues, ref int removeIndex)
-    {
-        UnitFileEntry unit = rows[i];
-        bool selected = _selectedListIndex == i;
-
-        // Full-row hit target: an invisible Selectable spanning the row's whole block (name + stat lines),
-        // drawn FIRST with AllowOverlap so the remove button and the overlaid text on top of it still receive
-        // their own clicks. Clicking anywhere else in the rectangle selects the unit.
-        // The stat lines wrap (#259 segments them per rule), so their height is measured, not assumed: an
-        // under-sized rectangle would leave the bottom of a wrapped row unclickable.
-        float lineH = ImGui.GetTextLineHeightWithSpacing();
-        float statWrapW = MathF.Max(1f, ImGui.GetContentRegionAvail().X - ImGui.GetStyle().IndentSpacing);
-        int lines = 2; // name + "Qua X+ Def Y+"
-        foreach (WeaponFileEntry weapon in unit.Weapons)
-            lines += RuleTextFlow.MeasureLines(RuleTextFlow.WeaponLine(weapon), statWrapW);
-        if (unit.SpecialRules.Count > 0)
-            lines += RuleTextFlow.MeasureLines(RuleTextFlow.RuleList(unit.SpecialRules), statWrapW);
-        Vector2 rowStart = ImGui.GetCursorPos();
-        ImGui.SetNextItemAllowOverlap();
-        if (ImGui.Selectable($"##li{i}", selected, ImGuiSelectableFlags.None, new Vector2(0, lines * lineH)))
-        {
-            _selectedListIndex = i;
-            _selectedRosterId = null; // mutually exclusive with the roster preview
-        }
-        ImGui.SetCursorPos(rowStart);
-
-        if (issues.Any(x => x.UnitIndex == i && x.Severity == ListIssueSeverity.Error))
-        {
-            UiText.Colored(RedText, "!");
-            ImGui.SameLine();
-        }
-        ImGui.TextUnformatted($"{unit.Name} [{unit.ModelCount}]");
-
-        string pts = $"{unit.PointCost}";
-        ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(pts).X - 30f);
-        UiText.Disabled(pts);
+        ImGui.PushID(group.Title);
+        UiText.Colored(ImGuiTheme.HeaderAccent, group.Title.ToUpperInvariant());
         ImGui.SameLine();
-        if (ImGui.SmallButton($"x##rm{i}")) removeIndex = i;
-
-        ImGui.Indent();
-        UiText.Disabled($"Qua {unit.Quality}+ Def {unit.Defense}+");
-        foreach (WeaponFileEntry weapon in unit.Weapons)
-            RuleTextFlow.Draw(RuleTextFlow.WeaponLine(weapon), _glossary, ImGuiCol.TextDisabled);
-        if (unit.SpecialRules.Count > 0)
-            RuleTextFlow.Draw(RuleTextFlow.RuleList(unit.SpecialRules), _glossary, ImGuiCol.TextDisabled);
-        ImGui.Unindent();
+        UiText.Disabled($"({group.Units.Count})");
         ImGui.Separator();
+
+        var cards = group.Units.Select(u => _rosterCards[u.Id].Unit).ToList();
+        int selected = group.Units.ToList().FindIndex(u => u.Id == _selectedRosterId);
+        UnitPortraitCards.CardEvent hit = _cards.DrawCardGrid("box", cards, _book.Faction, selected);
+        if (hit.Clicked >= 0)
+        {
+            _selectedRosterId = group.Units[hit.Clicked].Id;
+            _selectedListIndex = null;
+        }
+        if (hit.DoubleClicked >= 0) AddToList(group.Units[hit.DoubleClicked].Id);
+        ImGui.Spacing();
+        ImGui.Spacing();
+        ImGui.PopID();
     }
 
-    private void DrawConfigPane(IReadOnlyList<UnitFileEntry> rows)
+    /// <summary>
+    /// Which of the two roster columns each box goes in, keeping the boxes in Army Forge's order down each
+    /// column: every box goes to the column with fewer cards so far (ties to the left).
+    /// </summary>
+    internal static List<int>[] SplitIntoColumns(IReadOnlyList<int> boxSizes)
     {
-        // A selected list unit takes precedence (show its compiled stats); otherwise preview the roster pick.
-        if (_selectedListIndex is int idx && idx >= 0 && idx < rows.Count)
+        var columns = new[] { new List<int>(), new List<int>() };
+        int left = 0, right = 0;
+        for (int i = 0; i < boxSizes.Count; i++)
         {
-            DrawCompiledUnit(idx, rows);
+            // A box costs its cards plus about one card's worth for its title line.
+            int cost = boxSizes[i] + 1;
+            if (left <= right) { columns[0].Add(i); left += cost; }
+            else { columns[1].Add(i); right += cost; }
+        }
+        return columns;
+    }
+
+    // ── Left unit panel ─────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The clicked unit. From the roster: portrait, stats, weapons, rules, the upgrades it could take
+    /// (read-only) and + ADD TO ARMY. From your army: the same, with the upgrades editable, Joins unit,
+    /// Combined Unit, its own problems and Remove from army. The action button stays pinned at the bottom.
+    /// </summary>
+    private void DrawUnitPanel(IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
+    {
+        float buttonH = UiChrome.ButtonSize("+ ADD TO ARMY").Y + ImGui.GetStyle().ItemSpacing.Y;
+
+        if (_selectedListIndex is int idx && idx >= 0 && idx < rows.Count && idx < _list.Units.Count)
+        {
+            ImGui.BeginChild("##unit-body", new Vector2(0, -buttonH), ImGuiChildFlags.None);
+            DrawCompiledUnit(idx, rows, issues);
+            ImGui.EndChild();
+            if (UiButton.Back("Remove from army", new Vector2(-1f, UiChrome.ButtonSize("Remove").Y)))
+                RemoveFromList(idx);
             return;
         }
+
         if (Selected is RosterUnit roster)
         {
+            ImGui.BeginChild("##unit-body", new Vector2(0, -buttonH), ImGuiChildFlags.None);
             DrawRosterPreview(roster);
+            ImGui.EndChild();
+            if (UiButton.Confirm("+ ADD TO ARMY", new Vector2(-1f, UiChrome.ButtonSize("+ ADD TO ARMY").Y)))
+                AddToList(roster.Id);
             return;
         }
-        UiText.Disabled("Select a unit from your list, or add one from the roster.");
+
+        UiText.Disabled("Click a unit card to see it here.");
     }
 
-    private void DrawCompiledUnit(int idx, IReadOnlyList<UnitFileEntry> rows)
+    /// <summary>Portrait beside where the unit is from, its name, its Army Forge category and size, and its
+    /// points; the stat pills under it.</summary>
+    private void DrawUnitTitle(string where, UnitFileEntry unit, RosterUnit? roster)
+    {
+        Vector2 portrait = new(UiChrome.Em(5f), UiChrome.Em(6.5f));
+        _cards.DrawPortrait(unit.Name, _book.Faction, portrait);
+        ImGui.SameLine();
+        ImGui.BeginGroup();
+        UiText.Disabled(where);
+        ImGui.PushTextWrapPos(0f);
+        UiText.Colored(WhiteText, unit.Name);
+        ImGui.PopTextWrapPos();
+        string category = roster is null ? "" : ForgeRosterCategories.TitleFor(roster, _book.GameSystem) + " - ";
+        UiText.Disabled($"{category}{unit.ModelCount} model{(unit.ModelCount == 1 ? "" : "s")}");
+        UiText.Colored(WhiteText, $"{unit.PointCost} pts");
+        ImGui.EndGroup();
+        ForgeUnitDetail.DrawStatPills(unit);
+    }
+
+    private void DrawCompiledUnit(int idx, IReadOnlyList<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
     {
         BuilderUnit bu = _list.Units[idx];
         // Recompile this unit with its wargear-item detail (names survive) for display + target availability.
         (UnitFileEntry unit, List<ItemEntry> items) = ListCompiler.CompileUnitDetailed(_book, bu);
+        RosterUnit? roster = _book.Units.FirstOrDefault(u => u.Id == bu.RosterUnitId);
 
-        ForgeUnitDetail.DrawHeader(unit);
+        DrawUnitTitle("IN YOUR ARMY", unit, roster);
         ForgeUnitDetail.DrawGear(unit, items, _glossary);
+
+        // This unit's own problems, where its upgrades are edited.
+        List<ListIssue> mine = issues.Where(i => i.UnitIndex == idx).ToList();
+        if (mine.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.PushTextWrapPos(0f);
+            foreach (ListIssue issue in mine)
+                UiText.Colored(issue.Severity == ListIssueSeverity.Error ? RedText : YellowText, issue.Message);
+            ImGui.PopTextWrapPos();
+        }
 
         DrawHeroJoin(idx, unit, rows);
         DrawCombinedCheckbox(idx, unit);
 
-        RosterUnit? roster = _book.Units.FirstOrDefault(u => u.Id == bu.RosterUnitId);
         if (roster is not null)
         {
+            if (IsCaster(roster) && _book.Spells.Count > 0)
+            {
+                ImGui.Spacing();
+                UiText.Disabled("SPELLS");
+                ImGui.Separator();
+                DrawSpellList();
+            }
             // When combined, the partner copy is the mirror target for whole-unit (Affects=All) upgrades.
             int partnerIdx = CombinePartnerIndex(idx);
             BuilderUnit? mirror = partnerIdx >= 0 ? _list.Units[partnerIdx] : null;
@@ -1522,27 +1708,20 @@ public class ArmyForgeScreen : IAppScreen
         return ListCompiler.AvailableApplications(unit.Weapons, items, section.Targets);
     }
 
-    // Read-only profile of an available (roster) unit, mirroring what the real Army Forge shows in its config
-    // column when you select a unit on the left: stats, default gear, rules, base, the caster spell list (for
-    // caster units), and every upgrade section with all its options - all non-interactive. The upgrade option
-    // labels already bake in the full gained profile (e.g. "Energy Spear (A2, AP(4))"), so OptionSummary alone
-    // shows the gear each option grants; no need to re-list WeaponsGained/RulesGained.
+    // Read-only profile of a roster unit, as the real Army Forge shows it when you pick a unit: portrait,
+    // stats, weapons table, wargear and rules (hover = book wording), base, the caster spell list for a
+    // caster, and every upgrade section with all its options - non-interactive until the unit is in the army.
+    // The option labels already carry the full gained profile (e.g. "Energy Spear (A2, AP(4))").
     private void DrawRosterPreview(RosterUnit unit)
     {
-        ImGui.TextUnformatted(RosterStatLine(unit));
-        ImGui.Separator();
+        (UnitFileEntry card, List<ItemEntry> items) = _rosterCards[unit.Id];
+        DrawUnitTitle("FROM THE ROSTER", card, unit);
+        ForgeUnitDetail.DrawGear(card, items, _glossary);
         ImGui.Indent();
-        foreach (WeaponFileEntry weapon in unit.Weapons)
-            RuleTextFlow.Draw(RuleTextFlow.WeaponLine(weapon), _glossary, ImGuiCol.TextDisabled);
-        foreach (ItemEntry item in unit.Items)
-            RuleTextFlow.Draw(RuleTextFlow.ItemLine(item), _glossary, ImGuiCol.TextDisabled);
-        if (unit.Rules.Count > 0)
-            RuleTextFlow.Draw(RuleTextFlow.RuleList(unit.Rules), _glossary, ImGuiCol.TextDisabled);
         UiText.Disabled($"Base: {BaseSummary(unit.Base)}");
         ImGui.Unindent();
 
-        // Caster units draw from the army-wide spell list; show it here (the roster pane lists it once for the
-        // whole book, but the real Army Forge surfaces it per caster unit).
+        // Caster units draw from the army-wide spell list; show it here, as the real Army Forge does.
         if (IsCaster(unit) && _book.Spells.Count > 0)
         {
             ImGui.Spacing();
@@ -1553,11 +1732,12 @@ public class ArmyForgeScreen : IAppScreen
 
         if (unit.Sections.Count == 0) return;
         ImGui.Spacing();
-        UiText.Disabled("UPGRADES");
+        UiText.Colored(ImGuiTheme.HeaderAccent, "UPGRADES (preview)");
+        UiText.Disabled("Every upgrade this unit can take. Add it to your army to choose.");
         ImGui.Separator();
         foreach (UpgradeSection section in unit.Sections)
         {
-            ImGui.TextUnformatted(section.Label);
+            UiText.Colored(new Vector4(0.95f, 0.82f, 0.55f, 1f), section.Label);
             ImGui.Indent();
             foreach (UpgradeOption option in section.Options)
                 RuleTextFlow.Draw(RuleTextFlow.OptionLabel(option, OptionSummary(option)), _glossary,
@@ -1880,6 +2060,34 @@ public class ArmyForgeScreen : IAppScreen
     // ── Pure formatting seams (unit-tested; ImGui itself is hand-verified) ──────────────────────────────
 
     internal static string PointsHeader(int total, int limit) => $"{total} / {limit} pts";
+
+    /// <summary>What the points bar shows: how full it is (0..1), whether the army is over the limit, by how
+    /// much, how much is left, and the text written on the bar.</summary>
+    internal readonly record struct PointsBarState(float Fraction, bool Over, int OverBy, int Left, string Label);
+
+    /// <summary>
+    /// The points bar for <paramref name="used"/> points against <paramref name="limit"/>. Over the limit the
+    /// bar is full and says by how much; a limit of 0 or less (no limit set) shows an empty bar rather than
+    /// dividing by it. Exactly at the limit is NOT over - the validator's own rule is "more than the limit".
+    /// </summary>
+    internal static PointsBarState PointsBar(int used, int limit)
+    {
+        if (limit <= 0) return new PointsBarState(0f, false, 0, 0, $"{used} pts");
+        bool over = used > limit;
+        float fraction = Math.Clamp(used / (float)limit, 0f, 1f);
+        string label = over ? $"OVER LIMIT by {used - limit} pts" : $"{used} / {limit} pts";
+        return new PointsBarState(fraction, over, over ? used - limit : 0, over ? 0 : limit - used, label);
+    }
+
+    /// <summary>The legality badge: "Legal", or how many errors (errors outrank warnings) / warnings.</summary>
+    internal static string LegalityBadge(IReadOnlyList<ListIssue> issues)
+    {
+        int errors = issues.Count(i => i.Severity == ListIssueSeverity.Error);
+        int warnings = issues.Count(i => i.Severity == ListIssueSeverity.Warning);
+        if (errors > 0) return $"{errors} error{(errors == 1 ? "" : "s")}";
+        if (warnings > 0) return $"{warnings} warning{(warnings == 1 ? "" : "s")}";
+        return "Legal";
+    }
 
     internal static string RosterStatLine(RosterUnit u) =>
         $"{u.Name} [{u.BaseModelCount}] - Qua {u.Quality}+ Def {u.Defense}+  ({u.BasePointCost} pts)";

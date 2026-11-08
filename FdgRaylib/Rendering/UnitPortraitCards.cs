@@ -85,30 +85,68 @@ internal sealed class UnitPortraitCards
 
     private void DrawCards(ArmyListFile army)
     {
-        float em = ImGui.GetFontSize();
-        float cardW = em * 6.2f, picH = cardW * 0.9f;
-        float lineH = ImGui.GetTextLineHeight();
-        float cardH = picH + lineH * 3f + 10f;
-        float gap = 6f;
-        int columns = Math.Max(1, (int)((ImGui.GetContentRegionAvail().X + gap) / (cardW + gap)));
-        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        CardEvent hit = DrawCardGrid("##grid", army.Units, army.Faction, _selected);
+        if (hit.Clicked >= 0) _selected = _selected == hit.Clicked ? -1 : hit.Clicked;
+    }
 
-        for (int i = 0; i < army.Units.Count; i++)
+    /// <summary>What the mouse did to a grid of cards this frame: the index clicked / double-clicked, or -1.</summary>
+    internal readonly record struct CardEvent(int Clicked, int DoubleClicked);
+
+    /// <summary>One card's size in the current font. Every grid uses it, so a strip can be sized in rows.</summary>
+    internal static Vector2 CardSize
+    {
+        get
         {
-            UnitFileEntry unit = army.Units[i];
-            if (i % columns != 0) ImGui.SameLine(0f, gap);
+            float cardW = ImGui.GetFontSize() * 6.2f;
+            return new Vector2(cardW, cardW * 0.9f + ImGui.GetTextLineHeight() * 3f + 10f);
+        }
+    }
+
+    /// <summary>The gap between cards, both ways.</summary>
+    internal const float CardGap = 6f;
+
+    /// <summary>
+    /// Draws <paramref name="units"/> as cards wrapping at the available width, at the cursor - the one card
+    /// look every screen shares. The caller owns which card is selected (<paramref name="selected"/>, or -1)
+    /// and decides what a click means; hover is the stats tooltip, always. <paramref name="tag"/> may put a
+    /// short word over a card's picture ("Combined", "!", "pick a trait"); null or empty draws none.
+    /// </summary>
+    internal CardEvent DrawCardGrid(string id, IReadOnlyList<UnitFileEntry> units, string faction, int selected,
+        Func<int, string?>? tag = null)
+    {
+        Vector2 size = CardSize;
+        float cardW = size.X, cardH = size.Y, picH = cardW * 0.9f;
+        float lineH = ImGui.GetTextLineHeight();
+        int columns = Math.Max(1, (int)((ImGui.GetContentRegionAvail().X + CardGap) / (cardW + CardGap)));
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        int clicked = -1, doubleClicked = -1;
+
+        ImGui.PushID(id);
+        for (int i = 0; i < units.Count; i++)
+        {
+            UnitFileEntry unit = units[i];
+            if (i % columns != 0) ImGui.SameLine(0f, CardGap);
             ImGui.PushID(i);
             Vector2 p0 = ImGui.GetCursorScreenPos();
-            if (ImGui.InvisibleButton("##card", new Vector2(cardW, cardH)))
-                _selected = _selected == i ? -1 : i;
+            ImGui.InvisibleButton("##card", new Vector2(cardW, cardH));
             bool hovered = ImGui.IsItemHovered();
+            // On the PRESS, not the release: a double-click's second press then reports the click and the
+            // double-click in the same frame, and nothing arrives afterwards to undo what the double did.
+            if (ImGui.IsItemClicked(ImGuiMouseButton.Left)) clicked = i;
+            if (hovered && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) doubleClicked = i;
             Vector2 p1 = p0 + new Vector2(cardW, cardH);
 
             dl.AddRectFilled(p0, p1, ImGui.GetColorU32(new Vector4(0.12f, 0.12f, 0.14f, 1f)), 4f);
             Vector2 i0 = p0 + new Vector2(3f, 3f), i1 = new(p1.X - 3f, p0.Y + 3f + picH);
-            DrawPicture(dl, i0, i1, unit.Name, army.Faction);
+            DrawPicture(dl, i0, i1, unit.Name, faction);
 
             dl.PushClipRect(p0, p1, true);
+            if (tag?.Invoke(i) is { Length: > 0 } word)
+            {
+                Vector2 ts = ImGui.CalcTextSize(word);
+                dl.AddRectFilled(i0, i0 + ts + new Vector2(6f, 2f), ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.75f)));
+                dl.AddText(i0 + new Vector2(3f, 1f), ImGui.GetColorU32(ImGuiTheme.HeaderAccent), word);
+            }
             (string name, string facts) = CardCaption(unit);
             float y = i1.Y + 3f;
             foreach (string line in WrapTwoLines(name, cardW - 8f))
@@ -119,14 +157,35 @@ internal sealed class UnitPortraitCards
             dl.AddText(new Vector2(p0.X + 4f, p0.Y + cardH - lineH - 3f), ImGui.GetColorU32(ImGuiCol.TextDisabled), facts);
             dl.PopClipRect();
 
-            uint border = i == _selected ? ImGui.GetColorU32(ImGuiTheme.HeaderAccent)
+            uint border = i == selected ? ImGui.GetColorU32(ImGuiTheme.HeaderAccent)
                 : hovered ? ImGui.GetColorU32(new Vector4(0.8f, 0.8f, 0.85f, 0.9f))
                 : ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.34f, 1f));
-            dl.AddRect(p0, p1, border, 4f, ImDrawFlags.None, i == _selected ? 3f : 1.5f);
+            dl.AddRect(p0, p1, border, 4f, ImDrawFlags.None, i == selected ? 3f : 1.5f);
 
             if (hovered) UiText.TooltipWrapped(StatsTooltip(unit), 440f);
             ImGui.PopID();
         }
+        ImGui.PopID();
+        return new CardEvent(clicked, doubleClicked);
+    }
+
+    /// <summary>How many rows of cards <paramref name="count"/> cards make at <paramref name="width"/>.</summary>
+    internal static int RowsFor(int count, float width, float cardWidth)
+    {
+        if (count <= 0) return 0;
+        int columns = Math.Max(1, (int)((width + CardGap) / (cardWidth + CardGap)));
+        return (count + columns - 1) / columns;
+    }
+
+    /// <summary>The unit's picture alone, filling <paramref name="size"/> at the cursor (the unit panel's
+    /// portrait). Same picture, same fallbacks as the cards.</summary>
+    internal void DrawPortrait(string unitName, string faction, Vector2 size)
+    {
+        Vector2 p0 = ImGui.GetCursorScreenPos();
+        ImGui.Dummy(size);
+        ImDrawListPtr dl = ImGui.GetWindowDrawList();
+        DrawPicture(dl, p0, p0 + size, unitName, faction);
+        dl.AddRect(p0, p0 + size, ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.34f, 1f)), 3f);
     }
 
     private void DrawPicture(ImDrawListPtr dl, Vector2 i0, Vector2 i1, string unitName, string faction)
