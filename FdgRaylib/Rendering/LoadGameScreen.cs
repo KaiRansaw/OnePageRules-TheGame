@@ -152,7 +152,7 @@ public sealed class LoadGameScreen : IAppScreen
         {
             s.GameSystem = settings.GameSystem;
             s.GameLabel = GameSystemInfo.DisplayName(settings.GameSystem);
-            (s.TableW, s.TableH) = GameWideConstants.TableSizeFor(settings.GameSystem);
+            (s.TableW, s.TableH) = TableSizing.Resolve(settings);
         }
         if (table.Progress.MissionCards is { } cards)
             s.Vp = slots.Select(sl => cards.Vp.TryGetValue(sl.SlotID, out int v) ? v : 0).ToList();

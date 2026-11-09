@@ -32,7 +32,13 @@ public sealed class MapPickerScreen : IAppScreen
 {
     /// <summary>What the lobby is choosing a map for.</summary>
     public readonly record struct Request(EGameSystem System, EGameMode Mode, ETableBackground Background,
-        EDeploymentStyle Deployment, int Sides, string? Current);
+        EDeploymentStyle Deployment, int Sides, string? Current, float TableW = 0f, float TableH = 0f)
+    {
+        /// <summary>The table the game is set up for (Kai, 2026-11-08: it grows with the army points), or the
+        /// system's book table when the caller did not say.</summary>
+        public (float W, float H) Table => TableW > 0f && TableH > 0f
+            ? (TableW, TableH) : GameWideConstants.TableSizeFor(System);
+    }
 
     /// <summary>A map was chosen: its path, or null for Random.</summary>
     public Action<string?>? OnChosen;
@@ -66,7 +72,7 @@ public sealed class MapPickerScreen : IAppScreen
     private void Reload()
     {
         _layouts.Clear();
-        (float gw, float gh) = GameWideConstants.TableSizeFor(_request.System);
+        (float gw, float gh) = _request.Table;
         var fitting = new List<string>();
         _otherSizeCount = 0;
         foreach (string path in FdgRaylib.SaveLoad.MapPaths.List())
@@ -121,7 +127,7 @@ public sealed class MapPickerScreen : IAppScreen
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse
             | ImGuiWindowFlags.NoTitleBar);
 
-        (float tw, float th) = GameWideConstants.TableSizeFor(_request.System);
+        (float tw, float th) = _request.Table;
 
         float margin = 20f;
         ImGui.SetCursorPos(new Vector2(margin, margin));
@@ -202,7 +208,7 @@ public sealed class MapPickerScreen : IAppScreen
         }
 
         ImDrawListPtr dl = ImGui.GetWindowDrawList();
-        (float tw, float th) = GameWideConstants.TableSizeFor(_request.System);
+        (float tw, float th) = _request.Table;
         TerrainLayoutFile? layout = path == null ? null : Layout(path);
         MapThumbnail.Draw(dl, at, new Vector2(tileW, tileH), tw, th, layout, _request.Background,
             Horde ? MapThumbnail.EFallbackZones.Horde : MapThumbnail.EFallbackZones.None,

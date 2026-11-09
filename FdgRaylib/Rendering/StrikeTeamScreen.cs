@@ -1040,8 +1040,12 @@ public sealed class StrikeTeamScreen : IAppScreen
         // unit - once per card per frame was too much. Confirm still goes through CampaignEconomy.Recruit,
         // which checks everything again.
         bool hero = IsHeroRoster(roster);
-        if (hero && (cartIsHero.Any(h => h) || CampaignEconomy.HeroRecruitUsed(army)))
-            return "Only one new Hero may be recruited after each mission.";
+        if (hero && CampaignEconomy.HeroRecruitBlockedReason(army) is { } heroReason)
+            return heroReason;
+        if (hero && cartIsHero.Any(h => h))
+            return army.StrikeTeam is { Matches: 0 }
+                ? "Before the first mission an army may have only one Hero."
+                : "Only one new Hero may be recruited after each mission.";
         if (hero && CampaignEconomy.HeroCount(army) + cartIsHero.Count(h => h) >= CampaignNumbers.MaxHeroes)
             return $"An army may only have {CampaignNumbers.MaxHeroes} Heroes at once.";
         int left = (army.StrikeTeam?.BankedPoints ?? 0) - cartTotal;

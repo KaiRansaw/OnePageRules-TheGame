@@ -1763,6 +1763,76 @@ public class LobbyScreen : IAppScreen
         ImGui.EndDisabled();
     }
 
+    /// <summary>
+    /// The table the game is set up for, ignoring any chosen map: a size picked here, else automatic from the
+    /// army points (Kai, 2026-11-08). Select Map offers maps drawn for this size.
+    /// </summary>
+    private (float W, float H) TableWithoutMap() =>
+        _viewModel!.ChosenTableSize
+        ?? FDG.TableSizing.AutoSize(_viewModel.GameSystem, _viewModel.GameMode, _viewModel.ArmyPoints);
+
+    /// <summary>
+    /// Table size (Kai, 2026-11-08: "larger maps for personal choice ... up to 10k points ... want the maps to
+    /// reflect their size"). Automatic by default - the book table, growing with the army points above a full
+    /// match - or any bigger size picked by hand. A chosen map always plays on the table it was drawn for, so
+    /// the setting shows the map's size and locks while one is chosen. Not shown for Horde or the Quest
+    /// games, which keep the book table.
+    /// </summary>
+    private void DrawTableSizeChoice(bool isHost)
+    {
+        EGameSystem system = _viewModel!.GameSystem;
+        EGameMode mode = _viewModel.GameMode;
+        if (!FDG.TableSizing.CanGrow(system, mode)) return;
+
+        const string tooltip = "How big the table is. The books play every game on one table (6' x 4' for "
+            + "Grimdark Future and Age of Fantasy, 4' x 4' for Firefight and Skirmish).\n"
+            + "Automatic keeps the book table up to a full-size game and makes it bigger for bigger armies, "
+            + "so there is the same room per point. Bigger tables grow wider rather than deeper, because the "
+            + "armies still have to meet in the same number of rounds.\n"
+            + "A map always plays on the table it was drawn for. House rule above the book table.";
+
+        ImGui.TextUnformatted("Table size");
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) UiText.TooltipWrapped(tooltip);
+        ImGui.SameLine();
+        FillRowItemWidth();
+
+        (float W, float H)? map = _viewModel.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile
+            ? _viewModel.MapTableSize : null;
+        (float W, float H) auto = FDG.TableSizing.AutoSize(system, mode, _viewModel.ArmyPoints);
+        (float W, float H)? chosen = _viewModel.ChosenTableSize;
+        string preview = map is { } m ? $"{FDG.TableSizing.Label(m.W, m.H)} (set by the map)"
+            : chosen is { } c ? FDG.TableSizing.Label(c.W, c.H)
+            : $"Automatic - {FDG.TableSizing.Label(auto.W, auto.H)}";
+
+        ImGui.BeginDisabled(!isHost || map != null);
+        if (UiCombo.Begin("##tablesize", preview, ImGuiComboFlags.HeightLarge))
+        {
+            if (ImGui.Selectable($"Automatic - {FDG.TableSizing.Label(auto.W, auto.H)}##auto", chosen == null))
+                _viewModel.SetTableSize(null);
+            if (ImGui.IsItemHovered())
+                UiText.TooltipWrapped($"Picks the table from the army points: {_viewModel.ArmyPoints} pts per "
+                    + $"player plays on {FDG.TableSizing.Label(auto.W, auto.H)}.");
+            (float W, float H) book = FDG.GameWideConstants.TableSizeFor(system);
+            foreach ((float w, float h) in FDG.TableSizing.SizesFor(system))
+            {
+                bool isBook = FDG.TableSizing.Same((w, h), book);
+                bool selected = chosen is { } cur && FDG.TableSizing.Same(cur, (w, h));
+                if (ImGui.Selectable($"{FDG.TableSizing.Label(w, h)}{(isBook ? " (the book's table)" : "")}##{w}x{h}", selected))
+                    _viewModel.SetTableSize((w, h));
+                if (ImGui.IsItemHovered())
+                    UiText.TooltipWrapped(isBook
+                        ? "The table the core rules play on."
+                        : $"A bigger table - house rule. Roughly right for {FDG.TableSizing.SuggestedPoints(system, w, h)} pts per player.");
+            }
+            ImGui.EndCombo();
+        }
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            UiText.TooltipWrapped(map != null
+                ? "A map always plays on the table it was drawn for. Pick Random to choose the size here."
+                : tooltip);
+    }
+
     private void DrawTableTab(bool isHost, bool locked)
     {
         EGameSystem system = _viewModel!.GameSystem;
@@ -1770,6 +1840,7 @@ public class LobbyScreen : IAppScreen
 
         ImGui.BeginDisabled(locked);
         DrawMapChoice();
+        DrawTableSizeChoice(isHost);
         ImGui.EndDisabled();
 
         // #265 table surface: cosmetic only, so a resumed game may still re-pick it.
@@ -2036,6 +2107,7 @@ public class LobbyScreen : IAppScreen
     private string? _previewLayoutPath;
     private FDG.SaveLoad.TerrainLayoutFile? _previewLayout;
     private FDG.SaveLoad.TerrainLayoutFile? _defaultLayout;
+    private (float W, float H) _defaultLayoutSize;
 
     private static uint U32(Raylib_cs.Color c, float alpha = 1f) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f * alpha));
@@ -2047,7 +2119,7 @@ public class LobbyScreen : IAppScreen
     /// the layout is known before the game), deployment zones and fixed objectives.</summary>
     private void DrawMapPreview()
     {
-        (float gameW, float gameH) = FDG.GameWideConstants.TableSizeFor(_viewModel!.GameSystem);
+        (float gameW, float gameH) = TableWithoutMap();
         float tw = gameW, th = gameH;
         bool horde = GameSystemInfo.IsHordeLike(_viewModel!.GameMode);
 
@@ -2056,7 +2128,12 @@ public class LobbyScreen : IAppScreen
         switch (_viewModel.TerrainPlacementMode)
         {
             case ETerrainPlacementMode.AutoFromLayout:
-                layout = _defaultLayout ??= FDG.Stages.DefaultTerrainPool.Get();
+                if (_defaultLayout == null || !FDG.TableSizing.Same(_defaultLayoutSize, (tw, th)))
+                {
+                    _defaultLayout = FDG.Stages.DefaultTerrainPool.ForTable(tw, th, out _);
+                    _defaultLayoutSize = (tw, th);
+                }
+                layout = _defaultLayout;
                 terrainNote = "default terrain layout";
                 break;
             case ETerrainPlacementMode.LoadFromFile:
@@ -2068,18 +2145,11 @@ public class LobbyScreen : IAppScreen
                 }
                 layout = _previewLayout;
                 terrainNote = layout != null ? $"map: {(string.IsNullOrWhiteSpace(layout.Name) ? Path.GetFileNameWithoutExtension(_previewLayoutPath) : layout.Name)}" : "no map chosen";
-                // Draw the map's own table. A map drawn for another size is still playable - the game
-                // sets the table from the SYSTEM, not the map - but previewing it at the game's size
-                // would show a board that is not the one that was drawn.
+                // A map plays on the table it was drawn for (Kai, 2026-11-08), so the preview is that table.
                 if (layout is { TableWidthInches: > 0f, TableHeightInches: > 0f })
                 {
                     tw = layout.TableWidthInches;
                     th = layout.TableHeightInches;
-                    if (MathF.Abs(tw - gameW) > 0.01f || MathF.Abs(th - gameH) > 0.01f)
-                    {
-                        terrainNote += $"  -  drawn for {tw / 12f:0.#}' x {th / 12f:0.#}',"
-                            + $" this game is {gameW / 12f:0.#}' x {gameH / 12f:0.#}'";
-                    }
                 }
                 break;
             default:
@@ -2552,7 +2622,7 @@ public class LobbyScreen : IAppScreen
             OnSelectMapRequested?.Invoke(new MapPickerScreen.Request(_viewModel.GameSystem, _viewModel.GameMode,
                 _viewModel.TableBackground, _viewModel.DeploymentStyle,
                 LobbyDeploymentPreview.Sides(_viewModel.PlayerInfos.Select(p => (int)p.TeamNumber)),
-                isMap ? current : null));
+                isMap ? current : null, TableWithoutMap().W, TableWithoutMap().H));
         }
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {

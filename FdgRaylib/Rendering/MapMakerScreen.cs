@@ -193,6 +193,15 @@ public sealed class MapMakerScreen : IAppScreen
             placed.UnionWith(maps);
             DrawGroup($"{gw / 12f:0.#}' x {gh / 12f:0.#}' MAPS - {games.ToUpperInvariant()}", maps, columns, tileW, gap);
         }
+        // Big-game tables (Kai, 2026-11-08): one group per size that has maps, smallest first.
+        foreach ((float bw, float bh) in TableSizing.Sizes)
+        {
+            List<string> maps = _maps.Where(p => !placed.Contains(p) && SameTable(TableOf(Layout(p)), (bw, bh))).ToList();
+            if (maps.Count == 0) continue;
+            placed.UnionWith(maps);
+            DrawGroup($"{bw / 12f:0.#}' x {bh / 12f:0.#}' MAPS - {MapEditor.SystemsOnTable(bw, bh).ToUpperInvariant()}",
+                maps, columns, tileW, gap);
+        }
         // A map drawn on a table no game uses (a hand-edited file) still gets listed, so it can be fixed or deleted.
         List<string> odd = _maps.Where(p => !placed.Contains(p)).ToList();
         if (odd.Count > 0) DrawGroup("OTHER TABLE SIZES", odd, columns, tileW, gap);

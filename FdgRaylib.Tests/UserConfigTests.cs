@@ -366,6 +366,10 @@ public class UserConfigTests
 
         public int? NumberOfRounds { get; private set; }
         public void SetNumberOfRounds(int? rounds) => NumberOfRounds = rounds;
+        public (float W, float H) ResolvedTableSize => ChosenTableSize ?? (72f, 48f);
+        public (float W, float H)? ChosenTableSize { get; set; }
+        public (float W, float H)? MapTableSize => null;
+        public void SetTableSize((float W, float H)? size) => ChosenTableSize = size;
         public bool FastPlaySimplifiedTerrain { get; private set; }
         public void SetFastPlaySimplifiedTerrain(bool enabled) => FastPlaySimplifiedTerrain = enabled;
         public bool KingOfTheHill { get; private set; }

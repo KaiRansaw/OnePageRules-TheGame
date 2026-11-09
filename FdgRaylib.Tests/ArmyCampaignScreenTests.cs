@@ -138,7 +138,7 @@ public class ArmyCampaignScreenTests
 
         Assert.That(StrikeTeamScreen.CannotAddToCart(army, hero, hero.BasePointCost, new List<bool>(), 0), Is.Null);
         Assert.That(StrikeTeamScreen.CannotAddToCart(army, hero, hero.BasePointCost, new List<bool> { true }, hero.BasePointCost),
-            Does.Contain("one new Hero"));
+            Does.Contain("only one Hero"), "before mission 1 the creation clause is the reason: may buy max. one Hero");
         Assert.That(StrikeTeamScreen.CannotAddToCart(army, plain, plain.BasePointCost, new List<bool> { true, false, false }, 500),
             Is.Null, "regular units are unlimited");
         Assert.That(StrikeTeamScreen.CannotAddToCart(army, plain, plain.BasePointCost, new List<bool>(), 2000),

@@ -29,7 +29,7 @@ public static class AppVersion
     /// <see cref="ShortCommit"/> is the backstop: it updates itself when this line is forgotten.
     /// </para>
     /// </summary>
-    public const string BuildNumber = "1.40";
+    public const string BuildNumber = "1.41";
 
     /// <summary>
     /// The short git commit this binary was built from, when one is available. The SDK appends

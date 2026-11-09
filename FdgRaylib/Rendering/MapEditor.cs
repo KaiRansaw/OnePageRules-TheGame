@@ -40,30 +40,28 @@ public sealed class MapEditor
     private float TH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
 
     /// <summary>
-    /// The sizes a map can be drawn at. Both come from the engine rather than being typed here:
-    /// whatever <see cref="GameWideConstants.TableSizeFor"/> says a system plays on is what this
-    /// offers, so adding a system with a new table size cannot leave the map maker behind.
-    ///
-    /// <para>
-    /// Bigger tables for bigger games are a separate conversation Kai has parked - no current book
-    /// prints a table over 6' x 4', so any size above that is a house rule and the number is his.
-    /// </para>
+    /// The sizes a map can be drawn at: the books' tables (6' x 4', 4' x 4') and the bigger tables big games
+    /// grow onto (Kai, 2026-11-08) - all from the engine's <see cref="TableSizing.Sizes"/>, biggest last.
     /// </summary>
-    private static readonly (float W, float H)[] TableSizes =
-        Enum.GetValues<EGameSystem>()
-            .Select(GameWideConstants.TableSizeFor)
-            .Distinct()
-            .OrderByDescending(t => t.Width * t.Height)
-            .Select(t => (t.Width, t.Height))
-            .ToArray();
-
+    private static readonly (float W, float H)[] TableSizes = TableSizing.Sizes.ToArray();
     private static string TableSizeLabel(float w, float h) => $"{w / 12f:0.#}' x {h / 12f:0.#}'";
 
-    /// <summary>Which systems play on a given table, for the picker's hint line.</summary>
-    internal static string SystemsOnTable(float w, float h) => string.Join(", ",
-        Enum.GetValues<EGameSystem>()
+    /// <summary>
+    /// Which games play on a given table, for the hint lines: the systems whose book table it is, or for a
+    /// bigger table the army size each game grows onto it at (house rule).
+    /// </summary>
+    internal static string SystemsOnTable(float w, float h)
+    {
+        string book = string.Join(", ", Enum.GetValues<EGameSystem>()
             .Where(sys => GameWideConstants.TableSizeFor(sys) == (w, h))
             .Select(GameSystemInfo.DisplayName));
+        if (book.Length > 0) return book;
+        string big = string.Join(", ", Enum.GetValues<EGameSystem>()
+            .Where(sys => TableSizing.SizesFor(sys).Any(s => TableSizing.Same(s, (w, h))))
+            .Select(sys => $"{GameSystemInfo.DisplayName(sys)} ~{TableSizing.SuggestedPoints(sys, w, h)} pts"));
+        return big.Length > 0 ? "big games: " + big : "";
+    }
+
     private const float Snap = 0.5f;
     private const float ObjectivePickRadius = 1.5f;
 
@@ -584,18 +582,22 @@ public sealed class MapEditor
     /// </summary>
     private void DrawTableSizePicker()
     {
-        float w = ImGui.CalcTextSize("6' x 4'").X + 28f;
-
-        for (int i = 0; i < TableSizes.Length; i++)
+        // A dropdown rather than a row of buttons: there are seventeen sizes now (Kai, 2026-11-08).
+        ImGui.SetNextItemWidth(UiChrome.Em(16f));
+        if (UiCombo.Begin("##mapTableSize", TableSizeLabel(TW, TH), ImGuiComboFlags.HeightLarge))
         {
-            if (i > 0) ImGui.SameLine();
-            (float tw, float th) = TableSizes[i];
-            bool active = Nearly(TW, tw) && Nearly(TH, th);
-            if (ToolButton(TableSizeLabel(tw, th), active, new Vector2(w, 0f)) && !active)
-                SetTableSize(tw, th);
-            if (ImGui.IsItemHovered())
-                UiText.Tooltip($"{TableSizeLabel(tw, th)} - {SystemsOnTable(tw, th)}");
+            foreach ((float tw, float th) in TableSizes)
+            {
+                bool active = Nearly(TW, tw) && Nearly(TH, th);
+                if (ImGui.Selectable($"{TableSizeLabel(tw, th)}##{tw}x{th}", active) && !active)
+                    SetTableSize(tw, th);
+                if (ImGui.IsItemHovered())
+                    UiText.Tooltip($"{TableSizeLabel(tw, th)} - {SystemsOnTable(tw, th)}");
+            }
+            ImGui.EndCombo();
         }
+        if (ImGui.IsItemHovered())
+            UiText.Tooltip($"The table this map is drawn for: {SystemsOnTable(TW, TH)}. A map always plays on its own table.");
     }
 
     private static bool Nearly(float a, float b) => MathF.Abs(a - b) < 0.01f;

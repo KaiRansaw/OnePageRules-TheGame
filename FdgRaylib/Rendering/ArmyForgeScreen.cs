@@ -1,3 +1,4 @@
+using FDG.Rules.Dispatch;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -1537,7 +1538,16 @@ public class ArmyForgeScreen : IAppScreen
     {
         BuilderUnit bu = _list.Units[idx];
 
-        if (ForceOrgValidator.IsHero(compiledUnit))
+        if (ForceOrgValidator.IsHero(compiledUnit)
+            && HeroJoinResolver.JoinCapFor(_book.GameSystem) <= 0)
+        {
+            // Kai, 2026-11-08: Heroes never join units in the Quest games. A join saved before that ruling
+            // is cleared here so the list does not carry a link the game will ignore.
+            bu.JoinsUnitId = null;
+            ImGui.Spacing();
+            UiText.Colored(YellowText, "Heroes can't join units in this game.");
+        }
+        else if (ForceOrgValidator.IsHero(compiledUnit))
         {
             List<int> hosts = HostCandidates(idx, rows);
             string[] options = new string[hosts.Count + 1];
