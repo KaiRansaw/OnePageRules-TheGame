@@ -1262,6 +1262,9 @@ public class LobbyScreen : IAppScreen
     public static EDeploymentStyle? PendingDeploymentStyle;
     public static FDG.Missions.EMissionCardGame? PendingMissionCardGame;
 
+    /// <summary>The Challenge Bonuses Mission Setup gave the campaign's rival bot.</summary>
+    public static EChallengeBonuses? PendingChallengeBonuses;
+
     /// <summary>
     /// #435 - set by Mission Setup: launch as soon as the lobby is ready, without drawing it. The
     /// campaign flow is meant to go from Mission Setup straight into the game ("The Table is gone from
@@ -1288,6 +1291,7 @@ public class LobbyScreen : IAppScreen
         PendingTerrainLayoutPath = null;
         PendingDeploymentStyle = null;
         PendingMissionCardGame = null;
+        PendingChallengeBonuses = null;
         PendingAutoLaunch = false;
         PendingRematch = null;
     }
@@ -1386,8 +1390,10 @@ public class LobbyScreen : IAppScreen
         PendingTerrainLayoutPath = null;
         EDeploymentStyle? deployment = PendingDeploymentStyle;
         FDG.Missions.EMissionCardGame? missionCards = PendingMissionCardGame;
+        EChallengeBonuses? challenge = PendingChallengeBonuses;
         PendingDeploymentStyle = null;
         PendingMissionCardGame = null;
+        PendingChallengeBonuses = null;
         if (path == null || _viewModel == null) return;
         if (LoadArmyFile(path) is not { } army) return;
         if (_viewModel.PlayerInfos.Count == 0) return;
@@ -1412,6 +1418,9 @@ public class LobbyScreen : IAppScreen
         // #465: the mission plan's deployment style and mission type.
         if (deployment is { } style) _viewModel.SetDeploymentStyle(style);
         if (missionCards is { } cards) _viewModel.SetMissionCardGame(cards);
+        // Always set from Mission Setup (None included), so a campaign mission never inherits whatever the
+        // last ordinary lobby had ticked.
+        _viewModel.SetChallengeBonuses(challenge ?? EChallengeBonuses.None);
 
         if (enemyPath == null || LoadArmyFile(enemyPath) is not { } enemy) return;
         // The official OPR bot, as every other new AI seat gets (Kai, 2026-10-31: "one AI, the official
@@ -1708,7 +1717,7 @@ public class LobbyScreen : IAppScreen
 
         if (!ImGui.BeginTabBar("##settingstabs")) return;
 
-        if (Tab("Game", "How big the game is: the points each army is built to."))
+        if (Tab("Game", "How big the game is: the points each army is built to. Also the bot's Challenge Bonuses."))
         {
             DrawGameTab(locked);
             ImGui.EndTabItem();
@@ -1760,6 +1769,16 @@ public class LobbyScreen : IAppScreen
                      "its seat card and blocks the launch. In a team game the limit is for the whole side.",
             step: 250);
         DrawPointPresets();
+
+        // The Solo & Co-Op books' Challenge Bonuses: the four games with a Solo & Co-Op book only.
+        if (ChallengeBonuses.Applies(_viewModel.GameSystem))
+        {
+            ImGui.Spacing();
+            ImGui.Separator();
+            EChallengeBonuses current = _viewModel.ChallengeBonuses;
+            EChallengeBonuses edited = ChallengeBonusesUi.Draw(current, "##lobby");
+            if (edited != current) _viewModel.SetChallengeBonuses(edited);
+        }
         ImGui.EndDisabled();
     }
 

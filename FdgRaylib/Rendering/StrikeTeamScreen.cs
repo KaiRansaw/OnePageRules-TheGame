@@ -154,7 +154,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         _managingEnemy = enemy;
         _unit = 0;
         _cart.Clear();
-        _cartVeteran = false;
+        _cartVeteran = -1;
         _renameFor = null;
         _recruitSelected = null;
         _message = "";
@@ -554,7 +554,7 @@ public sealed class StrikeTeamScreen : IAppScreen
         _managingEnemy = false;   // #455: a campaign always opens on the player's own army
         _unit = 0;
         _cart.Clear();
-        _cartVeteran = false;
+        _cartVeteran = -1;
         _view = EView.Camp;
         _message = "";
     }
@@ -989,7 +989,16 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     /// <summary>Roster unit ids waiting to be confirmed, in the order they were added.</summary>
     private readonly List<string> _cart = new();
-    private bool _cartVeteran;
+    /// <summary>
+    /// Which cart entry is the 5 XP recruit (Campaign Rules v3.6.0: "One of the new recruited units may also
+    /// start with 5 XP if the player pays for it"), or -1 for none. The player picks which one - it used to
+    /// always be the first unit in the cart.
+    /// </summary>
+    private int _cartVeteran = -1;
+
+    /// <summary>The cart and the 5 XP pick, for tests (nothing here draws a frame).</summary>
+    internal List<string> CartForTests => _cart;
+    internal int CartVeteranForTests { get => _cartVeteran; set => _cartVeteran = value; }
     private string? _recruitSelected;
 
     // The roster of the managed army's own book, in Army Forge's category boxes - rebuilt per book.
@@ -1003,11 +1012,23 @@ public sealed class StrikeTeamScreen : IAppScreen
         if (Managed is not { } m) return;
         if (m.Army.Book == null) { Say("This army has no book attached, so there is nothing to recruit from.", true); return; }
         _cart.Clear();
-        _cartVeteran = false;
+        _cartVeteran = -1;
         _recruitSelected = null;
         _view = EView.Recruit;
         _message = "";
     }
+
+    /// <summary>Takes cart entry <paramref name="index"/> out, keeping the 5 XP pick on the same unit.</summary>
+    private void RemoveFromCart(int index)
+    {
+        _cart.RemoveAt(index);
+        if (_cartVeteran == index) _cartVeteran = -1;
+        else if (_cartVeteran > index) _cartVeteran--;
+    }
+
+    /// <summary>A cart entry's name, numbered so two of the same unit can be told apart.</summary>
+    private string CartLabel(BookFile book, int index) =>
+        $"{index + 1}. {book.Units.FirstOrDefault(r => r.Id == _cart[index])?.Name ?? _cart[index]}";
 
     private void UseRecruitBook(BookFile book)
     {
@@ -1024,7 +1045,7 @@ public sealed class StrikeTeamScreen : IAppScreen
     private int CartTotal(BookFile book) =>
         _cart.Sum(id => _recruitCards.TryGetValue(id, out var c) ? c.Unit.PointCost
             : book.Units.FirstOrDefault(r => r.Id == id)?.BasePointCost ?? 0)
-        + (_cartVeteran && _cart.Count > 0 && Managed is { } m && !CampaignEconomy.VeteranRecruitUsed(m.Army)
+        + (_cartVeteran >= 0 && _cartVeteran < _cart.Count && Managed is { } m && !CampaignEconomy.VeteranRecruitUsed(m.Army)
             ? NumbersFor(m.Army).VeteranRecruitCost : 0);
 
     /// <summary>
@@ -1166,23 +1187,40 @@ public sealed class StrikeTeamScreen : IAppScreen
         UiText.Colored(TextDim, "CART", wrap: false);
         ImGui.SameLine();
         if (_cart.Count == 0) UiText.Disabled("empty - double-click a card, or + ADD TO CART", wrap: false);
+        bool used = CampaignEconomy.VeteranRecruitUsed(army);
+        if (used || _cartVeteran >= _cart.Count) _cartVeteran = -1;
         for (int i = 0; i < _cart.Count; i++)
         {
             string name = book.Units.FirstOrDefault(r => r.Id == _cart[i])?.Name ?? _cart[i];
+            string tag = i == _cartVeteran ? " (5 XP)" : "";
             ImGui.SameLine();
-            if (UiButton.NavigateSmall($"{name}  x##cart{i}")) { _cart.RemoveAt(i); break; }
+            if (UiButton.NavigateSmall($"{name}{tag}  x##cart{i}"))
+            {
+                RemoveFromCart(i);
+                break;
+            }
             if (ImGui.IsItemHovered()) UiText.Tooltip("Take it out of the cart.");
         }
 
-        bool used = CampaignEconomy.VeteranRecruitUsed(army);
-        bool veteran = _cartVeteran && !used;
+        // Which recruit starts at 5 XP - the player's pick, any unit in the cart.
+        ImGui.TextUnformatted($"Starts at 5 XP (+{n.VeteranRecruitCost} pts):");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(260f);
         ImGui.BeginDisabled(used || _cart.Count == 0);
-        if (UiButton.Checkbox($"The first unit in the cart starts at 5 XP (+{n.VeteranRecruitCost} pts)", ref veteran)) _cartVeteran = veteran;
+        string preview = _cartVeteran >= 0 ? CartLabel(book, _cartVeteran) : "Nobody";
+        if (UiCombo.Begin("##veteran", preview))
+        {
+            if (ImGui.Selectable("Nobody", _cartVeteran < 0)) _cartVeteran = -1;
+            for (int i = 0; i < _cart.Count; i++)
+                if (ImGui.Selectable($"{CartLabel(book, i)}##vet{i}", _cartVeteran == i)) _cartVeteran = i;
+            ImGui.EndCombo();
+        }
         ImGui.EndDisabled();
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             UiText.TooltipWrapped(used
                 ? "Already used since the last mission. Campaign Rules v3.6.0: one of the new recruited units may start with 5 XP."
-                : "Campaign Rules v3.6.0: one of the new recruited units may also start with 5 XP if the player pays for it.", 360f);
+                : "Campaign Rules v3.6.0: one of the new recruited units may also start with 5 XP if the player pays for it. "
+                  + "Pick which one.", 360f);
 
         ImGui.TextUnformatted($"Total {total} pts  -  treasury {info.BankedPoints} pts  -  leaves {info.BankedPoints - total} pts");
         ImGui.SameLine();
@@ -1195,23 +1233,22 @@ public sealed class StrikeTeamScreen : IAppScreen
 
     internal void ConfirmRecruits(string path, BuiltArmyFile army, BookFile book, CampaignNumbers n)
     {
-        bool veteranLeft = _cartVeteran;
         var lines = new List<string>();
-        foreach (string id in _cart.ToList())
+        List<string> cart = _cart.ToList();
+        for (int i = 0; i < cart.Count; i++)
         {
-            RosterUnit? roster = book.Units.FirstOrDefault(r => r.Id == id);
+            RosterUnit? roster = book.Units.FirstOrDefault(r => r.Id == cart[i]);
             if (roster == null) continue;
             var wanted = new BuilderUnit { RosterUnitId = roster.Id, ModelCount = roster.BaseModelCount };
             // The one-Hero allowance and the 5 XP recruit are recorded on the army file by Recruit itself.
-            CampaignPurchase result = CampaignEconomy.Recruit(army, book, wanted, n, veteran: veteranLeft, d6: D6);
+            CampaignPurchase result = CampaignEconomy.Recruit(army, book, wanted, n, veteran: i == _cartVeteran, d6: D6);
             lines.Add(result.Message);
-            if (result.Ok && veteranLeft) veteranLeft = false;
         }
 
         army.StrikeTeam!.History.AddRange(lines);
         SaveCurrent(path, army);
         _cart.Clear();
-        _cartVeteran = false;
+        _cartVeteran = -1;
         Reload();
         _view = EView.Camp;
         Say(string.Join("  ", lines));
@@ -1786,7 +1823,7 @@ public sealed class StrikeTeamScreen : IAppScreen
             }
 
             case EView.Recruit:
-                if (UiButton.Back("Back to camp", btn) || esc) { _cart.Clear(); _view = EView.Camp; }
+                if (UiButton.Back("Back to camp", btn) || esc) { _cart.Clear(); _cartVeteran = -1; _view = EView.Camp; }
                 DrawMessage(margin, by, btn);
                 break;
 

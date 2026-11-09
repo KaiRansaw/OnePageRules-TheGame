@@ -78,7 +78,8 @@ public class CliApp
         int? ArmyPoints = null,
         string? Army1 = null,
         string? Army2 = null,
-        IReadOnlyList<string>? Party = null);
+        IReadOnlyList<string>? Party = null,
+        EChallengeBonuses? ChallengeBonuses = null);
 
     /// <summary>#413 - set before <see cref="RunAsync"/> to script what is played.</summary>
     public Setup? Scripted { get; set; }
@@ -177,6 +178,7 @@ public class CliApp
             if (setup.GameMode is { } mode) gameSettings.GameMode = mode;
             if (setup.PlayStyle is { } style) gameSettings.PlayStyle = style;
             if (setup.ArmyPoints is { } points && points > 0) gameSettings.ArmyPoints = points;
+            if (setup.ChallengeBonuses is { } bonuses) gameSettings.ChallengeBonuses = bonuses;
 
             Console.WriteLine($"Playing: {GameSystemInfo.DisplayName(gameSettings.GameSystem)} - "
                 + $"{gameSettings.GameMode} - {gameSettings.PlayStyle} - {gameSettings.ArmyPoints} pts");

@@ -365,6 +365,18 @@ public sealed class MissionSetupScreen : IAppScreen
         // well as the fight, and choosing one without seeing both is choosing half a decision.
         UiText.Disabled(MissionDifficulty.DescribeReward(info.Difficulty, n));
 
+        // The Solo & Co-Op books' own Challenge Bonuses - they buff how the rival PLAYS, where Difficulty
+        // sizes what it brings, so the two stack.
+        if (ChallengeBonuses.Applies(info.GameSystem))
+        {
+            EChallengeBonuses edited = ChallengeBonusesUi.Draw(info.ChallengeBonuses, "##mission");
+            if (edited != info.ChallengeBonuses)
+            {
+                info.ChallengeBonuses = edited;
+                StrikeTeamFiles.Save(_path, _army!);
+            }
+        }
+
         if (UiButton.NavigateSmall("Randomize"))
         {
             FillEnemyForce(randomize: true);
@@ -720,6 +732,7 @@ public sealed class MissionSetupScreen : IAppScreen
         LobbyScreen.PendingCampaignEnemyArmy = theirs;
         LobbyScreen.PendingTerrainMode = _terrainMode;
         LobbyScreen.PendingTerrainLayoutPath = _mapPath;
+        LobbyScreen.PendingChallengeBonuses = _enemy?.StrikeTeam != null ? info.ChallengeBonuses : EChallengeBonuses.None;
         // #465: the plan's deployment style and mission type.
         if (_plan != null)
         {

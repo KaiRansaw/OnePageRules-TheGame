@@ -227,6 +227,7 @@ public sealed class HostGameSettings
     public int? NumberOfRounds { get; set; }
     public bool KingOfTheHill { get; set; }
     public EExtraActions ExtraActions { get; set; }
+    public EChallengeBonuses ChallengeBonuses { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
 
@@ -261,6 +262,7 @@ public sealed class HostGameSettings
         NumberOfRounds         = settings.NumberOfRounds,
         KingOfTheHill          = settings.KingOfTheHill,
         ExtraActions           = settings.ExtraActions,
+        ChallengeBonuses       = settings.ChallengeBonuses,
         DeploymentStyle        = settings.DeploymentStyle,
         MissionCardGame        = settings.MissionCardGame,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
@@ -293,6 +295,7 @@ public sealed class HostGameSettings
         NumberOfRounds         = viewModel.NumberOfRounds,
         KingOfTheHill          = viewModel.KingOfTheHill,
         ExtraActions           = viewModel.ExtraActions,
+        ChallengeBonuses       = viewModel.ChallengeBonuses,
         DeploymentStyle        = viewModel.DeploymentStyle,
         MissionCardGame        = viewModel.MissionCardGame,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
@@ -330,6 +333,7 @@ public sealed class HostGameSettings
         viewModel.SetNumberOfRounds(NumberOfRounds);
         viewModel.SetKingOfTheHill(KingOfTheHill);
         viewModel.SetExtraActions(ExtraActions);
+        viewModel.SetChallengeBonuses(ChallengeBonuses);
         viewModel.SetDeploymentStyle(DeploymentStyle);
         viewModel.SetMissionCardGame(MissionCardGame);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);

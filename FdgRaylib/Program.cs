@@ -920,21 +920,11 @@ if (collIdx >= 0 && collIdx + 2 < args.Length)
             continue;
         }
 
-        var list = new BuilderList { Name = book.Name, BookName = book.Name, PointsLimit = 100000 };
-        foreach (RosterUnit unit in book.Units)
-            list.Units.Add(new BuilderUnit { RosterUnitId = unit.Id, ModelCount = unit.BaseModelCount });
-
-        BuiltArmyFile collection = ListCompiler.Compile(book, list);
-        collection.Name = $"{book.Faction ?? book.Name} - enemy collection";
-        // Drop the editable session. ListCompiler attaches the picks plus a FULL SNAPSHOT of the source
-        // book (decision 6, so a Forge re-open can never be re-pointed at a newer catalog), and that
-        // snapshot is 175KB of the 210KB file - 54 of them would put 17MB of duplicated book data in the
-        // repo beside the books themselves. BuiltArmyFile documents both fields as null on an army that
-        // was not authored by the Forge, and such a file still plays; what the engine reads at play time
-        // is Units, RuleDefinitions and Spells, which stay. The cost is that a collection cannot be
-        // reopened in the Army Forge - it is generated FROM a book, so re-run this instead.
-        collection.Selections = null;
-        collection.Book = null;
+        // The shared builder (also the Quest campaign's "build from an army book"). It drops the editable
+        // session: ListCompiler attaches the picks plus a FULL SNAPSHOT of the source book, 175KB of the
+        // 210KB file - 54 of them would put 17MB of duplicated book data in the repo. The cost is that a
+        // collection cannot be reopened in the Army Forge - it is generated FROM a book, so re-run this.
+        BuiltArmyFile collection = FdgRaylib.Quest.QuestEnemyCollections.Build(book);
         string outPath = Path.Combine(outDir, $"{book.Faction ?? book.Name} - enemy collection.fdgarmy");
         File.WriteAllText(outPath, JsonSerializer.Serialize(collection, RuleJson.Options));
         Console.WriteLine($"  {collection.Units.Count,3} units, {collection.TotalPoints,5} pts -> {Path.GetFileName(outPath)}");
@@ -1284,11 +1274,31 @@ if (scenarioAllAi && !headless && scenarioPath == null)
 }
 
 var app = new CliApp(headless, slowDelayMs, diceSeed, aiProfile, scenarioAllAi && scenarioPath == null);
+// Solo & Co-Op Challenge Bonuses for the bot: "all", or any of d3,tied,losing (comma-separated).
+EChallengeBonuses? cliChallengeBonuses = null;
+if (ArgValue(args, "--challenge-bonuses") is { } bonusText)
+{
+    EChallengeBonuses parsed = EChallengeBonuses.None;
+    foreach (string raw in bonusText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        parsed |= raw.ToLowerInvariant() switch
+        {
+            "all" => EChallengeBonuses.All,
+            "d3" => EChallengeBonuses.ExtraActivations,
+            "tied" => EChallengeBonuses.TiedHitBonus,
+            "losing" => EChallengeBonuses.LosingBonus,
+            _ => throw new ArgumentException($"--challenge-bonuses: unknown bonus '{raw}' (use all, d3, tied, losing)."),
+        };
+    }
+    cliChallengeBonuses = parsed;
+}
+
 if (cliSystem != null || cliMode != null || cliStyle != null || cliPoints != null || cliParty != null
+    || cliChallengeBonuses != null
     || ArgValue(args, "--army1") != null || ArgValue(args, "--army2") != null)
 {
     app.Scripted = new CliApp.Setup(cliSystem, cliMode, cliStyle, cliPoints,
-        ArgValue(args, "--army1"), ArgValue(args, "--army2"), cliParty);
+        ArgValue(args, "--army1"), ArgValue(args, "--army2"), cliParty, cliChallengeBonuses);
 }
 
 if (headless)

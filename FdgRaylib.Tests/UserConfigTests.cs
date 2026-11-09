@@ -376,6 +376,8 @@ public class UserConfigTests
         public void SetKingOfTheHill(bool enabled) => KingOfTheHill = enabled;
         public EExtraActions ExtraActions { get; private set; }
         public void SetExtraActions(EExtraActions actions) => ExtraActions = actions;
+        public EChallengeBonuses ChallengeBonuses { get; private set; }
+        public void SetChallengeBonuses(EChallengeBonuses bonuses) => ChallengeBonuses = bonuses;
 
         public void SetFriendlyUnitsMayOverlap(bool enabled) => FriendlyUnitsMayOverlap = enabled;
         public void SetTableBackground(ETableBackground background) => TableBackground = background;

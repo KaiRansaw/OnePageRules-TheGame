@@ -374,8 +374,24 @@ public sealed class CampaignScreen : IAppScreen
             CampaignPaths.SaveHero(file, hero);
         }
         LobbyScreen.PendingParty = c.HeroFiles.ToList();
-        LobbyScreen.PendingQuestEnemyArmy = ch.EnemyArmy.Length > 0 && File.Exists(ch.EnemyArmy) ? ch.EnemyArmy : null;
+        LobbyScreen.PendingQuestEnemyArmy = ChapterEnemyArmy(c, ch);
         OnPlay?.Invoke();
+    }
+
+    /// <summary>
+    /// The army file the chapter's enemy seat gets: a saved army it names, or - for a chapter set to an army
+    /// book - the whole book built fresh now, so it always matches the current book. Null leaves the pick to
+    /// the lobby (also when the named file or book has gone missing).
+    /// </summary>
+    private string? ChapterEnemyArmy(QuestCampaign c, CampaignChapter ch)
+    {
+        if (ch.EnemyBook.Length > 0)
+        {
+            string outDir = Path.Combine(CampaignPaths.FolderFor(QuestGameTypes.For(System)), "enemy forces",
+                Path.GetFileNameWithoutExtension(HeroPaths.FileNameFor(c.Name)));
+            return QuestEnemyCollections.WriteFromBook(System, ch.EnemyBook, outDir);
+        }
+        return ch.EnemyArmy.Length > 0 && File.Exists(ch.EnemyArmy) ? ch.EnemyArmy : null;
     }
 
     private const string DeleteTitle = "Delete campaign?";
@@ -662,11 +678,35 @@ public sealed class CampaignScreen : IAppScreen
         UiText.Disabled("  Enemy force:", wrap: false);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(UiChrome.Em(14f));
-        string preview = ch.EnemyArmy.Length == 0 ? "Pick in the lobby" : ch.EnemyName.Length > 0 ? ch.EnemyName : Path.GetFileNameWithoutExtension(ch.EnemyArmy);
-        if (ch.EnemyArmy.Length > 0 && !File.Exists(ch.EnemyArmy)) preview += " (file missing)";
-        if (ImGui.BeginCombo("##enemy", preview))
+        bool fromBook = ch.EnemyBook.Length > 0;
+        string preview = fromBook ? (ch.EnemyName.Length > 0 ? ch.EnemyName : Path.GetFileNameWithoutExtension(ch.EnemyBook))
+            : ch.EnemyArmy.Length == 0 ? "Pick in the lobby"
+            : ch.EnemyName.Length > 0 ? ch.EnemyName : Path.GetFileNameWithoutExtension(ch.EnemyArmy);
+        if (!fromBook && ch.EnemyArmy.Length > 0 && !File.Exists(ch.EnemyArmy)) preview += " (file missing)";
+        if (ImGui.BeginCombo("##enemy", preview, ImGuiComboFlags.HeightLarge))
         {
-            if (ImGui.Selectable("Pick in the lobby", ch.EnemyArmy.Length == 0)) { ch.EnemyArmy = ""; ch.EnemyName = ""; changed = true; }
+            if (ImGui.Selectable("Pick in the lobby", ch.EnemyArmy.Length == 0 && !fromBook))
+            {
+                ch.EnemyArmy = ""; ch.EnemyName = ""; ch.EnemyBook = ""; changed = true;
+            }
+
+            // An army book: the whole roster, built fresh from the current book each mission.
+            ImGui.SeparatorText("From an army book");
+            foreach (QuestEnemyCollections.BookChoice b in QuestEnemyCollections.BooksFor(System))
+            {
+                if (ImGui.Selectable($"{b.Faction} (whole book)##book{b.FileName}", fromBook && b.FileName == ch.EnemyBook))
+                {
+                    ch.EnemyBook = b.FileName;
+                    ch.EnemyArmy = "";
+                    ch.EnemyName = $"{b.Faction} (whole book)";
+                    changed = true;
+                }
+                if (ImGui.IsItemHovered())
+                    UiText.TooltipWrapped($"Every unit in the {b.Faction} book. The waves are drawn from it to each wave's points, "
+                                          + "and it is built again from the book every mission, so it is always up to date.", 340f);
+            }
+
+            ImGui.SeparatorText("Your saved armies");
             if (_armies is not { IsLoaded: true }) UiText.Disabled("Reading the armies folder...");
             else
             {
@@ -674,9 +714,10 @@ public sealed class CampaignScreen : IAppScreen
                 if (armies.Count == 0) UiText.Disabled($"No {GameSystemInfo.DisplayName(System)} armies saved yet.");
                 foreach (ArmyCatalogEntry e in armies)
                 {
-                    if (ImGui.Selectable($"{e.FileName}  ({e.Faction}, {e.Points} pts)##{e.Path}", e.Path == ch.EnemyArmy))
+                    if (ImGui.Selectable($"{e.FileName}  ({e.Faction}, {e.Points} pts)##{e.Path}", !fromBook && e.Path == ch.EnemyArmy))
                     {
                         ch.EnemyArmy = e.Path;
+                        ch.EnemyBook = "";
                         ch.EnemyName = $"{e.FileName} ({e.Faction})";
                         changed = true;
                     }
@@ -685,8 +726,9 @@ public sealed class CampaignScreen : IAppScreen
             ImGui.EndCombo();
         }
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            UiText.TooltipWrapped($"The enemy army this chapter is fought against - one of your saved {GameSystemInfo.DisplayName(System)} armies. "
-                                  + "PLAY NEXT MISSION puts it on the enemy seat. \"Pick in the lobby\" leaves the choice to the lobby.", 340f);
+            UiText.TooltipWrapped($"The enemy force this chapter is fought against: a whole {GameSystemInfo.DisplayName(System)} army book, "
+                                  + "or one of your saved armies. PLAY NEXT MISSION puts it on the enemy seat. "
+                                  + "\"Pick in the lobby\" leaves the choice to the lobby.", 340f);
         ImGui.SameLine();
         ImGui.BeginDisabled(c.Chapters.Count <= 1);
         if (UiButton.NavigateSmall("Remove chapter")) removeChapter = i;
