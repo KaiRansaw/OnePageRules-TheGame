@@ -11,7 +11,7 @@ namespace OprGodot.Mock;
 /// </summary>
 public partial class MockScene : Node
 {
-    public enum ELayout { Menu, HudColumn, HudXcom }
+    public enum ELayout { Menu, HudColumn, HudXcom, HudXcomCards }
     [Export] public ELayout Layout { get; set; } = ELayout.HudXcom;
 
     private MockTable _table = null!;
@@ -26,7 +26,7 @@ public partial class MockScene : Node
         _ui = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         _ui.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(_ui);
-        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), _ => nameof(BuildXcom) });
+        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), ELayout.HudXcomCards => nameof(BuildXcomCards), _ => nameof(BuildXcom) });
     }
 
     // ================================================================== shared pieces
@@ -362,7 +362,7 @@ public partial class MockScene : Node
     // ================================================================== Layout B: XCOM
     private void BuildXcom()
     {
-        _table.Look(new Vector3(-6, 46, 44), new Vector3(-4, 0, 4), 44);
+        _table.Look(new Vector3(-6, 46, 44), new Vector3(-4, 0, Layout == ELayout.HudXcomCards ? 11 : 4), 44);
         TableDressing();
 
         // Top left: round, objectives, whose turn.
@@ -375,8 +375,9 @@ public partial class MockScene : Node
             menu.AddChild(HudKit.ActionButton(n, icon, label, key, HudKit.Teal, 70));
         HudKit.Place(_ui, menu, Control.LayoutPreset.TopRight, new Vector2(-24, 20));
 
-        // Top centre: your units, which have gone this round.
-        var squad = new HBoxContainer();
+        // Top centre: your units, which have gone this round (the card strip replaces this in B2).
+        bool cards = Layout == ELayout.HudXcomCards;
+        var squad = new HBoxContainer { Visible = !cards };
         squad.AddThemeConstantOverride("separation", 6);
         foreach (var (n, done, on) in new[] { ("Marksmen", false, true), ("Infantrymen", true, false), ("Knights", false, false), ("Battle Master", true, false), ("Empire Artillery", false, false) })
         {
@@ -408,7 +409,16 @@ public partial class MockScene : Node
         buttons.AddChild(HudKit.ActionButton("Measure", "footprint", "Measure", "5", HudKit.Dim, 80));
         buttons.AddChild(HudKit.ActionButton("Cancel", "stop-sign", "Back", "Esc", HudKit.Dim, 80));
         bar.AddChild(buttons);
-        HudKit.Place(_ui, bar, Control.LayoutPreset.CenterBottom, new Vector2(60, -24));
+        if (cards)
+        {
+            var stack = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+            stack.AddThemeConstantOverride("separation", 12);
+            stack.AddChild(bar);
+            stack.AddChild(CardStrip());
+            HudKit.Place(_ui, stack, Control.LayoutPreset.CenterBottom, new Vector2(40, -20));
+        }
+        else
+            HudKit.Place(_ui, bar, Control.LayoutPreset.CenterBottom, new Vector2(60, -24));
 
         // Bottom right: the last few report lines; R opens the full report.
         var rep = new VBoxContainer { CustomMinimumSize = new Vector2(430, 0) };
@@ -426,6 +436,91 @@ public partial class MockScene : Node
         HudKit.Place(_ui, fc, Control.LayoutPreset.TopLeft);
         PinNear(fc, Target.Centre, new Vector2(-470, -170));
 
-        HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterBottom, new Vector2(60, -4));
+        if (Layout == ELayout.HudXcomCards) HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterTop, new Vector2(0, 4));
+        else HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterBottom, new Vector2(60, -4));
+    }
+
+    private void BuildXcomCards() => BuildXcom();
+
+    // ================================================================== Layout B2: TWW3 unit cards
+    private sealed record CardState(string Unit, int Left, bool Done, bool Shaken, bool Selected, string Key);
+
+    /// <summary>
+    /// Total War: Warhammer 3-style army strip: one portrait card per unit, in army order. Shows what is left
+    /// of the unit (models, or wounds for a single Tough model), whether it has gone this round, and its state.
+    /// Click a card = select that unit (same as clicking it on the table).
+    /// </summary>
+    private Control CardStrip()
+    {
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 8);
+        foreach (var c in new[]
+        {
+            new CardState("Marksmen", 5, false, false, true, "F1"),
+            new CardState("Infantrymen", 8, true, true, false, "F2"),
+            new CardState("Knights", 5, false, false, false, "F3"),
+            new CardState("Battle Master", 3, true, false, false, "F4"),
+            new CardState("Empire Artillery", 2, false, false, false, "F5"),
+        })
+            row.AddChild(UnitPortraitCard(c));
+        return row;
+    }
+
+    private Control UnitPortraitCard(CardState c)
+    {
+        SampleUnit u = _table.Find(c.Unit).Unit;
+        bool single = u.Models == 1;
+        int max = single ? u.Tough : u.Models;
+        Color frame = c.Selected ? HudKit.Lime : c.Shaken ? Palette.WoundsRed : HudKit.Edge;
+        float dimA = c.Done ? 0.45f : 1f;
+
+        var b = new Button { Name = "Card_" + c.Unit.Replace(" ", ""), CustomMinimumSize = new Vector2(118, 158), FocusMode = Control.FocusModeEnum.None };
+        var box = new ChamferBox { Fill = c.Selected ? new Color(0.10f, 0.15f, 0.09f, 0.95f) : new Color(0.05f, 0.075f, 0.085f, c.Done ? 0.75f : 0.92f), Border = frame with { A = c.Done ? 0.5f : 1f }, Cut = 12, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
+        if (c.Selected) { box.Glow = HudKit.Lime with { A = 0.5f }; box.Accent = HudKit.Lime; box.AccentLength = 40; }
+        HudKit.StyleButton(b, box, HudKit.Fg);
+
+        var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        col.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        col.OffsetLeft = 7; col.OffsetRight = -7; col.OffsetTop = 7; col.OffsetBottom = -7;
+        col.AddThemeConstantOverride("separation", 3);
+
+        // Portrait: Army Forge unit art when downloaded, else an icon for the unit's type.
+        string icon = u.Name.Contains("Artillery") ? "fire-ray" : u.Name.Contains("Knight") ? "running-shoe" : u.Hero ? "rally-the-troops" : u.Weapons.Any(w => w.Range > 0) ? "targeting" : "person";
+        var pic = HudKit.Panel(new ChamferBox { Fill = new Color(HudKit.Friendly, c.Selected ? 0.16f : 0.08f), Border = Colors.Transparent, BorderWidth = 0, Cut = 8, ContentMarginLeft = 0, ContentMarginRight = 0, ContentMarginTop = 6, ContentMarginBottom = 6 },
+            HudKit.Icon(icon, 54, (c.Selected ? HudKit.Lime : HudKit.Friendly) with { A = dimA }));
+        pic.MouseFilter = Control.MouseFilterEnum.Ignore;
+        col.AddChild(pic);
+
+        var name = HudKit.Text(u.Name.ToUpperInvariant(), 13, (c.Selected ? HudKit.Lime : HudKit.Fg) with { A = dimA }, HudKit.Tracked(HudKit.Bold, 1), HorizontalAlignment.Center);
+        name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        name.CustomMinimumSize = new Vector2(0, 36);
+        name.VerticalAlignment = VerticalAlignment.Center;
+        col.AddChild(name);
+
+        // What is left: one segment per model (or per wound for a single Tough model).
+        var bar = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        bar.AddThemeConstantOverride("separation", 2);
+        for (int i = 0; i < max; i++)
+        {
+            Color seg = i < c.Left ? (c.Left * 2 <= max ? Palette.WoundsRed : HudKit.Lime) : new Color(1, 1, 1, 0.12f);
+            bar.AddChild(new ColorRect { Color = seg with { A = seg.A * dimA }, CustomMinimumSize = new Vector2(0, 5), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        }
+        col.AddChild(bar);
+        col.AddChild(HudKit.Text(single ? $"{c.Left}/{max} wounds" : $"{c.Left}/{max} models", 12, HudKit.Dim with { A = dimA }, HudKit.Semi, HorizontalAlignment.Center));
+        b.AddChild(col);
+
+        // Corner marks: hotkey top-left, state icons top-right.
+        var key = HudKit.Text(c.Key, 12, HudKit.Dim, HudKit.Bold);
+        key.Position = new Vector2(8, 4);
+        key.MouseFilter = Control.MouseFilterEnum.Ignore;
+        b.AddChild(key);
+        var marks = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Position = new Vector2(70, 4) };
+        marks.AddThemeConstantOverride("separation", 2);
+        if (c.Shaken) marks.AddChild(HudKit.Icon("broken-shield", 20, Palette.WoundsRed));
+        if (c.Done) marks.AddChild(HudKit.Icon("checked-shield", 20, HudKit.Dim));
+        if (u.Hero) marks.AddChild(HudKit.Icon("flying-flag", 20, HudKit.Gold));
+        b.AddChild(marks);
+        b.TooltipText = c.Shaken ? "Shaken - must spend its next activation idle to recover." : c.Done ? "Already activated this round." : "Ready to activate.";
+        return b;
     }
 }
