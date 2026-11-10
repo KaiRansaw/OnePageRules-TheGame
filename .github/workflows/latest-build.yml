@@ -44,6 +44,7 @@ jobs:
       # zip ships on the runner image; only install it if missing, and don't let a flaky apt mirror fail the build.
       - name: Make sure zip is there
         run: |
+          echo "::notice title=step::zip check started"
           if ! command -v zip >/dev/null; then
             (sudo apt-get update -qq && sudo apt-get install -y -qq zip) || true
           fi
@@ -54,12 +55,17 @@ jobs:
       # readable through the checks API, which is all a cloud Claude session can see of a run.
       - name: Headless smoke game
         run: |
+          echo "::notice title=step::smoke started"
           set +e
           printf "2\n2\n" | timeout 600 dotnet run -c Release --project FdgRaylib/FdgRaylib.csproj -- --headless > smoke.log 2>&1
           code=$?
           tail -5 smoke.log
           if [ $code -ne 0 ] || ! grep -q "Game result:" smoke.log; then
-            echo "::error title=Smoke game failed (exit $code)::$(tail -25 smoke.log | tr '\n' '|' | cut -c1-3500)"
+            echo "::error title=Smoke game failed::exit code $code"
+            # One annotation per line, stripped to plain characters so nothing breaks the command syntax.
+            grep -v "warning CS" smoke.log | tail -12 | tr -cd 'A-Za-z0-9 .,:/_()=+\-\n' | cut -c1-300 | while IFS= read -r line; do
+              echo "::error title=smoke::${line//::/ }"
+            done
             exit 1
           fi
 
