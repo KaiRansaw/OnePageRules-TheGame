@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The front-end-independent half of the app: army catalog and paths, saves and maps, army import,
+    user config, the Quest datasets, placement rules, Tailscale lookup. No Raylib, no ImGui, no Godot.
+    Shared by the Raylib build (FdgRaylib) and the Godot build (OprGodot). Namespaces are kept as they
+    were (FdgRaylib.*) when the files moved here, so nothing that uses them had to change.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>FdgRaylib</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mono.Nat" Version="3.0.4" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FutureOfDarkGrimness\FutureOfDarkGrimness.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FdgRaylib" />
+    <InternalsVisibleTo Include="FdgRaylib.Tests" />
+    <InternalsVisibleTo Include="OprGodot" />
+  </ItemGroup>
+
+</Project>

@@ -27,17 +27,17 @@ public static class MapPaths
     {
         string? armies = ArmyPaths.FolderPath;
         string? root = armies != null ? Path.GetDirectoryName(Path.GetFullPath(armies)) : null;
-        return Path.Combine(root ?? AppContext.BaseDirectory, DirectoryName);
+        return Path.Combine(root ?? AppAssets.Root, DirectoryName);
     }
 
     private static string? Find()
     {
-        foreach (string root in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+        foreach (string root in new[] { AppAssets.Root, Directory.GetCurrentDirectory() })
         {
             string candidate = Path.Combine(root, DirectoryName);
             if (Directory.Exists(candidate)) return candidate;
         }
-        for (DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+        for (DirectoryInfo? dir = new DirectoryInfo(AppAssets.Root); dir != null; dir = dir.Parent)
         {
             string candidate = Path.Combine(dir.FullName, DirectoryName);
             if (Directory.Exists(candidate)) return candidate;

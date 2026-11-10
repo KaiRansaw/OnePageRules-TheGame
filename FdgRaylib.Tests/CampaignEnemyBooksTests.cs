@@ -38,7 +38,7 @@ public class CampaignEnemyBooksTests
     [Test]
     public void TheBotDoesNotSpendItsOwnTreasuryAfterAMission()
     {
-        string source = Source("FdgRaylib", "Quest", "StrikeTeamFiles.cs");
+        string source = Source("FdgApp", "Quest", "StrikeTeamFiles.cs");
         source = Regex.Replace(source, @"//[^\n]*", "");
         source = Regex.Replace(source, @"/\*.*?\*/", "", RegexOptions.Singleline);
         Assert.That(source, Does.Not.Contain("CampaignBot.BetweenMissions("),

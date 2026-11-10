@@ -56,7 +56,7 @@ public sealed class QuestDataSet
     public string FolderName { get; }
 
     /// <summary>Where the two files live for this run.</summary>
-    public string Folder => Path.Combine(AppContext.BaseDirectory, "Assets", FolderName);
+    public string Folder => Path.Combine(AppAssets.AssetsFolder, FolderName);
 
     public string? LoadError { get; private set; }
 

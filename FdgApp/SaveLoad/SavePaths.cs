@@ -21,7 +21,7 @@ public static class SavePaths
         get
         {
             string? found = Find();
-            string path = found ?? Path.Combine(AppContext.BaseDirectory, DirectoryName);
+            string path = found ?? Path.Combine(AppAssets.Root, DirectoryName);
             try { Directory.CreateDirectory(path); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
             return path;
         }
@@ -33,12 +33,12 @@ public static class SavePaths
 
     private static string? Find()
     {
-        foreach (string root in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+        foreach (string root in new[] { AppAssets.Root, Directory.GetCurrentDirectory() })
         {
             string candidate = Path.Combine(root, DirectoryName);
             if (Directory.Exists(candidate)) return candidate;
         }
-        for (DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+        for (DirectoryInfo? dir = new DirectoryInfo(AppAssets.Root); dir != null; dir = dir.Parent)
         {
             string candidate = Path.Combine(dir.FullName, DirectoryName);
             if (Directory.Exists(candidate)) return candidate;

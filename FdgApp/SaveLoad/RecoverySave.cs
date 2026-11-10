@@ -27,7 +27,7 @@ public static class RecoverySave
 
     private const string FilePrefix = "recovery-";
 
-    public static string DirectoryPath => Path.Combine(AppContext.BaseDirectory, DirectoryName);
+    public static string DirectoryPath => Path.Combine(AppAssets.Root, DirectoryName);
 
     /// <summary>
     /// Writes <paramref name="saveJson"/> to a new timestamped recovery file and prunes older ones.

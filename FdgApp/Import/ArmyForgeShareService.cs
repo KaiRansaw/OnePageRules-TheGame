@@ -157,7 +157,7 @@ public static class ArmyForgeShareService
     private static BookFile? MatchBundledBook(string factionName, string? gameSystem)
     {
         if (string.IsNullOrWhiteSpace(factionName)) return null;
-        string dir = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
+        string dir = Path.Combine(AppAssets.AssetsFolder, "Books");
         if (!Directory.Exists(dir)) return null;
 
         foreach (string path in Directory.EnumerateFiles(dir, "*" + BookFile.EXTENSION_WITH_PERIOD, SearchOption.AllDirectories).OrderBy(p => p))

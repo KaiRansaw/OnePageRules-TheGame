@@ -15,7 +15,7 @@ public static class HeroPaths
     {
         string root = ArmyPaths.FolderPath is { } armies
             ? Path.Combine(Path.GetDirectoryName(armies.TrimEnd(Path.DirectorySeparatorChar))!, DirectoryName)
-            : Path.Combine(AppContext.BaseDirectory, DirectoryName);
+            : Path.Combine(AppAssets.Root, DirectoryName);
         string folder = Path.Combine(root, gameType);
         try { Directory.CreateDirectory(folder); } catch { /* read-only: Save reports it */ }
         return folder;

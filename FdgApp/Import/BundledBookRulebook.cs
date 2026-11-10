@@ -33,7 +33,7 @@ public sealed class BundledBookRulebook : ICurrentRulebook
     /// <summary>Installs this source unless the host already installed one. Idempotent.</summary>
     public static void Install() => CurrentRulebook.Installed ??= new BundledBookRulebook();
 
-    private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
+    private static string BooksDirectory => Path.Combine(AppAssets.AssetsFolder, "Books");
 
     public IReadOnlyList<SpecialRuleDefinition> DefinitionsForFaction(string faction, string? gameSystem)
     {

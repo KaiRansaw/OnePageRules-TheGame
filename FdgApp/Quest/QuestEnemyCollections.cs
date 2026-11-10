@@ -25,7 +25,7 @@ public static class QuestEnemyCollections
 {
     /// <summary>The folder a Quest system's enemy books ship in: <c>Assets/Books/&lt;game type&gt;</c>.</summary>
     public static string BooksFolderFor(EGameSystem system) =>
-        Path.Combine(AppContext.BaseDirectory, "Assets", "Books", QuestGameTypes.For(system));
+        Path.Combine(AppAssets.AssetsFolder, "Books", QuestGameTypes.For(system));
 
     /// <summary>One enemy book on offer: its file name and the faction it is for.</summary>
     public sealed record BookChoice(string FileName, string Faction);

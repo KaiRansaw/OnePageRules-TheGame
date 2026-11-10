@@ -17,7 +17,7 @@ public static class CampaignScriptPaths
         get
         {
             string maps = MapPaths.FolderPath;
-            string root = Path.GetDirectoryName(Path.GetFullPath(maps)) ?? AppContext.BaseDirectory;
+            string root = Path.GetDirectoryName(Path.GetFullPath(maps)) ?? AppAssets.Root;
             string path = Path.Combine(root, DirectoryName);
             try { Directory.CreateDirectory(path); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
             return path;

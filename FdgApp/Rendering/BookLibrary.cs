@@ -33,7 +33,7 @@ internal static class BookLibrary
     private static List<BookFile> Parse()
     {
         var books = new List<BookFile>();
-        string directory = Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
+        string directory = Path.Combine(AppAssets.AssetsFolder, "Books");
 
         if (Directory.Exists(directory))
         {

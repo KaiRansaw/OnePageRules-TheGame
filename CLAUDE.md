@@ -203,7 +203,22 @@ your side of the table; the Star Quest army books are the enemy and bot side.
 | Project | Type | Purpose |
 |---------|------|---------|
 | `FutureOfDarkGrimness` | Class library | Game engine: rules, state machine, unit/model data, stage resolution, networking |
-| `FdgRaylib` | Console exe | Application layer: Raylib + ImGui front end, screens (menu/lobby/army builder), CLI + GUI input resolvers |
+| `FdgApp` | Class library | App layer with **no drawing**: army catalog/paths, books, maps, saves, campaigns, Quest data, import, user config, Tailscale lookup. Shared by both front ends. Namespaces kept as `FdgRaylib.*` from before the split (2026-11-09). |
+| `FdgRaylib` | Console exe | The Raylib + ImGui front end (frozen - being replaced by Godot), plus the headless CLI and its resolvers |
+| `OprGodot` | Godot 4.7.2 .NET project | **The Godot front end (the port, started 2026-11-09).** Plan and status: project doc `claude/godot-port-plan.md`. |
+
+**Where new code goes during the port:** rules/AI/saves/network -> the engine; anything else a screen needs
+that is not drawing (paths, file formats, campaign bookkeeping, text a screen shows) -> `FdgApp`, so both
+front ends share it; drawing -> `OprGodot`. Raylib-only drawing code is not extended - fix it only if it
+stops play. **Asset lookups go through `AppAssets.Root`** (FdgApp), never `AppContext.BaseDirectory`: the
+Godot build sets the root at start-up.
+
+**Godot in a cloud session:** the editor is a download (`Godot_v4.7.2-stable_mono_linux_x86_64.zip` from
+the godotengine GitHub releases). `dotnet build OprGodot/OprGodot.csproj`, then
+`godot --headless --path OprGodot --import` once, then check a screen with
+`xvfb-run -a -s "-screen 0 1920x1080x24" godot --path OprGodot --rendering-driver opengl3 -- --press=GrimdarkFuture --shot=/tmp/x.png`
+(`OprGodot/scripts/ScriptedRun.cs`: presses buttons by node name, saves a screenshot, quits). Look at the
+picture - a clean exit says nothing about what was drawn.
 
 `FutureOfDarkGrimness` is a **git submodule**, and it is usually where the proper fix belongs — prefer the engine-side change over a client-side workaround when the engine is the real home for the behavior. No need to ask first; follow the submodule-first commit cadence above and verify with the engine suite.
 

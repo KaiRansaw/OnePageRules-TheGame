@@ -1,0 +1,23 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+
+  <!--
+    The Godot front end. Everything that is not drawing comes from the two projects below and is shared
+    with the Raylib build: the rules engine (FutureOfDarkGrimness) and the app layer (FdgApp - armies,
+    saves, maps, Quest data, config). This project only draws screens and turns clicks into the same
+    requests the Raylib build answers.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OprGodot</RootNamespace>
+    <AssemblyName>OprGodot</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FdgApp\FdgApp.csproj" />
+    <ProjectReference Include="..\FutureOfDarkGrimness\FutureOfDarkGrimness.csproj" />
+  </ItemGroup>
+
+</Project>

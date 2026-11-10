@@ -29,7 +29,7 @@ public static class ArmyPaths
 
     /// <summary>The armies folder, or null if neither candidate location exists.</summary>
     public static string? FolderPath =>
-        FindIn(AppContext.BaseDirectory, Directory.GetCurrentDirectory()) ?? FindAbove(AppContext.BaseDirectory);
+        FindIn(AppAssets.Root, Directory.GetCurrentDirectory()) ?? FindAbove(AppAssets.Root);
 
     /// <summary>Walks up from <paramref name="start"/> looking for an armies folder. Covers running from
     /// Visual Studio (F5), where the exe and working directory are bin/Debug/net8.0, several levels below
