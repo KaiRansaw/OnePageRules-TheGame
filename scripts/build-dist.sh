@@ -135,30 +135,28 @@ write_multiplayer_readme() {
   local out="$1"
   cat >> "$out/README.txt" <<'EOF'
 
-Playing with friends (over the internet)
-========================================
+Playing with friends (Tailscale)
+================================
 
-Easiest way: Tailscale (free, https://tailscale.com). It connects your
-computers as if they were on the same home network - no router setup.
+Tailscale (free, https://tailscale.com) links your computers as if they
+were on the same home network - no router setup.
 
-1. Everyone installs Tailscale and signs in (each with their own account).
-2. The host shares their computer with each friend: in the Tailscale admin
-   page, "..." next to the host's machine -> Share -> enter the friend's email.
-   The friend accepts the invite.
-3. Host: in the game, Host Server. The Host Server box and the lobby both
-   show "Tailscale friends join with: <name>.<something>.ts.net" (with a Copy
-   button in the lobby). Send that full name to your friends.
-4. Friends: Join, paste that full name as the Host Address, port 6389.
-   (A shared computer can only be reached by its full .ts.net name - the
-   short name and the 100.x number may not work for a friend.)
-5. The first time you host, Windows asks whether the game may use the
-   network: tick BOTH Private and Public (Tailscale often counts as Public).
+1. Everyone installs Tailscale and signs in with their own free account.
+2. The HOST shares their computer with each friend: Tailscale admin page
+   (login.tailscale.com) -> Machines -> "..." next to the host's PC ->
+   Share -> send the invite. Each friend opens it and accepts.
+3. HOST: pick a game and mode on the main menu - it goes straight to the
+   lobby. The lobby's Connect tab (and Settings -> Player) shows your
+   address, ending in .ts.net, with a Copy button. Send it to your friends.
+4. FRIENDS: main menu -> Join a Game, paste the host's .ts.net address,
+   JOIN. (A shared computer is only reachable by that full name - the
+   100.x number may not work for a friend.)
+5. The first time you host, Windows Firewall asks about FdgRaylib: tick
+   BOTH Private and Public and click Allow (Tailscale often counts as
+   Public).
 
-Everyone must run the same version of the game - an older copy is refused
-with "Incompatible game version". Send the new zip when it updates.
-
-On the same home network you don't need Tailscale: use the LAN address the
-lobby shows.
+Everyone must run the same build - an older copy is refused with
+"Incompatible game version". Grab the new zip when it updates.
 EOF
 }
 
@@ -186,19 +184,6 @@ Unit pictures (optional)
 Double-click "Download Unit Pictures.bat" and pick the game system(s).
 It fetches the unit art from Army Forge into the UnitImages folder here.
 Without it the game shows plain name tokens.
-
-Playing together (Tailscale)
-----------------------------
-1. Install Tailscale (tailscale.com/download) and sign in with your own
-   free account.
-2. Open the share link the host sent you and accept it. The host's PC
-   then shows in your Tailscale machine list.
-3. In the game: main menu -> Join a Game, type the host's address
-   (the long name ending in .ts.net - the host sees it in Settings ->
-   Player, or the lobby's Connect tab), then JOIN.
-Everyone must be on the same build. The HOST: the first time you host,
-Windows Firewall asks about FdgRaylib - tick BOTH Private and Public and
-click Allow.
 
 Sample army lists are in the "armies" folder.
 EOF
