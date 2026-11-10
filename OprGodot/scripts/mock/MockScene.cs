@@ -11,7 +11,9 @@ namespace OprGodot.Mock;
 /// </summary>
 public partial class MockScene : Node
 {
-    public enum ELayout { Menu, HudColumn, HudXcom, HudXcomCards }
+    public enum ELayout { Menu, HudColumn, HudXcom, HudXcomCards, Console, SideList }
+    /// <summary>For the Console mockup: 0 = hovering an enemy, 1 = enemy clicked + a rule tooltip, 2 = hovering terrain.</summary>
+    [Export] public int State { get; set; }
     [Export] public ELayout Layout { get; set; } = ELayout.HudXcom;
 
     private MockTable _table = null!;
@@ -26,7 +28,7 @@ public partial class MockScene : Node
         _ui = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         _ui.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(_ui);
-        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), ELayout.HudXcomCards => nameof(BuildXcomCards), _ => nameof(BuildXcom) });
+        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), ELayout.HudXcomCards => nameof(BuildXcomCards), ELayout.Console => nameof(BuildConsole), ELayout.SideList => nameof(BuildSideList), _ => nameof(BuildXcom) });
     }
 
     // ================================================================== shared pieces
@@ -54,24 +56,28 @@ public partial class MockScene : Node
     private static string Range(SampleWeapon w) => w.Range > 0 ? $"{w.Range}\"" : "-";
 
     /// <summary>The selected unit: portrait, name, stats, weapons and rules.</summary>
-    private Control UnitCard(MockTable.Placed p, float width, bool showRulesText)
+    private Control UnitCard(MockTable.Placed p, float width, bool showRulesText) =>
+        HudKit.Panel(HudKit.HeaderBox(), UnitCardContent(p.Unit, p.Models.Count, "Human Empire", HudKit.Friendly, width, showRulesText, null, true));
+
+    /// <summary>The unit card's insides: portrait + name, stat boxes, weapons table, rule chips.</summary>
+    private Control UnitCardContent(SampleUnit u, int modelsLeft, string faction, Color team, float width, bool showRulesText, Dictionary<string, Control>? ruleChips, bool mine)
     {
-        SampleUnit u = p.Unit;
         var col = new VBoxContainer { CustomMinimumSize = new Vector2(width, 0) };
         col.AddThemeConstantOverride("separation", 8);
 
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 12);
-        var portrait = HudKit.Panel(new ChamferBox { Fill = new Color(HudKit.Friendly, 0.10f), Border = new Color(HudKit.Friendly, 0.7f), Cut = 10, ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 4, ContentMarginBottom = 4 },
-            HudKit.Icon("person", 64, HudKit.Friendly with { A = 0.85f }));
+        var portrait = HudKit.Panel(new ChamferBox { Fill = new Color(team, 0.10f), Border = new Color(team, 0.7f), Cut = 10, ContentMarginLeft = 4, ContentMarginRight = 4, ContentMarginTop = 4, ContentMarginBottom = 4 },
+            HudKit.Icon("person", 64, team with { A = 0.85f }));
         top.AddChild(portrait);
         var names = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", -4);
         names.AddChild(HudKit.Text(u.Name.ToUpperInvariant(), 32, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1)));
-        names.AddChild(HudKit.Text($"Human Empire  -  {u.Points} pts  -  {u.Models} models", 17, HudKit.Dim, HudKit.Semi));
+        names.AddChild(HudKit.Text($"{faction}  -  {u.Points} pts  -  {u.Models} models", 17, HudKit.Dim, HudKit.Semi));
         var state = new HBoxContainer();
         state.AddThemeConstantOverride("separation", 6);
-        state.AddChild(HudKit.Chip("READY", HudKit.Lime, true, 14));
+        if (mine) state.AddChild(HudKit.Chip("READY", HudKit.Lime, true, 14));
+        else state.AddChild(HudKit.Chip("ENEMY", HudKit.Enemy, true, 14));
         state.AddChild(HudKit.Chip("NOT SHAKEN", HudKit.Dim, false, 14));
         names.AddChild(HudKit.Gap(0, 6));
         names.AddChild(state);
@@ -83,7 +89,7 @@ public partial class MockScene : Node
         stats.AddThemeConstantOverride("separation", 8);
         stats.AddChild(StatBox("QUALITY", Stat(u.Quality), "targeting"));
         stats.AddChild(StatBox("DEFENSE", Stat(u.Defense), "shield"));
-        stats.AddChild(StatBox("MODELS", $"{p.Models.Count}/{u.Models}", "rally-the-troops"));
+        stats.AddChild(StatBox("MODELS", $"{modelsLeft}/{u.Models}", "rally-the-troops"));
         col.AddChild(stats);
 
         col.AddChild(HudKit.Heading("Weapons", 15));
@@ -106,14 +112,19 @@ public partial class MockScene : Node
         col.AddChild(HudKit.Heading("Special rules", 15));
         var rules = new HFlowContainer();
         rules.AddThemeConstantOverride("h_separation", 6);
-        foreach (string r in u.Rules) rules.AddChild(HudKit.Chip(r, Palette.RuleGold, false, 15));
+        foreach (string r in u.Rules)
+        {
+            var chip = HudKit.Chip(r, Palette.RuleGold, false, 15);
+            rules.AddChild(chip);
+            if (ruleChips != null) ruleChips[r] = chip;
+        }
         col.AddChild(rules);
         if (showRulesText)
         {
             var hint = HudKit.Text("Hover a rule for its book wording.", 14, HudKit.Dim, HudKit.Medium);
             col.AddChild(hint);
         }
-        return HudKit.Panel(HudKit.HeaderBox(), col);
+        return col;
     }
 
     private static Control StatBox(string label, string value, string icon)
@@ -466,15 +477,15 @@ public partial class MockScene : Node
         return row;
     }
 
-    private Control UnitPortraitCard(CardState c)
+    private Control UnitPortraitCard(CardState c, bool small = false)
     {
-        SampleUnit u = _table.Find(c.Unit).Unit;
+        SampleUnit u = MockData.Unit("AoF-HumanEmpire", c.Unit);
         bool single = u.Models == 1;
         int max = single ? u.Tough : u.Models;
         Color frame = c.Selected ? HudKit.Lime : c.Shaken ? Palette.WoundsRed : HudKit.Edge;
         float dimA = c.Done ? 0.45f : 1f;
 
-        var b = new Button { Name = "Card_" + c.Unit.Replace(" ", ""), CustomMinimumSize = new Vector2(118, 158), FocusMode = Control.FocusModeEnum.None };
+        var b = new Button { Name = "Card_" + c.Unit.Replace(" ", ""), CustomMinimumSize = small ? new Vector2(106, 150) : new Vector2(118, 158), FocusMode = Control.FocusModeEnum.None };
         var box = new ChamferBox { Fill = c.Selected ? new Color(0.10f, 0.15f, 0.09f, 0.95f) : new Color(0.05f, 0.075f, 0.085f, c.Done ? 0.75f : 0.92f), Border = frame with { A = c.Done ? 0.5f : 1f }, Cut = 12, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
         if (c.Selected) { box.Glow = HudKit.Lime with { A = 0.5f }; box.Accent = HudKit.Lime; box.AccentLength = 40; }
         HudKit.StyleButton(b, box, HudKit.Fg);
@@ -485,9 +496,9 @@ public partial class MockScene : Node
         col.AddThemeConstantOverride("separation", 3);
 
         // Portrait: Army Forge unit art when downloaded, else an icon for the unit's type.
-        string icon = u.Name.Contains("Artillery") ? "fire-ray" : u.Name.Contains("Knight") ? "running-shoe" : u.Hero ? "rally-the-troops" : u.Weapons.Any(w => w.Range > 0) ? "targeting" : "person";
+        string icon = CardIcon(u);
         var pic = HudKit.Panel(new ChamferBox { Fill = new Color(HudKit.Friendly, c.Selected ? 0.16f : 0.08f), Border = Colors.Transparent, BorderWidth = 0, Cut = 8, ContentMarginLeft = 0, ContentMarginRight = 0, ContentMarginTop = 6, ContentMarginBottom = 6 },
-            HudKit.Icon(icon, 54, (c.Selected ? HudKit.Lime : HudKit.Friendly) with { A = dimA }));
+            HudKit.Icon(icon, small ? 46 : 54, (c.Selected ? HudKit.Lime : HudKit.Friendly) with { A = dimA }));
         pic.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(pic);
 
@@ -514,7 +525,7 @@ public partial class MockScene : Node
         key.Position = new Vector2(8, 4);
         key.MouseFilter = Control.MouseFilterEnum.Ignore;
         b.AddChild(key);
-        var marks = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Position = new Vector2(70, 4) };
+        var marks = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Position = new Vector2(small ? 58 : 70, 4) };
         marks.AddThemeConstantOverride("separation", 2);
         if (c.Shaken) marks.AddChild(HudKit.Icon("broken-shield", 20, Palette.WoundsRed));
         if (c.Done) marks.AddChild(HudKit.Icon("checked-shield", 20, HudKit.Dim));
