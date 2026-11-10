@@ -71,12 +71,16 @@ jobs:
 
       - name: Build Windows archive
         run: |
+          echo "::notice title=step::build-dist started"
           set +e
-          scripts/build-dist.sh win > dist.log 2>&1
+          bash -x scripts/build-dist.sh win > dist.log 2>&1
           code=$?
           tail -5 dist.log
           if [ $code -ne 0 ]; then
-            echo "::error title=build-dist failed (exit $code)::$(grep -E 'error|FAILED|!!' dist.log | tail -15 | tr '\n' '|' | cut -c1-3500)"
+            echo "::error title=build-dist failed::exit code $code"
+            grep -v "warning CS" dist.log | tail -15 | tr -cd 'A-Za-z0-9 .,:/_()=+\-\n' | cut -c1-300 | while IFS= read -r line; do
+              echo "::error title=dist::${line//::/ }"
+            done
             exit 1
           fi
 
@@ -84,6 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "::notice title=step::publish started"
           set -e
           trap 'echo "::error title=Publish failed::step line $LINENO exited $?"' ERR
           SHORT_SHA="${GITHUB_SHA::7}"
