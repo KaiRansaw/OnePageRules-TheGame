@@ -45,18 +45,36 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y zip
 
       # Smoke: one full bot-vs-bot headless game must finish cleanly before anything is published.
+      # Failures are re-emitted as ::error:: annotations (last lines of output) because annotations are
+      # readable through the checks API, which is all a cloud Claude session can see of a run.
       - name: Headless smoke game
         run: |
-          set -o pipefail
-          printf "2\n2\n" | timeout 600 dotnet run -c Release --project FdgRaylib/FdgRaylib.csproj -- --headless | tail -5
+          set +e
+          printf "2\n2\n" | timeout 600 dotnet run -c Release --project FdgRaylib/FdgRaylib.csproj -- --headless > smoke.log 2>&1
+          code=$?
+          tail -5 smoke.log
+          if [ $code -ne 0 ] || ! grep -q "Game result:" smoke.log; then
+            echo "::error title=Smoke game failed (exit $code)::$(tail -25 smoke.log | tr '\n' '|' | cut -c1-3500)"
+            exit 1
+          fi
 
       - name: Build Windows archive
-        run: scripts/build-dist.sh win
+        run: |
+          set +e
+          scripts/build-dist.sh win > dist.log 2>&1
+          code=$?
+          tail -5 dist.log
+          if [ $code -ne 0 ]; then
+            echo "::error title=build-dist failed (exit $code)::$(grep -E 'error|FAILED|!!' dist.log | tail -15 | tr '\n' '|' | cut -c1-3500)"
+            exit 1
+          fi
 
       - name: Publish as the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
+          trap 'echo "::error title=Publish failed::step line $LINENO exited $?"' ERR
           SHORT_SHA="${GITHUB_SHA::7}"
           STAMP="$(date -u +'%Y-%m-%d %H:%M') UTC"
           ZIP="$(ls dist/FdgRaylib-win-x64-*.zip)"
