@@ -189,14 +189,16 @@ Without it the game shows plain name tokens.
 
 Playing together (Tailscale)
 ----------------------------
-1. Install Tailscale (tailscale.com/download) and sign in.
-2. Accept the host's share invite, so the host's PC shows in your
-   Tailscale machine list.
-3. The host starts a game and waits in the lobby.
-4. Everyone else clicks Join and types the host's Tailscale address
-   (the 100.x.x.x number shown in Tailscale).
-Windows Firewall may ask the HOST to allow FdgRaylib the first time they
-host - click Allow.
+1. Install Tailscale (tailscale.com/download) and sign in with your own
+   free account.
+2. Open the share link the host sent you and accept it. The host's PC
+   then shows in your Tailscale machine list.
+3. In the game: main menu -> Join a Game, type the host's address
+   (the long name ending in .ts.net - the host sees it in Settings ->
+   Player, or the lobby's Connect tab), then JOIN.
+Everyone must be on the same build. The HOST: the first time you host,
+Windows Firewall asks about FdgRaylib - tick BOTH Private and Public and
+click Allow.
 
 Sample army lists are in the "armies" folder.
 EOF
