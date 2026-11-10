@@ -27,7 +27,7 @@ env:
 
 jobs:
   latest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout (with rules-engine submodule)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,8 +41,13 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Install zip
-        run: sudo apt-get update && sudo apt-get install -y zip
+      # zip ships on the runner image; only install it if missing, and don't let a flaky apt mirror fail the build.
+      - name: Make sure zip is there
+        run: |
+          if ! command -v zip >/dev/null; then
+            (sudo apt-get update -qq && sudo apt-get install -y -qq zip) || true
+          fi
+          command -v zip >/dev/null || { echo "::error title=zip missing::could not install zip"; exit 1; }
 
       # Smoke: one full bot-vs-bot headless game must finish cleanly before anything is published.
       # Failures are re-emitted as ::error:: annotations (last lines of output) because annotations are
