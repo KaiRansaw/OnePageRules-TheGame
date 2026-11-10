@@ -30,6 +30,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
+          # The rules engine is its own repo. While it is private, the workflow's own token can't
+          # read it, so a repo secret ENGINE_TOKEN (a fine-grained token with read-only Contents
+          # access to OnePageRules-TheGame-Engine) is used when present.
+          token: ${{ secrets.ENGINE_TOKEN || github.token }}
 
       # Guard: a tag vX.Y.Z must match Directory.Build.props <Version>, so a mistagged build
       # fails loudly instead of shipping archives/metadata that disagree with the tag.
@@ -68,7 +72,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             dist/*.zip dist/*.tar.gz dist/SHA256SUMS.txt \
             --verify-tag \
-            --title "Future of Dark Grimness $GITHUB_REF_NAME ($RULES_DISPLAY)" \
+            --title "OnePageRules - The Game $GITHUB_REF_NAME ($RULES_DISPLAY)" \
             --generate-notes
 
       # workflow_dispatch runs have no tag/release; keep the output retrievable.

@@ -118,6 +118,16 @@ publish_one() {
   else
     echo "!! armies/ missing at repo root - no sample army lists will ship" >&2
   fi
+
+  # Windows: ship the unit-picture downloader. The script resolves its root as the parent of
+  # its tools/ folder, so tools/ beside the exe makes it fill <app>/UnitImages, which
+  # UnitImageLibrary reads (AppContext.BaseDirectory). Pictures stay out of the archive
+  # (they're Army Forge's art); each player downloads them on their own machine.
+  if [[ "$rid" == win-* && -f "$ROOT_DIR/tools/download-unit-images.ps1" ]]; then
+    mkdir -p "$out/tools"
+    cp "$ROOT_DIR/tools/download-unit-images.ps1" "$out/tools/"
+    cp "$ROOT_DIR/Download Unit Pictures.bat" "$out/Download Unit Pictures.bat"
+  fi
 }
 
 # Every platform: how to play with friends over the internet (Kai, 2026-11-05: Tailscale).
@@ -156,26 +166,43 @@ write_readme() {
   local rid="$1" out="$2"
   if [[ "$rid" == win-* ]]; then
     cat > "$out/README.txt" <<'EOF'
-Future of Dark Grimness - Windows build
+OnePageRules - The Game - Windows build
 =======================================
 
-To run: double-click FdgRaylib.exe (or run it from a terminal).
+To run: double-click FdgRaylib.exe.
 
 No .NET install is required - the runtime is bundled.
 
 First launch: Windows SmartScreen may show "Windows protected your PC"
 because the app is not code-signed. Click "More info" -> "Run anyway".
-This is expected for an unsigned app and is safe.
-
-Sample army lists are in the "armies" folder, split into GDF and AoF
-subfolders - pick one from the lobby's "Load Army" button.
 
 Keep the whole folder together - FdgRaylib.exe needs the DLLs and the
-Assets folder next to it.
+Assets folder next to it. To update, unzip the new version to a fresh
+folder and copy over any army lists or saves you made. Everyone playing
+together must be on the same version.
+
+Unit pictures (optional)
+------------------------
+Double-click "Download Unit Pictures.bat" and pick the game system(s).
+It fetches the unit art from Army Forge into the UnitImages folder here.
+Without it the game shows plain name tokens.
+
+Playing together (Tailscale)
+----------------------------
+1. Install Tailscale (tailscale.com/download) and sign in.
+2. Accept the host's share invite, so the host's PC shows in your
+   Tailscale machine list.
+3. The host starts a game and waits in the lobby.
+4. Everyone else clicks Join and types the host's Tailscale address
+   (the 100.x.x.x number shown in Tailscale).
+Windows Firewall may ask the HOST to allow FdgRaylib the first time they
+host - click Allow.
+
+Sample army lists are in the "armies" folder.
 EOF
   elif [[ "$rid" == osx-* ]]; then
     cat > "$out/README.txt" <<'EOF'
-Future of Dark Grimness - macOS build
+OnePageRules - The Game - macOS build
 =====================================
 
 This build is NOT code-signed (no paid Apple Developer account), so macOS
@@ -215,7 +242,7 @@ and the Assets folder next to it.
 EOF
   else
     cat > "$out/README.txt" <<'EOF'
-Future of Dark Grimness - Linux build (x64)
+OnePageRules - The Game - Linux build (x64)
 ===========================================
 
 To run:
