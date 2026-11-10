@@ -1,0 +1,80 @@
+# Rolling "latest" Windows build for playtesters.
+#
+# Every push to main rebuilds the Windows archive with the same scripts/build-dist.sh the
+# versioned release uses, then replaces the single GitHub Release tagged "latest" with it.
+# Friends always download from one place: Releases -> "Latest build". Versioned releases
+# (v* tags, release.yml) are unaffected and still the official path.
+#
+# Only a build that compiles AND passes the headless smoke game gets published; a red build
+# leaves the previous "latest" in place.
+name: Latest build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # gh release create/delete, moving the "latest" tag
+
+# A newer push supersedes an in-flight build - only the newest commit should become "latest".
+concurrency:
+  group: latest-build
+  cancel-in-progress: true
+
+env:
+  RULES_VERSION: OPR_3_5_1
+
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with rules-engine submodule)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          # See release.yml: ENGINE_TOKEN lets the job read the engine repo once it is private.
+          token: ${{ secrets.ENGINE_TOKEN || github.token }}
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      # Smoke: one full bot-vs-bot headless game must finish cleanly before anything is published.
+      - name: Headless smoke game
+        run: |
+          set -o pipefail
+          printf "2\n2\n" | timeout 600 dotnet run -c Release --project FdgRaylib/FdgRaylib.csproj -- --headless | tail -5
+
+      - name: Build Windows archive
+        run: scripts/build-dist.sh win
+
+      - name: Publish as the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          STAMP="$(date -u +'%Y-%m-%d %H:%M') UTC"
+          ZIP="$(ls dist/FdgRaylib-win-x64-*.zip)"
+          # Stable download name so a bookmarked link keeps working across builds.
+          cp "$ZIP" dist/OnePageRules-TheGame-Windows.zip
+
+          gh release delete latest --cleanup-tag --yes 2>/dev/null || true
+          git tag -f latest "$GITHUB_SHA"
+          git push -f origin refs/tags/latest
+
+          NOTES="Newest playtest build (commit ${SHORT_SHA}, built ${STAMP}).
+
+          Windows: download OnePageRules-TheGame-Windows.zip, unzip it, run FdgRaylib.exe.
+          README.txt inside covers unit pictures and playing together over Tailscale.
+          Everyone in a game must be on the same build - check the commit number above."
+
+          gh release create latest dist/OnePageRules-TheGame-Windows.zip \
+            --title "Latest build (${SHORT_SHA})" \
+            --notes "$NOTES" \
+            --target "$GITHUB_SHA" \
+            --latest
