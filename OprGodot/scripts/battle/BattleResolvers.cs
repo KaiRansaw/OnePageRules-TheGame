@@ -53,6 +53,11 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<StringSelectionRequest, string>(r => new StringListDecision(r)));
         registry.RegisterResolver(new Ask<YesNoRequest, bool>(r => new YesNoDecision(r)));
         registry.RegisterResolver(new Ask<DefineMovementPathRequest, CancellableResult<List<ModelMoveEntry>>>(r => new MoveDecision(r)));
+        registry.RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(
+            new Ask<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(r => new MeleeTargetDecision(r)));
+        registry.RegisterResolver(new Ask<ChooseAbilityEffectRequest, int>(r => new AbilityEffectDecision(r)));
+        registry.RegisterResolver<ConcedeCheckRequest, bool>(new Ask<ConcedeCheckRequest, bool>(r => new ConcedeDecision(r)));
+        registry.RegisterResolver(new Ask<PlaceObjectsRequest<ModelData>, CancellableResult<List<PlacedObjectEntry<ModelData>>>>(r => new PlaceDecision(r)));
         registry.RegisterResolver(new Ask<ChooseRangedAttackRequest, CancellableResult<ChooseRangedAttackRequest.RangedAttackChoice>>(r => new ShootDecision(r)));
     }
 

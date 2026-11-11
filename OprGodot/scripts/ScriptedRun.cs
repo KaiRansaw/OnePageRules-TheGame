@@ -87,6 +87,11 @@ public partial class ScriptedRun : Node
         else if (step == "clickenemy" && Pick() is { } me && battle.Table.UnitCentre(me) is { } from)
             world = battle.Session.Table.Units.Objects.Where(u => !battle.Session.IsMine(u.PlayerID))
                 .Select(u => battle.Table.UnitCentre(u)).Where(c => c != null).OrderBy(c => c!.Value.DistanceTo(from)).FirstOrDefault();
+        else if (step.StartsWith("clickat:") || step.StartsWith("hoverat:"))
+        {
+            string[] xz = step[8..].Split(';');
+            world = battle.Table.World(float.Parse(xz[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(xz[1], System.Globalization.CultureInfo.InvariantCulture));
+        }
         else if (step.Contains(':') && Pick() is { } sel && battle.Table.UnitCentre(sel) is { } c)
         {
             string[] xy = step[(step.IndexOf(':') + 1)..].Split(';');

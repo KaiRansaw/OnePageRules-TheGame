@@ -751,3 +751,174 @@ public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
         _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
             .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
 }
+
+// ====================================================================== placing models (deployment, Scout, Ambush...)
+
+/// <summary>
+/// Place a unit (Kai, 2026-11-11 - deployment was the bot's job until now): the zone is outlined, the unit's ghost
+/// follows the pointer as the block the engine would actually place there (nearest legal spot: in the zone,
+/// clear of other units, enemies and impassable ground), a click places it, Space confirms. Right-click clears,
+/// then goes back to the unit list when the stage allows it.
+/// </summary>
+public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObjectEntry<ModelData>>>>
+{
+    private readonly PlaceObjectsRequest<ModelData> _r;
+    private BattleScreen? _s;
+    private AimedPlacement? _placer;
+    private List<PlacedObjectEntry<ModelData>>? _pending;
+    private Vector2 _lastHover = new(-9999, -9999);
+
+    public PlaceDecision(PlaceObjectsRequest<ModelData> r) => _r = r;
+
+    private string UnitName => _s?.Session.Table.Units.Objects
+        .FirstOrDefault(u => u.Models.Any(m => _r.ModelsToPlace.Count > 0 && m.ID.Equals(_r.ModelsToPlace[0].GetValue().ID)))?.Name ?? "the unit";
+
+    public override string Prompt => string.IsNullOrWhiteSpace(_r.DisplayName) ? $"Place {UnitName}" : _r.DisplayName;
+    public override string Hint => AimedPlacement.IsReposition(_r)
+        ? "This one can only stay where it is for now."
+        : _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+        : "Click inside the outlined zone - the unit is set up there in formation.";
+
+    public override string? CancelLabel => _r.AllowCancel ? "Pick another unit" : null;
+    public override void Cancel() { if (_r.AllowCancel) Complete(new Cancelled<List<PlacedObjectEntry<ModelData>>>()); }
+
+    public override IReadOnlyList<ActionSlot>? Actions => AimedPlacement.IsReposition(_r)
+        ? new[] { new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Leave every model where it is.", () => Complete(new Selected<List<PlacedObjectEntry<ModelData>>>(AimedPlacement.StayPut(_r)))) }
+        : null;
+
+    public override string? ConfirmText => _pending != null ? $"Deploy {UnitName} here?" : null;
+    public override void Confirm()
+    {
+        if (_pending is not { } p) return;
+        Complete(new Selected<List<PlacedObjectEntry<ModelData>>>(p));
+    }
+    public override void ClearPending()
+    {
+        _pending = null;
+        _lastHover = new(-9999, -9999);
+        _s?.Table.ClearGhosts("move");
+        Version++;
+    }
+
+    public override void Shown(BattleScreen s)
+    {
+        _s = s;
+        _placer = new AimedPlacement(s.Session.Table);
+        // The zone, and any keep-out circles round enemies.
+        var lines = new List<BattleTable.GhostLine>();
+        foreach (var poly in FdgRaylib.Rendering.ZoneOutlines.Polygons(_r.DeploymentZone))
+            for (int i = 0; i < poly.Length; i++)
+            {
+                var a = poly[i];
+                var b = poly[(i + 1) % poly.Length];
+                lines.Add(new BattleTable.GhostLine(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z), HudKit.Lime with { A = 0.9f }, 0.2f));
+            }
+        var rings = _r.EnemyKeepOutDiscs.Select(d => new BattleTable.Ghost(d.Center.x, d.Center.z, d.RadiusInches, Palette.WoundsRed, Ring: true));
+        s.Table.SetGhosts("zone", rings, lines);
+        Version++;
+    }
+
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("zone"); s.Table.ClearGhosts("move"); }
+
+    public override void AutoPlay(BattleScreen s) =>
+        Complete(new FDG.Ai.Resolvers.AiPlaceObjectsResolver<ModelData>(s.Session.Table).Resolve(_r).GetAwaiter().GetResult());
+
+    private List<PlacedObjectEntry<ModelData>>? PlanAt(BattleScreen s, Vector2 at) =>
+        AimedPlacement.IsReposition(_r) || _placer == null || s.Table.TableAt(at) is not { } p ? null : _placer.At(_r, p.X, p.Y);
+
+    private void Draw(BattleScreen s, List<PlacedObjectEntry<ModelData>> plan, bool placed)
+    {
+        Color c = placed ? HudKit.Lime.Lightened(0.25f) : HudKit.Lime;
+        s.Table.SetGhosts("move", plan.Select(e => new BattleTable.Ghost(e.Position.x, e.Position.z,
+            Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), c with { A = placed ? 1.6f : 1f })));
+    }
+
+    public override void TableHover(BattleScreen s, Vector2 at)
+    {
+        if (_pending != null || at.DistanceTo(_lastHover) < 6) return;
+        _lastHover = at;
+        if (PlanAt(s, at) is { } plan) Draw(s, plan, placed: false);
+        else s.Table.ClearGhosts("move");
+    }
+
+    public override bool TableClick(BattleScreen s, Vector2 at)
+    {
+        if (PlanAt(s, at) is not { } plan) return AimedPlacement.IsReposition(_r);
+        _pending = plan;
+        Draw(s, plan, placed: true);
+        Version++;
+        return true;
+    }
+}
+
+// ====================================================================== smaller choices
+
+/// <summary>Who to fight (Charge into several units, or a fight with several in reach): click the enemy, or pick it from the list.</summary>
+public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding<UnitData>>>
+{
+    private readonly ChooseMeleeDefenderRequest _r;
+    public MeleeTargetDecision(ChooseMeleeDefenderRequest r) => _r = r;
+    public override string Prompt => "Choose who to fight";
+    public override string Hint => string.IsNullOrWhiteSpace(_r.Instructions) ? "Click the enemy unit, or pick it from the list." : _r.Instructions;
+    public override string? CancelLabel => "Back";
+    public override void Cancel() => Complete(new Cancelled<DataBinding<UnitData>>());
+    public override bool WantsEnemyList => true;
+    public override void AutoPlay(BattleScreen s) => Complete(new Selected<DataBinding<UnitData>>(_r.ValidOptions[0].Option));
+
+    private CancellableSelectionRequest<UnitData>.ValidOption? Option(IUnit u) => _r.ValidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(u.ID));
+
+    public override UnitMark? ListMark(IUnit unit)
+    {
+        if (Option(unit) != null) return new UnitMark(true, null);
+        var bad = _r.InvalidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID));
+        return bad != null ? new UnitMark(false, bad.Reason) : null;
+    }
+
+    public override void UnitPicked(BattleScreen s, IUnit unit)
+    {
+        if (Option(unit) is { } o) Complete(new Selected<DataBinding<UnitData>>(o.Option));
+    }
+
+    public override bool TableClick(BattleScreen s, Vector2 at)
+    {
+        if (s.Table.UnitAt(at) is not { } unit || Option(unit) is not { } o) return false;
+        Complete(new Selected<DataBinding<UnitData>>(o.Option));
+        return true;
+    }
+
+    public override IReadOnlyList<ChoiceRow> Rows =>
+        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(new Selected<DataBinding<UnitData>>(o.Option))))
+            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+    public override string? RowsTitle => "Fight";
+}
+
+/// <summary>"Pick one effect" rules at deployment / activation (Versatile..., army rules like Vinci Tech): a list with the book text.</summary>
+public sealed class AbilityEffectDecision : Decision<int>
+{
+    private readonly ChooseAbilityEffectRequest _r;
+    public AbilityEffectDecision(ChooseAbilityEffectRequest r) => _r = r;
+    public override string Prompt => $"{_r.BearerName}: {_r.RuleName}";
+    public override string Hint => _r.Instructions;
+    public override string? RowsTitle => _r.RuleName;
+    public override void AutoPlay(BattleScreen s) => Complete(0);
+    public override IReadOnlyList<ChoiceRow> Rows =>
+        _r.Options.Select((o, i) => new ChoiceRow(o.Label, o.Description, true, null, () => Complete(i))).ToList();
+}
+
+/// <summary>The once-a-round "do you want to concede?" check.</summary>
+public sealed class ConcedeDecision : Decision<bool>
+{
+    private readonly ConcedeCheckRequest _r;
+    private BattleScreen? _s;
+    public ConcedeDecision(ConcedeCheckRequest r) => _r = r;
+    public override string Prompt => $"Round {_r.Round} - keep fighting?";
+    public override string? RowsTitle => "Concede";
+    public override void Shown(BattleScreen s) => _s = s;
+    public override void AutoPlay(BattleScreen s) => Complete(false);
+    public override IReadOnlyList<ChoiceRow> Rows => new[]
+    {
+        new ChoiceRow("Keep fighting", null, true, null, () => Complete(false)),
+        new ChoiceRow("Concede the game", "Ends the game as a loss.", true, null,
+            () => { if (_s != null) _s.Confirm("Concede?", "End the game now as a loss?", "Concede", () => Complete(true)); else Complete(true); }),
+    };
+}
