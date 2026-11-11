@@ -21,6 +21,10 @@ public partial class ComingSoonScreen : Control
     {
         GetNode<Button>("%Back").Pressed += App.I.Back;
         GetNode<Label>("%Title").Text = "Not ported yet";
+        Ui.ScreenTitle(GetNode<Label>("%Title"));
+        GetNode<Control>("Margin/Column/Card").SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        GetNode<Control>("Margin/Column/Card").SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+        GetNode<Control>("Margin/Column/Card").CustomMinimumSize = new Vector2(900, 0);
         GetNode<Label>("%Screen").Text = _screen;
         GetNode<Label>("%Detail").Text = _detail
             + "\n\nUntil then this screen works in the Raylib build, which keeps running alongside the port.";

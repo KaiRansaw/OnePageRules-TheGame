@@ -1,6 +1,7 @@
 using FDG;
 using FdgRaylib;
 using Godot;
+using OprGodot.Hud;
 
 namespace OprGodot;
 
@@ -73,7 +74,9 @@ public partial class GameScreen : Control
     public override void _Ready()
     {
         GetNode<Button>("%Back").Pressed += App.I.Back;
-        GetNode<Label>("%Title").Text = FamilyName(Family);
+        var title = GetNode<Label>("%Title");
+        title.Text = FamilyName(Family);
+        Ui.ScreenTitle(title);
 
         var games = GetNode<HBoxContainer>("%Games");
         foreach (EGameSystem system in GamesOf(Family))
@@ -84,24 +87,60 @@ public partial class GameScreen : Control
     {
         var card = new PanelContainer { ThemeTypeVariation = "CardPanel", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 12);
+        col.AddThemeConstantOverride("separation", 10);
         card.AddChild(col);
 
-        col.AddChild(Ui.Label(GameSystemInfo.DisplayName(system), "HeaderLabel"));
+        col.AddChild(HudKit.Text(GameSystemInfo.DisplayName(system).ToUpperInvariant(), 34, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
         col.AddChild(Ui.Label(GameBlurb(system), wrap: true));
         col.AddChild(Ui.Label(Library(system), "DimLabel", wrap: true));
-
-        // The space above the buttons is kept for faction art, as in the mockup.
-        col.AddChild(Ui.Grow());
+        col.AddChild(HudKit.Gap(0, 10));
+        col.AddChild(HudKit.Heading("Play", 14));
 
         foreach (EMode mode in ModesOf(system))
-        {
-            Button b = Ui.Button(ModeLabel(mode), () => OpenMode(system, mode), ModeBlurb(system, mode), "ModeButton");
-            b.Name = $"{system}_{mode}";
-            b.CustomMinimumSize = new Vector2(0, 64);
-            col.AddChild(b);
-        }
+            col.AddChild(ModeButton(system, mode));
+        // The space under the buttons is kept for faction art, as in the mockup.
+        col.AddChild(Ui.Grow());
         return card;
+    }
+
+    private static string ModeIcon(EMode mode) => mode switch
+    {
+        EMode.ArmyVsArmy => "crossed-swords",
+        EMode.Horde => "skull-crack",
+        EMode.Campaign => "flying-flag",
+        EMode.Mission => "flag-objective",
+        _ => "person",
+    };
+
+    /// <summary>A mode: icon, name, and the one-line "what is this" under it, so the choice reads without hovering.</summary>
+    private static Button ModeButton(EGameSystem system, EMode mode)
+    {
+        var b = new Button
+        {
+            Name = $"{system}_{mode}", ThemeTypeVariation = "ModeButton", TooltipText = ModeBlurb(system, mode),
+            CustomMinimumSize = new Vector2(0, 92),
+        };
+        b.Pressed += () => OpenMode(system, mode);
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.SetAnchorsPreset(LayoutPreset.FullRect);
+        row.OffsetLeft = 18; row.OffsetRight = -14;
+        row.AddThemeConstantOverride("separation", 16);
+        var ic = HudKit.Icon(ModeIcon(mode), 44, HudKit.Teal);
+        ic.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        row.AddChild(ic);
+        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+        v.AddThemeConstantOverride("separation", 0);
+        v.AddChild(HudKit.Text(ModeLabel(mode).ToUpperInvariant(), 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        var blurb = HudKit.Text(ModeBlurb(system, mode).Replace(" Goes straight to the lobby.", ""), 15, HudKit.Dim, HudKit.Semi);
+        blurb.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        blurb.CustomMinimumSize = new Vector2(10, 0);
+        v.AddChild(blurb);
+        row.AddChild(v);
+        var arrow = HudKit.Text(">", 30, HudKit.Lime, HudKit.Bold);
+        arrow.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        row.AddChild(arrow);
+        b.AddChild(row);
+        return b;
     }
 
     /// <summary>

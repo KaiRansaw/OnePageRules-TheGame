@@ -18,6 +18,9 @@ public partial class SettingsScreen : Control
     public override void _Ready()
     {
         GetNode<Button>("%Back").Pressed += App.I.Back;
+        Ui.ScreenTitle(GetNode<Label>("Margin/Column/Header/Title"));
+        // Settings rows are short: keep the panel to a readable width instead of the whole screen.
+        GetNode<MarginContainer>("Margin").AddThemeConstantOverride("margin_right", 480);
         var tabs = GetNode<TabContainer>("%Tabs");
         AddTab(tabs, "Player", BuildPlayer);
         AddTab(tabs, "Display", BuildDisplay);

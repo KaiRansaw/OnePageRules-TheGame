@@ -18,6 +18,9 @@ public partial class ScriptedRun : Node
     private string? _shot;
     private int _wait = 20;
 
+    /// <summary>True when the command line asks for a scripted run (no node made).</summary>
+    public static bool IsRequested => OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--press=") || a.StartsWith("--shot="));
+
     public static bool Requested(out ScriptedRun run)
     {
         run = new ScriptedRun();

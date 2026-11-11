@@ -33,4 +33,13 @@ public static class Ui
         c.MouseFilter = Control.MouseFilterEnum.Ignore;
         return c;
     }
+
+    /// <summary>The big screen title next to Back (Exo 2, caps), the same on every screen.</summary>
+    public static void ScreenTitle(Godot.Label title)
+    {
+        title.Text = title.Text.ToUpperInvariant();
+        title.AddThemeFontOverride("font", Hud.HudKit.Exo(800));
+        title.AddThemeFontSizeOverride("font_size", 48);
+        title.AddThemeColorOverride("font_color", Hud.HudKit.Fg);
+    }
 }

@@ -38,6 +38,9 @@ public partial class App : Node
         if (UserConfig.Current.StartFullscreen && !OS.HasFeature("editor") && !scripted)
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
         if (scripted) AddChild(run);
+
+        // The tactical HUD look for every screen (Kai, 2026-11-10).
+        GetTree().Root.Theme = Hud.HudTheme.Build();
     }
 
     /// <summary>The main scene hands over the control screens are shown in.</summary>
@@ -49,6 +52,14 @@ public partial class App : Node
         if (_host == null) throw new InvalidOperationException("App.Attach was not called by the main scene.");
         var screen = GD.Load<PackedScene>(scenePath).Instantiate<T>();
         init?.Invoke(screen);
+        if (screen is not IOwnBackdrop)
+        {
+            // Every other screen sits on a dark veil over the 3D table, so text reads.
+            var veil = new ColorRect { Color = new Color(0.012f, 0.02f, 0.024f, 0.82f), MouseFilter = Control.MouseFilterEnum.Ignore };
+            veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            screen.AddChild(veil);
+            screen.MoveChild(veil, 0);
+        }
         if (_screens.TryPeek(out Control? under)) under.Visible = false;
         _host.AddChild(screen);
         _screens.Push(screen);
@@ -85,6 +96,9 @@ public partial class App : Node
 
     public void Quit() => GetTree().Quit();
 }
+
+/// <summary>A screen that draws its own shading over the 3D backdrop (the main menu).</summary>
+public interface IOwnBackdrop { }
 
 /// <summary>Scene paths in one place, so a moved file breaks here and nowhere else.</summary>
 public static class Scenes

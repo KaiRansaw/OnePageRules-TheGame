@@ -4,7 +4,7 @@ namespace OprGodot;
 
 /// <summary>
 /// The game's colours, for code that draws or tints. The same values as the theme file
-/// (theme/opr_theme.tres) and as the Raylib build's ImGuiTheme - the teal-slate with lime accent Kai
+/// (scripts/hud/HudTheme.cs) and as the Raylib build's ImGuiTheme - the teal-slate with lime accent Kai
 /// picked, which was always meant to carry over to Godot. Change a colour in both places.
 /// </summary>
 public static class Palette
