@@ -178,6 +178,17 @@ public sealed class BattleDecisions
         foreach (Node c in _rows.GetChildren()) c.QueueFree();
         IReadOnlyList<ChoiceRow>? rows = d?.Rows;
         bool any = rows is { Count: > 0 };
+        if (any && Style != RowStyle.List)
+        {
+            // Kai, 2026-11-11 (mockup): the choices as buttons extending to the right of the grid, not a list under it.
+            _grid.AddChild(Side(d!, rows!));
+            _grid.Visible = true;
+            _rowsTitle.Visible = false;
+            _areaTitle.Text = (d!.RowsTitle ?? "Choose").ToUpperInvariant();
+            _rowScroll.Visible = false;
+            _note.Visible = false;
+            return;
+        }
         _rowsTitle.Text = any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "";
         _rowsTitle.Visible = any && slots != null;
         _areaTitle.Text = slots == null && any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "ACTIONS";
@@ -194,6 +205,126 @@ public sealed class BattleDecisions
 
         _note.Text = d == null ? "Lights up on your turn." : "";
         _note.Visible = _note.Text.Length > 0;
+    }
+
+    // ------------------------------------------------------------------ choices as buttons (mockup, 2026-11-11)
+
+    public enum RowStyle { List, Square, Tile }
+
+    /// <summary><c>--rows=Square|Tile</c>: how choices are drawn. List = the original rows under the grid.</summary>
+    public static RowStyle Style { get; set; } = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--rows=")) is { } a
+        && Enum.TryParse(a["--rows=".Length..], out RowStyle st) ? st : RowStyle.List;
+
+    /// <summary>The choices to the right of the grid: a column for any rule text, then the buttons, then Back.</summary>
+    private Control Side(Decision d, IReadOnlyList<ChoiceRow> rows)
+    {
+        var h = new HBoxContainer();
+        h.AddThemeConstantOverride("separation", 8);
+        var info = rows.Where(r => r.Pick == null && r.Enabled).ToList();
+        if (info.Count > 0)
+        {
+            var col = new VBoxContainer { CustomMinimumSize = new Vector2(200, 0) };
+            col.AddThemeConstantOverride("separation", 2);
+            foreach (ChoiceRow r in info)
+            {
+                col.AddChild(HudKit.Text(r.Label.ToUpperInvariant(), 13, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 1)));
+                if (r.Detail is { Length: > 0 } det)
+                {
+                    var l = HudKit.Text(det, 12, HudKit.Dim, HudKit.Medium);
+                    l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                    l.CustomMinimumSize = new Vector2(200, 0);
+                    col.AddChild(l);
+                }
+            }
+            h.AddChild(col);
+        }
+        var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
+        bool square = Style == RowStyle.Square;
+        int perColumn = square ? 2 : 3;
+        var g = new GridContainer { Columns = Math.Max(1, (buttons.Count + perColumn - 1) / perColumn) };
+        g.AddThemeConstantOverride("h_separation", 6);
+        g.AddThemeConstantOverride("v_separation", 6);
+        int n = 0;
+        foreach (ChoiceRow r in buttons) g.AddChild(square ? SquareChoice(r, d.RowIcon, ++n) : TileChoice(r, d.RowIcon, ++n));
+        h.AddChild(g);
+        if (d.CancelLabel is { } back)
+        {
+            var b = square ? SquareChoice(new ChoiceRow(back, "Step back (right-click).", true, null, d.Cancel), "shield-reflect", 0)
+                : TileChoice(new ChoiceRow(back, "right-click", true, null, d.Cancel), "shield-reflect", 0);
+            b.SizeFlagsVertical = Control.SizeFlags.ShrinkEnd;
+            h.AddChild(b);
+        }
+        return h;
+    }
+
+    private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail ?? "") : (r.Reason ?? "Not available.");
+
+    /// <summary>Like the four action buttons: picture, name, number key; the detail on hover.</summary>
+    private static Control SquareChoice(ChoiceRow r, string icon, int n)
+    {
+        const float size = 96;
+        var b = new Button { CustomMinimumSize = new Vector2(size, size + 6), Disabled = !r.Enabled || r.Pick == null, FocusMode = Control.FocusModeEnum.None, TooltipText = Tip(r) };
+        HudKit.StyleButton(b, new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 }, HudKit.Fg, 15);
+        var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+        col.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        col.AddThemeConstantOverride("separation", 2);
+        var ic = HudKit.Icon(r.Icon ?? icon, 38, r.Enabled ? HudKit.Lime : HudKit.Dim with { A = 0.4f });
+        ic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        col.AddChild(ic);
+        var lbl = HudKit.Text(r.Label.ToUpperInvariant(), 12, r.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }, HudKit.Tracked(HudKit.Bold, 1), HorizontalAlignment.Center);
+        lbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        lbl.CustomMinimumSize = new Vector2(size - 10, 0);
+        lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
+        col.AddChild(lbl);
+        b.AddChild(col);
+        if (n > 0)
+        {
+            var key = HudKit.Text(n.ToString(), 12, HudKit.Dim, HudKit.Bold);
+            key.Position = new Vector2(9, 4);
+            key.MouseFilter = Control.MouseFilterEnum.Ignore;
+            b.AddChild(key);
+        }
+        Wire(b, r);
+        return b;
+    }
+
+    /// <summary>A wider button: picture left, name, and one line of what it does (or why not) - readable without hovering.</summary>
+    private static Control TileChoice(ChoiceRow r, string icon, int n)
+    {
+        var b = new Button { CustomMinimumSize = new Vector2(236, 68), Disabled = !r.Enabled || r.Pick == null, FocusMode = Control.FocusModeEnum.None, TooltipText = Tip(r) };
+        HudKit.StyleButton(b, new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 10, ContentMarginLeft = 8, ContentMarginRight = 8 }, HudKit.Fg, 15);
+        var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        row.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        row.OffsetLeft = 10; row.OffsetRight = -8;
+        row.AddThemeConstantOverride("separation", 8);
+        var ic = HudKit.Icon(r.Icon ?? icon, 34, r.Enabled ? HudKit.Lime : HudKit.Dim with { A = 0.4f });
+        ic.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        row.AddChild(ic);
+        var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
+        text.AddThemeConstantOverride("separation", 0);
+        var name = HudKit.Text((n > 0 ? n + "  " : "") + r.Label, 15, r.Enabled ? HudKit.Fg : HudKit.Dim, HudKit.Bold);
+        name.ClipText = true; name.MouseFilter = Control.MouseFilterEnum.Ignore;
+        text.AddChild(name);
+        string sub = Tip(r);
+        if (sub.Length > 0)
+        {
+            var l = HudKit.Text(sub, 12, r.Enabled ? HudKit.Dim : Palette.WoundsRed with { A = 0.85f }, HudKit.Medium);
+            l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            l.MaxLinesVisible = 2;
+            l.CustomMinimumSize = new Vector2(170, 0);
+            l.MouseFilter = Control.MouseFilterEnum.Ignore;
+            text.AddChild(l);
+        }
+        row.AddChild(text);
+        b.AddChild(row);
+        Wire(b, r);
+        return b;
+    }
+
+    private static void Wire(Button b, ChoiceRow r)
+    {
+        if (r.Pick != null) b.Pressed += r.Pick;
+        if (r.Hover is { } hover) { b.MouseEntered += () => hover(true); b.MouseExited += () => hover(false); }
     }
 
     private static Control Row(ChoiceRow r)

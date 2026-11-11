@@ -17,7 +17,7 @@ public sealed record ActionSlot(string Name, string Icon, string Label, string K
 /// (not clickable). <paramref name="Secondary"/> is a companion button on the same row (#321).
 /// </summary>
 public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action? Pick,
-    string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null);
+    string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null, string? Icon = null);
 
 /// <summary>A tick box in the confirm box.</summary>
 public sealed record ConfirmCheck(string Label, string Detail, bool On, Action<bool> Set);
@@ -40,6 +40,8 @@ public abstract class Decision
     public virtual IReadOnlyList<ActionSlot>? Actions => null;
     public virtual IReadOnlyList<ChoiceRow>? Rows => null;
     public virtual string? RowsTitle => null;
+    /// <summary>The picture on this decision's choice buttons when the choices are drawn as buttons (a row can set its own).</summary>
+    public virtual string RowIcon => "scroll-unfurled";
     /// <summary>The way out (Back / Done shooting), or null when the decision is mandatory.</summary>
     public virtual string? CancelLabel => null;
     public virtual void Cancel() { }
@@ -436,8 +438,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         Version++;
     }
 
-    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); }
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); }
+    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); s.Table.HideSelectedRanges = true; }
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.HideSelectedRanges = false; }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -646,6 +648,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
 
 public sealed class StringListDecision : Decision<string>
 {
+    public override string RowIcon => "flying-flag";
     private readonly StringSelectionRequest _r;
     public StringListDecision(StringSelectionRequest r) => _r = r;
 
@@ -679,6 +682,7 @@ public sealed class StringListDecision : Decision<string>
 
 public sealed class YesNoDecision : Decision<bool>
 {
+    public override string RowIcon => "checked-shield";
     private readonly YesNoRequest _r;
     public YesNoDecision(YesNoRequest r) => _r = r;
     public override string Prompt => _r.QuestionText;
@@ -686,8 +690,8 @@ public sealed class YesNoDecision : Decision<bool>
     public override void AutoPlay(BattleScreen s) => Complete(_r.DefaultAnswer);
     public override IReadOnlyList<ChoiceRow> Rows => new[]
     {
-        new ChoiceRow("Yes", null, true, null, () => Complete(true)),
-        new ChoiceRow("No", null, true, null, () => Complete(false)),
+        new ChoiceRow("Yes", null, true, null, () => Complete(true), Icon: "checked-shield"),
+        new ChoiceRow("No", null, true, null, () => Complete(false), Icon: "stop-sign"),
     };
 }
 
@@ -751,8 +755,7 @@ public class UnitPickDecision<T> : Decision<T>, IUnitPick
     /// than the unit's name ("Hive Lord (via Synaptic Relay, +1)"). A plain deploy / activate pick has no list.
     /// </summary>
     private bool Listed => _s != null && _valid.Count > 0
-        && (_valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1
-            || _valid.Any(o => o.Name != o.Unit.GetValue().Name));
+        && _valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1;   // Kai, 2026-11-11: else the left list only
 
     public override string? RowsTitle => "Choose";
 
@@ -810,6 +813,7 @@ public sealed class CancellableUnitPickDecision : UnitPickDecision<CancellableRe
 
 public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
 {
+    public override string RowIcon => "targeting";
     private readonly SelectionRequest<ModelData> _r;
     private BattleScreen? _s;
     private int _hovered = -1;
@@ -1014,6 +1018,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
 /// <summary>Who to fight (Charge into several units, or a fight with several in reach): click the enemy, or pick it from the list.</summary>
 public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding<UnitData>>>
 {
+    public override string RowIcon => "crossed-swords";
     private readonly ChooseMeleeDefenderRequest _r;
     public MeleeTargetDecision(ChooseMeleeDefenderRequest r) => _r = r;
     public override string Prompt => "Choose who to fight";
@@ -1053,6 +1058,7 @@ public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding
 /// <summary>"Pick one effect" rules at deployment / activation (Versatile..., army rules like Vinci Tech): a list with the book text.</summary>
 public sealed class AbilityEffectDecision : Decision<int>
 {
+    public override string RowIcon => "scroll-unfurled";
     private readonly ChooseAbilityEffectRequest _r;
     public AbilityEffectDecision(ChooseAbilityEffectRequest r) => _r = r;
     public override string Prompt => $"{_r.BearerName}: {_r.RuleName}";
@@ -1066,6 +1072,7 @@ public sealed class AbilityEffectDecision : Decision<int>
 /// <summary>The once-a-round "do you want to concede?" check.</summary>
 public sealed class ConcedeDecision : Decision<bool>
 {
+    public override string RowIcon => "stop-sign";
     private readonly ConcedeCheckRequest _r;
     private BattleScreen? _s;
     public ConcedeDecision(ConcedeCheckRequest r) => _r = r;
@@ -1091,6 +1098,7 @@ public sealed class ConcedeDecision : Decision<bool>
 /// </summary>
 public sealed class SpellDecision : Decision<ChooseSpellReply>
 {
+    public override string RowIcon => "magic-swirl";
     private readonly ChooseSpellRequest _r;
     private int _spell = -1;
     public SpellDecision(ChooseSpellRequest r) => _r = r;
@@ -1153,6 +1161,7 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
 /// <summary>Another caster is casting: spend tokens to help a friend (+1 each) or hinder an enemy (-1 each)?</summary>
 public sealed class CastAssistDecision : Decision<CastAssistReply>
 {
+    public override string RowIcon => "lightning-helix";
     private readonly CastAssistRequest _r;
     public CastAssistDecision(CastAssistRequest r) => _r = r;
 

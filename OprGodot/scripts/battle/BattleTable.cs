@@ -86,6 +86,12 @@ public partial class BattleTable : Node3D
     /// </summary>
     private string _outlineSig = "";
 
+    /// <summary>
+    /// Kai, 2026-11-11: while a unit is being moved, its ranges show only from where it is going (the move ghost
+    /// draws those) - not also from where it stands.
+    /// </summary>
+    public bool HideSelectedRanges { get; set; }
+
     /// <summary>An enemy unit under the pointer: its ranged weapons' reach is drawn too (Kai, 2026-11-11).</summary>
     public UnitID? HoverUnit { get; set; }
 
@@ -97,7 +103,7 @@ public partial class BattleTable : Node3D
         var hl = Highlight.Count == 0 ? new List<IUnit>() : Session.Table.Units.Objects.Where(u => Highlight.Contains(u.ID)).ToList();
         static string Sig(IUnit u) => u.ID.ID + (u.GetIsOnBattlefield() ? "" : "off") + string.Concat(u.Models.Where(m => m.GetIsAlive())
             .Select(m => $"{m.Position.x:0.0},{m.Position.z:0.0};"));
-        string sig = (sel == null ? "-" : Sig(sel)) + "|" + (hover == null ? "-" : Sig(hover)) + "|" + string.Join("|", hl.Select(Sig));
+        string sig = (HideSelectedRanges ? "moving|" : "") + (sel == null ? "-" : Sig(sel)) + "|" + (hover == null ? "-" : Sig(hover)) + "|" + string.Join("|", hl.Select(Sig));
         if (sig == _outlineSig) return;
         _outlineSig = sig;
 
@@ -107,7 +113,7 @@ public partial class BattleTable : Node3D
         SetGhosts("select", Array.Empty<Ghost>(), lines);
 
         // The selected unit's weapon ranges, and the hovered enemy's (in warm colours, so the two read apart).
-        var (rl, rt) = sel != null && sel.GetIsOnBattlefield()
+        var (rl, rt) = sel != null && sel.GetIsOnBattlefield() && !HideSelectedRanges
             ? RangeShapes(sel.Models.Where(m => m.GetIsAlive()).Select(m => (m, new Vector2(m.Position.x, m.Position.z))), CoolRanges)
             : (new List<GhostLine>(), new List<GhostText>());
         SetGhosts("range", Array.Empty<Ghost>(), rl, rt);

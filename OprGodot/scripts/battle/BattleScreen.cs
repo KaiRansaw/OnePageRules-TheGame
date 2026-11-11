@@ -1374,6 +1374,23 @@ public partial class BattleScreen : Control, IOwnBackdrop
         v.AddThemeConstantOverride("separation", 12);
         v.AddChild(HudKit.Text("GAME OVER", 48, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
         v.AddChild(HudKit.Text(Session.EndedText ?? "", 24, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center));
+        // Kai, 2026-11-11: the score on the Game Over card - objectives held (what decides the game), and what is left.
+        var grid = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+        grid.AddThemeConstantOverride("h_separation", 28);
+        grid.AddThemeConstantOverride("v_separation", 4);
+        foreach (string h in new[] { "", "OBJECTIVES", "UNITS LEFT", "POINTS LEFT" })
+            grid.AddChild(HudKit.Text(h, 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2), HorizontalAlignment.Center));
+        var scores = Session.Table.Progress.Scores;
+        foreach (GameSession.Seat seat in Session.Seats)
+        {
+            var units = Session.Table.Units.Objects.Where(u => u.PlayerID.Equals(seat.Id) && u.Models.Any(m => m.GetIsAlive())).ToList();
+            int obj = scores.FirstOrDefault(x => x.PlayerID.Equals(seat.Id)).ObjectiveCount;
+            grid.AddChild(HudKit.Text(seat.Name, 20, _table.SeatColour(seat.Id), HudKit.Bold));
+            grid.AddChild(HudKit.Text(obj.ToString(), 26, HudKit.Fg, HudKit.Exo(800), HorizontalAlignment.Center));
+            grid.AddChild(HudKit.Text(units.Count.ToString(), 20, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center));
+            grid.AddChild(HudKit.Text(units.Sum(u => u is UnitData ud ? ud.PointCost : 0).ToString(), 20, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center));
+        }
+        v.AddChild(grid);
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);
         var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table.");
