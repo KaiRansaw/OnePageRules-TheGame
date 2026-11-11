@@ -42,6 +42,8 @@ public abstract class Decision
     public virtual string? RowsTitle => null;
     /// <summary>The picture on this decision's choice buttons when the choices are drawn as buttons (a row can set its own).</summary>
     public virtual string RowIcon => "scroll-unfurled";
+    /// <summary>Draw the choices as square buttons beside the grid (Kai picked style A, 2026-11-11) instead of a list.</summary>
+    public virtual bool ButtonChoices => false;
     /// <summary>The way out (Back / Done shooting), or null when the decision is mandatory.</summary>
     public virtual string? CancelLabel => null;
     public virtual void Cancel() { }
@@ -648,6 +650,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
 
 public sealed class StringListDecision : Decision<string>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "flying-flag";
     private readonly StringSelectionRequest _r;
     public StringListDecision(StringSelectionRequest r) => _r = r;
@@ -682,6 +685,7 @@ public sealed class StringListDecision : Decision<string>
 
 public sealed class YesNoDecision : Decision<bool>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "checked-shield";
     private readonly YesNoRequest _r;
     public YesNoDecision(YesNoRequest r) => _r = r;
@@ -813,6 +817,7 @@ public sealed class CancellableUnitPickDecision : UnitPickDecision<CancellableRe
 
 public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "targeting";
     private readonly SelectionRequest<ModelData> _r;
     private BattleScreen? _s;
@@ -1018,6 +1023,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
 /// <summary>Who to fight (Charge into several units, or a fight with several in reach): click the enemy, or pick it from the list.</summary>
 public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding<UnitData>>>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "crossed-swords";
     private readonly ChooseMeleeDefenderRequest _r;
     public MeleeTargetDecision(ChooseMeleeDefenderRequest r) => _r = r;
@@ -1058,6 +1064,7 @@ public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding
 /// <summary>"Pick one effect" rules at deployment / activation (Versatile..., army rules like Vinci Tech): a list with the book text.</summary>
 public sealed class AbilityEffectDecision : Decision<int>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "scroll-unfurled";
     private readonly ChooseAbilityEffectRequest _r;
     public AbilityEffectDecision(ChooseAbilityEffectRequest r) => _r = r;
@@ -1072,6 +1079,7 @@ public sealed class AbilityEffectDecision : Decision<int>
 /// <summary>The once-a-round "do you want to concede?" check.</summary>
 public sealed class ConcedeDecision : Decision<bool>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "stop-sign";
     private readonly ConcedeCheckRequest _r;
     private BattleScreen? _s;
@@ -1098,6 +1106,7 @@ public sealed class ConcedeDecision : Decision<bool>
 /// </summary>
 public sealed class SpellDecision : Decision<ChooseSpellReply>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "magic-swirl";
     private readonly ChooseSpellRequest _r;
     private int _spell = -1;
@@ -1161,6 +1170,7 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
 /// <summary>Another caster is casting: spend tokens to help a friend (+1 each) or hinder an enemy (-1 each)?</summary>
 public sealed class CastAssistDecision : Decision<CastAssistReply>
 {
+    public override bool ButtonChoices => true;
     public override string RowIcon => "lightning-helix";
     private readonly CastAssistRequest _r;
     public CastAssistDecision(CastAssistRequest r) => _r = r;

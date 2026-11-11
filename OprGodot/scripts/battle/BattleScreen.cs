@@ -215,7 +215,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space or Key.Enter or Key.KpEnter }:
                 if (Decisions.ConfirmPending()) GetViewport().SetInputAsHandled();
                 break;
-            case InputEventKey { Pressed: true, Echo: false, Keycode: >= Key.Key1 and <= Key.Key4 } k:
+            case InputEventKey { Pressed: true, Echo: false, Keycode: >= Key.Key1 and <= Key.Key9 } k:
                 if (Decisions.HotKey((int)(k.Keycode - Key.Key1))) GetViewport().SetInputAsHandled();
                 break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.M }:

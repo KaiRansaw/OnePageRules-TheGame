@@ -71,6 +71,14 @@ public sealed class BattleDecisions
 
     public bool HotKey(int index)
     {
+        // The numbered choice buttons (style A) answer to their number keys.
+        if (Current is { ButtonChoices: true, Actions: null, Rows: { } rows } && Style != RowStyle.List)
+        {
+            var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
+            if (index >= buttons.Count || !buttons[index].Enabled || buttons[index].Pick is not { } pick) return false;
+            pick();
+            return true;
+        }
         if (Current?.Actions is not { } slots || index >= slots.Count || !slots[index].Enabled) return false;
         slots[index].Choose();
         return true;
@@ -178,19 +186,20 @@ public sealed class BattleDecisions
         foreach (Node c in _rows.GetChildren()) c.QueueFree();
         IReadOnlyList<ChoiceRow>? rows = d?.Rows;
         bool any = rows is { Count: > 0 };
-        if (any && Style != RowStyle.List)
+        if (any && Style != RowStyle.List && d!.ButtonChoices)
         {
             // Kai, 2026-11-11 (mockup): the choices as buttons extending to the right of the grid, not a list under it.
             _grid.AddChild(Side(d!, rows!));
             _grid.Visible = true;
             _rowsTitle.Visible = false;
-            _areaTitle.Text = (d!.RowsTitle ?? "Choose").ToUpperInvariant();
+            _areaTitle.Text = (d!.RowsTitle ?? "Choose").ToUpperInvariant() + _titleHint;
             _rowScroll.Visible = false;
             _note.Visible = false;
             return;
         }
         _rowsTitle.Text = any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "";
         _rowsTitle.Visible = any && slots != null;
+        _areaTitle.TooltipText = ""; _areaTitle.MouseFilter = Control.MouseFilterEnum.Ignore;
         _areaTitle.Text = slots == null && any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "ACTIONS";
         if (any) foreach (ChoiceRow r in rows!) _rows.AddChild(Row(r));
         if (d?.CancelLabel is { } back)
@@ -211,41 +220,73 @@ public sealed class BattleDecisions
 
     public enum RowStyle { List, Square, Tile }
 
+    private string _titleHint = "";
+
     /// <summary><c>--rows=Square|Tile</c>: how choices are drawn. List = the original rows under the grid.</summary>
     public static RowStyle Style { get; set; } = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--rows=")) is { } a
-        && Enum.TryParse(a["--rows=".Length..], out RowStyle st) ? st : RowStyle.List;
+        && Enum.TryParse(a["--rows=".Length..], out RowStyle st) ? st : RowStyle.Square;   // Kai picked A (square), 2026-11-11
 
-    /// <summary>The choices to the right of the grid: a column for any rule text, then the buttons, then Back.</summary>
+    /// <summary>
+    /// The choices to the right of the grid: the buttons, then Back. Any rule text (the spell being helped, Takedown's
+    /// wording) is one short gold line above them with the full text on hover - Kai, 2026-11-11: a text column took
+    /// too much of the window and left empty space.
+    /// </summary>
     private Control Side(Decision d, IReadOnlyList<ChoiceRow> rows)
     {
+        var outer = new VBoxContainer();
+        outer.AddThemeConstantOverride("separation", 4);
         var h = new HBoxContainer();
         h.AddThemeConstantOverride("separation", 8);
         var info = rows.Where(r => r.Pick == null && r.Enabled).ToList();
+        // Rule text named like the area's own title goes on the title (hover it) rather than repeating the name.
+        _areaTitle.TooltipText = "";
+        _areaTitle.MouseFilter = Control.MouseFilterEnum.Ignore;
+        if (info.FirstOrDefault(r => string.Equals(r.Label, d.RowsTitle, StringComparison.OrdinalIgnoreCase)) is { } same)
+        {
+            info.Remove(same);
+            _areaTitle.TooltipText = same.Detail ?? "";
+            _areaTitle.MouseFilter = Control.MouseFilterEnum.Stop;
+            _titleHint = same.Detail is { Length: > 0 } ? "  (?)" : "";
+        }
+        else _titleHint = "";
         if (info.Count > 0)
         {
-            var col = new VBoxContainer { CustomMinimumSize = new Vector2(200, 0) };
-            col.AddThemeConstantOverride("separation", 2);
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 14);
             foreach (ChoiceRow r in info)
             {
-                col.AddChild(HudKit.Text(r.Label.ToUpperInvariant(), 13, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 1)));
-                if (r.Detail is { Length: > 0 } det)
-                {
-                    var l = HudKit.Text(det, 12, HudKit.Dim, HudKit.Medium);
-                    l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-                    l.CustomMinimumSize = new Vector2(200, 0);
-                    col.AddChild(l);
-                }
+                var l = HudKit.Text(r.Label.ToUpperInvariant() + (r.Detail is { Length: > 0 } ? "  (?)" : ""), 13, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 1));
+                l.TooltipText = r.Detail ?? "";
+                l.MouseFilter = Control.MouseFilterEnum.Stop;
+                line.AddChild(l);
             }
-            h.AddChild(col);
+            outer.AddChild(line);
         }
+        outer.AddChild(h);
         var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
         bool square = Style == RowStyle.Square;
-        int perColumn = square ? 2 : 3;
+        // Two rows of squares fill the block; with a line of rule text above, one row (it would not fit).
+        int perColumn = square ? (info.Count > 0 ? 1 : 2) : 3;
         var g = new GridContainer { Columns = Math.Max(1, (buttons.Count + perColumn - 1) / perColumn) };
         g.AddThemeConstantOverride("h_separation", 6);
         g.AddThemeConstantOverride("v_separation", 6);
         int n = 0;
-        foreach (ChoiceRow r in buttons) g.AddChild(square ? SquareChoice(r, d.RowIcon, ++n) : TileChoice(r, d.RowIcon, ++n));
+        foreach (ChoiceRow r in buttons)
+        {
+            Control c = square ? SquareChoice(r, d.RowIcon, ++n) : TileChoice(r, d.RowIcon, ++n);
+            if (r.SecondaryLabel != null && r.Secondary != null)
+            {
+                // A companion action on the same choice (#321) - a small button under it.
+                var stack = new VBoxContainer();
+                stack.AddThemeConstantOverride("separation", 2);
+                stack.AddChild(c);
+                var sb = Ui.Button(r.SecondaryLabel, r.Secondary, "Don't use this one this time.", "BackButton");
+                sb.AddThemeFontSizeOverride("font_size", 12);
+                stack.AddChild(sb);
+                c = stack;
+            }
+            g.AddChild(c);
+        }
         h.AddChild(g);
         if (d.CancelLabel is { } back)
         {
@@ -254,7 +295,7 @@ public sealed class BattleDecisions
             b.SizeFlagsVertical = Control.SizeFlags.ShrinkEnd;
             h.AddChild(b);
         }
-        return h;
+        return outer;
     }
 
     private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail ?? "") : (r.Reason ?? "Not available.");
