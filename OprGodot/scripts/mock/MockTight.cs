@@ -154,7 +154,7 @@ public partial class MockScene
     {
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 6);
-        foreach (var (n, icon, label, key) in new[] { ("Report", "scroll-unfurled", "Report", "R"), ("Mission", "flag-objective", "Mission", "M"), ("Armies", "stack", "Armies", "L"), ("Menu", "hamburger-menu", "Menu", "Esc") })
+        foreach (var (n, icon, label, key) in new[] { ("Report", "scroll-unfurled", "Report", "R"), ("Armies", "stack", "Armies", "L"), ("Menu", "hamburger-menu", "Menu", "Esc") })
             menu.AddChild(HudKit.ActionButton(n, icon, label, key, HudKit.Teal, 56, labelSize: 11));
         return menu;
     }
