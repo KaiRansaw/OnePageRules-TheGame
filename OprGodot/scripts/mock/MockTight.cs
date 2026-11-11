@@ -38,8 +38,65 @@ public partial class MockScene
         float bottom = block.GetRect().Position.Y - 8;
         var list = TightArmyList(bottom - top - 44);
         HudKit.Place(_ui, list, Control.LayoutPreset.TopLeft, new Vector2(Pad, top));
-        // The clicked enemy sits right beside the selected unit's actions, bottom-left, so the two compare at a glance.
-        HudKit.Place(_ui, TightEnemy(), Control.LayoutPreset.BottomLeft, new Vector2(block.GetRect().End.X + 8, -Pad));
+        EnemyInfoStates();
+    }
+
+    // ------------------------------------------------------------------ enemy info: tooltip, then pinned windows
+    /// <summary>
+    /// Kai, 2026-11-10: hovering an enemy for 1 second shows its info as a tooltip by the pointer; left-clicking
+    /// the unit pins that info as a floating window that can be dragged anywhere, minimised or closed. The
+    /// screenshot shows all three at once: the hover tooltip (Iron Shooters), a pinned window dragged to the top
+    /// (Iron Warriors) and a minimised one (Brute Orc Boss).
+    /// </summary>
+    private void EnemyInfoStates()
+    {
+        // Hover tooltip by the pointer.
+        Vector2 at = Screen(Target.Centre + new Vector3(1.5f, 0, 0.5f));
+        var tip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = HudKit.Enemy with { A = 0.85f }; x.Glow = HudKit.Enemy with { A = 0.25f }; x.ContentMarginLeft = 10; }),
+            EnemyInfo(Target.Unit, 5, "16\" away - in cover (forest)", ("5+", "5+", "~1 model"), "Left-click to pin"));
+        _ui.AddChild(tip);
+        tip.Position = at + new Vector2(24, -30);
+        Pointer(at);
+
+        // Pinned: dragged up out of the way.
+        var warriors = _table.Find("Iron Warriors");
+        var pinned = new FloatingPanel("Iron Warriors", EnemyInfo(warriors.Unit, 10, "21\" away - out of range (Matchlock Rifle 18\")", null, null), HudKit.Enemy);
+        _ui.AddChild(pinned);
+        pinned.Position = new Vector2(1240, 96);
+        _table.Ring(warriors.Centre, MockTable.Footprint(warriors), HudKit.Enemy, 0.1f, 2.5f);
+
+        // Pinned and minimised: just the title bar.
+        var boss = new FloatingPanel("Brute Orc Boss", EnemyInfo(_table.Find("Brute Orc Boss").Unit, 1, "", null, null), HudKit.Enemy);
+        _ui.AddChild(boss);
+        boss.Position = new Vector2(1240, 470);
+        boss.Minimised = true;
+    }
+
+    private Control EnemyInfo(SampleUnit u, int left, string where, (string Hit, string Save, string Expect)? shot, string? hint)
+    {
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 5);
+        v.AddChild(TightCard(u, left, "Orcs", HudKit.Enemy, false, 290));
+        if (where != "") v.AddChild(HudKit.Text(where, 13, HudKit.Dim, HudKit.Semi));
+        if (shot is { } s)
+        {
+            v.AddChild(new ColorRect { Color = HudKit.Enemy with { A = 0.45f }, CustomMinimumSize = new Vector2(0, 1) });
+            v.AddChild(HudKit.Text("IF MARKSMEN SHOOT", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+            var nums = new HBoxContainer();
+            nums.AddThemeConstantOverride("separation", 14);
+            foreach (var (l, val, c) in new[] { ("HIT ON", s.Hit, Palette.HitsYellow), ("THEY SAVE", s.Save, HudKit.Fg), ("EXPECT", s.Expect, Palette.WoundsRed) })
+            {
+                var b = new VBoxContainer();
+                b.AddThemeConstantOverride("separation", -5);
+                b.AddChild(HudKit.Text(l, 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 1)));
+                b.AddChild(HudKit.Text(val, 20, c, HudKit.Bold));
+                nums.AddChild(b);
+            }
+            v.AddChild(nums);
+            v.AddChild(HudKit.Text("Cover +1 to their save, AP(1) -1", 12, HudKit.Dim, HudKit.Medium));
+        }
+        if (hint != null) v.AddChild(HudKit.Text(hint, 12, HudKit.Dim with { A = 0.7f }, HudKit.Medium));
+        return v;
     }
 
     private static ChamferBox Tight(float cut = 10) => new()
