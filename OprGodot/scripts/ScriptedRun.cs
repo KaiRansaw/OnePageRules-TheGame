@@ -60,6 +60,9 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("import:") && Find<ImportArmyPopup>(GetTree().Root) is { } import) { import.ImportLink(name[7..]); _wait = 240; return; }
             // "vm:SetFastPlay=true;true;true" calls that lobby setter (test runs of settings with no button press path).
             if (name.StartsWith("vm:") && Find<LobbyScreen>(GetTree().Root) is { } vmLobby) { CallVm(vmLobby.Session.Vm, name[3..]); return; }
+            // "snapall" photographs the first of each --hold decision kind (to <shot dir>/<Kind>.png) and lets the
+            // test driver answer it, until every held kind is done or the game ends.
+            if (name == "snapall") { SnapAll(); return; }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
@@ -90,6 +93,27 @@ public partial class ScriptedRun : Node
             GD.Print($"ScriptedRun: screenshot {(saved == Error.Ok ? "saved" : "FAILED")} - {_shot}");
         }
         GetTree().Quit();
+    }
+
+    private int _snapSettle = -1, _snapTries;
+
+    private void SnapAll()
+    {
+        var battle = Find<Battle.BattleScreen>(GetTree().Root);
+        bool more = Battle.BattleScreen.Hold.Count > 0 && battle?.Session.EndedText == null && ++_snapTries < 20000;
+        if (!more) { GD.Print($"ScriptedRun: snapall done, not seen: {string.Join(",", Battle.BattleScreen.Hold)}"); return; }
+        _presses = new Queue<string>(_presses.Prepend("snapall"));
+        _wait = 3;
+        string? kind = battle?.Decisions.Current?.GetType().Name;
+        if (kind == null || !Battle.BattleScreen.Hold.Contains(kind)) { _snapSettle = -1; return; }
+        if (_snapSettle < 0) { _snapSettle = 25; return; }
+        if (--_snapSettle > 0) return;
+        string dir = System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp";
+        string file = System.IO.Path.Combine(dir, kind + ".png");
+        GetViewport().GetTexture().GetImage().SavePng(file);
+        GD.Print($"ScriptedRun: snapped {kind} - {file}");
+        Battle.BattleScreen.Hold.Remove(kind);
+        _snapSettle = -1;
     }
 
     private int _waitedFor;

@@ -88,7 +88,12 @@ public partial class BattleScreen : Control, IOwnBackdrop
     /// <summary>Which kinds of decision the test driver has answered (printed once each, so a run's log shows what was exercised).</summary>
     private static readonly Dictionary<string, int> AutoPlayCounts = new();
 
-    private static bool AutoPlays(Decision d) => AutoPlayOnly == null || AutoPlayOnly.Contains(d.GetType().Name);
+/// <summary><c>--hold=WoundsDecision,...</c>: kinds the test driver leaves open until ScriptedRun's "snapall" has
+    /// photographed one of each (the in-game UI catalogue).</summary>
+    public static readonly HashSet<string> Hold = OS.GetCmdlineUserArgs().FirstOrDefault(x => x.StartsWith("--hold="))
+        ?["--hold=".Length..].Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet() ?? new HashSet<string>();
+
+    private static bool AutoPlays(Decision d) => !Hold.Contains(d.GetType().Name) && (AutoPlayOnly == null || AutoPlayOnly.Contains(d.GetType().Name));
     public Control Hud => _hud;
 
     // ================================================================== frame
