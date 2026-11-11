@@ -740,7 +740,7 @@ public sealed class TerrainDecision : Decision<TerrainPlacementResult>
     }
 
     private static string TypeText(ETerrainType t) => string.Join(", ", Enum.GetValues<ETerrainType>()
-        .Where(f => Convert.ToInt64(f) != 0 && t.HasFlag(f)).Select(f => f.ToString()));
+        .Where(f => Convert.ToInt64(f) != 0 && t.HasFlag(f)).Select(f => f == ETerrainType.Impassible ? "Impassable" : f.ToString()));
 
     public override string? ConfirmText => _pending != null ? $"Place {_r.Pool[_piece].Name} here?" : null;
     public override void Confirm() { if (_pending is { } c) { _s?.Table.ClearGhosts("zone"); Complete(new TerrainPlacementResult(_piece, c, _turn)); } }
