@@ -17,7 +17,10 @@ public sealed record ActionSlot(string Name, string Icon, string Label, string K
 /// (not clickable). <paramref name="Secondary"/> is a companion button on the same row (#321).
 /// </summary>
 public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action? Pick,
-    string? SecondaryLabel = null, Action? Secondary = null);
+    string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null);
+
+/// <summary>A tick box in the confirm box.</summary>
+public sealed record ConfirmCheck(string Label, string Detail, bool On, Action<bool> Set);
 
 /// <summary>How a unit in the left-hand list takes part in the open decision.</summary>
 public readonly record struct UnitMark(bool Pickable, string? Reason);
@@ -46,6 +49,8 @@ public abstract class Decision
     /// confirm - prevents misclicks"). Non-null shows the confirm box.
     /// </summary>
     public virtual string? ConfirmText => null;
+    /// <summary>Tick boxes in the confirm box (which weapons fire at the target). Null = none.</summary>
+    public virtual IReadOnlyList<ConfirmCheck>? ConfirmChecks => null;
     public virtual void Confirm() { }
     public virtual void ClearPending() { }
 
@@ -506,17 +511,23 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 // ====================================================================== shooting
 
 /// <summary>
-/// Shoot (Kai, 2026-11-10): the shooter's weapon ranges are drawn round it, you click the enemy unit to shoot,
-/// and a confirm box shows what will fire at it with the engine's forecast. Confirming fires every weapon that
-/// can reach that target (the engine asks weapon by weapon; the rest are answered the same way). The actions
-/// area lists the weapons with Hold fire for each, and Done shooting / Back.
+/// Shoot (Kai, 2026-11-10/11): the shooter's weapon ranges show while it is selected; you click the enemy unit to
+/// shoot and a confirm box lists every weapon that can reach it, ticked, with the engine's forecast. Untick a
+/// weapon to keep it for a second target - the books' split fire: "each [weapon] group may be fired at a
+/// different target, however you may fire only at up to two different targets" (GF/AoF Advanced 3.6.0 p8; the
+/// engine enforces the cap). Confirming fires the ticked weapons (the engine asks weapon by weapon; the rest of the
+/// volley is answered the same way). The actions area lists the weapons with Hold fire, and Done shooting / Back.
 /// </summary>
 public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoice>>
 {
     private readonly ChooseRangedAttackRequest _r;
     private IUnit? _target;
     private BattleScreen? _s;
+    private readonly HashSet<string> _unticked = new();
     public ShootDecision(ChooseRangedAttackRequest r) => _r = r;
+
+    /// <summary>A weapon's identity across the engine's weapon-by-weapon requests.</summary>
+    public static string Key(IWeapon w) => $"{w.Name}|{w.RangeInches}|{w.Attacks}|{w.ArmorPenetration}";
 
     private IUnit Shooter => _r.AttackingUnit.GetValue();
 
@@ -549,19 +560,25 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         get
         {
             if (_target is not { } t) return null;
-            var shots = At(t.ID).ToList();
-            return $"Shoot {t.Name}?\n" + string.Join("\n", shots.Select(x => $"{x.W.Weapon.Name}: {Forecast(x.W, x.T)}"));
+            return At(t.ID).Count() > 1 ? $"Shoot {t.Name} with:" : $"Shoot {t.Name}?";
         }
     }
 
+    public override IReadOnlyList<ConfirmCheck>? ConfirmChecks => _target is { } t
+        ? At(t.ID).Select(x => new ConfirmCheck(x.W.Weapon.Name, Forecast(x.W, x.T), !_unticked.Contains(Key(x.W.Weapon)),
+            on => { if (on) _unticked.Remove(Key(x.W.Weapon)); else _unticked.Add(Key(x.W.Weapon)); Version++; })).ToList()
+        : null;
+
     public override void Confirm()
     {
-        if (_target is not { } t || At(t.ID).FirstOrDefault() is not { W: not null } first) return;
-        BattleResolvers.ShootAt = (Shooter.ID, t.ID);
-        Fire(first.W, first.T);
+        if (_target is not { } t) return;
+        var ticked = At(t.ID).Where(x => !_unticked.Contains(Key(x.W.Weapon))).ToList();
+        if (ticked.Count == 0) { _s?.Toast("Tick at least one weapon - or right-click to choose another target."); return; }
+        BattleResolvers.ShootAt = (Shooter.ID, t.ID, ticked.Select(x => Key(x.W.Weapon)).ToHashSet());
+        Fire(ticked[0].W, ticked[0].T);
     }
 
-    public override void ClearPending() { _target = null; _s?.Table.ClearGhosts("target"); Version++; }
+    public override void ClearPending() { _target = null; _unticked.Clear(); _s?.Table.ClearGhosts("target"); Version++; }
 
     /// <summary>The weapons, each with where it can shoot and a Hold fire button.</summary>
     public override IReadOnlyList<ChoiceRow> Rows => _r.WeaponOptions.Select(w =>
@@ -577,44 +594,15 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
     {
         _s = s;
         s.SelectUnit(Shooter);
-        // The rest of a confirmed volley: every other weapon that can reach the same target fires at it.
+        // The rest of a confirmed volley: every other ticked weapon fires at the same target.
         if (BattleResolvers.ShootAt is { } again && again.Shooter.Equals(Shooter.ID))
         {
-            if (At(again.Target).FirstOrDefault() is { W: not null } next) { Fire(next.W, next.T); return; }
+            if (At(again.Target).FirstOrDefault(x => again.Weapons.Contains(Key(x.W.Weapon))) is { W: not null } next) { Fire(next.W, next.T); return; }
             BattleResolvers.ShootAt = null;
         }
-        DrawRanges(s);
     }
 
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("range"); s.Table.ClearGhosts("target"); }
-
-    /// <summary>Each weapon range as an outline round the unit (the furthest any of its models reaches).</summary>
-    private void DrawRanges(BattleScreen s)
-    {
-        var models = Shooter.Models.Where(m => m.GetIsAlive()).ToList();
-        var ranges = _r.WeaponOptions.Where(w => w.Weapon.RangeInches > 0)
-            .GroupBy(w => w.Weapon.RangeInches).OrderBy(g => g.Key).ToList();
-        Color[] palette = { HudKit.Teal, HudKit.Gold, HudKit.Lime, new Color(0.8f, 0.55f, 1f) };
-        var lines = new List<BattleTable.GhostLine>();
-        var texts = new List<BattleTable.GhostText>();
-        for (int i = 0; i < ranges.Count; i++)
-        {
-            float range = ranges[i].Key;
-            Color c = palette[i % palette.Length];
-            var pts = new List<Vector2>();
-            foreach (IModel m in models)
-                for (int a = 0; a < 360; a += 6)
-                {
-                    float rad = Mathf.DegToRad(a), r = range + m.BaseRadiusInches;
-                    pts.Add(new Vector2(m.Position.x + Mathf.Cos(rad) * r, m.Position.z + Mathf.Sin(rad) * r));
-                }
-            Vector2[] hull = Geometry2D.ConvexHull(pts.ToArray());
-            for (int k = 0; k + 1 < hull.Length; k++) lines.Add(new BattleTable.GhostLine(hull[k], hull[k + 1], c with { A = 0.9f }, 0.16f));
-            Vector2 top = hull.OrderByDescending(p => p.Y).FirstOrDefault();
-            texts.Add(new BattleTable.GhostText(top.X, top.Y + 0.6f, $"{string.Join(", ", ranges[i].Select(w => w.Weapon.Name).Distinct())} {range:0}\"", c));
-        }
-        s.Table.SetGhosts("range", Array.Empty<BattleTable.Ghost>(), lines, texts);
-    }
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("target");
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -636,10 +624,10 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
             s.Toast($"Can't shoot {unit.Name}: {why}");
             return true;
         }
+        if (_target?.ID.Equals(unit.ID) != true) _unticked.Clear();
         _target = unit;
-        // The shooter keeps its selection ring; the target gets red rings.
-        s.Table.SetGhosts("target", unit.Models.Where(m => m.GetIsAlive())
-            .Select(m => new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + 0.35f, Palette.WoundsRed, Ring: true)));
+        // The shooter keeps its outline; the target gets a red one.
+        s.Table.SetGhosts("target", Array.Empty<BattleTable.Ghost>(), BattleTable.Outline(unit, 0.45f, Palette.WoundsRed, 0.22f));
         Version++;
         return true;
     }
@@ -740,16 +728,74 @@ public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
 public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
 {
     private readonly SelectionRequest<ModelData> _r;
+    private BattleScreen? _s;
+    private int _hovered = -1;
     public ModelPickDecision(SelectionRequest<ModelData> r) => _r = r;
     public override void AutoPlay(BattleScreen s) => Complete(_r.ValidOptions[0].Option);
+
+    /// <summary>The rule the pick is for ("Takedown: choose the target model" -> Takedown), for its book text.</summary>
+    private string? RuleName => _r.Instructions.Contains(':') ? _r.Instructions[.._r.Instructions.IndexOf(':')].Trim() : null;
+
     public override string Prompt => _r.Instructions;
-    public override string? RowsTitle => "Choose";
+    public override string Hint => "The numbers on the table match the list - click a model there or in the list.";
+    public override string? RowsTitle => RuleName ?? "Choose";
     public override string? CancelLabel => _r.AllowCancel ? _r.CancelLabel : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
 
-    public override IReadOnlyList<ChoiceRow> Rows =>
-        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+    private static string Describe(IModel m)
+    {
+        string weapons = string.Join(", ", m.Weapons.Select(w => w.Name).Distinct());
+        string wounds = m.TotalWounds > 1 ? $" - {MathF.Ceiling(m.RemainingWounds):0}/{m.TotalWounds:0} wounds" : "";
+        return weapons + wounds;
+    }
+
+    public override IReadOnlyList<ChoiceRow> Rows
+    {
+        get
+        {
+            var rows = new List<ChoiceRow>();
+            // Kai, 2026-11-11: "nothing in game explains what Takedown is" - the rule's book wording comes first.
+            if (RuleName is { } rule && _s?.RuleText(rule) is { } text)
+                rows.Add(new ChoiceRow(rule, text, true, null, null));
+            for (int i = 0; i < _r.ValidOptions.Count; i++)
+            {
+                var o = _r.ValidOptions[i];
+                int n = i;
+                rows.Add(new ChoiceRow(o.Name, Describe(o.Option.GetValue()), true, null, () => Complete(o.Option),
+                    Hover: on => { _hovered = on ? n : -1; Draw(); }));
+            }
+            rows.AddRange(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null)));
+            return rows;
+        }
+    }
+
+    public override void Shown(BattleScreen s) { _s = s; Draw(); Version++; }
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("pick");
+
+    /// <summary>Each choosable model gets its list number over it; the hovered one gets a bright ring.</summary>
+    private void Draw()
+    {
+        if (_s == null) return;
+        var rings = new List<BattleTable.Ghost>();
+        var texts = new List<BattleTable.GhostText>();
+        for (int i = 0; i < _r.ValidOptions.Count; i++)
+        {
+            ModelData m = _r.ValidOptions[i].Option.GetValue();
+            bool hot = i == _hovered;
+            rings.Add(new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + (hot ? 0.5f : 0.25f), hot ? HudKit.Lime : HudKit.Gold, Ring: true));
+            texts.Add(new BattleTable.GhostText(m.Position.x, m.Position.z, (i + 1).ToString(), hot ? HudKit.Lime : HudKit.Gold));
+        }
+        _s.Table.SetGhosts("pick", rings, null, texts);
+    }
+
+    public override bool TableClick(BattleScreen s, Vector2 at)
+    {
+        if (s.Table.ModelAt(at) is not { } model) return false;
+        var o = _r.ValidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(model.ID));
+        if (o == null) return false;
+        Complete(o.Option);
+        return true;
+    }
 }
 
 // ====================================================================== placing models (deployment, Scout, Ambush...)

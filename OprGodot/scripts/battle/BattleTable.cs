@@ -73,7 +73,100 @@ public partial class BattleTable : Node3D
             SyncModels((float)delta);
         }
         catch (InvalidOperationException) { }
+        try { SyncOutlines(); } catch (InvalidOperationException) { }
         SyncGhosts();
+    }
+
+    // ------------------------------------------------------------------ unit outlines and weapon ranges
+
+    /// <summary>
+    /// Kai, 2026-11-11: a selected (or report-hovered) unit is ONE outline round the whole unit - not a ring per
+    /// model, which made the table busy. The selected unit also shows its weapon ranges (one outline per range,
+    /// named), all the time it is selected, not only while shooting.
+    /// </summary>
+    private string _outlineSig = "";
+
+    private void SyncOutlines()
+    {
+        IUnit? sel = Selected is { } sid ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(sid)) : null;
+        var hl = Highlight.Count == 0 ? new List<IUnit>() : Session.Table.Units.Objects.Where(u => Highlight.Contains(u.ID)).ToList();
+        static string Sig(IUnit u) => u.ID.ID + (u.GetIsOnBattlefield() ? "" : "off") + string.Concat(u.Models.Where(m => m.GetIsAlive())
+            .Select(m => $"{m.Position.x:0.0},{m.Position.z:0.0};"));
+        string sig = (sel == null ? "-" : Sig(sel)) + "|" + string.Join("|", hl.Select(Sig));
+        if (sig == _outlineSig) return;
+        _outlineSig = sig;
+
+        var lines = new List<GhostLine>();
+        if (sel != null) lines.AddRange(Outline(sel, 0.35f, HudKit.Lime, 0.2f));
+
+        foreach (IUnit u in hl.Where(u => sel == null || !u.ID.Equals(sel.ID))) lines.AddRange(Outline(u, 0.35f, Colors.White, 0.18f));
+        SetGhosts("select", Array.Empty<Ghost>(), lines);
+
+        // The selected unit's weapon ranges.
+        var rangeLines = new List<GhostLine>();
+        var texts = new List<GhostText>();
+        if (sel != null && sel.GetIsOnBattlefield())
+        {
+            var alive = sel.Models.Where(m => m.GetIsAlive()).ToList();
+            var ranges = alive.SelectMany(m => m.Weapons).Where(w => w.RangeInches > 0)
+                .GroupBy(w => w.RangeInches).OrderBy(g => g.Key).ToList();
+            Color[] palette = { HudKit.Teal, HudKit.Gold, new Color(0.8f, 0.55f, 1f), HudKit.Lime };
+            for (int i = 0; i < ranges.Count; i++)
+            {
+                Color c = palette[i % palette.Length];
+                // Measured from the models that carry a weapon of this range, not the whole unit.
+                float range = ranges[i].Key;
+                Vector2[] hull = Hull(alive.Where(m => m.Weapons.Any(w => w.RangeInches == range)).ToList(), range);
+                for (int k = 0; k + 1 < hull.Length; k++) rangeLines.Add(new GhostLine(hull[k], hull[k + 1], c with { A = 0.85f }, 0.14f));
+                if (hull.Length == 0) continue;
+                Vector2 top = hull.OrderByDescending(p => p.Y).First();
+                texts.Add(new GhostText(top.X, top.Y + 0.6f, $"{string.Join(", ", ranges[i].Select(w => w.Name).Distinct())} {ranges[i].Key:0}\"", c));
+            }
+        }
+        SetGhosts("range", Array.Empty<Ghost>(), rangeLines, texts);
+    }
+
+    /// <summary>The outline round a unit's models, <paramref name="pad"/> inches out from their bases.</summary>
+    public static IEnumerable<GhostLine> Outline(IUnit unit, float pad, Color c, float width)
+    {
+        if (!unit.GetIsOnBattlefield()) yield break;
+        var alive = unit.Models.Where(m => m.GetIsAlive()).ToList();
+        Vector2[] hull = Hull(alive, pad);
+        for (int k = 0; k + 1 < hull.Length; k++) yield return new GhostLine(hull[k], hull[k + 1], c, width);
+    }
+
+    /// <summary>The convex outline of circles of (base radius + extra) round each model, closed.</summary>
+    private static Vector2[] Hull(List<IModel> models, float extra)
+    {
+        if (models.Count == 0) return Array.Empty<Vector2>();
+        var pts = new List<Vector2>();
+        foreach (IModel m in models)
+        {
+            float r = m.BaseRadiusInches + extra;
+            for (int a = 0; a < 360; a += 8)
+            {
+                float rad = Mathf.DegToRad(a);
+                pts.Add(new Vector2(m.Position.x + Mathf.Cos(rad) * r, m.Position.z + Mathf.Sin(rad) * r));
+            }
+        }
+        return Geometry2D.ConvexHull(pts.ToArray());
+    }
+
+    /// <summary>The model under the screen point, or null.</summary>
+    public IModel? ModelAt(Vector2 screen)
+    {
+        IModel? best = null;
+        float bestD = float.MaxValue;
+        foreach (ModelView v in _models.Values)
+        {
+            if (Camera.IsPositionBehind(v.Root.Position)) continue;
+            Vector2 s = Camera.UnprojectPosition(v.Root.Position + new Vector3(0, 0.6f, 0));
+            Vector2 edge = Camera.UnprojectPosition(v.Root.Position + new Vector3(Mathf.Max(0.5f, v.Model.BaseRadiusInches), 0.6f, 0));
+            float r = Mathf.Max(10f, s.DistanceTo(edge) * 1.3f);
+            float d = s.DistanceTo(screen);
+            if (d < r && d < bestD) { bestD = d; best = v.Model; }
+        }
+        return best;
     }
 
     // ------------------------------------------------------------------ ghosts (move previews, ranges)
@@ -332,14 +425,6 @@ public partial class BattleTable : Node3D
                 }
                 Vector3 target = World(p);
                 view.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
-                // Kai, 2026-11-10: the selected unit stands out on the table (the camera no longer jumps to it).
-                bool sel = Selected is { } ss && ss.Equals(unit.ID), hl = Highlight.Contains(unit.ID);
-                view.Ring.Visible = sel || hl;
-                if (sel || hl)
-                {
-                    float pulse = 0.75f + 0.25f * Mathf.Sin((float)Time.GetTicksMsec() / 180f);
-                    view.RingMat.AlbedoColor = (sel ? HudKit.Lime : Colors.White) with { A = sel ? pulse : 0.95f };
-                }
                 sum += target;
                 placed++;
                 top = Mathf.Max(top, m.BaseRadiusInches > 1.4f ? 3.6f : 2.6f);

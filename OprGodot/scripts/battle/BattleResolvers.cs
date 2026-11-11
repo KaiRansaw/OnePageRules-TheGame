@@ -34,8 +34,8 @@ public static class BattleResolvers
     /// <summary>The book action pressed on the activation grid, applied when the engine's action menu arrives.</summary>
     public static (UnitID Unit, BookAction Action)? QueuedAction { get; set; }
 
-    /// <summary>A confirmed shot: every further weapon that can reach this unit fires at it too.</summary>
-    public static (UnitID Shooter, UnitID Target)? ShootAt { get; set; }
+    /// <summary>A confirmed volley: the other ticked weapons fire at the same unit when the engine asks for them.</summary>
+    public static (UnitID Shooter, UnitID Target, HashSet<string> Weapons)? ShootAt { get; set; }
 
     public static void Register(HybridResolverRegistry registry)
     {

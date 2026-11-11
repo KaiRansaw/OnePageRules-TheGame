@@ -26,6 +26,7 @@ public sealed class BattleDecisions
     private Label _rowsTitle = null!, _note = null!;
     private Control _confirm = null!;
     private Label _confirmText = null!;
+    private VBoxContainer _confirmChecks = null!;
 
     public BattleDecisions(BattleScreen screen) => _screen = screen;
 
@@ -87,7 +88,7 @@ public sealed class BattleDecisions
         _area.AddChild(_grid);
         _rowsTitle = HudKit.Text("", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2));
         _area.AddChild(_rowsTitle);
-        _rowScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _rowScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, VerticalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         _rows.AddThemeConstantOverride("separation", 3);
         _rowScroll.AddChild(_rows);
@@ -106,6 +107,9 @@ public sealed class BattleDecisions
         v.AddThemeConstantOverride("separation", 8);
         _confirmText = HudKit.Text("", 17, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center);
         v.AddChild(_confirmText);
+        _confirmChecks = new VBoxContainer();
+        _confirmChecks.AddThemeConstantOverride("separation", 2);
+        v.AddChild(_confirmChecks);
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 10);
         var ok = Ui.Button("Confirm  (Space)", () => ConfirmPending(), "Do it.", "CommitButton");
@@ -137,6 +141,19 @@ public sealed class BattleDecisions
         string? confirm = d?.ConfirmText;
         _confirm.Visible = confirm != null;
         if (confirm != null) { _confirmText.Text = confirm; _confirm.Size = Vector2.Zero; }
+        foreach (Node c in _confirmChecks.GetChildren()) c.QueueFree();
+        if (confirm != null && d!.ConfirmChecks is { } checks)
+            foreach (ConfirmCheck c in checks)
+            {
+                var h = new HBoxContainer();
+                h.AddThemeConstantOverride("separation", 8);
+                var box = new CheckBox { Text = c.Label, ButtonPressed = c.On, TooltipText = "Untick to keep this weapon for another target." };
+                box.AddThemeFontSizeOverride("font_size", 16);
+                box.Toggled += on => c.Set(on);
+                h.AddChild(box);
+                h.AddChild(HudKit.Text(c.Detail, 14, HudKit.Dim, HudKit.Medium));
+                _confirmChecks.AddChild(h);
+            }
 
         // The grid.
         foreach (Node c in _grid.GetChildren()) c.QueueFree();
@@ -173,7 +190,7 @@ public sealed class BattleDecisions
         }
         int count = _rows.GetChildCount();
         _rowScroll.Visible = count > 0;
-        _rowScroll.CustomMinimumSize = new Vector2(any ? 280 : 0, Mathf.Min(320, (rows?.Count ?? 0) * 44 + (d?.CancelLabel != null ? 40 : 0)));
+        _rowScroll.CustomMinimumSize = Vector2.Zero;   // the whole actions half scrolls (fixed-size unit block)
 
         _note.Text = d == null ? "Lights up on your turn." : "";
         _note.Visible = _note.Text.Length > 0;
@@ -190,6 +207,7 @@ public sealed class BattleDecisions
             var b = new Button { Text = r.Label, Disabled = !r.Enabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true };
             b.TooltipText = r.Enabled ? r.Detail ?? "" : r.Reason ?? "Not available.";
             b.Pressed += r.Pick;
+            if (r.Hover is { } hover) { b.MouseEntered += () => hover(true); b.MouseExited += () => hover(false); }
             v.AddChild(b);
         }
         else

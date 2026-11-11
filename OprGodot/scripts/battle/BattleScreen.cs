@@ -136,7 +136,16 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     public override void _GuiInput(InputEvent e)
     {
-        if (e is InputEventMouse) { TableMouse(e); AcceptEvent(); }
+        if (e is not InputEventMouse) return;
+        // Wheel and clicks only count when the pointer is on the table itself, not on a panel (whose events
+        // bubble up here): scrolling a list or the report must not zoom the map (Kai, 2026-11-11). Releases and
+        // drags already under way always go through, so a camera drag that ends over a panel still ends.
+        bool onTable = GetViewport().GuiGetHoveredControl() == this;
+        bool starts = e is InputEventMouseButton { Pressed: true };
+        if (starts && !onTable) return;
+        if (e is InputEventMouseMotion && _dragRotate == null && _dragPan == null) return;
+        TableMouse(e);
+        AcceptEvent();
     }
 
     public override void _UnhandledInput(InputEvent e)
@@ -371,6 +380,14 @@ public partial class BattleScreen : Control, IOwnBackdrop
     };
 
     private const float Pad = 12;
+    private const float CardHeight = 236;
+
+    /// <summary>A rule's book wording for this game system (Army Forge's own text), or null.</summary>
+    public string? RuleText(string name)
+    {
+        string slug = Session.Table.Progress is { } p ? FDG.GameSystemInfo.Slug(p.GameSystem) : "";
+        return FDG.Rules.Dispatch.OfficialRuleText.Text(name, slug);
+    }
 
     private void BuildHud()
     {
@@ -436,10 +453,18 @@ public partial class BattleScreen : Control, IOwnBackdrop
         // Bottom-left: the selected unit + the four actions.
         var block = new HBoxContainer();
         block.AddThemeConstantOverride("separation", 10);
-        _unitCard = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
-        block.AddChild(_unitCard);
+        // Kai, 2026-11-11: one size at all times - a card that grows and shrinks from unit to unit is jarring.
+        // Long weapon / rule lists and long choice lists scroll inside their half instead.
+        _unitCard = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var cardScroll = new ScrollContainer { CustomMinimumSize = new Vector2(316, CardHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        cardScroll.AddChild(_unitCard);
+        block.AddChild(cardScroll);
         block.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 0) });
-        block.AddChild(Decisions.BuildActionArea());
+        var areaScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, CardHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var area = Decisions.BuildActionArea();
+        area.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        areaScroll.AddChild(area);
+        block.AddChild(areaScroll);
         _unitBlock = HudKit.Panel(Tight(12).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), block);
         HudKit.Place(_hud, _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
         _confirmBox = HudKit.Place(_hud, Decisions.BuildConfirmBox(), LayoutPreset.CenterBottom, new Vector2(0, -170));
