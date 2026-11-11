@@ -15,8 +15,11 @@ public partial class MockScene
 
     private void BuildFinal()
     {
-        _table.Look(new Vector3(6, 50, 46), new Vector3(3, 0, 5), 44);
+        if (State == 2) _table.Look(new Vector3(-2, 74, 0.01f), new Vector3(-2, 0, 0), 40); // T: top-down view
+        else _table.Look(new Vector3(6, 50, 46), new Vector3(3, 0, 5), 44);
         TableDressing();
+        TableMarks();
+        HudKit.Place(_ui, PromptLine(), Control.LayoutPreset.CenterTop, new Vector2(0, Pad));
 
         var round = TightRound();
         HudKit.Place(_ui, round, Control.LayoutPreset.TopLeft, new Vector2(Pad, Pad));
@@ -45,7 +48,7 @@ public partial class MockScene
         float bottom = block.GetRect().Position.Y - 8;
         var list = TightArmyList(bottom - top - 44);
         HudKit.Place(_ui, list, Control.LayoutPreset.TopLeft, new Vector2(Pad, top));
-        EnemyInfoStates();
+        if (State != 2) EnemyInfoStates();
     }
 
     // ------------------------------------------------------------------ enemy info: tooltip, then pinned windows
@@ -62,7 +65,7 @@ public partial class MockScene
         var tip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = HudKit.Enemy with { A = 0.85f }; x.Glow = HudKit.Enemy with { A = 0.25f }; x.ContentMarginLeft = 10; }),
             EnemyInfo(Target.Unit, 5, "16\" away - in cover (forest)", ("5+", "5+", "~1 model"), "Left-click to pin"));
         _ui.AddChild(tip);
-        tip.Position = at + new Vector2(24, -30);
+        tip.Position = at + new Vector2(-330, -40); // left of the pointer here, so it doesn't hide the units below
         Pointer(at);
 
         // Pinned: dragged up out of the way.
@@ -145,7 +148,7 @@ public partial class MockScene
         var t = new VBoxContainer();
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text("YOUR TURN", 11, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2)));
-        t.AddChild(HudKit.Text("vs Orcs (bot)", 15, HudKit.Fg, HudKit.Semi));
+        t.AddChild(HudKit.Text("Orcs: 6 left to activate", 15, HudKit.Fg, HudKit.Semi));
         row.AddChild(t);
         return HudKit.Panel(Tight(10).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 12; x.ContentMarginRight = 12; }), row);
     }
@@ -154,7 +157,7 @@ public partial class MockScene
     {
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 6);
-        foreach (var (n, icon, label, key) in new[] { ("Report", "scroll-unfurled", "Report", "R"), ("Armies", "stack", "Armies", "L"), ("Menu", "hamburger-menu", "Menu", "Esc") })
+        foreach (var (n, icon, label, key) in new[] { ("TopView", "binoculars", "Top view", "T"), ("Report", "scroll-unfurled", "Report", "R"), ("Armies", "stack", "Armies", "L"), ("Menu", "hamburger-menu", "Menu", "Esc") })
             menu.AddChild(HudKit.ActionButton(n, icon, label, key, HudKit.Teal, 56, labelSize: 11));
         return menu;
     }
@@ -431,5 +434,35 @@ public partial class MockScene
         col.AddChild(t);
         col.AddChild(HudKit.Text(status, 12, statusColour, HudKit.Semi));
         return HudKit.Panel(new ChamferBox { Fill = new Color(0, 0, 0, 0.28f), Border = HudKit.Edge with { A = 0.45f }, Cut = 6, ContentMarginLeft = 7, ContentMarginRight = 7, ContentMarginTop = 3, ContentMarginBottom = 4 }, col);
+    }
+
+    // ------------------------------------------------------------------ prompt line + table marks
+    /// <summary>
+    /// What the game wants from you right now, top-centre. Changes with every request: "Pick a unit to activate",
+    /// "Place an objective", "Choose a target", "Deploy Knights"...
+    /// </summary>
+    private static Control PromptLine()
+    {
+        var h = new HBoxContainer();
+        h.AddThemeConstantOverride("separation", 12);
+        h.AddChild(HudKit.Icon("walk", 22, HudKit.Lime));
+        h.AddChild(HudKit.Text("MARKSMEN - CHOOSE AN ACTION", 20, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2)));
+        h.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 22), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        h.AddChild(HudKit.Text("1-4 or click an action  -  Esc to pick another unit", 14, HudKit.Dim, HudKit.Semi));
+        return HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.9f }; x.Border = HudKit.Lime with { A = 0.55f }; x.ContentMarginLeft = 16; x.ContentMarginRight = 16; x.ContentMarginTop = 5; x.ContentMarginBottom = 5; }), h);
+    }
+
+    /// <summary>
+    /// Names over your own units always; over an enemy only while hovered or pinned. A red broken shield over a
+    /// Shaken unit, a tick over a unit that has already activated this round.
+    /// </summary>
+    private void TableMarks()
+    {
+        foreach (var p in _table.Units.Where(p => !p.Mine))
+            if (p.Unit.Name is not ("Iron Shooters" or "Iron Warriors"))
+                _table.Labels[p.Unit.Name].Visible = false;
+        _table.Mark("Infantrymen", "checked-shield", HudKit.Dim);
+        _table.Mark("Infantrymen", "broken-shield", Palette.WoundsRed, 1);
+        _table.Mark("Battle Master", "checked-shield", HudKit.Dim);
     }
 }

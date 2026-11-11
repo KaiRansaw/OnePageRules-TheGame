@@ -16,6 +16,7 @@ public partial class MockTable : Node3D
     public readonly List<Placed> Units = new();
     public Camera3D Camera { get; private set; } = null!;
     public bool ShowLabels { get; set; } = true;
+    public readonly Dictionary<string, Label3D> Labels = new();
 
     public override void _Ready()
     {
@@ -243,7 +244,7 @@ public partial class MockTable : Node3D
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = team.Lightened(0.35f), NoDepthTest = true,
             Position = centre + new Vector3(0, top + (rows - 1) * 0.3f, 0), OutlineModulate = new Color(0, 0, 0, 0.85f),
         };
-        if (ShowLabels) AddChild(label); else label.Free();
+        if (ShowLabels) { AddChild(label); Labels[name] = label; } else label.Free();
         Units.Add(new Placed(u, mine, centre, models));
     }
 
@@ -255,4 +256,16 @@ public partial class MockTable : Node3D
 
     /// <summary>Screen position of a table point, for HUD markers that point at units.</summary>
     public Vector2 ToScreen(Vector3 p) => Camera.UnprojectPosition(p);
+
+    /// <summary>A small icon floating over a unit, left of its name: Shaken, already activated.</summary>
+    public void Mark(string unit, string icon, Color colour, int slot = 0)
+    {
+        var l = Labels[unit];
+        var s = new Sprite3D
+        {
+            Texture = HudKit.IconTex(icon), PixelSize = 0.0028f, Modulate = colour, NoDepthTest = true,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = l.Position + new Vector3(slot * 1.6f - 0.8f, 1.4f, 0),
+        };
+        AddChild(s);
+    }
 }
