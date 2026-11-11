@@ -811,13 +811,13 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         if (Session.Report.Version == _logVersion) return;
         _logVersion = Session.Report.Version;
-        var lines = Session.Report.Snapshot();
+        var blocks = BattleReport.Blocks(Session.Report.Snapshot()).Where(Worth).ToList();
         foreach (Node c in _reportRows.GetChildren()) c.QueueFree();
-        foreach (BattleReport.Line line in lines.Skip(Math.Max(0, lines.Count - 6))) _reportRows.AddChild(ReportRow(line, 14));
+        FillBlocks(_reportRows, blocks.Skip(Math.Max(0, blocks.Count - 3)).ToList());
         if (_fullReport != null && IsInstanceValid(_fullReport))
         {
             foreach (Node c in _fullReportRows!.GetChildren()) c.QueueFree();
-            foreach (BattleReport.Line line in lines) _fullReportRows.AddChild(ReportRow(line, 15));
+            FillBlocks(_fullReportRows, blocks);
             CallDeferred(nameof(ScrollToEnd), _fullReportScroll!);
         }
     }
@@ -832,7 +832,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     /// wording); hovering the line rings the units it is about on the table, draws the attacker -> target arrow,
     /// and shows where a moved unit stood before (Kai, 2026-11-10). The dice behind it are the line's tooltip.
     /// </summary>
-    private Control ReportRow(BattleReport.Line line, int size)
+    private Control ReportRow(BattleReport.Line line, int size, bool hover = true)
     {
         Color baseColour = Color.Color8(line.Colour.R, line.Colour.G, line.Colour.B).Lerp(HudKit.Fg, 0.35f);
         var sb = new System.Text.StringBuilder();
@@ -870,8 +870,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
         rich.AddThemeFontSizeOverride("bold_font_size", size);
         rich.AddThemeColorOverride("default_color", baseColour);
         rich.Text = sb.ToString();
-        rich.MouseEntered += () => FocusReport(line);
-        rich.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        if (hover)
+        {
+            rich.MouseEntered += () => FocusReport(line);
+            rich.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        }
         rich.MetaHoverStarted += meta => ShowMetaTip(meta.AsString());
         rich.MetaHoverEnded += _ => HideMetaTip();
         string dice = string.Join("\n", line.Rolls.Select(r => $"{r.Who}: {r.Label} ({r.Threshold}+) - "
@@ -895,23 +898,241 @@ public partial class BattleScreen : Control, IOwnBackdrop
         };
         var row = HudKit.Panel(box, rich);
         row.MouseFilter = MouseFilterEnum.Pass;
-        row.MouseEntered += () => FocusReport(line);
-        row.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        if (hover)
+        {
+            row.MouseEntered += () => FocusReport(line);
+            row.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        }
         return row;
+    }
+
+    // ================================================================== report blocks (Kai, 2026-11-11: mockup A)
+
+    /// <summary>Lines that only repeat what the block already says (the engine's own "X's Activation").</summary>
+    private static bool Noise(BattleReport.Line l)
+    {
+        string text = string.Concat(l.Title.Select(p => p.Text));
+        return l.Kind == BattleReport.Kind.Line && (text.EndsWith("'s Activation") || text.StartsWith("Activating"));
+    }
+
+    private static bool Worth(BattleReport.Block b) => b.Activation != null || b.Lines.Any(l => !Noise(l));
+
+    /// <summary>Blocks with a round bar whenever the round changes.</summary>
+    private void FillBlocks(VBoxContainer into, List<BattleReport.Block> blocks)
+    {
+        int? round = -1;
+        foreach (BattleReport.Block b in blocks)
+        {
+            if (b.Round != round)
+            {
+                round = b.Round;
+                var bar = new HBoxContainer();
+                bar.AddThemeConstantOverride("separation", 6);
+                bar.AddChild(HudKit.Text(round == null ? "SET-UP" : $"ROUND {round}", 12, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2)));
+                bar.AddChild(new ColorRect { Color = HudKit.Lime with { A = 0.35f }, CustomMinimumSize = new Vector2(0, 1), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter });
+                into.AddChild(bar);
+            }
+            into.AddChild(ReportBlock(b));
+        }
+    }
+
+    private Color SideOf(UnitID? id) =>
+        id is { } u && Session.Table.Units.Objects.FirstOrDefault(x => x.ID.Equals(u)) is { } unit ? _table.SeatColour(unit.PlayerID).Lightened(0.25f) : HudKit.Fg;
+
+    private string NameOf(UnitID? id, string? fallback = null) =>
+        id is { } u && Session.Table.Units.Objects.FirstOrDefault(x => x.ID.Equals(u)) is { } unit ? unit.Name : fallback ?? "";
+
+    /// <summary>
+    /// One activation: the unit, what it did as symbols (moved / charged / held, shot, fought), then only the
+    /// results - who it hit and what they lost. The dice are in the hover card; hovering also shows it on the
+    /// table; clicking moves the camera there (Kai, 2026-11-11).
+    /// </summary>
+    private Control ReportBlock(BattleReport.Block b)
+    {
+        UnitID? me = b.Unit;
+        var v = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        v.AddThemeConstantOverride("separation", 2);
+
+        if (b.Activation != null && me is { } uid)
+        {
+            Color side = SideOf(uid);
+            IUnit? unit = Session.Table.Units.Objects.FirstOrDefault(x => x.ID.Equals(uid));
+            var top = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            top.AddThemeConstantOverride("separation", 6);
+            if (unit != null)
+            {
+                bool hero = unit.RuleDefinitions.Any(r => r.RequestedName == "Hero");
+                top.AddChild(HudKit.Portrait(Session.SeatOf(unit.PlayerID)?.Faction ?? "", unit.Name, HudKit.KindIcon(unit.Name, hero, true, 1), 26, _table.SeatColour(unit.PlayerID)));
+            }
+            var name = HudKit.Text(NameOf(uid, "?").ToUpperInvariant(), 15, side, HudKit.Tracked(HudKit.Bold, 1));
+            name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            name.ClipText = true;
+            name.VerticalAlignment = VerticalAlignment.Center;
+            top.AddChild(name);
+            // What the unit did, as symbols: moved / charged / held, then shot and / or fought.
+            string move = b.Charged ? $"CHARGED {b.Moved:0}\"" : b.Moved > 0.05f ? $"MOVED {b.Moved:0}\"" : "HELD";
+            top.AddChild(Did(b.Charged ? "sword-clash" : b.Moved > 0.05f ? "walk" : "shield", move, HudKit.Fg));
+            if (b.Shot) top.AddChild(Did("crosshair", "SHOT", HudKit.Teal));
+            if (b.Fought && !b.Charged) top.AddChild(Did("crossed-swords", "MELEE", Palette.WoundsRed));
+            v.AddChild(top);
+        }
+
+        int results = 0;
+        foreach (BattleReport.Line l in b.Lines.Where(l => !Noise(l)))
+        {
+            if (l.Attack is { } a)
+            {
+                bool mine = me != null && l.Attacker.Equals(me);
+                var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                row.AddThemeConstantOverride("separation", 5);
+                row.AddChild(HudKit.Gap(30));
+                // The symbol says what happened: shot, fought, or struck back at the unit that attacked it.
+                row.AddChild(HudKit.Icon(!mine && a.Melee ? "shield-reflect" : a.Melee ? "crossed-swords" : "crosshair", 15, a.Melee ? Palette.WoundsRed : HudKit.Teal));
+                if (!mine) row.AddChild(HudKit.Text(NameOf(l.Attacker), 15, SideOf(l.Attacker), HudKit.Semi));
+                if (!mine) row.AddChild(HudKit.Text(a.Melee ? "struck back at" : "shot", 14, HudKit.Dim, HudKit.Medium));
+                row.AddChild(HudKit.Text(NameOf(l.Target, l.TargetName ?? "the target"), 15, SideOf(l.Target), HudKit.Semi));
+                string result = a.ModelsLost > 0 ? $"-{a.ModelsLost} model{(a.ModelsLost == 1 ? "" : "s")}"
+                    : a.Wounds > 0.01f ? $"-{a.Wounds:0} wound{(a.Wounds < 1.5f ? "" : "s")}" : "no damage";
+                row.AddChild(HudKit.Text(result, 15, a.ModelsLost > 0 || a.Wounds > 0.01f ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
+                if (a.Routed) row.AddChild(HudKit.Chip("ROUTED", Palette.WoundsRed, true, 11));
+                v.AddChild(row);
+                results++;
+            }
+            else if (l.Kind == BattleReport.Kind.Move && me != null && l.Units.Contains(me.Value))
+                continue;   // the header already says how far it went
+            else
+            {
+                var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                row.AddChild(HudKit.Gap(b.Activation != null ? 30 : 0));
+                var line = ReportRow(l, 13, hover: false);
+                line.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                row.AddChild(line);
+                v.AddChild(row);
+                results++;
+            }
+        }
+        if (results == 0 && b.Activation != null)
+        {
+            var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            row.AddChild(HudKit.Gap(30));
+            row.AddChild(HudKit.Text(b.Shot || b.Fought ? "" : "nothing else", 13, HudKit.Dim, HudKit.Medium));
+            v.AddChild(row);
+        }
+
+        var box = new ChamferBox
+        {
+            Fill = new Color(0, 0, 0, 0.25f), Border = HudKit.Edge with { A = 0.35f }, Cut = 6,
+            Accent = me is { } m ? SideOf(m) : Colors.Transparent, AccentLength = 16,
+            ContentMarginLeft = 6, ContentMarginRight = 8, ContentMarginTop = 4, ContentMarginBottom = 4,
+        };
+        var panel = HudKit.Panel(box, v);
+        panel.MouseFilter = MouseFilterEnum.Stop;
+        int key = b.Activation?.Id ?? b.Lines.FirstOrDefault()?.Id ?? 0;
+        panel.MouseEntered += () =>
+        {
+            box.Fill = new Color(1, 1, 1, 0.1f);
+            box.Border = Colors.White with { A = 0.6f };
+            FocusReport(b.Lines.Append(b.Activation).OfType<BattleReport.Line>().ToList(), key);
+            ShowBlockCard(b);
+        };
+        panel.MouseExited += () =>
+        {
+            box.Fill = new Color(0, 0, 0, 0.25f);
+            box.Border = HudKit.Edge with { A = 0.35f };
+            if (_focused == key) FocusReport(null);
+            HideBlockCard();
+        };
+        // Click: the camera goes to the fight (or to the unit).
+        panel.GuiInput += e =>
+        {
+            if (e is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) return;
+            BattleReport.Line? fight = b.Lines.FirstOrDefault(l => l.Attack != null);
+            Vector2? at = fight != null ? Where(fight.Target, fight.ToAt) : Where(me, null);
+            if (at is { } p) FocusOn(_table.World(p.X, p.Y));
+        };
+        return panel;
+    }
+
+    private static Control Did(string icon, string text, Color c)
+    {
+        var h = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        h.AddThemeConstantOverride("separation", 3);
+        h.AddChild(HudKit.Icon(icon, 15, c));
+        h.AddChild(HudKit.Text(text, 13, c, HudKit.Bold));
+        return h;
+    }
+
+    private Control? _blockCard;
+
+    /// <summary>The hover card: every die behind the block, attack by attack (the numbers live here, not in the report).</summary>
+    private void ShowBlockCard(BattleReport.Block b)
+    {
+        HideBlockCard();
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(380, 0), MouseFilter = MouseFilterEnum.Ignore };
+        v.AddThemeConstantOverride("separation", 3);
+        bool any = false;
+        foreach (BattleReport.Line l in b.Lines.Where(l => l.Rolls.Count > 0 || l.Details.Count > 0))
+        {
+            any = true;
+            string title = string.Concat(l.Title.Select(p => p.Text));
+            var t = HudKit.Text(title, 14, l.Attack != null ? SideOf(l.Attacker) : HudKit.Fg, HudKit.Bold);
+            t.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            t.CustomMinimumSize = new Vector2(380, 0);
+            v.AddChild(t);
+            foreach (BattleReport.Roll r in l.Rolls)
+            {
+                var row = HudKit.Text($"  {r.Who}: {r.Label} ({r.Threshold}+)  "
+                    + (r.Faces.Count > 0 ? string.Join(" ", r.Faces) + "  -  " : "") + r.Result
+                    + (r.Modifiers.Count > 0 ? "  [" + string.Join(", ", r.Modifiers) + "]" : ""), 13, HudKit.Dim, HudKit.Medium);
+                row.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                row.CustomMinimumSize = new Vector2(380, 0);
+                v.AddChild(row);
+            }
+            foreach (string d in l.Details) v.AddChild(HudKit.Text("  " + d, 13, HudKit.Dim, HudKit.Medium));
+        }
+        if (!any) return;
+        _blockCard = HudKit.Panel(Tight(8).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = Colors.White with { A = 0.6f }; }), v);
+        _blockCard.MouseFilter = MouseFilterEnum.Ignore;
+        _hud.AddChild(_blockCard);
+        CallDeferred(nameof(PlaceBlockCard));
+    }
+
+    private void PlaceBlockCard()
+    {
+        if (_blockCard == null || !IsInstanceValid(_blockCard)) return;
+        Vector2 mouse = GetViewport().GetMousePosition(), size = _blockCard.Size, screen = GetViewportRect().Size;
+        Vector2 at = new(mouse.X - size.X - 30, mouse.Y - size.Y / 2);
+        if (at.X < 10) at.X = mouse.X + 30;
+        at.Y = Mathf.Clamp(at.Y, 10, screen.Y - size.Y - 10);
+        _blockCard.Position = at;
+    }
+
+    private void HideBlockCard()
+    {
+        if (_blockCard != null && IsInstanceValid(_blockCard)) _blockCard.QueueFree();
+        _blockCard = null;
     }
 
     private readonly Dictionary<string, string> _terms = new();
     private int _focused = -1;
 
     /// <summary>Shows on the table what a hovered report line is about (null clears it).</summary>
-    private void FocusReport(BattleReport.Line? line)
+    private void FocusReport(BattleReport.Line? line) => FocusReport(line == null ? null : new[] { line }, line?.Id ?? -1);
+
+    private void FocusReport(IReadOnlyList<BattleReport.Line>? report, int key)
     {
-        _focused = line?.Id ?? -1;
+        _focused = key;
         _table.Highlight.Clear();
-        if (line == null) { _table.ClearGhosts("report"); return; }
-        foreach (UnitID id in line.Units) _table.Highlight.Add(id);
+        if (report == null) { _table.ClearGhosts("report"); return; }
         var ghosts = new List<BattleTable.Ghost>();
         var lines = new List<BattleTable.GhostLine>();
+        foreach (BattleReport.Line line in report) FocusLine(line, ghosts, lines);
+        _table.SetGhosts("report", ghosts, lines);
+    }
+
+    private void FocusLine(BattleReport.Line line, List<BattleTable.Ghost> ghosts, List<BattleTable.GhostLine> lines)
+    {
+        foreach (UnitID id in line.Units) _table.Highlight.Add(id);
         Color gold = new(1f, 0.86f, 0.3f);
         // Where a moved unit stood before, and the path it took.
         foreach (BattleReport.Spot spot in line.MovedFrom)
@@ -930,7 +1151,6 @@ public partial class BattleScreen : Control, IOwnBackdrop
             lines.Add(new BattleTable.GhostLine(b, b - dir * 1.6f + side * 0.9f, gold, 0.28f));
             lines.Add(new BattleTable.GhostLine(b, b - dir * 1.6f - side * 0.9f, gold, 0.28f));
         }
-        _table.SetGhosts("report", ghosts, lines);
     }
 
     /// <summary>A unit's middle now, or where the line says it was (it may have died since).</summary>
@@ -1030,7 +1250,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(560, 520), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         rows.AddThemeConstantOverride("separation", 2);
-        foreach (BattleReport.Line line in Session.Report.Snapshot()) rows.AddChild(ReportRow(line, 15));
+        FillBlocks(rows, BattleReport.Blocks(Session.Report.Snapshot()).Where(Worth).ToList());
         scroll.AddChild(rows);
         _fullReport = new FloatingPanel("Battle report", scroll, HudKit.Teal);
         _fullReport.Closed += () => { _fullReport = null; FocusReport(null); };

@@ -40,7 +40,51 @@ public sealed class BattleReport : IPresentationSink
         IReadOnlyList<UnitID> Units,
         Position? FromAt, Position? ToAt,
         IReadOnlyList<Spot> MovedFrom, IReadOnlyList<Spot> MovedTo,
-        IReadOnlyList<Roll> Rolls, IReadOnlyList<string> Details);
+        IReadOnlyList<Roll> Rolls, IReadOnlyList<string> Details,
+        Outcome? Attack = null, float MovedInches = 0f, string? TargetName = null);
+
+    /// <summary>What an attack did, as numbers (the block view shows these, not the sentence).</summary>
+    public sealed record Outcome(bool Melee, float Hits, float Attacks, float Wounds, int ModelsLost, bool Routed, string Weapons);
+
+    /// <summary>
+    /// One activation as the report's block view shows it (Kai, 2026-11-11, mockup A): who, what they did,
+    /// and the lines that happened during it. Lines before the first activation of a round (deployment, the
+    /// round's own events) form a block with no unit.
+    /// </summary>
+    public sealed record Block(int? Round, Line? Activation, IReadOnlyList<Line> Lines)
+    {
+        public UnitID? Unit => Activation?.Units.FirstOrDefault();
+        public float Moved => Lines.Where(l => l.Kind == Kind.Move && l.Units.Contains(Unit ?? default)).Sum(l => l.MovedInches);
+        public bool Shot => Lines.Any(l => l.Attack is { Melee: false } && l.Attacker.Equals(Unit));
+        public bool Fought => Lines.Any(l => l.Attack is { Melee: true } && (l.Attacker.Equals(Unit) || l.Target.Equals(Unit)));
+        public bool Charged => Moved > 0 && Lines.Any(l => l.Attack is { Melee: true } && l.Attacker.Equals(Unit));
+    }
+
+    /// <summary>Groups lines into activation blocks, oldest first. Round dividers start a new block.</summary>
+    public static List<Block> Blocks(IReadOnlyList<Line> lines)
+    {
+        var blocks = new List<Block>();
+        Line? head = null;
+        var current = new List<Line>();
+        int? round = null;
+        void Flush()
+        {
+            if (head != null || current.Count > 0) blocks.Add(new Block(round, head, current.ToList()));
+            head = null;
+            current.Clear();
+        }
+        foreach (Line l in lines)
+        {
+            switch (l.Kind)
+            {
+                case Kind.Divider: Flush(); round = l.Round; break;
+                case Kind.Activation: Flush(); head = l; round = l.Round ?? round; break;
+                default: current.Add(l); break;
+            }
+        }
+        Flush();
+        return blocks;
+    }
 
     private const int MaxLines = 400;
 
@@ -301,6 +345,7 @@ public sealed class BattleReport : IPresentationSink
                 e.Title.Add(UnitPiece(moved.Unit, moved.UnitName));
                 e.Title.Add(new Piece($" moves {longest:0.#}\""));
                 e.Units.Add(moved.Unit);
+                e.MovedInches = longest;
                 e.MovedFrom.AddRange(from);
                 e.MovedTo.AddRange(to);
                 Add(e);
@@ -461,6 +506,7 @@ public sealed class BattleReport : IPresentationSink
         // loss lines that merge
         public string? LossUnit;
         public int LossCount;
+        public float MovedInches;
 
         public Line Freeze()
         {
@@ -480,8 +526,12 @@ public sealed class BattleReport : IPresentationSink
                 title = t;
                 body = AttackSummary();
             }
+            Outcome? outcome = Kind == Kind.Attack && Heading.Length == 0
+                ? new Outcome(Melee, Hits, Attacks, HasSaves ? MathF.Max(0f, SaveTotal - Saves - Ignored) : 0f, Lost, Routed, string.Join(", ", Weapons))
+                : null;
             return new Line(Id, Kind, Round, title, body, Colour, Loud, Attacker, Target, Player, Units.ToList(), FromAt, ToAt,
-                MovedFrom.ToList(), MovedTo.ToList(), Rolls.ToList(), Details.ToList());
+                MovedFrom.ToList(), MovedTo.ToList(), Rolls.ToList(), Details.ToList(), outcome, MovedInches,
+                TargetName.Length > 0 ? TargetName : null);
         }
 
         private string AttackSummary()
