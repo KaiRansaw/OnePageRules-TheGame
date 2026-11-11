@@ -26,7 +26,6 @@ public partial class MockScene
         HudKit.Place(_ui, block, Control.LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
 
         HudKit.Place(_ui, TightReport(), Control.LayoutPreset.BottomRight, new Vector2(-Pad, -Pad));
-        HudKit.Place(_ui, TightEnemy(), Control.LayoutPreset.CenterRight, new Vector2(-Pad, -120));
         HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterBottom, new Vector2(150, -2));
 
         // The list fills the space between the round panel and the unit block.
@@ -39,6 +38,8 @@ public partial class MockScene
         float bottom = block.GetRect().Position.Y - 8;
         var list = TightArmyList(bottom - top - 44);
         HudKit.Place(_ui, list, Control.LayoutPreset.TopLeft, new Vector2(Pad, top));
+        // The clicked enemy sits right beside the selected unit's actions, bottom-left, so the two compare at a glance.
+        HudKit.Place(_ui, TightEnemy(), Control.LayoutPreset.BottomLeft, new Vector2(block.GetRect().End.X + 8, -Pad));
     }
 
     private static ChamferBox Tight(float cut = 10) => new()
