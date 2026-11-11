@@ -569,6 +569,7 @@ public partial class LobbyScreen : Control
                 TooltipText = canModify ? $"Choose this player's army from armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}." : $"{info.PlayerName} picks their own army.",
             };
             if (missing) army.AddThemeColorOverride("font_color", Palette.WoundsRed);
+            army.Name = "SeatArmy";
             army.Pressed += () => OpenArmyPicker(info);
             armyRow.AddChild(army);
             var roll = Ui.Button("Roll", () => Session.RollArmy(info.PlayerID),
@@ -736,13 +737,28 @@ public partial class LobbyScreen : Control
         col.AddThemeConstantOverride("separation", 8);
         popup.AddChild(col);
         col.AddChild(HudKit.Text($"CHOOSE AN ARMY - {info.PlayerName.ToUpperInvariant()}", 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
-        col.AddChild(Note($"From armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}. Red = over the {Vm.ArmyPoints} pts limit. Build lists in Army Forge (Raylib build for now)."));
+        col.AddChild(Note($"From armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}. Red = over the {Vm.ArmyPoints} pts limit. Got a list on the Army Forge website? Import it."));
         var search = new LineEdit { PlaceholderText = "Search name or faction..." };
         col.AddChild(search);
         var list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 460) };
         col.AddChild(list);
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddThemeConstantOverride("separation", 10);
+        var import = Ui.Button("Import from Army Forge...", () => { popup.QueueFree(); ImportArmyPopup.Open(this, p =>
+        {
+            p.LobbySystem = Vm.GameSystem;
+            p.SaveLabel = $"Save and use for {info.PlayerName}";
+            p.Saved = (path, system) =>
+            {
+                Session.RefreshArmies();
+                if (system != Vm.GameSystem || ArmyCatalog.ReadEntry(path) is not { } entry) return;
+                Session.PickArmy(info.PlayerID, entry);
+                p.QueueFree();
+            };
+        }); }, "Paste a share link from the Army Forge website.");
+        import.Name = "ImportArmy";
+        buttons.AddChild(import);
+        buttons.AddChild(HudKit.Grow());
         var cancel = Ui.Button("Cancel", () => popup.QueueFree(), variation: "BackButton");
         var take = Ui.Button("Take this army", () => { }, variation: "CommitButton");
         buttons.AddChild(cancel);

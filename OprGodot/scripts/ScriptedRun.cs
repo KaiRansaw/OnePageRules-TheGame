@@ -56,6 +56,8 @@ public partial class ScriptedRun : Node
                 else GD.PrintErr($"ScriptedRun: no army at {name[5..]}");
                 return;
             }
+            // "import:<share link>" pastes a link into the open Import from Army Forge box and imports it.
+            if (name.StartsWith("import:") && Find<ImportArmyPopup>(GetTree().Root) is { } import) { import.ImportLink(name[7..]); _wait = 240; return; }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);

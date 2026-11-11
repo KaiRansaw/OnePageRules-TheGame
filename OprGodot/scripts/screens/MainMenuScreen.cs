@@ -40,8 +40,9 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         tools.AddChild(Tool("LoadGame", "open-book", "Load Game", "Resume a game you saved.", () => App.I.OpenNotYet("Load Game",
             "Save tiles with a board picture, All / Grimdark Future / Age of Fantasy filters, a big preview, LOAD and Delete. Comes with the in-game table (port step 3).")));
         tools.AddChild(Tool("JoinGame", "radar-sweep", "Join a Game", "Join a friend's game over Tailscale.", OpenJoin));
-        tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Build an army list from the official books.", () => App.I.OpenNotYet("Army Forge",
-            "Total War-style: unit info and upgrades on the left, Your Army portrait strip with the points bar, the book's roster in category boxes. Port step 5.")));
+        // The full builder is port step 5; until then the button imports a list from the Army Forge website.
+        tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Import an army list from the Army Forge website (paste its share link). The full builder comes later.",
+            () => ImportArmyPopup.Open(this)));
         tools.AddChild(Tool("MapMaker", "position-marker", "Map Maker", "Make and edit your own maps.", () => App.I.OpenNotYet("Map Maker",
             "Maps grouped by table size, preview, Edit / Copy / Delete; the 3D editor with heights comes with the terrain work. Port step 6.")));
         tools.AddChild(Tool("Settings", "cog", "Settings", "Your name, display, gameplay, camera and sound settings.", () => App.I.Open<SettingsScreen>(Scenes.Settings)));
