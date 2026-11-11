@@ -203,7 +203,7 @@ public partial class MockScene
     }
 
     /// <summary>Click an enemy: its full card docks on the right; hovering a rule chip shows the book text.</summary>
-    private async void ClickedEnemy()
+    private async void ClickedEnemy(bool ruleTip = true)
     {
         var chips = new Dictionary<string, Control>();
         var content = UnitCardContent(Target.Unit, 5, "Orcs", HudKit.Enemy, 400, false, chips, false);
@@ -219,6 +219,7 @@ public partial class MockScene
         HudKit.Place(_ui, wrap, Control.LayoutPreset.CenterRight, new Vector2(-24, -150));
         _table.Area(Target.Centre, MockTable.Footprint(Target) + 0.2f, HudKit.Enemy);
 
+        if (!ruleTip) return;
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         Control chip = chips["Ferocious"];
@@ -345,5 +346,68 @@ public partial class MockScene
             bar.AddChild(new ColorRect { Color = seg with { A = seg.A * alpha }, CustomMinimumSize = new Vector2(0, height), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
         }
         return bar;
+    }
+
+    // ================================================================== Kai's pick (2026-11-10)
+    /// <summary>
+    /// The chosen layout: army list down the left (scrolls; ready units first, activated ones greyed and moved
+    /// to the bottom), the selected unit's card under it with a 2x2 action grid to its right, the clicked
+    /// enemy's card docked on the right, round top-centre, panel buttons top-right, report bottom-right.
+    /// </summary>
+    private void BuildFinal()
+    {
+        _table.Look(new Vector3(6, 50, 46), new Vector3(4, 0, 8), 44);
+        TableDressing();
+        HudKit.Place(_ui, RoundBlock(true), Control.LayoutPreset.CenterTop, new Vector2(80, 16));
+        HudKit.Place(_ui, TopRightButtons(), Control.LayoutPreset.TopRight, new Vector2(-24, 20));
+
+        const float listH = 560;
+        var list = new VBoxContainer { CustomMinimumSize = new Vector2(330, 0) };
+        list.AddThemeConstantOverride("separation", 4);
+        var head = new HBoxContainer();
+        head.AddChild(HudKit.Heading("Your army", 15));
+        head.AddChild(HudKit.Grow());
+        int ready = BigArmy.Count(c => !c.Done);
+        head.AddChild(HudKit.Text($"{ready}/{BigArmy.Length} to go  -  TAB next", 14, HudKit.Dim, HudKit.Semi));
+        list.AddChild(head);
+
+        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        rows.AddThemeConstantOverride("separation", 4);
+        foreach (var c in BigArmy.Where(c => !c.Done)) rows.AddChild(UnitRow(c));
+        var sep = new HBoxContainer();
+        sep.AddThemeConstantOverride("separation", 8);
+        sep.AddChild(HudKit.Text("ACTIVATED THIS ROUND", 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+        sep.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(0, 1), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+        rows.AddChild(HudKit.Gap(0, 4));
+        rows.AddChild(sep);
+        foreach (var c in BigArmy.Where(c => c.Done)) rows.AddChild(UnitRow(c));
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, listH), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        scroll.AddChild(rows);
+        list.AddChild(scroll);
+        HudKit.Place(_ui, HudKit.Panel(HudKit.PanelBox(12).With(x => { x.ContentMarginLeft = 10; x.ContentMarginRight = 6; }), list), Control.LayoutPreset.TopLeft, new Vector2(16, 16));
+
+        // Under the list: the selected unit, and its actions as a 2x2 grid beside it.
+        var block = new HBoxContainer();
+        block.AddThemeConstantOverride("separation", 14);
+        block.AddChild(UnitCardContent(Active.Unit, 5, "Human Empire", HudKit.Friendly, 380, false, null, true));
+        block.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 0) });
+        var act = new VBoxContainer();
+        act.AddThemeConstantOverride("separation", 8);
+        act.AddChild(HudKit.Heading("Actions", 15));
+        var grid = new GridContainer { Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        foreach (var a in Actions) grid.AddChild(HudKit.ActionButton(a.Name, a.Icon, a.Name, a.Key, HudKit.Teal, 92, a.Name == "Advance", a.Off));
+        act.AddChild(grid);
+        var says = HudKit.Text(Actions[1].Says, 15, HudKit.Lime, HudKit.Semi);
+        says.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        says.CustomMinimumSize = new Vector2(190, 0);
+        act.AddChild(says);
+        block.AddChild(act);
+        HudKit.Place(_ui, HudKit.Panel(HudKit.HeaderBox(), block), Control.LayoutPreset.BottomLeft, new Vector2(16, -16));
+
+        HudKit.Place(_ui, ReportBox(4, 420), Control.LayoutPreset.BottomRight, new Vector2(-24, -16));
+        ClickedEnemy(ruleTip: false);
+        HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterBottom, new Vector2(120, -4));
     }
 }

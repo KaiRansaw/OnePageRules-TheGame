@@ -11,7 +11,7 @@ namespace OprGodot.Mock;
 /// </summary>
 public partial class MockScene : Node
 {
-    public enum ELayout { Menu, HudColumn, HudXcom, HudXcomCards, Console, SideList }
+    public enum ELayout { Menu, HudColumn, HudXcom, HudXcomCards, Console, SideList, Final }
     /// <summary>For the Console mockup: 0 = hovering an enemy, 1 = enemy clicked + a rule tooltip, 2 = hovering terrain.</summary>
     [Export] public int State { get; set; }
     [Export] public ELayout Layout { get; set; } = ELayout.HudXcom;
@@ -28,7 +28,7 @@ public partial class MockScene : Node
         _ui = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
         _ui.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         layer.AddChild(_ui);
-        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), ELayout.HudXcomCards => nameof(BuildXcomCards), ELayout.Console => nameof(BuildConsole), ELayout.SideList => nameof(BuildSideList), _ => nameof(BuildXcom) });
+        CallDeferred(Layout switch { ELayout.Menu => nameof(BuildMenu), ELayout.HudColumn => nameof(BuildColumn), ELayout.HudXcomCards => nameof(BuildXcomCards), ELayout.Console => nameof(BuildConsole), ELayout.SideList => nameof(BuildSideList), ELayout.Final => nameof(BuildFinal), _ => nameof(BuildXcom) });
     }
 
     // ================================================================== shared pieces
