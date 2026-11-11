@@ -194,7 +194,7 @@ public sealed class BattleDecisions
             _grid.AddChild(Side(d!, rows!));
             _grid.Visible = true;
             _rowsTitle.Visible = false;
-            _areaTitle.Text = (d!.RowsTitle ?? "Choose").ToUpperInvariant() + _titleHint;
+            _areaTitle.Text = slots != null ? "ACTIONS" : (d!.RowsTitle ?? "Choose").ToUpperInvariant() + _titleHint;
             _rowScroll.Visible = false;
             _note.Visible = false;
             return;
