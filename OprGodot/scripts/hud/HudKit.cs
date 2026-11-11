@@ -100,7 +100,7 @@ public static class HudKit
     /// A square action button: icon on top, name under it, hotkey in the top-left corner. The XCOM-style bar
     /// is a row of these.
     /// </summary>
-    public static Button ActionButton(string name, string icon, string label, string hotkey, Color iconTint, float size = 92, bool selected = false, bool disabled = false)
+    public static Button ActionButton(string name, string icon, string label, string hotkey, Color iconTint, float size = 92, bool selected = false, bool disabled = false, int labelSize = 14)
     {
         var b = new Button { Name = name, CustomMinimumSize = new Vector2(size, size + 6), Disabled = disabled, FocusMode = Control.FocusModeEnum.None };
         var box = new ChamferBox { Fill = GlassLight, Border = Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 };
@@ -113,7 +113,7 @@ public static class HudKit
         var ic = Icon(icon, size * 0.46f, disabled ? Dim with { A = 0.4f } : selected ? Lime : iconTint);
         ic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         col.AddChild(ic);
-        var lbl = Text(label.ToUpperInvariant(), 14, disabled ? Dim with { A = 0.5f } : selected ? Lime : Fg, Tracked(Bold, 1), HorizontalAlignment.Center);
+        var lbl = Text(label.ToUpperInvariant(), labelSize, disabled ? Dim with { A = 0.5f } : selected ? Lime : Fg, Tracked(Bold, 1), HorizontalAlignment.Center);
         lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(lbl);
         b.AddChild(col);
