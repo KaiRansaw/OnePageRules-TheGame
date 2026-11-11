@@ -99,24 +99,32 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
 
 // ====================================================================== the action menu
 
-/// <summary>Choose Action: the 2x2 grid holds Move / Shoot / Charge / Pass; anything else (Cast, special rules' own actions) is a list.</summary>
+/// <summary>
+/// Choose Action. The 2x2 grid is the book's four actions (Kai, 2026-11-10): Hold, Advance, Rush, Charge.
+/// The engine's menu is Move / Shoot / Charge / Pass, with Advance, Rush and a charge all being "Move" told
+/// apart by distance, so the grid translates: Advance and Rush open the move tool capped at that distance,
+/// Charge opens it to move into contact (or is the engine's Charge when already in reach), Hold is Shoot
+/// (or ends the activation when there is nothing to shoot). After the move the grid turns into what is left:
+/// Shoot and End. Anything else (Cast, special actions) is a list.
+/// </summary>
 public sealed class ActionDecision : Decision<string>
 {
     private readonly ChooseActionRequest _r;
     private BattleScreen? _s;
     public ActionDecision(ChooseActionRequest r) => _r = r;
 
-    private static readonly (string Option, string Icon, string Key)[] Grid =
-    {
-        (FDG.Stages.ChooseActionStage.MOVEMENT_CHOICE_NAME, "walk", "1"),
-        (FDG.Stages.ChooseActionStage.SHOOT_CHOICE_NAME, "crosshair", "2"),
-        (FDG.Stages.ChooseActionStage.CHARGE_CHOICE_NAME, "sword-clash", "3"),
-        (FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME, "stop-sign", "4"),
-    };
+    private const string MoveOpt = FDG.Stages.ChooseActionStage.MOVEMENT_CHOICE_NAME;
+    private const string ShootOpt = FDG.Stages.ChooseActionStage.SHOOT_CHOICE_NAME;
+    private const string ChargeOpt = FDG.Stages.ChooseActionStage.CHARGE_CHOICE_NAME;
+    private const string PassOpt = FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME;
+    private static readonly string[] Handled = { MoveOpt, ShootOpt, ChargeOpt, PassOpt };
 
     private IUnit? Unit => _s?.Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(_r.ActivatingUnitID));
 
-    public override string Prompt => $"Choose an action";
+    private bool Can(string o) => _r.ValidOptions.Contains(o);
+    private bool Fresh => Can(MoveOpt);   // nothing done yet this activation
+
+    public override string Prompt => Fresh ? "Choose an action" : "Then...";
     public override string Hint => $"{Unit?.Name ?? "Your unit"} - keys 1-4" + (_r.AllowCancel ? ", Esc to pick a different unit" : "");
 
     private string Describe(string option) =>
@@ -124,21 +132,62 @@ public sealed class ActionDecision : Decision<string>
 
     private string? Why(string option) => _r.InvalidOptions.FirstOrDefault(i => i.Option == option)?.Reason;
 
-    public override IReadOnlyList<ActionSlot> Actions => Grid.Select(g =>
+    public override IReadOnlyList<ActionSlot> Actions
     {
-        bool ok = _r.ValidOptions.Contains(g.Option);
-        string tip = ok ? Describe(g.Option) : Why(g.Option) ?? "Not available.";
-        return new ActionSlot(g.Option, g.Icon, g.Option == FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME ? "End" : g.Option,
-            g.Key, ok, tip, () => Choose(g.Option));
-    }).ToList();
+        get
+        {
+            if (!Fresh)
+                return new[]
+                {
+                    Slot("Shoot", "crosshair", "Shoot", "1", Can(ShootOpt), Can(ShootOpt) ? "Shoot now." : Why(ShootOpt), () => Complete(ShootOpt)),
+                    Slot("Charge", "sword-clash", "Charge", "2", Can(ChargeOpt), Can(ChargeOpt) ? "Fight the enemy in reach." : Why(ChargeOpt), () => Complete(ChargeOpt)),
+                    Slot("End", "stop-sign", "End", "3", Can(PassOpt), Can(PassOpt) ? "This unit is done for the round." : Why(PassOpt), () => Choose(PassOpt)),
+                };
+            bool holdShoots = Can(ShootOpt);
+            bool holdOk = holdShoots || Can(PassOpt);
+            string holdTip = holdShoots ? "Stay put and shoot."
+                : Can(PassOpt) ? "Stay put. Nothing to shoot at, so this ends the unit's activation." : Why(PassOpt) ?? "Not available.";
+            bool chargeOk = Can(ChargeOpt) || Can(MoveOpt);
+            string chargeTip = Can(ChargeOpt) ? "Fight the enemy already in reach."
+                : "Move into contact with an enemy and fight it - click the enemy you want to charge.";
+            return new[]
+            {
+                Slot("Hold", "shield", "Hold", "1", holdOk, holdTip, Hold),
+                Slot("Advance", "walk", "Advance", "2", Can(MoveOpt), Can(MoveOpt) ? "Move up to the Advance distance, then you may shoot." : Why(MoveOpt), () => Move(MoveKind.Advance)),
+                Slot("Rush", "run", "Rush", "3", Can(MoveOpt), Can(MoveOpt) ? "Move up to the Rush distance. No shooting after." : Why(MoveOpt), () => Move(MoveKind.Rush)),
+                Slot("Charge", "sword-clash", "Charge", "4", chargeOk, chargeOk ? chargeTip : Why(ChargeOpt), Charge),
+            };
+        }
+    }
+
+    private static ActionSlot Slot(string name, string icon, string label, string key, bool ok, string? tip, Action go) =>
+        new(name, icon, label, key, ok, tip ?? "Not available.", go);
+
+    private void Hold()
+    {
+        if (Can(ShootOpt)) Complete(ShootOpt);
+        else if (Can(PassOpt)) Complete(PassOpt);   // a deliberate Hold, so no "are you sure"
+    }
+
+    private void Move(MoveKind kind)
+    {
+        BattleResolvers.NextMove = kind;
+        Complete(MoveOpt);
+    }
+
+    private void Charge()
+    {
+        if (Can(ChargeOpt)) Complete(ChargeOpt);
+        else Move(MoveKind.Charge);
+    }
 
     public override IReadOnlyList<ChoiceRow>? Rows
     {
         get
         {
-            var extra = _r.ValidOptions.Where(o => Grid.All(g => g.Option != o))
+            var extra = _r.ValidOptions.Where(o => !Handled.Contains(o))
                 .Select(o => new ChoiceRow(o, Describe(o), true, null, () => Choose(o)))
-                .Concat(_r.InvalidOptions.Where(i => Grid.All(g => g.Option != i.Option))
+                .Concat(_r.InvalidOptions.Where(i => !Handled.Contains(i.Option))
                     .Select(i => new ChoiceRow(i.Option, null, false, i.Reason, () => { })))
                 .ToList();
             return extra.Count > 0 ? extra : null;
@@ -204,19 +253,49 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private MovePlanner.Plan? _plan;
     private Vector2 _lastHover = new(-9999, -9999);
     private string _note = "";
-    public MoveDecision(DefineMovementPathRequest r) => _r = r;
+    private readonly MoveKind? _kind;
+
+    public MoveDecision(DefineMovementPathRequest r)
+    {
+        _r = r;
+        // Only the main activation move comes from the Hold/Advance/Rush/Charge grid.
+        if (r.MainActivationMove) { _kind = BattleResolvers.NextMove; }
+        BattleResolvers.NextMove = null;
+    }
 
     private IUnit Unit => _r.UnitDataBinding.GetValue();
 
-    public override string Prompt => $"Move {Unit.Name}";
-    public override string Hint => _note.Length > 0 ? _note
-        : $"Click where to go - click an enemy to move into contact. Advance {_r.MaxAdvanceDistance:0.#}\", Rush {_r.MaxRushDistance:0.#}\""
-          + (_r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? $", Charge {_r.MaxDistanceInches:0.#}\"" : "") + ".";
+    /// <summary>How far the picked action allows (the engine's own budgets).</summary>
+    private float? Cap => _kind switch
+    {
+        MoveKind.Advance => _r.MaxAdvanceDistance,
+        MoveKind.Rush => _r.MaxRushDistance,
+        _ => null,
+    };
+
+    public override string Prompt => _kind switch
+    {
+        MoveKind.Advance => $"Advance {Unit.Name}",
+        MoveKind.Rush => $"Rush {Unit.Name}",
+        MoveKind.Charge => $"Charge with {Unit.Name}",
+        _ => $"Move {Unit.Name}",
+    };
+
+    public override string Hint => _note.Length > 0 ? _note : _kind switch
+    {
+        MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Esc = back.",
+        MoveKind.Rush => $"Click where to go - up to {_r.MaxRushDistance:0.#}\". Esc = back.",
+        MoveKind.Charge => $"Click the enemy unit to charge - up to {_r.MaxDistanceInches:0.#}\". Esc = back.",
+        _ => $"Click where to go - click an enemy to move into contact. Advance {_r.MaxAdvanceDistance:0.#}\", Rush {_r.MaxRushDistance:0.#}\""
+             + (_r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? $", Charge {_r.MaxDistanceInches:0.#}\"" : "") + ".",
+    };
 
     public override string? CancelLabel => _r.AllowCancel ? "Back" : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(new Cancelled<List<ModelMoveEntry>>()); }
 
-    public override IReadOnlyList<ActionSlot> Actions => new[]
+    public override IReadOnlyList<ActionSlot> Actions => _kind != null
+        ? new[] { new ActionSlot("Back", "stop-sign", "Back", "Esc", _r.AllowCancel, _r.AllowCancel ? "Choose a different action." : "This move can't be called off.", Cancel) }
+        : new[]
     {
         new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Don't move this unit.", () => Complete(new Selected<List<ModelMoveEntry>>(MovePlanner.StayInPlace(_r)))),
         new ActionSlot("Back", "stop-sign", "Back", "Esc", _r.AllowCancel, _r.AllowCancel ? "Choose a different action." : "This move can't be called off.", Cancel),
@@ -241,9 +320,12 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 
     private MovePlanner.Plan? PlanFor(BattleScreen s, Vector2 at)
     {
-        if (s.Table.UnitAt(at) is { } target && !s.Session.IsMine(target.PlayerID) && !target.ID.Equals(Unit.ID))
-            return MovePlanner.IntoContact(_r, s.Session.Table, target);
-        return s.Table.TableAt(at) is { } p ? MovePlanner.Towards(_r, s.Session.Table, p.X, p.Y) : null;
+        IUnit? enemy = s.Table.UnitAt(at) is { } target && !s.Session.IsMine(target.PlayerID) && !target.ID.Equals(Unit.ID) ? target : null;
+        // A charge goes into contact with the enemy pointed at, and nowhere else.
+        if (_kind == MoveKind.Charge) return enemy == null ? null : MovePlanner.IntoContact(_r, s.Session.Table, enemy);
+        // Advance and Rush may not end in contact (that is a charge); with no action picked, an enemy is a charge.
+        if (enemy != null && _kind == null) return MovePlanner.IntoContact(_r, s.Session.Table, enemy);
+        return s.Table.TableAt(at) is { } p ? MovePlanner.Towards(_r, s.Session.Table, p.X, p.Y, Cap) : null;
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)
@@ -264,7 +346,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             lines.Add((from, to, c));
         }
         s.Table.SetGhosts(ghosts, lines);
-        string kind = _plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : _plan.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge";
+        string kind = _kind?.ToString() ?? (_plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : _plan.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge");
         _note = _plan.Valid ? $"{kind}: {_plan.Distance:0.0}\" - click to move." : $"Can't go there: {_plan.Problem}.";
         Version++;
     }
@@ -272,7 +354,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         MovePlanner.Plan? plan = PlanFor(s, at);
-        if (plan == null) return true;
+        if (plan == null)
+        {
+            if (_kind == MoveKind.Charge) s.Toast("Click the enemy unit you want to charge.");
+            return true;
+        }
         if (!plan.Valid || plan.Distance < 0.05f)
         {
             s.Toast(plan.Valid ? "That is where the unit already is." : $"Can't move there: {plan.Problem}.");

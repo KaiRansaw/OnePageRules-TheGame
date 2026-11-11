@@ -48,6 +48,10 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
             // "tab:Name" opens the tab called Name in whatever TabContainer has one.
             if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
+            // Real mouse clicks through the whole input pipeline, on the battle table:
+            // "clickmine" (your first ready unit), "clickenemy" (the enemy nearest it), "clickrel:dx;dz"
+            // (the selected unit's middle + dx,dz inches), "hoverrel:dx;dz" (the same, pointer only).
+            if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }
             if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
             return;
@@ -60,6 +64,38 @@ public partial class ScriptedRun : Node
             GD.Print($"ScriptedRun: screenshot {(saved == Error.Ok ? "saved" : "FAILED")} - {_shot}");
         }
         GetTree().Quit();
+    }
+
+    private void TableMouse(string step)
+    {
+        if (Find<Battle.BattleScreen>(GetTree().Root) is not { } battle) { GD.PrintErr("ScriptedRun: no battle on screen."); return; }
+        var mine = battle.Session.Table.Units.Objects.Where(u => battle.Session.IsMine(u.PlayerID) && battle.Table.UnitCentre(u) != null).ToList();
+        FDG.IUnit? Pick() => battle.SelectedUnit ?? mine.FirstOrDefault();
+        Vector3? world = null;
+        if (step == "clickmine") world = mine.Select(u => battle.Table.UnitCentre(u)).FirstOrDefault(c => c != null);
+        else if (step == "clickenemy" && Pick() is { } me && battle.Table.UnitCentre(me) is { } from)
+            world = battle.Session.Table.Units.Objects.Where(u => !battle.Session.IsMine(u.PlayerID))
+                .Select(u => battle.Table.UnitCentre(u)).Where(c => c != null).OrderBy(c => c!.Value.DistanceTo(from)).FirstOrDefault();
+        else if (step.Contains(':') && Pick() is { } sel && battle.Table.UnitCentre(sel) is { } c)
+        {
+            string[] xy = step[(step.IndexOf(':') + 1)..].Split(';');
+            world = c + new Vector3(float.Parse(xy[0], System.Globalization.CultureInfo.InvariantCulture), 0, -float.Parse(xy[1], System.Globalization.CultureInfo.InvariantCulture));
+        }
+        if (world is not { } w) { GD.PrintErr($"ScriptedRun: nothing to {step}."); return; }
+        Vector2 at = battle.Table.Camera.UnprojectPosition(w);
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+        if (step.StartsWith("hover")) return;
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at });
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at });
+        GD.Print($"ScriptedRun: {step} at {at}");
+    }
+
+    private static T? Find<T>(Node node) where T : Node
+    {
+        if (node is T t) return t;
+        foreach (Node child in node.GetChildren())
+            if (Find<T>(child) is { } f) return f;
+        return null;
     }
 
     private static bool OpenTab(Node node, string name)

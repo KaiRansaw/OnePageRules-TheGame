@@ -55,7 +55,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public override void _Ready()
     {
         MenuBackdrop.Instance?.SetActive(false);
-        MouseFilter = MouseFilterEnum.Ignore;
+        // The table takes the clicks the HUD doesn't: this screen is the bottom-most control under the pointer
+        // wherever no panel is, so table clicks arrive in _GuiInput. (In 1.45 they were left for
+        // _UnhandledInput, and the main scene's full-window control ate them first - nothing on the table
+        // could be clicked.)
+        MouseFilter = MouseFilterEnum.Stop;
 
         _table = new BattleTable { Session = Session };
         AddChild(_table);
@@ -120,7 +124,28 @@ public partial class BattleScreen : Control, IOwnBackdrop
         ApplyCamera();
     }
 
+    // Tab is taken before the GUI sees it: otherwise it only moves keyboard focus between HUD buttons.
+    public override void _Input(InputEvent e)
+    {
+        if (e is InputEventKey { Pressed: true, Keycode: Key.Tab } && IsVisibleInTree())
+        {
+            SelectNextReady();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    public override void _GuiInput(InputEvent e)
+    {
+        if (e is InputEventMouse) { TableMouse(e); AcceptEvent(); }
+    }
+
     public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is InputEventMouse) return;
+        TableKeys(e);
+    }
+
+    private void TableMouse(InputEvent e)
     {
         switch (e)
         {
@@ -147,14 +172,19 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 Pan((mm.Position - p) * -_distance * 0.0016f);
                 _dragPan = mm.Position;
                 break;
+        }
+    }
+
+    private void TableKeys(InputEvent e)
+    {
+        switch (e)
+        {
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.T }:
                 ToggleTopView(); break;
             case InputEventKey { Pressed: true, Keycode: Key.Q }:
                 _yaw += 5; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Keycode: Key.E }:
                 _yaw -= 5; ApplyCamera(); break;
-            case InputEventKey { Pressed: true, Keycode: Key.Tab }:
-                SelectNextReady(); GetViewport().SetInputAsHandled(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: >= Key.Key1 and <= Key.Key4 } k:
@@ -200,8 +230,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         if (Decisions.TableClick(at)) return;
         if (_table.UnitAt(at) is not { } unit) return;
-        if (Session.IsMine(unit.PlayerID)) SelectUnit(unit, focus: false);
-        else Pin(unit);
+        SelectUnit(unit, focus: false);
+        if (!Session.IsMine(unit.PlayerID)) Pin(unit);
     }
 
     private void UpdateHover(double delta)
@@ -419,7 +449,14 @@ public partial class BattleScreen : Control, IOwnBackdrop
         var list = new VBoxContainer { CustomMinimumSize = new Vector2(286, 0) };
         list.AddThemeConstantOverride("separation", 4);
         var head = new HBoxContainer();
-        head.AddChild(HudKit.Heading("Your army", 13));
+        foreach (bool enemy in new[] { false, true })
+        {
+            var tab = new Button { Text = enemy ? "ENEMY" : "YOUR ARMY", Name = enemy ? "EnemyTab" : "ArmyTab", ToggleMode = true, ButtonPressed = !enemy,
+                TooltipText = enemy ? "The other side's units - click one to see its card." : "Your units - click one to select it (on your turn, to activate it)." };
+            tab.AddThemeFontSizeOverride("font_size", 13);
+            tab.Pressed += () => { _showEnemy = enemy; _armySig = ""; foreach (Node n in tab.GetParent().GetChildren()) if (n is Button b && b.ToggleMode) b.ButtonPressed = b == tab; };
+            head.AddChild(tab);
+        }
         head.AddChild(HudKit.Grow());
         _armyHead = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi);
         head.AddChild(_armyHead);
@@ -509,16 +546,18 @@ public partial class BattleScreen : Control, IOwnBackdrop
         return h;
     }
 
+    private bool _showEnemy;
+
     private void RefreshArmy(IGameProgress progress)
     {
-        List<IUnit> mine = MyUnits();
+        List<IUnit> mine = _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
         var ready = mine.Where(u => !UnitActivation.HasActivated(progress, u) && Alive(u)).ToList();
         var done = mine.Where(u => UnitActivation.HasActivated(progress, u) && Alive(u)).ToList();
         string sig = string.Join("|", mine.Select(u => $"{u.ID.ID}:{Alive(u)}:{UnitActivation.HasActivated(progress, u)}:{LeftOf(u)}:{u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}"))
-            + (_selected?.ID.ID.ToString() ?? "") + (progress.ActivatingUnit?.ID.ID.ToString() ?? "");
+            + (_selected?.ID.ID.ToString() ?? "") + (progress.ActivatingUnit?.ID.ID.ToString() ?? "") + _showEnemy;
         if (sig == _armySig) return;
         _armySig = sig;
-        _armyHead.Text = $"{ready.Count}/{ready.Count + done.Count} to go - Tab";
+        _armyHead.Text = _showEnemy ? $"{ready.Count}/{ready.Count + done.Count} to go" : $"{ready.Count}/{ready.Count + done.Count} to go - Tab";
         foreach (Node c in _armyRows.GetChildren()) c.QueueFree();
         foreach (IUnit u in ready) _armyRows.AddChild(ArmyRow(u, false));
         if (done.Count > 0)

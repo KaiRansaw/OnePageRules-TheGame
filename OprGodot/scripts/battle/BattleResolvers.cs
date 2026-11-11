@@ -25,10 +25,17 @@ public static class BattleResolvers
     /// </summary>
     public static IUnit? PendingActivation { get; set; }
 
+    /// <summary>
+    /// Which of the book's actions the player pressed before the engine's generic "Move" (Advance, Rush or a
+    /// charge) - the move tool caps the distance by it. Taken by the next move request.
+    /// </summary>
+    public static MoveKind? NextMove { get; set; }
+
     public static void Register(HybridResolverRegistry registry)
     {
         Inbox = new DecisionInbox();
         PendingActivation = null;
+        NextMove = null;
         var unitPick = new Ask<SelectionRequest<UnitData>, DataBinding<UnitData>>(r => new UnitPickDecision(r));
         registry.RegisterResolver<ChooseUnitToActivateRequest, DataBinding<UnitData>>(
             new Ask<ChooseUnitToActivateRequest, DataBinding<UnitData>>(r => new ActivateDecision(r)));
@@ -55,6 +62,8 @@ public static class BattleResolvers
         }
     }
 }
+
+public enum MoveKind { Advance, Rush, Charge }
 
 /// <summary>Open decisions, oldest first. Written by the engine thread, read by the screen.</summary>
 public sealed class DecisionInbox

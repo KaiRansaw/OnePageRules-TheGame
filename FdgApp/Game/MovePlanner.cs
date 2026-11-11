@@ -29,19 +29,19 @@ public static class MovePlanner
         request.UnitDataBinding.GetValue().ModelBindings.Select(b => new ModelMoveEntry(b, new List<Position>())).ToList();
 
     /// <summary>Slides the unit so its middle heads for (<paramref name="x"/>, <paramref name="z"/>).</summary>
-    public static Plan Towards(DefineMovementPathRequest request, ITableState table, float x, float z)
+    public static Plan Towards(DefineMovementPathRequest request, ITableState table, float x, float z, float? cap = null)
     {
         var movers = Movers(request);
         if (movers.Count == 0) return Build(request, table, 0, 0);
         float cx = movers.Average(b => b.GetValue().Position.x), cz = movers.Average(b => b.GetValue().Position.z);
-        return Furthest(request, table, x - cx, z - cz);
+        return Furthest(request, table, x - cx, z - cz, cap);
     }
 
     /// <summary>
     /// Slides the unit straight at <paramref name="target"/> until its closest model touches the closest
     /// enemy model (a charge, or moving up to an enemy).
     /// </summary>
-    public static Plan IntoContact(DefineMovementPathRequest request, ITableState table, IUnit target)
+    public static Plan IntoContact(DefineMovementPathRequest request, ITableState table, IUnit target, float? cap = null)
     {
         var movers = Movers(request);
         var enemies = target.Models.Where(m => m.GetIsAlive()).ToList();
@@ -60,15 +60,19 @@ public static class MovePlanner
         if (best.d < 0.001f || gap <= 0.02f) return Build(request, table, 0, 0);
         float travel = gap - 0.02f;   // a hair short of overlapping: base contact
         float ux = (best.b.Position.x - best.a.Position.x) / best.d, uz = (best.b.Position.z - best.a.Position.z) / best.d;
-        return Furthest(request, table, ux * travel, uz * travel);
+        return Furthest(request, table, ux * travel, uz * travel, cap);
     }
 
-    /// <summary>The full offset if the engine accepts it, else the largest fraction of it that it does.</summary>
-    private static Plan Furthest(DefineMovementPathRequest request, ITableState table, float dx, float dz)
+    /// <summary>
+    /// The full offset if the engine accepts it, else the largest fraction of it that it does.
+    /// <paramref name="limit"/> caps the distance below the request's own maximum (the Advance or Rush the
+    /// player picked).
+    /// </summary>
+    private static Plan Furthest(DefineMovementPathRequest request, ITableState table, float dx, float dz, float? limit)
     {
         // Never ask for more than the furthest any model may go.
         float len = MathF.Sqrt(dx * dx + dz * dz);
-        float cap = Math.Max(0f, request.MaxDistanceInches - 0.01f);
+        float cap = Math.Max(0f, Math.Min(limit ?? float.MaxValue, request.MaxDistanceInches) - 0.01f);
         if (len > cap && len > 0.0001f) { dx *= cap / len; dz *= cap / len; }
 
         Plan full = Build(request, table, dx, dz);
