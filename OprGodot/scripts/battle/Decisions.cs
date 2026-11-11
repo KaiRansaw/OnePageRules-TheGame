@@ -316,6 +316,8 @@ public sealed class ActionDecision : Decision<string>
 
     public override void AutoPlay(BattleScreen s)
     {
+        // Casting first, so a test run goes through the spell screens whenever the army has a caster.
+        if (_r.ValidOptions.FirstOrDefault(o => o.StartsWith("Cast", StringComparison.OrdinalIgnoreCase)) is { } cast) { Complete(cast); return; }
         foreach (string o in new[] { ShootOpt, ChargeOpt, MoveOpt, PassOpt })
             if (_r.ValidOptions.Contains(o)) { Complete(o); return; }
         Complete(_r.ValidOptions[0]);
@@ -714,7 +716,31 @@ public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
     public override bool WantsEnemyList => _s != null && _r.ValidOptions.Count > 0
         && _r.ValidOptions.All(o => !_s.Session.IsMine(o.Option.GetValue().PlayerID));
 
-    public override void Shown(BattleScreen s) => _s = s;
+    /// <summary>
+    /// The choices are also listed in the actions area when the list on the left can't show them all on one
+    /// tab (targets on both sides - a spell that can hit friend or foe), or when the engine's labels say more
+    /// than the unit's name ("Hive Lord (via Synaptic Relay, +1)"). A plain deploy / activate pick has no list.
+    /// </summary>
+    private bool Listed => _s != null && _r.ValidOptions.Count > 0
+        && (_r.ValidOptions.Select(o => _s.Session.IsMine(o.Option.GetValue().PlayerID)).Distinct().Count() > 1
+            || _r.ValidOptions.Any(o => o.Name != o.Option.GetValue().Name));
+
+    public override string? RowsTitle => "Choose";
+
+    public override IReadOnlyList<ChoiceRow>? Rows => !Listed ? null
+        : _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
+            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+
+    public override void Shown(BattleScreen s)
+    {
+        _s = s;
+        // Every unit that can be picked gets a gold outline on the table (spell targets, transports...).
+        s.Table.SetGhosts("targets", Array.Empty<BattleTable.Ghost>(), _r.ValidOptions
+            .SelectMany(o => BattleTable.Outline(o.Option.GetValue(), 0.45f, HudKit.Gold, 0.16f)));
+        Version++;
+    }
+
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("targets");
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
@@ -1003,4 +1029,122 @@ public sealed class ConcedeDecision : Decision<bool>
         new ChoiceRow("Concede the game", "Ends the game as a loss.", true, null,
             () => { if (_s != null) _s.Confirm("Concede?", "End the game now as a loss?", "Concede", () => Complete(true)); else Complete(true); }),
     };
+}
+
+// ====================================================================== spells
+
+/// <summary>
+/// Cast a spell (Kai, 2026-11-11): the caster's spells as a list in the actions area - name and cost, what it does,
+/// greyed with the reason when it can't be cast. Picking one then asks how hard to push the roll: each extra spell
+/// token (and, for a Star Quest hero, each Power) is +1 to the cast, shown as the number needed. Targets are picked
+/// next, on the table (gold outlines) or from the list.
+/// </summary>
+public sealed class SpellDecision : Decision<ChooseSpellReply>
+{
+    private readonly ChooseSpellRequest _r;
+    private int _spell = -1;
+    public SpellDecision(ChooseSpellRequest r) => _r = r;
+
+    private IUnit Caster => _r.CastingUnit.GetValue();
+    private static int Needed(int threshold, int boost) => Math.Max(global::DiceUtilities.MINIMUM_SUCCESS_ROLL, threshold - boost);
+
+    public override string Prompt => _spell < 0 ? $"{Caster.Name} - cast a spell" : $"{Caster.Name} - {_r.Spells[_spell].Label}";
+    public override string Hint => _spell < 0
+        ? $"{_r.AvailableTokens} spell token{(_r.AvailableTokens == 1 ? "" : "s")}" + (_r.AvailablePower > 0 ? $", {_r.AvailablePower} Power" : "")
+          + $". Casts on {_r.BaseThreshold}+." + (_r.RelaysInRange.Count > 0 ? $" Relays in range: {string.Join(", ", _r.RelaysInRange.Select(x => $"{x.UnitName} +{x.RollBonus}"))}." : "")
+        : "Spend extra to push the roll - each one is +1."
+          + (_r.HinderTokensInRange > 0 ? $" Enemy casters nearby hold {_r.HinderTokensInRange} token(s) to hinder you." : "");
+    public override string? RowsTitle => _spell < 0 ? "Spells" : "Push the roll";
+
+    public override string? CancelLabel => "Back";
+    public override void Cancel()
+    {
+        if (_spell >= 0) { _spell = -1; Version++; }
+        else Complete(ChooseSpellReply.Cancel);
+    }
+
+    public override void Shown(BattleScreen s) => s.SelectUnit(Caster);
+
+    public override IReadOnlyList<ChoiceRow> Rows
+    {
+        get
+        {
+            if (_spell < 0)
+                return _r.Spells.Select((sp, i) => new ChoiceRow(sp.Label, sp.Description, sp.Castable, sp.UnavailableReason,
+                    sp.Castable ? () => { _spell = i; Version++; } : null)).ToList();
+            var spell = _r.Spells[_spell];
+            int affordable = Math.Max(0, _r.AvailableTokens - spell.Cost);
+            int useful = _r.MaxUsefulBoost;
+            var rows = new List<ChoiceRow>();
+            for (int t = 0; t <= Math.Min(affordable, useful); t++)
+            {
+                int tokens = t;
+                rows.Add(new ChoiceRow(t == 0 ? $"Cast - no extra (needs {Needed(_r.BaseThreshold, 0)}+)" : $"+{t} token{(t == 1 ? "" : "s")} (needs {Needed(_r.BaseThreshold, t)}+)",
+                    t == 0 ? $"Costs {spell.Cost} token{(spell.Cost == 1 ? "" : "s")}." : $"Costs {spell.Cost + t} tokens in all.",
+                    true, null, () => Complete(new ChooseSpellReply(_spell, tokens, 0))));
+            }
+            for (int p = 1; p <= Math.Min(_r.AvailablePower, useful); p++)
+            {
+                int power = p;
+                rows.Add(new ChoiceRow($"+{p} Power (needs {Needed(_r.BaseThreshold, p)}+)", "Power is the hero's whole-mission budget.",
+                    true, null, () => Complete(new ChooseSpellReply(_spell, 0, power))));
+            }
+            return rows;
+        }
+    }
+
+    public override void AutoPlay(BattleScreen s)
+    {
+        int i = _r.Spells.ToList().FindIndex(x => x.Castable);
+        Complete(i < 0 ? ChooseSpellReply.Cancel : new ChooseSpellReply(i, 0, 0));
+    }
+}
+
+/// <summary>Another caster is casting: spend tokens to help a friend (+1 each) or hinder an enemy (-1 each)?</summary>
+public sealed class CastAssistDecision : Decision<CastAssistReply>
+{
+    private readonly CastAssistRequest _r;
+    public CastAssistDecision(CastAssistRequest r) => _r = r;
+
+    private string Caster => _r.CastingUnit.GetValue().Name;
+    private string Helper => _r.AssistingUnit.GetValue().Name;
+
+    public override string Prompt => _r.IsFriendly ? $"Help {Caster} cast {_r.SpellName}?" : $"Hinder {Caster} casting {_r.SpellName}?";
+    public override string Hint => $"{Helper} has {_r.AvailableTokens} token(s)" + (_r.AvailablePower > 0 ? $" and {_r.AvailablePower} Power" : "")
+        + (_r.IsFriendly ? " - each spent is +1 to the cast." : " - each spent is -1 to their cast.");
+    public override string? RowsTitle => _r.SpellName;
+
+    public override void Shown(BattleScreen s)
+    {
+        s.SelectUnit(_r.AssistingUnit.GetValue());
+        s.Table.SetGhosts("targets", Array.Empty<BattleTable.Ghost>(),
+            BattleTable.Outline(_r.CastingUnit.GetValue(), 0.45f, _r.IsFriendly ? HudKit.Teal : Palette.WoundsRed, 0.18f));
+    }
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("targets");
+    public override void AutoPlay(BattleScreen s) => Complete(CastAssistReply.None);
+
+    public override IReadOnlyList<ChoiceRow> Rows
+    {
+        get
+        {
+            var rows = new List<ChoiceRow>
+            {
+                new(_r.SpellName, _r.SpellDescription, true, null, null),
+                new("Spend nothing", null, true, null, () => Complete(CastAssistReply.None)),
+            };
+            for (int t = 1; t <= _r.AvailableTokens; t++)
+            {
+                int tokens = t;
+                rows.Add(new ChoiceRow($"Spend {t} token{(t == 1 ? "" : "s")} ({(_r.IsFriendly ? "+" : "-")}{t})", null, true, null,
+                    () => Complete(new CastAssistReply(tokens, 0))));
+            }
+            for (int p = 1; p <= _r.AvailablePower; p++)
+            {
+                int power = p;
+                rows.Add(new ChoiceRow($"Spend {p} Power ({(_r.IsFriendly ? "+" : "-")}{p})", null, true, null,
+                    () => Complete(new CastAssistReply(0, power))));
+            }
+            return rows;
+        }
+    }
 }

@@ -48,6 +48,19 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
             // "tab:Name" opens the tab called Name in whatever TabContainer has one.
             if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
+            // "army:<file>" gives the first (host) seat that army in the lobby; "confirm" presses OK on an open dialog.
+            if (name.StartsWith("army:") && Find<LobbyScreen>(GetTree().Root) is { } lobby)
+            {
+                var seat = lobby.Session.Vm.PlayerInfos.First().PlayerID;
+                if (FdgRaylib.Lobby.LobbySession.LoadArmyFile(name[5..]) is { } army) lobby.Session.Vm.UpdateArmyListFile(seat, army);
+                else GD.PrintErr($"ScriptedRun: no army at {name[5..]}");
+                return;
+            }
+            if (name == "confirm")
+            {
+                foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
+                return;
+            }
             // "waitfor:ShootDecision" holds until the battle is waiting on that kind of decision (max ~3000 frames).
             if (name.StartsWith("waitfor:"))
             {
@@ -104,6 +117,13 @@ public partial class ScriptedRun : Node
         Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at });
         Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at });
         GD.Print($"ScriptedRun: {step} at {at}");
+    }
+
+    private static IEnumerable<T> AllOf<T>(Node node) where T : Node
+    {
+        if (node is T t) yield return t;
+        foreach (Node child in node.GetChildren())
+            foreach (T x in AllOf<T>(child)) yield return x;
     }
 
     private static T? Find<T>(Node node) where T : Node
