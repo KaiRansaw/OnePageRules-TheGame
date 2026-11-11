@@ -18,6 +18,9 @@ public sealed class GameSession
     public IFDGGame Game { get; }
     public ITableState Table => Game.TableState;
     public GameLogBuffer Log { get; } = new();
+
+    /// <summary>What happened, line by line with hover data, built from the engine's presentation beats.</summary>
+    public BattleReport Report { get; private set; } = null!;
     public HybridResolverRegistry Registry { get; }
     public LobbySession Lobby { get; }
 
@@ -59,7 +62,8 @@ public sealed class GameSession
 
         var session = new GameSession(game, lobby, registry, seats);
         vm.OnGameEnded += text => session.EndedText = text;
-        game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: null, outstandingTaskDisplay: null);
+        session.Report = new BattleReport(game.TableState) { PlayerName = id => session.SeatOf(id)?.Name ?? "" };
+        game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
         return session;
     }
 

@@ -155,7 +155,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 _distance = Mathf.Min(220f, _distance * 1.1f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right } mb:
                 _dragRotate = mb.Pressed ? mb.Position : null;
-                if (!mb.Pressed && _pinned.Count > 0 && mb.Position.DistanceTo(_rightDown) < 4) CloseNewestPin();
+                // A right CLICK (not a drag to turn the camera): drop the placed move / shot, step back, drop the
+                // picked unit (Kai, 2026-11-10) - and only then close the newest pinned enemy window.
+                if (!mb.Pressed && mb.Position.DistanceTo(_rightDown) < 4 && !Decisions.RightClick() && _pinned.Count > 0) CloseNewestPin();
                 if (mb.Pressed) _rightDown = mb.Position;
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } mb:
@@ -187,6 +189,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 _yaw -= 5; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.L }:
+                OpenArmies(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space or Key.Enter or Key.KpEnter }:
+                if (Decisions.ConfirmPending()) GetViewport().SetInputAsHandled();
+                break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: >= Key.Key1 and <= Key.Key4 } k:
                 if (Decisions.HotKey((int)(k.Keycode - Key.Key1))) GetViewport().SetInputAsHandled();
                 break;
@@ -230,7 +237,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         if (Decisions.TableClick(at)) return;
         if (_table.UnitAt(at) is not { } unit) return;
-        SelectUnit(unit, focus: false);
+        SelectUnit(unit);
         if (!Session.IsMine(unit.PlayerID)) Pin(unit);
     }
 
@@ -251,8 +258,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
         if (_hoverUnit == null) return;
         _table.ShowEnemyNames.Add(_hoverUnit.ID);
         _hoverTime += delta;
-        // Kai, 2026-11-10: the enemy's info comes up after the pointer rests on it for a second.
-        if (_hoverTip == null && _hoverTime >= 1.0)
+        // Kai, 2026-11-10: the enemy's info comes up after the pointer rests on it for a third of a second.
+        if (_hoverTip == null && _hoverTime >= 0.33)
         {
             _hoverTip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = HudKit.Enemy with { A = 0.85f }; x.Glow = HudKit.Enemy with { A = 0.25f }; }),
                 UnitInfo(_hoverUnit, 300, "Left-click to pin"));
@@ -324,13 +331,25 @@ public partial class BattleScreen : Control, IOwnBackdrop
         d.PopupCentered();
     }
 
-    public void SelectUnit(IUnit unit, bool focus)
+    /// <summary>
+    /// Selects a unit: its card shows bottom-left and it is ringed on the table. The camera stays where it is
+    /// (Kai, 2026-11-10: it used to jump to the unit).
+    /// </summary>
+    public void SelectUnit(IUnit unit)
     {
+        if (_selected?.ID.Equals(unit.ID) == true) return;
         _selected = unit;
         _table.Selected = unit.ID;
         _cardSig = "";
-        if (focus && _table.UnitCentre(unit) is { } c) FocusOn(c);
-        RefreshHud();
+        _armySig = "";
+    }
+
+    public void ClearSelection()
+    {
+        _selected = null;
+        _table.Selected = null;
+        _cardSig = "";
+        _armySig = "";
     }
 
     private void SelectNextReady()
@@ -338,7 +357,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         var mine = MyUnits().Where(u => !UnitActivation.HasActivated(Session.Table.Progress, u)).ToList();
         if (mine.Count == 0) return;
         int i = _selected == null ? -1 : mine.FindIndex(u => u.ID.Equals(_selected.ID));
-        SelectUnit(mine[(i + 1) % mine.Count], focus: true);
+        SelectUnit(mine[(i + 1) % mine.Count]); Decisions.UnitPicked(mine[(i + 1) % mine.Count]);
     }
 
     private List<IUnit> MyUnits() => Session.Table.Units.Objects.Where(u => Session.IsMine(u.PlayerID)).ToList();
@@ -396,7 +415,6 @@ public partial class BattleScreen : Control, IOwnBackdrop
         promptRow.AddChild(_promptHint);
         var promptBox = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.9f }; x.Border = HudKit.Lime with { A = 0.55f }; x.ContentMarginLeft = 16; x.ContentMarginRight = 16; }), promptRow);
         HudKit.Place(_hud, promptBox, LayoutPreset.CenterTop, new Vector2(0, Pad));
-        HudKit.Place(_hud, Decisions.BuildChoicePanel(), LayoutPreset.CenterTop, new Vector2(0, 70));
 
         // Top-right: Top view, Report, Armies, Menu.
         var menu = new HBoxContainer();
@@ -424,6 +442,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         block.AddChild(Decisions.BuildActionArea());
         _unitBlock = HudKit.Panel(Tight(12).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), block);
         HudKit.Place(_hud, _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
+        _confirmBox = HudKit.Place(_hud, Decisions.BuildConfirmBox(), LayoutPreset.CenterBottom, new Vector2(0, -170));
 
         // Bottom-right: mission panel over the battle report.
         var stack = new VBoxContainer();
@@ -454,7 +473,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
             var tab = new Button { Text = enemy ? "ENEMY" : "YOUR ARMY", Name = enemy ? "EnemyTab" : "ArmyTab", ToggleMode = true, ButtonPressed = !enemy,
                 TooltipText = enemy ? "The other side's units - click one to see its card." : "Your units - click one to select it (on your turn, to activate it)." };
             tab.AddThemeFontSizeOverride("font_size", 13);
-            tab.Pressed += () => { _showEnemy = enemy; _armySig = ""; foreach (Node n in tab.GetParent().GetChildren()) if (n is Button b && b.ToggleMode) b.ButtonPressed = b == tab; };
+            tab.Pressed += () => ShowList(enemy);
+            _armyTabs[enemy ? 1 : 0] = tab;
             head.AddChild(tab);
         }
         head.AddChild(HudKit.Grow());
@@ -474,6 +494,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     }
 
     private ScrollContainer _armyScroll = null!;
+    private Control _confirmBox = null!;
     private Control _armyBox = null!, _roundBox = null!;
 
     // ================================================================== HUD refresh
@@ -519,6 +540,19 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _prompt.Text = prompt.ToUpperInvariant();
         _promptHint.Text = hint;
 
+        // The report notes who activates (Kai, 2026-11-10: "which units activated").
+        if (activating != null && !activating.ID.Equals(_lastActivating?.ID)) Session.Report.NoteActivation();
+        _lastActivating = activating;
+
+        // A decision about the other side's units shows their list.
+        Decision? open = Decisions.Current;
+        if (!ReferenceEquals(open, _listFollowed))
+        {
+            _listFollowed = open;
+            if (open is UnitPickDecision && open.WantsEnemyList != _showEnemy) ShowList(open.WantsEnemyList);
+            else if (open is ActivateDecision && _showEnemy) ShowList(false);
+        }
+
         RefreshArmy(progress);
         RefreshCard(activating);
         RefreshReport();
@@ -534,8 +568,30 @@ public partial class BattleScreen : Control, IOwnBackdrop
             _armyBox.Size = Vector2.Zero;   // a free-placed container doesn't shrink by itself
         }
 
+        // Free-placed panels don't shrink by themselves: keep the unit block and the confirm box at their size.
+        Vector2 screen = GetViewportRect().Size;
+        Vector2 min = _unitBlock.GetCombinedMinimumSize();
+        if (_unitBlock.Size != min) { _unitBlock.Size = min; }
+        _unitBlock.Position = new Vector2(Pad, screen.Y - Pad - min.Y);
+        Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
+        _confirmBox.Size = cmin;
+        _confirmBox.Position = new Vector2((screen.X - cmin.X) / 2, screen.Y - 170 - cmin.Y);
+
         if (Session.EndedText != null && _gameOver == null) ShowGameOver();
     }
+
+    private IUnit? _lastActivating;
+    private Decision? _listFollowed;
+
+    private void ShowList(bool enemy)
+    {
+        _showEnemy = enemy;
+        _armySig = "";
+        _armyTabs[0].ButtonPressed = !enemy;
+        _armyTabs[1].ButtonPressed = enemy;
+    }
+
+    private readonly Button[] _armyTabs = new Button[2];
 
     private static Control Count(int n, Color c, string tip)
     {
@@ -551,20 +607,26 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private void RefreshArmy(IGameProgress progress)
     {
         List<IUnit> mine = _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
-        var ready = mine.Where(u => !UnitActivation.HasActivated(progress, u) && Alive(u)).ToList();
-        var done = mine.Where(u => UnitActivation.HasActivated(progress, u) && Alive(u)).ToList();
-        string sig = string.Join("|", mine.Select(u => $"{u.ID.ID}:{Alive(u)}:{UnitActivation.HasActivated(progress, u)}:{LeftOf(u)}:{u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}"))
-            + (_selected?.ID.ID.ToString() ?? "") + (progress.ActivatingUnit?.ID.ID.ToString() ?? "") + _showEnemy;
+        // Before round 1 the list is the deployment list: still to place first, placed units under a divider.
+        bool setup = progress.RoundCount == null;
+        bool Done(IUnit u) => setup ? u.GetIsOnBattlefield() : UnitActivation.HasActivated(progress, u);
+        var ready = mine.Where(u => !Done(u) && Alive(u)).ToList();
+        var done = mine.Where(u => Done(u) && Alive(u)).ToList();
+        // The open decision's choices first, then the units it can't take, then the rest.
+        int Order(IUnit u) => Decisions.ListMark(u) is { } m ? (m.Pickable ? 0 : 1) : 2;
+        ready = ready.OrderBy(Order).ToList();
+        string sig = string.Join("|", mine.Select(u => $"{u.ID.ID}:{Alive(u)}:{Done(u)}:{LeftOf(u)}:{u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{Decisions.ListMark(u)}"))
+            + (_selected?.ID.ID.ToString() ?? "") + (progress.ActivatingUnit?.ID.ID.ToString() ?? "") + _showEnemy + setup;
         if (sig == _armySig) return;
         _armySig = sig;
-        _armyHead.Text = _showEnemy ? $"{ready.Count}/{ready.Count + done.Count} to go" : $"{ready.Count}/{ready.Count + done.Count} to go - Tab";
+        _armyHead.Text = setup ? $"{ready.Count} to deploy" : _showEnemy ? $"{ready.Count}/{ready.Count + done.Count} to go" : $"{ready.Count}/{ready.Count + done.Count} to go - Tab";
         foreach (Node c in _armyRows.GetChildren()) c.QueueFree();
         foreach (IUnit u in ready) _armyRows.AddChild(ArmyRow(u, false));
         if (done.Count > 0)
         {
             var sep = new HBoxContainer();
             sep.AddThemeConstantOverride("separation", 6);
-            sep.AddChild(HudKit.Text("ACTIVATED", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+            sep.AddChild(HudKit.Text(setup ? "DEPLOYED" : "ACTIVATED", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
             sep.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(0, 1), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter });
             _armyRows.AddChild(sep);
             foreach (IUnit u in done) _armyRows.AddChild(ArmyRow(u, true));
@@ -604,17 +666,28 @@ public partial class BattleScreen : Control, IOwnBackdrop
         top.AddChild(HudKit.Text(wounds ? $"{left}/{max}W" : $"{left}/{max}", 13, HudKit.Dim with { A = a }, HudKit.Semi));
         v.AddChild(top);
         v.AddChild(SegBar(left, max, a));
+        UnitMark? mark = Decisions.ListMark(u);
+        if (mark is { Pickable: false, Reason: { } why })
+        {
+            var reason = HudKit.Text(why, 12, Palette.WoundsRed with { A = 0.85f }, HudKit.Medium);
+            reason.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            reason.CustomMinimumSize = new Vector2(10, 0);
+            reason.MouseFilter = MouseFilterEnum.Ignore;
+            v.AddChild(reason);
+        }
         h.AddChild(v);
         var box = new ChamferBox
         {
             Fill = selected || active ? new Color(HudKit.Lime, 0.13f) : new Color(0, 0, 0, done ? 0.12f : 0.25f),
-            Border = selected || active ? HudKit.Lime : shaken ? Palette.WoundsRed with { A = 0.6f } : HudKit.Edge with { A = done ? 0.2f : 0.4f },
+            Border = selected || active ? HudKit.Lime : mark is { Pickable: true } ? HudKit.Lime with { A = 0.55f } : shaken ? Palette.WoundsRed with { A = 0.6f } : HudKit.Edge with { A = done ? 0.2f : 0.4f },
+            Accent = mark is { Pickable: true } ? HudKit.Lime : Colors.Transparent, AccentLength = mark is { Pickable: true } ? 18 : 0,
             Cut = 6, ContentMarginLeft = 3, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3,
         };
         var row = HudKit.Panel(box, h);
         row.MouseFilter = MouseFilterEnum.Stop;
-        row.TooltipText = shaken ? "Shaken" : done ? "Already activated this round" : "Click to select - Tab for the next ready unit";
-        row.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) { SelectUnit(u, focus: true); Decisions.UnitPicked(u); } };
+        row.TooltipText = mark is { Pickable: true } ? "Click to pick this unit" : mark is { Reason: { } r } ? r
+            : shaken ? "Shaken" : done ? "Already activated this round" : "Click to see its card";
+        row.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) { SelectUnit(u); Decisions.UnitPicked(u); } };
         return row;
     }
 
@@ -736,16 +809,194 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     private void RefreshReport()
     {
-        if (Session.Log.Version == _logVersion) return;
-        _logVersion = Session.Log.Version;
+        if (Session.Report.Version == _logVersion) return;
+        _logVersion = Session.Report.Version;
+        var lines = Session.Report.Snapshot();
         foreach (Node c in _reportRows.GetChildren()) c.QueueFree();
-        foreach (GameLogBuffer.Line line in Session.Log.Last(4))
+        foreach (BattleReport.Line line in lines.Skip(Math.Max(0, lines.Count - 6))) _reportRows.AddChild(ReportRow(line, 14));
+        if (_fullReport != null && IsInstanceValid(_fullReport))
         {
-            var l = HudKit.Text(line.Text, 14, Color.Color8(line.Colour.R, line.Colour.G, line.Colour.B).Lerp(HudKit.Fg, 0.4f), HudKit.Medium);
-            l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            l.CustomMinimumSize = new Vector2(10, 0);
-            _reportRows.AddChild(l);
+            foreach (Node c in _fullReportRows!.GetChildren()) c.QueueFree();
+            foreach (BattleReport.Line line in lines) _fullReportRows.AddChild(ReportRow(line, 15));
+            CallDeferred(nameof(ScrollToEnd), _fullReportScroll!);
         }
+    }
+
+    // ================================================================== report lines (hover: what they are about)
+
+    private static string Hex(Color c) => c.ToHtml(false);
+    private static string Esc(string t) => t.Replace("[", "[lb]");
+
+    /// <summary>
+    /// One report line. Unit names in their side's colour, rules / terms underlined in gold (hover = the book's
+    /// wording); hovering the line rings the units it is about on the table, draws the attacker -> target arrow,
+    /// and shows where a moved unit stood before (Kai, 2026-11-10). The dice behind it are the line's tooltip.
+    /// </summary>
+    private Control ReportRow(BattleReport.Line line, int size)
+    {
+        Color baseColour = Color.Color8(line.Colour.R, line.Colour.G, line.Colour.B).Lerp(HudKit.Fg, 0.35f);
+        var sb = new System.Text.StringBuilder();
+        foreach (BattleReport.Piece piece in line.Title)
+        {
+            switch (piece.Kind)
+            {
+                case BattleReport.PieceKind.Unit when piece.Unit is { } id:
+                    IUnit? u = Session.Table.Units.Objects.FirstOrDefault(x => x.ID.Equals(id));
+                    Color c = u == null ? HudKit.Fg : _table.SeatColour(u.PlayerID).Lightened(0.3f);
+                    sb.Append($"[url=u:{id.ID}][color=#{Hex(c)}][b]{Esc(piece.Text)}[/b][/color][/url]");
+                    break;
+                case BattleReport.PieceKind.Rule:
+                    sb.Append($"[url=r:{Esc(piece.Hover ?? piece.Text)}][color=#{Hex(Palette.RuleGold)}]{Esc(piece.Text)}[/color][/url]");
+                    break;
+                case BattleReport.PieceKind.Term:
+                    _terms[piece.Text] = piece.Hover ?? "";
+                    sb.Append($"[url=t:{Esc(piece.Text)}][color=#{Hex(Palette.RuleGold)}]{Esc(piece.Text)}[/color][/url]");
+                    break;
+                default:
+                    sb.Append(Esc(piece.Text));
+                    break;
+            }
+        }
+        if (line.Body.Length > 0) sb.Append($"\n[color=#{Hex(HudKit.Dim)}]{Esc(line.Body)}[/color]");
+        var rich = new RichTextLabel
+        {
+            BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(10, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Pass,
+            MetaUnderlined = true,
+        };
+        rich.AddThemeFontOverride("normal_font", HudKit.Medium);
+        rich.AddThemeFontOverride("bold_font", HudKit.Bold);
+        rich.AddThemeFontSizeOverride("normal_font_size", size);
+        rich.AddThemeFontSizeOverride("bold_font_size", size);
+        rich.AddThemeColorOverride("default_color", baseColour);
+        rich.Text = sb.ToString();
+        rich.MouseEntered += () => FocusReport(line);
+        rich.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        rich.MetaHoverStarted += meta => ShowMetaTip(meta.AsString());
+        rich.MetaHoverEnded += _ => HideMetaTip();
+        string dice = string.Join("\n", line.Rolls.Select(r => $"{r.Who}: {r.Label} ({r.Threshold}+) - "
+            + (r.Faces.Count > 0 ? "rolled " + string.Join(" ", r.Faces) + " - " : "") + r.Result
+            + (r.Modifiers.Count > 0 ? " [" + string.Join(", ", r.Modifiers) + "]" : "")).Concat(line.Details));
+        rich.TooltipText = dice;
+
+        var box = new ChamferBox
+        {
+            Fill = line.Kind switch
+            {
+                BattleReport.Kind.Divider => new Color(HudKit.Lime, 0.12f),
+                BattleReport.Kind.Activation => new Color(1, 1, 1, 0.06f),
+                _ => new Color(0, 0, 0, 0),
+            },
+            Border = Colors.Transparent, Cut = 4,
+            ContentMarginLeft = line.Kind is BattleReport.Kind.Attack or BattleReport.Kind.Move or BattleReport.Kind.Line ? 10 : 4,
+            ContentMarginRight = 4, ContentMarginTop = 1, ContentMarginBottom = 1,
+            Accent = line.Kind == BattleReport.Kind.Activation && line.Player is { } who ? _table.SeatColour(who) : Colors.Transparent,
+            AccentLength = 14,
+        };
+        var row = HudKit.Panel(box, rich);
+        row.MouseFilter = MouseFilterEnum.Pass;
+        row.MouseEntered += () => FocusReport(line);
+        row.MouseExited += () => { if (_focused == line.Id) FocusReport(null); };
+        return row;
+    }
+
+    private readonly Dictionary<string, string> _terms = new();
+    private int _focused = -1;
+
+    /// <summary>Shows on the table what a hovered report line is about (null clears it).</summary>
+    private void FocusReport(BattleReport.Line? line)
+    {
+        _focused = line?.Id ?? -1;
+        _table.Highlight.Clear();
+        if (line == null) { _table.ClearGhosts("report"); return; }
+        foreach (UnitID id in line.Units) _table.Highlight.Add(id);
+        var ghosts = new List<BattleTable.Ghost>();
+        var lines = new List<BattleTable.GhostLine>();
+        Color gold = new(1f, 0.86f, 0.3f);
+        // Where a moved unit stood before, and the path it took.
+        foreach (BattleReport.Spot spot in line.MovedFrom)
+            ghosts.Add(new BattleTable.Ghost(spot.X, spot.Z, Mathf.Max(0.4f, spot.Radius), new Color(1, 1, 1, 0.9f)));
+        if (line.MovedFrom.Count > 0 && line.MovedTo.Count > 0)
+            lines.Add(new BattleTable.GhostLine(
+                new Vector2(line.MovedFrom.Average(p => p.X), line.MovedFrom.Average(p => p.Z)),
+                new Vector2(line.MovedTo.Average(p => p.X), line.MovedTo.Average(p => p.Z)), new Color(1, 1, 1, 0.8f), 0.14f));
+        // Attacker -> target, with an arrowhead at the target.
+        Vector2? from = Where(line.Attacker, line.FromAt), to = Where(line.Target, line.ToAt);
+        if (from is { } a && to is { } b && a.DistanceTo(b) > 0.5f)
+        {
+            lines.Add(new BattleTable.GhostLine(a, b, gold, 0.28f));
+            Vector2 dir = (b - a).Normalized();
+            Vector2 side = new(-dir.Y, dir.X);
+            lines.Add(new BattleTable.GhostLine(b, b - dir * 1.6f + side * 0.9f, gold, 0.28f));
+            lines.Add(new BattleTable.GhostLine(b, b - dir * 1.6f - side * 0.9f, gold, 0.28f));
+        }
+        _table.SetGhosts("report", ghosts, lines);
+    }
+
+    /// <summary>A unit's middle now, or where the line says it was (it may have died since).</summary>
+    private Vector2? Where(UnitID? id, Position? then)
+    {
+        if (id is { } uid && Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(uid)) is { } unit && unit.GetIsOnBattlefield())
+        {
+            var alive = unit.Models.Where(m => m.GetIsAlive()).ToList();
+            if (alive.Count > 0) return new Vector2(alive.Average(m => m.Position.x), alive.Average(m => m.Position.z));
+        }
+        return then is { } p ? new Vector2(p.x, p.z) : null;
+    }
+
+    private Control? _metaTip;
+
+    /// <summary>The hover card for a word in a report line: a unit's card, a rule's book wording, a term's text.</summary>
+    private void ShowMetaTip(string meta)
+    {
+        HideMetaTip();
+        Control? body = null;
+        if (meta.StartsWith("u:") && Guid.TryParse(meta[2..], out Guid uid)
+            && Session.Table.Units.Objects.FirstOrDefault(u => u.ID.ID == uid) is { } unit)
+            body = UnitInfo(unit, 300, null);
+        else if (meta.StartsWith("r:"))
+        {
+            string name = meta[2..].Replace("[lb]", "[");
+            string slug = Session.Table.Progress is { } p ? FDG.GameSystemInfo.Slug(p.GameSystem) : "";
+            body = TipText(name, FDG.Rules.Dispatch.OfficialRuleText.Text(name, slug) ?? "No book wording found for this rule.");
+        }
+        else if (meta.StartsWith("t:"))
+        {
+            string name = meta[2..].Replace("[lb]", "[");
+            body = TipText(name, _terms.TryGetValue(name, out string? t) ? t : "");
+        }
+        if (body == null) return;
+        _metaTip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = Palette.RuleGold with { A = 0.8f }; }), body);
+        _metaTip.MouseFilter = MouseFilterEnum.Ignore;
+        _hud.AddChild(_metaTip);
+        CallDeferred(nameof(PlaceMetaTip));
+    }
+
+    private static Control TipText(string title, string text)
+    {
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(320, 0), MouseFilter = MouseFilterEnum.Ignore };
+        v.AddChild(HudKit.Text(title.ToUpperInvariant(), 15, Palette.RuleGold, HudKit.Tracked(HudKit.Bold, 1)));
+        var l = HudKit.Text(text, 14, HudKit.Fg, HudKit.Medium);
+        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.CustomMinimumSize = new Vector2(320, 0);
+        v.AddChild(l);
+        return v;
+    }
+
+    private void PlaceMetaTip()
+    {
+        if (_metaTip == null || !IsInstanceValid(_metaTip)) return;
+        Vector2 mouse = GetViewport().GetMousePosition(), size = _metaTip.Size, screen = GetViewportRect().Size;
+        Vector2 at = mouse + new Vector2(-size.X - 20, -size.Y / 2);
+        if (at.X < 10) at.X = mouse.X + 20;
+        at.Y = Mathf.Clamp(at.Y, 10, screen.Y - size.Y - 10);
+        _metaTip.Position = at;
+    }
+
+    private void HideMetaTip()
+    {
+        if (_metaTip != null && IsInstanceValid(_metaTip)) _metaTip.QueueFree();
+        _metaTip = null;
     }
 
     private void RefreshMission(IGameProgress progress)
@@ -768,30 +1019,34 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     // ================================================================== panels
 
+    private FloatingPanel? _fullReport, _armiesPanel;
+    private VBoxContainer? _fullReportRows;
+    private ScrollContainer? _fullReportScroll;
+
+    /// <summary>The whole report (R). Only ever one: R or the button again brings the open one back.</summary>
     private void OpenFullReport()
     {
-        var v = new VBoxContainer();
+        if (_fullReport != null && IsInstanceValid(_fullReport)) { _fullReport.Minimised = false; return; }
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(560, 520), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        foreach (GameLogBuffer.Line line in Session.Log.All())
-        {
-            var l = HudKit.Text(line.Text, 15, Color.Color8(line.Colour.R, line.Colour.G, line.Colour.B).Lerp(HudKit.Fg, 0.4f), HudKit.Medium);
-            l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            l.CustomMinimumSize = new Vector2(10, 0);
-            rows.AddChild(l);
-        }
+        rows.AddThemeConstantOverride("separation", 2);
+        foreach (BattleReport.Line line in Session.Report.Snapshot()) rows.AddChild(ReportRow(line, 15));
         scroll.AddChild(rows);
-        v.AddChild(scroll);
-        var panel = new FloatingPanel("Battle report", v, HudKit.Teal);
-        _hud.AddChild(panel);
-        panel.Position = new Vector2(GetViewportRect().Size.X / 2 - 290, 90);
+        _fullReport = new FloatingPanel("Battle report", scroll, HudKit.Teal);
+        _fullReport.Closed += () => { _fullReport = null; FocusReport(null); };
+        _fullReportRows = rows;
+        _fullReportScroll = scroll;
+        _hud.AddChild(_fullReport);
+        _fullReport.Position = new Vector2(GetViewportRect().Size.X / 2 - 290, 90);
         CallDeferred(nameof(ScrollToEnd), scroll);
     }
 
     private static void ScrollToEnd(ScrollContainer s) => s.ScrollVertical = (int)s.GetVScrollBar().MaxValue;
 
+    /// <summary>Both armies (L). Only ever one open.</summary>
     private void OpenArmies()
     {
+        if (_armiesPanel != null && IsInstanceValid(_armiesPanel)) { _armiesPanel.Minimised = false; return; }
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 8);
         foreach (GameSession.Seat seat in Session.Seats)
@@ -806,9 +1061,10 @@ public partial class BattleScreen : Control, IOwnBackdrop
         }
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(480, 520), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         scroll.AddChild(v);
-        var panel = new FloatingPanel("Army lists", scroll, HudKit.Teal);
-        _hud.AddChild(panel);
-        panel.Position = new Vector2(GetViewportRect().Size.X / 2 - 250, 90);
+        _armiesPanel = new FloatingPanel("Army lists", scroll, HudKit.Teal);
+        _armiesPanel.Closed += () => _armiesPanel = null;
+        _hud.AddChild(_armiesPanel);
+        _armiesPanel.Position = new Vector2(GetViewportRect().Size.X / 2 - 250, 90);
     }
 
     private void OpenMenu()

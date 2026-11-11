@@ -14,7 +14,7 @@ namespace OprGodot;
 /// </summary>
 public partial class ScriptedRun : Node
 {
-    private readonly Queue<string> _presses = new();
+    private Queue<string> _presses = new();
     private string? _shot;
     private int _wait = 20;
 
@@ -48,6 +48,15 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
             // "tab:Name" opens the tab called Name in whatever TabContainer has one.
             if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
+            // "waitfor:ShootDecision" holds until the battle is waiting on that kind of decision (max ~3000 frames).
+            if (name.StartsWith("waitfor:"))
+            {
+                bool there = Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current?.GetType().Name == name[8..];
+                if (!there && ++_waitedFor < 200) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
+                return;
+            }
             // Real mouse clicks through the whole input pipeline, on the battle table:
             // "clickmine" (your first ready unit), "clickenemy" (the enemy nearest it), "clickrel:dx;dz"
             // (the selected unit's middle + dx,dz inches), "hoverrel:dx;dz" (the same, pointer only).
@@ -65,6 +74,8 @@ public partial class ScriptedRun : Node
         }
         GetTree().Quit();
     }
+
+    private int _waitedFor;
 
     private void TableMouse(string step)
     {

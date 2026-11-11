@@ -6,36 +6,42 @@ namespace OprGodot.Battle;
 
 /// <summary>
 /// Shows the decision the game is waiting on from the player (<see cref="BattleResolvers.Inbox"/>): the prompt
-/// line's text, the 2x2 action grid, a choice list under the prompt, and where table clicks, hovers, army-list
-/// clicks and Esc go. Main thread only.
+/// line's text, the actions area (2x2 grid, then any list of choices docked under it, then the way out), the
+/// confirm box for a placed move or shot, and where table clicks, hovers, list clicks, right-click, Space and Esc
+/// go. Main thread only.
+///
+/// <para>Kai, 2026-11-10: no banner pop-ups. Choices dock in the actions area; units are picked from the
+/// left-hand list or on the table.</para>
 /// </summary>
 public sealed class BattleDecisions
 {
     private readonly BattleScreen _screen;
     private Decision? _shown;
     private int _shownVersion = -1;
+    private VBoxContainer _area = null!;
+    private Label _areaTitle = null!;
     private HBoxContainer _grid = null!;
-    private Label _gridNote = null!;
-    private PanelContainer _choices = null!;
-    private VBoxContainer _choiceRows = null!;
-    private Label _choiceTitle = null!;
+    private VBoxContainer _rows = null!;
+    private ScrollContainer _rowScroll = null!;
+    private Label _rowsTitle = null!, _note = null!;
+    private Control _confirm = null!;
+    private Label _confirmText = null!;
 
     public BattleDecisions(BattleScreen screen) => _screen = screen;
 
     public Decision? Current => BattleResolvers.Inbox.Current;
 
-    /// <summary>Called every HUD refresh: notices a new decision and redraws the grid and list when it changes.</summary>
+    /// <summary>Called every HUD refresh: notices a new decision and redraws the actions area when it changes.</summary>
     public (string Prompt, string Hint) Prompt()
     {
         Decision? d = Current;
-        if (!ReferenceEquals(d, _shown))
+        for (int guard = 0; guard < 4 && !ReferenceEquals(d, _shown); guard++)
         {
             _shown?.Closed(_screen);
             _shown = d;
             _shownVersion = -1;
             d?.Shown(_screen);
-            d = Current;   // Shown may have answered it on the spot (a queued activation)
-            if (!ReferenceEquals(d, _shown)) { _shown = d; d?.Shown(_screen); }
+            d = Current;   // Shown may have answered it on the spot (an action pressed on the activation grid)
         }
         if (d == null || d.Version != _shownVersion)
         {
@@ -45,17 +51,22 @@ public sealed class BattleDecisions
         return d == null ? ("", "") : (d.Prompt, d.Hint);
     }
 
-    public bool Cancel()
+    /// <summary>Esc: drop a placed move/shot, else step back. True if it did something.</summary>
+    public bool Cancel() => Current is { } d && d.RightClick(_screen);
+    public bool RightClick() => Current is { } d && d.RightClick(_screen);
+
+    /// <summary>Space / Enter: send the placed move or shot.</summary>
+    public bool ConfirmPending()
     {
-        if (Current is not { } d) return false;
-        bool can = d.CancelLabel != null || d is ActionDecision;
-        if (can) d.Cancel();
-        return can && d.Done;
+        if (Current is not { ConfirmText: not null } d) return false;
+        d.Confirm();
+        return true;
     }
 
     public bool TableClick(Vector2 at) => Current?.TableClick(_screen, at) ?? false;
     public void TableHover(Vector2 at) => Current?.TableHover(_screen, at);
     public void UnitPicked(IUnit unit) => Current?.UnitPicked(_screen, unit);
+    public UnitMark? ListMark(IUnit unit) => Current?.ListMark(unit);
 
     public bool HotKey(int index)
     {
@@ -68,101 +79,130 @@ public sealed class BattleDecisions
 
     public Control BuildActionArea()
     {
-        var v = new VBoxContainer();
-        v.AddThemeConstantOverride("separation", 4);
-        v.AddChild(HudKit.Text("ACTIONS", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+        _area = new VBoxContainer { CustomMinimumSize = new Vector2(170, 0) };
+        _area.AddThemeConstantOverride("separation", 4);
+        _areaTitle = HudKit.Text("ACTIONS", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2));
+        _area.AddChild(_areaTitle);
         _grid = new HBoxContainer();
-        v.AddChild(_grid);
-        _gridNote = HudKit.Text("", 12, HudKit.Dim, HudKit.Medium);
-        _gridNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _gridNote.CustomMinimumSize = new Vector2(150, 0);
-        v.AddChild(_gridNote);
-        return v;
+        _area.AddChild(_grid);
+        _rowsTitle = HudKit.Text("", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2));
+        _area.AddChild(_rowsTitle);
+        _rowScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _rows.AddThemeConstantOverride("separation", 3);
+        _rowScroll.AddChild(_rows);
+        _area.AddChild(_rowScroll);
+        _note = HudKit.Text("", 12, HudKit.Dim, HudKit.Medium);
+        _note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _note.CustomMinimumSize = new Vector2(150, 0);
+        _area.AddChild(_note);
+        return _area;
     }
 
-    /// <summary>The choice list, under the prompt line.</summary>
-    public Control BuildChoicePanel()
+    /// <summary>The confirm box for a placed move or shot: what will happen, Confirm (Space), Clear (right-click).</summary>
+    public Control BuildConfirmBox()
     {
-        var col = new VBoxContainer { CustomMinimumSize = new Vector2(520, 0) };
-        col.AddThemeConstantOverride("separation", 4);
-        _choiceTitle = HudKit.Text("", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2));
-        col.AddChild(_choiceTitle);
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 0) };
-        _choiceRows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        _choiceRows.AddThemeConstantOverride("separation", 3);
-        scroll.AddChild(_choiceRows);
-        col.AddChild(scroll);
-        _choiceScroll = scroll;
-        _choices = HudKit.Panel(new ChamferBox
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 8);
+        _confirmText = HudKit.Text("", 17, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center);
+        v.AddChild(_confirmText);
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 10);
+        var ok = Ui.Button("Confirm  (Space)", () => ConfirmPending(), "Do it.", "CommitButton");
+        ok.Name = "ConfirmPending";
+        var no = Ui.Button("Clear  (right-click)", () => Current?.ClearPending(), "Take it back and choose again.", "BackButton");
+        row.AddChild(ok);
+        row.AddChild(no);
+        v.AddChild(row);
+        _confirm = HudKit.Panel(new ChamferBox
         {
-            Fill = HudKit.Glass with { A = 0.94f }, Border = HudKit.Lime with { A = 0.5f }, Cut = 10,
-            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 8, ContentMarginBottom = 8,
-        }, col);
-        _choices.Visible = false;
-        return _choices;
+            Fill = HudKit.Glass with { A = 0.96f }, Border = HudKit.Lime, Cut = 10, Glow = HudKit.Lime with { A = 0.3f },
+            ContentMarginLeft = 18, ContentMarginRight = 18, ContentMarginTop = 10, ContentMarginBottom = 10,
+        }, v);
+        _confirm.Visible = false;
+        return _confirm;
     }
-
-    private ScrollContainer _choiceScroll = null!;
 
     private static readonly ActionSlot[] Idle =
     {
-        new("Move", "walk", "Move", "1", false, "", () => { }),
-        new("Shoot", "crosshair", "Shoot", "2", false, "", () => { }),
-        new("Charge", "sword-clash", "Charge", "3", false, "", () => { }),
-        new("Pass", "stop-sign", "End", "4", false, "", () => { }),
+        new("Hold", "shield", "Hold", "1", false, "", () => { }),
+        new("Advance", "walk", "Advance", "2", false, "", () => { }),
+        new("Rush", "run", "Rush", "3", false, "", () => { }),
+        new("Charge", "sword-clash", "Charge", "4", false, "", () => { }),
     };
 
     private void Rebuild(Decision? d)
     {
+        // The confirm box.
+        string? confirm = d?.ConfirmText;
+        _confirm.Visible = confirm != null;
+        if (confirm != null) { _confirmText.Text = confirm; _confirm.Size = Vector2.Zero; }
+
         // The grid.
         foreach (Node c in _grid.GetChildren()) c.QueueFree();
-        IReadOnlyList<ActionSlot> slots = d?.Actions ?? Idle;
-        var g = new GridContainer { Columns = 2 };
-        g.AddThemeConstantOverride("h_separation", 6);
-        g.AddThemeConstantOverride("v_separation", 6);
-        foreach (ActionSlot s in slots)
+        IReadOnlyList<ActionSlot>? slots = d == null ? Idle : d.Actions;
+        if (slots != null)
         {
-            var b = HudKit.ActionButton(s.Name, s.Icon, s.Label, s.Key, HudKit.Lime, 74, disabled: !s.Enabled, labelSize: 13);
-            b.TooltipText = s.Tooltip;
-            b.Pressed += s.Choose;
-            g.AddChild(b);
+            var g = new GridContainer { Columns = 2 };
+            g.AddThemeConstantOverride("h_separation", 6);
+            g.AddThemeConstantOverride("v_separation", 6);
+            foreach (ActionSlot s in slots)
+            {
+                var b = HudKit.ActionButton(s.Name, s.Icon, s.Label, s.Key, HudKit.Lime, 74, disabled: !s.Enabled, labelSize: 13);
+                b.TooltipText = s.Tooltip;
+                b.Pressed += s.Choose;
+                g.AddChild(b);
+            }
+            _grid.AddChild(g);
         }
-        _grid.AddChild(g);
-        _gridNote.Text = d?.Actions == null ? (d == null ? "Lights up when it is your unit's turn." : "") : "";
-        _gridNote.Visible = _gridNote.Text.Length > 0;
+        _grid.Visible = slots != null;
 
-        // The list.
-        foreach (Node c in _choiceRows.GetChildren()) c.QueueFree();
+        // The list, docked under the grid.
+        foreach (Node c in _rows.GetChildren()) c.QueueFree();
         IReadOnlyList<ChoiceRow>? rows = d?.Rows;
-        bool any = rows is { Count: > 0 } || d?.CancelLabel != null && rows != null;
-        _choices.Visible = any;
-        if (!any) return;
-        _choiceTitle.Text = (d!.RowsTitle ?? "Choose").ToUpperInvariant();
-        foreach (ChoiceRow r in rows!) _choiceRows.AddChild(Row(r));
-        if (d.CancelLabel is { } back)
+        bool any = rows is { Count: > 0 };
+        _rowsTitle.Text = any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "";
+        _rowsTitle.Visible = any && slots != null;
+        _areaTitle.Text = slots == null && any ? (d!.RowsTitle ?? "Choose").ToUpperInvariant() : "ACTIONS";
+        if (any) foreach (ChoiceRow r in rows!) _rows.AddChild(Row(r));
+        if (d?.CancelLabel is { } back)
         {
-            var b = Ui.Button($"{back}  (Esc)", d.Cancel, "Leave this choice.", "BackButton");
+            var b = Ui.Button($"{back}  (right-click)", d.Cancel, "Step back.", "BackButton");
             b.SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin;
-            _choiceRows.AddChild(b);
+            _rows.AddChild(b);
         }
-        float max = _screen.GetViewportRect().Size.Y * 0.5f;
-        _choiceScroll.CustomMinimumSize = new Vector2(0, Mathf.Min(max, rows.Count * 46 + (d.CancelLabel != null ? 48 : 0)));
+        int count = _rows.GetChildCount();
+        _rowScroll.Visible = count > 0;
+        _rowScroll.CustomMinimumSize = new Vector2(any ? 280 : 0, Mathf.Min(320, (rows?.Count ?? 0) * 44 + (d?.CancelLabel != null ? 40 : 0)));
+
+        _note.Text = d == null ? "Lights up on your turn." : "";
+        _note.Visible = _note.Text.Length > 0;
     }
 
     private static Control Row(ChoiceRow r)
     {
         var h = new HBoxContainer();
         h.AddThemeConstantOverride("separation", 6);
-        var b = new Button { Text = r.Label, Disabled = !r.Enabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true };
-        b.TooltipText = r.Enabled ? r.Detail ?? "" : r.Reason ?? "Not available.";
-        b.Pressed += r.Pick;
         var v = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         v.AddThemeConstantOverride("separation", 0);
-        v.AddChild(b);
+        if (r.Pick != null)
+        {
+            var b = new Button { Text = r.Label, Disabled = !r.Enabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true };
+            b.TooltipText = r.Enabled ? r.Detail ?? "" : r.Reason ?? "Not available.";
+            b.Pressed += r.Pick;
+            v.AddChild(b);
+        }
+        else
+        {
+            var l = HudKit.Text(r.Label, 15, r.Enabled ? HudKit.Fg : HudKit.Dim, HudKit.Semi);
+            l.TooltipText = r.Enabled ? r.Detail ?? "" : r.Reason ?? "";
+            l.MouseFilter = Control.MouseFilterEnum.Stop;
+            v.AddChild(l);
+        }
         string sub = r.Enabled ? r.Detail ?? "" : r.Reason ?? "";
         if (sub.Length > 0)
         {
-            var l = HudKit.Text(sub, 13, r.Enabled ? HudKit.Dim : Palette.WoundsRed with { A = 0.8f }, HudKit.Medium);
+            var l = HudKit.Text(sub, 12, r.Enabled ? HudKit.Dim : Palette.WoundsRed with { A = 0.8f }, HudKit.Medium);
             l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             l.CustomMinimumSize = new Vector2(10, 0);
             v.AddChild(l);
@@ -170,7 +210,7 @@ public sealed class BattleDecisions
         h.AddChild(v);
         if (r.SecondaryLabel != null && r.Secondary != null)
         {
-            var s = Ui.Button(r.SecondaryLabel, r.Secondary, "Don't use this weapon this time.", "BackButton");
+            var s = Ui.Button(r.SecondaryLabel, r.Secondary, "Don't use this one this time.", "BackButton");
             s.SizeFlagsVertical = Control.SizeFlags.ShrinkBegin;
             h.AddChild(s);
         }

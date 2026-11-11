@@ -30,11 +30,16 @@ public partial class BattleTable : Node3D
     public readonly HashSet<UnitID> ShowEnemyNames = new();
     public UnitID? Selected { get; set; }
 
+    /// <summary>Units ringed in white (what a hovered battle-report line is about).</summary>
+    public readonly HashSet<UnitID> Highlight = new();
+
     private sealed class ModelView
     {
         public required Node3D Root;
         public required StandardMaterial3D Body;
         public required StandardMaterial3D Rim;
+        public required MeshInstance3D Ring;
+        public required StandardMaterial3D RingMat;
         public required IModel Model;
         public required IUnit Unit;
     }
@@ -73,61 +78,92 @@ public partial class BattleTable : Node3D
 
     // ------------------------------------------------------------------ ghosts (move previews, ranges)
 
-    /// <summary>A preview disc on the table: where a model would end up, or a range ring.</summary>
+    /// <summary>A preview disc on the table: where a model would end up, where it stood, or a ring.</summary>
     public readonly record struct Ghost(float X, float Z, float Radius, Color Colour, bool Ring = false);
 
-    private readonly object _ghostLock = new();
-    private List<Ghost> _ghosts = new();
-    private List<(Vector2 From, Vector2 To, Color Colour)> _ghostLines = new();
-    private bool _ghostsDirty;
-    private Node3D? _ghostRoot;
+    /// <summary>A line on the table (a path, an arrow shaft, a range outline), in table inches.</summary>
+    public readonly record struct GhostLine(Vector2 From, Vector2 To, Color Colour, float Width = 0.12f);
 
-    /// <summary>Replaces the preview layer (any thread). Empty lists clear it.</summary>
-    public void SetGhosts(IEnumerable<Ghost> ghosts, IEnumerable<(Vector2 From, Vector2 To, Color Colour)>? lines = null)
+    /// <summary>A floating word on the table (a weapon's name on its range outline).</summary>
+    public readonly record struct GhostText(float X, float Z, string Text, Color Colour);
+
+    private sealed class Layer
+    {
+        public List<Ghost> Ghosts = new();
+        public List<GhostLine> Lines = new();
+        public List<GhostText> Texts = new();
+        public bool Dirty = true;
+        public Node3D? Root;
+    }
+
+    private readonly object _ghostLock = new();
+    private readonly Dictionary<string, Layer> _layers = new();
+
+    /// <summary>
+    /// Replaces one preview layer (any thread) - "move" for the move tool, "range" for weapon reach, "report"
+    /// for what a hovered report line is about. Layers draw independently; empty lists clear one.
+    /// </summary>
+    public void SetGhosts(string layer, IEnumerable<Ghost> ghosts, IEnumerable<GhostLine>? lines = null, IEnumerable<GhostText>? texts = null)
     {
         lock (_ghostLock)
         {
-            _ghosts = ghosts.ToList();
-            _ghostLines = lines?.ToList() ?? new();
-            _ghostsDirty = true;
+            if (!_layers.TryGetValue(layer, out Layer? l)) _layers[layer] = l = new Layer();
+            l.Ghosts = ghosts.ToList();
+            l.Lines = lines?.ToList() ?? new();
+            l.Texts = texts?.ToList() ?? new();
+            l.Dirty = true;
         }
     }
 
-    public void ClearGhosts() => SetGhosts(Array.Empty<Ghost>());
+    public void ClearGhosts(string layer) => SetGhosts(layer, Array.Empty<Ghost>());
 
     private void SyncGhosts()
     {
-        List<Ghost> ghosts;
-        List<(Vector2 From, Vector2 To, Color Colour)> lines;
+        List<(Layer L, List<Ghost> G, List<GhostLine> Li, List<GhostText> T)> work = new();
         lock (_ghostLock)
         {
-            if (!_ghostsDirty) return;
-            _ghostsDirty = false;
-            ghosts = _ghosts;
-            lines = _ghostLines;
+            foreach (Layer l in _layers.Values.Where(l => l.Dirty))
+            {
+                l.Dirty = false;
+                work.Add((l, l.Ghosts, l.Lines, l.Texts));
+            }
         }
-        _ghostRoot?.QueueFree();
-        _ghostRoot = new Node3D { Name = "Ghosts" };
-        AddChild(_ghostRoot);
-        foreach (Ghost g in ghosts)
+        foreach (var (layer, ghosts, lines, texts) in work)
         {
-            var mat = Mat(g.Colour with { A = g.Ring ? 0.9f : 0.45f }, 0.5f, g.Colour, 1.2f);
-            mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-            mat.NoDepthTest = g.Ring;
-            Mesh mesh = g.Ring
-                ? new TorusMesh { InnerRadius = g.Radius - 0.08f, OuterRadius = g.Radius + 0.08f, Rings = 96, RingSegments = 6 }
-                : new CylinderMesh { TopRadius = g.Radius, BottomRadius = g.Radius, Height = 0.12f };
-            Mesh(_ghostRoot, mesh, mat, World(g.X, g.Z, 0.08f));
-        }
-        foreach (var (from, to, colour) in lines)
-        {
-            Vector3 a = World(from.X, from.Y, 0.1f), b = World(to.X, to.Y, 0.1f);
-            float len = a.DistanceTo(b);
-            if (len < 0.05f) continue;
-            var mat = Mat(colour with { A = 0.8f }, 0.5f, colour, 1.2f);
-            mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-            var mi = Mesh(_ghostRoot, new BoxMesh { Size = new Vector3(0.12f, 0.04f, len) }, mat, (a + b) / 2);
-            mi.LookAt(b, Vector3.Up);
+            layer.Root?.QueueFree();
+            layer.Root = new Node3D { Name = "Ghosts" };
+            AddChild(layer.Root);
+            foreach (Ghost g in ghosts)
+            {
+                var mat = Mat(g.Colour with { A = g.Ring ? 0.9f : g.Colour.A * 0.45f }, 0.5f, g.Colour, 1.2f);
+                mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+                mat.NoDepthTest = g.Ring;
+                Mesh mesh = g.Ring
+                    ? new TorusMesh { InnerRadius = g.Radius - 0.08f, OuterRadius = g.Radius + 0.08f, Rings = 96, RingSegments = 6 }
+                    : new CylinderMesh { TopRadius = g.Radius, BottomRadius = g.Radius, Height = 0.12f };
+                Mesh(layer.Root, mesh, mat, World(g.X, g.Z, 0.08f));
+            }
+            foreach (GhostLine line in lines)
+            {
+                Vector3 a = World(line.From.X, line.From.Y, 0.1f), b = World(line.To.X, line.To.Y, 0.1f);
+                float len = a.DistanceTo(b);
+                if (len < 0.05f) continue;
+                var mat = Mat(line.Colour, 0.5f, line.Colour, 1.2f);
+                mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+                mat.NoDepthTest = true;
+                var mi = Mesh(layer.Root, new BoxMesh { Size = new Vector3(line.Width, 0.04f, len) }, mat, (a + b) / 2);
+                mi.LookAt(b, Vector3.Up);
+            }
+            foreach (GhostText t in texts)
+            {
+                var l = new Label3D
+                {
+                    Text = t.Text, Font = HudKit.Bold, FontSize = 48, PixelSize = 0.03f, OutlineSize = 12, Modulate = t.Colour,
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, OutlineModulate = new Color(0, 0, 0, 0.85f),
+                    Position = World(t.X, t.Z, 0.6f),
+                };
+                layer.Root.AddChild(l);
+            }
         }
     }
 
@@ -296,6 +332,14 @@ public partial class BattleTable : Node3D
                 }
                 Vector3 target = World(p);
                 view.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
+                // Kai, 2026-11-10: the selected unit stands out on the table (the camera no longer jumps to it).
+                bool sel = Selected is { } ss && ss.Equals(unit.ID), hl = Highlight.Contains(unit.ID);
+                view.Ring.Visible = sel || hl;
+                if (sel || hl)
+                {
+                    float pulse = 0.75f + 0.25f * Mathf.Sin((float)Time.GetTicksMsec() / 180f);
+                    view.RingMat.AlbedoColor = (sel ? HudKit.Lime : Colors.White) with { A = sel ? pulse : 0.95f };
+                }
                 sum += target;
                 placed++;
                 top = Mathf.Max(top, m.BaseRadiusInches > 1.4f ? 3.6f : 2.6f);
@@ -348,7 +392,12 @@ public partial class BattleTable : Node3D
             Mesh(root, new CapsuleMesh { Radius = rad * 0.42f, Height = h }, body, new Vector3(0, 0.25f + h / 2, 0));
             Mesh(root, new SphereMesh { Radius = rad * 0.3f, Height = rad * 0.6f }, body, new Vector3(0, 0.3f + h, 0));
         }
-        return new ModelView { Root = root, Body = body, Rim = rim, Model = m, Unit = unit };
+        var ringMat = Mat(HudKit.Lime, 0.5f, HudKit.Lime, 1.5f);
+        ringMat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        ringMat.NoDepthTest = true;
+        var ring = Mesh(root, new TorusMesh { InnerRadius = rad + 0.18f, OuterRadius = rad + 0.42f, Rings = 48, RingSegments = 6 }, ringMat, new Vector3(0, 0.1f, 0));
+        ring.Visible = false;
+        return new ModelView { Root = root, Body = body, Rim = rim, Ring = ring, RingMat = ringMat, Model = m, Unit = unit };
     }
 
     private Label3D Label(IUnit unit, bool mine)

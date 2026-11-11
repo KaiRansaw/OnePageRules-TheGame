@@ -31,11 +31,19 @@ public static class BattleResolvers
     /// </summary>
     public static MoveKind? NextMove { get; set; }
 
+    /// <summary>The book action pressed on the activation grid, applied when the engine's action menu arrives.</summary>
+    public static (UnitID Unit, BookAction Action)? QueuedAction { get; set; }
+
+    /// <summary>A confirmed shot: every further weapon that can reach this unit fires at it too.</summary>
+    public static (UnitID Shooter, UnitID Target)? ShootAt { get; set; }
+
     public static void Register(HybridResolverRegistry registry)
     {
         Inbox = new DecisionInbox();
         PendingActivation = null;
         NextMove = null;
+        QueuedAction = null;
+        ShootAt = null;
         var unitPick = new Ask<SelectionRequest<UnitData>, DataBinding<UnitData>>(r => new UnitPickDecision(r));
         registry.RegisterResolver<ChooseUnitToActivateRequest, DataBinding<UnitData>>(
             new Ask<ChooseUnitToActivateRequest, DataBinding<UnitData>>(r => new ActivateDecision(r)));

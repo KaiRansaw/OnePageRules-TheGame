@@ -12,13 +12,23 @@ namespace OprGodot.Battle;
 /// <summary>One button of the 2x2 action grid.</summary>
 public sealed record ActionSlot(string Name, string Icon, string Label, string Key, bool Enabled, string Tooltip, Action Choose);
 
-/// <summary>One row of a choice list. <paramref name="Secondary"/> is a companion button on the same row (#321).</summary>
-public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action Pick,
+/// <summary>
+/// One row of a choice list, docked in the actions area. <paramref name="Pick"/> null = an information row
+/// (not clickable). <paramref name="Secondary"/> is a companion button on the same row (#321).
+/// </summary>
+public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action? Pick,
     string? SecondaryLabel = null, Action? Secondary = null);
 
+/// <summary>How a unit in the left-hand list takes part in the open decision.</summary>
+public readonly record struct UnitMark(bool Pickable, string? Reason);
+
+/// <summary>The book's four actions (Kai, 2026-11-10).</summary>
+public enum BookAction { Hold, Advance, Rush, Charge }
+
 /// <summary>
-/// An open decision as the battle screen shows it: the prompt line, optionally the action grid, optionally a
-/// list of choices, and what table clicks and Esc do. Built on the engine thread, used on the main thread.
+/// An open decision as the battle screen shows it: the prompt line, the actions area (the 2x2 grid and / or a
+/// list of choices docked under it), how units in the left-hand list take part, a pending choice waiting for a
+/// confirm, and what table clicks, right-click and Esc do. Built on the engine thread, used on the main thread.
 /// </summary>
 public abstract class Decision
 {
@@ -30,6 +40,28 @@ public abstract class Decision
     /// <summary>The way out (Back / Done shooting), or null when the decision is mandatory.</summary>
     public virtual string? CancelLabel => null;
     public virtual void Cancel() { }
+
+    /// <summary>
+    /// A choice made but not yet sent (Kai, 2026-11-10: "click where to move, then Space / the popup to
+    /// confirm - prevents misclicks"). Non-null shows the confirm box.
+    /// </summary>
+    public virtual string? ConfirmText => null;
+    public virtual void Confirm() { }
+    public virtual void ClearPending() { }
+
+    /// <summary>Right-click: drop the pending choice, else step back. True if it did something.</summary>
+    public virtual bool RightClick(BattleScreen s)
+    {
+        if (ConfirmText != null) { ClearPending(); return true; }
+        if (CancelLabel != null) { Cancel(); return true; }
+        return false;
+    }
+
+    /// <summary>Whether a unit in the left-hand list is one of this decision's choices (null = not involved).</summary>
+    public virtual UnitMark? ListMark(IUnit unit) => null;
+    /// <summary>True when the choices are the other side's units (the list switches to the ENEMY tab).</summary>
+    public virtual bool WantsEnemyList => false;
+
     public virtual bool TableClick(BattleScreen s, Vector2 at) => false;
     public virtual void TableHover(BattleScreen s, Vector2 at) { }
     public virtual void UnitPicked(BattleScreen s, IUnit unit) { }
@@ -41,7 +73,7 @@ public abstract class Decision
     /// reply path a click uses, so a whole game can be run through the Godot resolvers unattended.
     /// </summary>
     public abstract void AutoPlay(BattleScreen s);
-    /// <summary>Bumped when the rows or grid change while the decision stays open.</summary>
+    /// <summary>Bumped when the rows, grid or pending choice change while the decision stays open.</summary>
     public int Version { get; protected set; }
 }
 
@@ -54,36 +86,96 @@ public abstract class Decision<T> : Decision
     protected void Complete(T reply) => _tcs.TrySetResult(reply);
 }
 
+internal static class Book
+{
+    public static readonly (BookAction Action, string Icon, string Key)[] Grid =
+    {
+        (BookAction.Hold, "shield", "1"), (BookAction.Advance, "walk", "2"),
+        (BookAction.Rush, "run", "3"), (BookAction.Charge, "sword-clash", "4"),
+    };
+
+    public static string Tip(BookAction a) => a switch
+    {
+        BookAction.Hold => "Stay put and shoot. With nothing to shoot at, the unit's activation ends.",
+        BookAction.Advance => "Move up to the Advance distance, then you may shoot.",
+        BookAction.Rush => "Move up to the Rush distance. No shooting after.",
+        _ => "Move into contact with an enemy unit and fight it.",
+    };
+
+    /// <summary>Hold asks first (Kai, 2026-11-10): it can end the unit's activation, which can't be undone.</summary>
+    public static void ConfirmHold(BattleScreen s, IUnit? unit, Action go) =>
+        s.Confirm("Hold?", $"{unit?.Name ?? "This unit"} stays where it is and shoots if it can. If it has nothing to shoot at, its activation ends.",
+            "Hold", go);
+}
+
 // ====================================================================== which unit to activate
 
-/// <summary>Your turn: pick a unit. The army list on the left and the table are the list - no panel.</summary>
+/// <summary>
+/// Your turn. Clicking a unit (in the left-hand list or on the table) only SELECTS it - pressing one of the four
+/// actions is what activates it (Kai, 2026-11-10: picking a different unit must always be possible, and
+/// right-click drops the pick). The action pressed is carried into the engine's action menu when it comes.
+/// </summary>
 public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
 {
     private readonly ChooseUnitToActivateRequest _r;
+    private IUnit? _pick;
     public ActivateDecision(ChooseUnitToActivateRequest r) => _r = r;
 
-    public override string Prompt => "Your turn";
-    public override string Hint => "Pick a unit to activate - click it in your army list or on the table (Tab cycles).";
+    public override string Prompt => _pick == null ? "Your turn" : $"Activate {_pick.Name}";
+    public override string Hint => _pick == null
+        ? "Pick a unit - click it in your army list or on the table (Tab cycles)."
+        : "Choose its action (keys 1-4). Pick another unit to switch, right-click to drop the pick.";
 
     private DataBinding<UnitData>? Option(IUnit unit) =>
         _r.ValidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID))?.Option;
 
+    public override UnitMark? ListMark(IUnit unit)
+    {
+        if (Option(unit) != null) return new UnitMark(true, null);
+        var bad = _r.InvalidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID));
+        return bad != null ? new UnitMark(false, bad.Reason) : null;
+    }
+
+    public override IReadOnlyList<ActionSlot> Actions => Book.Grid.Select(g => new ActionSlot(
+        g.Action.ToString(), g.Icon, g.Action.ToString(), g.Key, _pick != null,
+        _pick != null ? Book.Tip(g.Action) : "Pick a unit first.", () => Act(g.Action))).ToList();
+
+    private void Act(BookAction action)
+    {
+        if (_pick is not { } unit || Option(unit) is not { } binding) return;
+        void Go()
+        {
+            BattleResolvers.QueuedAction = (unit.ID, action);
+            Complete(binding);
+        }
+        if (action == BookAction.Hold && _screen != null) Book.ConfirmHold(_screen, unit, Go);
+        else Go();
+    }
+
+    private BattleScreen? _screen;
+
     public override void Shown(BattleScreen s)
     {
+        _screen = s;
         if (BattleResolvers.PendingActivation is { } next)
         {
             BattleResolvers.PendingActivation = null;
-            if (Option(next) is { } b) { Complete(b); return; }
+            if (Option(next) != null) Pick(s, next);
         }
-        // Select the first ready unit so its card and the grid are showing.
-        if (_r.ValidOptions.FirstOrDefault() is { } first && s.SelectedUnit == null) s.SelectUnit(first.Option.GetValue(), focus: true);
+    }
+
+    private void Pick(BattleScreen s, IUnit unit)
+    {
+        _pick = unit;
+        s.SelectUnit(unit);
+        Version++;
     }
 
     public override void AutoPlay(BattleScreen s) => Complete(_r.ValidOptions[0].Option);
 
     public override void UnitPicked(BattleScreen s, IUnit unit)
     {
-        if (Option(unit) is { } b) Complete(b);
+        if (Option(unit) != null) Pick(s, unit);
         else if (_r.InvalidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID)) is { } bad)
             s.Toast($"{unit.Name}: {bad.Reason}");
     }
@@ -91,8 +183,17 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (s.Table.UnitAt(at) is not { } unit || !s.Session.IsMine(unit.PlayerID)) return false;
-        s.SelectUnit(unit, focus: false);
+        s.SelectUnit(unit);
         UnitPicked(s, unit);
+        return true;
+    }
+
+    public override bool RightClick(BattleScreen s)
+    {
+        if (_pick == null) return false;
+        _pick = null;
+        s.ClearSelection();
+        Version++;
         return true;
     }
 }
@@ -100,12 +201,12 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
 // ====================================================================== the action menu
 
 /// <summary>
-/// Choose Action. The 2x2 grid is the book's four actions (Kai, 2026-11-10): Hold, Advance, Rush, Charge.
-/// The engine's menu is Move / Shoot / Charge / Pass, with Advance, Rush and a charge all being "Move" told
-/// apart by distance, so the grid translates: Advance and Rush open the move tool capped at that distance,
-/// Charge opens it to move into contact (or is the engine's Charge when already in reach), Hold is Shoot
-/// (or ends the activation when there is nothing to shoot). After the move the grid turns into what is left:
-/// Shoot and End. Anything else (Cast, special actions) is a list.
+/// Choose Action. Usually answered straight away from the action pressed on the activation grid. When it is
+/// shown, the 2x2 grid is the book's four actions (Hold, Advance, Rush, Charge) translated onto the engine's
+/// Move / Shoot / Charge / Pass: Advance and Rush open the move tool capped at that distance, Charge moves into
+/// contact (or is the engine's Charge when already in reach), Hold is Shoot (or ends the activation when there
+/// is nothing to shoot). After a move the grid becomes what is left - Shoot, Charge, End. Anything else (Cast,
+/// special actions) is a list docked under the grid.
 /// </summary>
 public sealed class ActionDecision : Decision<string>
 {
@@ -124,8 +225,8 @@ public sealed class ActionDecision : Decision<string>
     private bool Can(string o) => _r.ValidOptions.Contains(o);
     private bool Fresh => Can(MoveOpt);   // nothing done yet this activation
 
-    public override string Prompt => Fresh ? "Choose an action" : "Then...";
-    public override string Hint => $"{Unit?.Name ?? "Your unit"} - keys 1-4" + (_r.AllowCancel ? ", Esc to pick a different unit" : "");
+    public override string Prompt => Fresh ? $"{Unit?.Name ?? "Your unit"} - choose an action" : $"{Unit?.Name ?? "Your unit"} - then...";
+    public override string Hint => "Keys 1-4" + (_r.AllowCancel ? ". Right-click to pick a different unit." : ".");
 
     private string Describe(string option) =>
         _r.OptionDescriptions != null && _r.OptionDescriptions.TryGetValue(option, out string? d) ? d : "";
@@ -141,44 +242,56 @@ public sealed class ActionDecision : Decision<string>
                 {
                     Slot("Shoot", "crosshair", "Shoot", "1", Can(ShootOpt), Can(ShootOpt) ? "Shoot now." : Why(ShootOpt), () => Complete(ShootOpt)),
                     Slot("Charge", "sword-clash", "Charge", "2", Can(ChargeOpt), Can(ChargeOpt) ? "Fight the enemy in reach." : Why(ChargeOpt), () => Complete(ChargeOpt)),
-                    Slot("End", "stop-sign", "End", "3", Can(PassOpt), Can(PassOpt) ? "This unit is done for the round." : Why(PassOpt), () => Choose(PassOpt)),
+                    Slot("End", "stop-sign", "End", "3", Can(PassOpt), Can(PassOpt) ? "This unit is done for the round." : Why(PassOpt), () => ConfirmEnd()),
                 };
-            bool holdShoots = Can(ShootOpt);
-            bool holdOk = holdShoots || Can(PassOpt);
-            string holdTip = holdShoots ? "Stay put and shoot."
-                : Can(PassOpt) ? "Stay put. Nothing to shoot at, so this ends the unit's activation." : Why(PassOpt) ?? "Not available.";
-            bool chargeOk = Can(ChargeOpt) || Can(MoveOpt);
-            string chargeTip = Can(ChargeOpt) ? "Fight the enemy already in reach."
-                : "Move into contact with an enemy and fight it - click the enemy you want to charge.";
-            return new[]
-            {
-                Slot("Hold", "shield", "Hold", "1", holdOk, holdTip, Hold),
-                Slot("Advance", "walk", "Advance", "2", Can(MoveOpt), Can(MoveOpt) ? "Move up to the Advance distance, then you may shoot." : Why(MoveOpt), () => Move(MoveKind.Advance)),
-                Slot("Rush", "run", "Rush", "3", Can(MoveOpt), Can(MoveOpt) ? "Move up to the Rush distance. No shooting after." : Why(MoveOpt), () => Move(MoveKind.Rush)),
-                Slot("Charge", "sword-clash", "Charge", "4", chargeOk, chargeOk ? chargeTip : Why(ChargeOpt), Charge),
-            };
+            return Book.Grid.Select(g => Slot(g.Action.ToString(), g.Icon, g.Action.ToString(), g.Key, Allowed(g.Action),
+                Allowed(g.Action) ? Book.Tip(g.Action) : NotAllowed(g.Action), () => Do(g.Action, confirm: true))).ToList();
         }
     }
+
+    private bool Allowed(BookAction a) => a switch
+    {
+        BookAction.Hold => Can(ShootOpt) || Can(PassOpt),
+        BookAction.Charge => Can(ChargeOpt) || Can(MoveOpt),
+        _ => Can(MoveOpt),
+    };
+
+    private string NotAllowed(BookAction a) => a switch
+    {
+        BookAction.Hold => Why(PassOpt) ?? Why(ShootOpt) ?? "Not available.",
+        BookAction.Charge => Why(ChargeOpt) ?? Why(MoveOpt) ?? "Not available.",
+        _ => Why(MoveOpt) ?? "Not available.",
+    };
 
     private static ActionSlot Slot(string name, string icon, string label, string key, bool ok, string? tip, Action go) =>
         new(name, icon, label, key, ok, tip ?? "Not available.", go);
 
-    private void Hold()
+    /// <summary>Carries out a book action; false (with a note) when the engine won't allow it now.</summary>
+    private bool Do(BookAction action, bool confirm)
     {
-        if (Can(ShootOpt)) Complete(ShootOpt);
-        else if (Can(PassOpt)) Complete(PassOpt);   // a deliberate Hold, so no "are you sure"
+        if (!Allowed(action)) { _s?.Toast($"Can't {action}: {NotAllowed(action)}"); return false; }
+        switch (action)
+        {
+            case BookAction.Hold:
+                void Hold() => Complete(Can(ShootOpt) ? ShootOpt : PassOpt);
+                if (confirm && _s != null) Book.ConfirmHold(_s, Unit, Hold); else Hold();
+                break;
+            case BookAction.Advance: BattleResolvers.NextMove = MoveKind.Advance; Complete(MoveOpt); break;
+            case BookAction.Rush: BattleResolvers.NextMove = MoveKind.Rush; Complete(MoveOpt); break;
+            case BookAction.Charge:
+                if (Can(ChargeOpt)) Complete(ChargeOpt);
+                else { BattleResolvers.NextMove = MoveKind.Charge; Complete(MoveOpt); }
+                break;
+        }
+        return true;
     }
 
-    private void Move(MoveKind kind)
+    private void ConfirmEnd()
     {
-        BattleResolvers.NextMove = kind;
-        Complete(MoveOpt);
-    }
-
-    private void Charge()
-    {
-        if (Can(ChargeOpt)) Complete(ChargeOpt);
-        else Move(MoveKind.Charge);
+        // #311: ending an activation can't be taken back, so it asks first.
+        if (_s == null) { Complete(PassOpt); return; }
+        _s.Confirm("End this activation?", Describe(PassOpt).Length > 0 ? Describe(PassOpt) : "The unit does nothing more this round.",
+            "End activation", () => Complete(PassOpt));
     }
 
     public override IReadOnlyList<ChoiceRow>? Rows
@@ -186,9 +299,9 @@ public sealed class ActionDecision : Decision<string>
         get
         {
             var extra = _r.ValidOptions.Where(o => !Handled.Contains(o))
-                .Select(o => new ChoiceRow(o, Describe(o), true, null, () => Choose(o)))
+                .Select(o => new ChoiceRow(o, Describe(o), true, null, () => Complete(o)))
                 .Concat(_r.InvalidOptions.Where(i => !Handled.Contains(i.Option))
-                    .Select(i => new ChoiceRow(i.Option, null, false, i.Reason, () => { })))
+                    .Select(i => new ChoiceRow(i.Option, null, false, i.Reason, null)))
                 .ToList();
             return extra.Count > 0 ? extra : null;
         }
@@ -196,22 +309,9 @@ public sealed class ActionDecision : Decision<string>
 
     public override string? RowsTitle => "Other actions";
 
-    private void Choose(string option)
-    {
-        if (option == FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME && _s != null)
-        {
-            // #311: ending an activation can't be taken back, so it asks first.
-            _s.Confirm("End this activation?", Describe(option).Length > 0 ? Describe(option) : "The unit does nothing more this round.",
-                "End activation", () => Complete(option));
-            return;
-        }
-        Complete(option);
-    }
-
     public override void AutoPlay(BattleScreen s)
     {
-        foreach (string o in new[] { FDG.Stages.ChooseActionStage.SHOOT_CHOICE_NAME, FDG.Stages.ChooseActionStage.CHARGE_CHOICE_NAME,
-                     FDG.Stages.ChooseActionStage.MOVEMENT_CHOICE_NAME, FDG.Stages.ChooseActionStage.PASS_CHOICE_NAME })
+        foreach (string o in new[] { ShootOpt, ChargeOpt, MoveOpt, PassOpt })
             if (_r.ValidOptions.Contains(o)) { Complete(o); return; }
         Complete(_r.ValidOptions[0]);
     }
@@ -219,10 +319,16 @@ public sealed class ActionDecision : Decision<string>
     public override void Shown(BattleScreen s)
     {
         _s = s;
-        if (Unit is { } u) s.SelectUnit(u, focus: true);
+        if (Unit is { } u) s.SelectUnit(u);
+        // The action pressed on the activation grid: no second click.
+        if (BattleResolvers.QueuedAction is { } q)
+        {
+            BattleResolvers.QueuedAction = null;
+            if (q.Unit.Equals(_r.ActivatingUnitID) && Fresh) Do(q.Action, confirm: false);
+        }
     }
 
-    public override string? CancelLabel => null;   // Esc / clicking another unit is the way back (the grid has no room)
+    public override string? CancelLabel => _r.AllowCancel ? "Pick another unit" : null;
 
     public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
 
@@ -244,16 +350,18 @@ public sealed class ActionDecision : Decision<string>
 // ====================================================================== moving
 
 /// <summary>
-/// Move a unit: point at the table and the unit's ghost follows (green = Advance distance, amber = Rush,
-/// red = can't go there); click to move. Point at an enemy to move into base contact with it.
+/// Move a unit: point at the table and the unit's ghost follows (green = Advance, amber = Rush, red = can't go
+/// there, with why). A click PLACES the move; Space or the confirm box sends it (Kai, 2026-11-10). Click
+/// elsewhere to move the placed ghost, right-click to drop it, right-click again to go back.
 /// </summary>
 public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntry>>>
 {
     private readonly DefineMovementPathRequest _r;
-    private MovePlanner.Plan? _plan;
+    private MovePlanner.Plan? _plan, _pending;
     private Vector2 _lastHover = new(-9999, -9999);
     private string _note = "";
     private readonly MoveKind? _kind;
+    private BattleScreen? _s;
 
     public MoveDecision(DefineMovementPathRequest r)
     {
@@ -281,28 +389,46 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _ => $"Move {Unit.Name}",
     };
 
-    public override string Hint => _note.Length > 0 ? _note : _kind switch
-    {
-        MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Esc = back.",
-        MoveKind.Rush => $"Click where to go - up to {_r.MaxRushDistance:0.#}\". Esc = back.",
-        MoveKind.Charge => $"Click the enemy unit to charge - up to {_r.MaxDistanceInches:0.#}\". Esc = back.",
-        _ => $"Click where to go - click an enemy to move into contact. Advance {_r.MaxAdvanceDistance:0.#}\", Rush {_r.MaxRushDistance:0.#}\""
-             + (_r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? $", Charge {_r.MaxDistanceInches:0.#}\"" : "") + ".",
-    };
+    public override string Hint => _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+        : _note.Length > 0 ? _note : _kind switch
+        {
+            MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Right-click = back.",
+            MoveKind.Rush => $"Click where to go - up to {_r.MaxRushDistance:0.#}\". Right-click = back.",
+            MoveKind.Charge => $"Click the enemy unit to charge - up to {_r.MaxDistanceInches:0.#}\". Right-click = back.",
+            _ => $"Click where to go - click an enemy to move into contact. Advance {_r.MaxAdvanceDistance:0.#}\", Rush {_r.MaxRushDistance:0.#}\""
+                 + (_r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? $", Charge {_r.MaxDistanceInches:0.#}\"" : "") + ".",
+        };
 
     public override string? CancelLabel => _r.AllowCancel ? "Back" : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(new Cancelled<List<ModelMoveEntry>>()); }
 
-    public override IReadOnlyList<ActionSlot> Actions => _kind != null
-        ? new[] { new ActionSlot("Back", "stop-sign", "Back", "Esc", _r.AllowCancel, _r.AllowCancel ? "Choose a different action." : "This move can't be called off.", Cancel) }
-        : new[]
+    public override IReadOnlyList<ActionSlot>? Actions => _kind != null ? null : new[]
     {
         new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Don't move this unit.", () => Complete(new Selected<List<ModelMoveEntry>>(MovePlanner.StayInPlace(_r)))),
-        new ActionSlot("Back", "stop-sign", "Back", "Esc", _r.AllowCancel, _r.AllowCancel ? "Choose a different action." : "This move can't be called off.", Cancel),
     };
 
-    public override void Shown(BattleScreen s) => s.SelectUnit(Unit, focus: false);
-    public override void Closed(BattleScreen s) => s.Table.ClearGhosts();
+    private string KindName(MovePlanner.Plan p) => _kind?.ToString()
+        ?? (p.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : p.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge");
+
+    public override string? ConfirmText => _pending is { } p ? $"{KindName(p)} {p.Distance:0.0}\" to here?" : null;
+
+    public override void Confirm()
+    {
+        if (_pending is not { } p) return;
+        _s?.Table.ClearGhosts("move");
+        Complete(new Selected<List<ModelMoveEntry>>(p.Moves));
+    }
+
+    public override void ClearPending()
+    {
+        _pending = null;
+        _lastHover = new(-9999, -9999);
+        _s?.Table.ClearGhosts("move");
+        Version++;
+    }
+
+    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); }
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("move");
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -313,8 +439,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             .OrderBy(u => u.Models.Where(m => m.GetIsAlive()).Min(m => Mathf.Pow(m.Position.x - mine[0].Position.x, 2) + Mathf.Pow(m.Position.z - mine[0].Position.z, 2)))
             .FirstOrDefault();
         MovePlanner.Plan? plan = nearest == null ? null
-            : _r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? MovePlanner.IntoContact(_r, s.Session.Table, nearest)
-            : MovePlanner.Towards(_r, s.Session.Table, nearest.Models.Where(m => m.GetIsAlive()).Average(m => m.Position.x), nearest.Models.Where(m => m.GetIsAlive()).Average(m => m.Position.z));
+            : _kind == MoveKind.Charge || _kind == null && _r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? MovePlanner.IntoContact(_r, s.Session.Table, nearest)
+            : MovePlanner.Towards(_r, s.Session.Table, nearest.Models.Where(m => m.GetIsAlive()).Average(m => m.Position.x), nearest.Models.Where(m => m.GetIsAlive()).Average(m => m.Position.z), Cap);
         Complete(new Selected<List<ModelMoveEntry>>(plan is { Valid: true } ? plan.Moves : MovePlanner.StayInPlace(_r)));
     }
 
@@ -328,26 +454,32 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         return s.Table.TableAt(at) is { } p ? MovePlanner.Towards(_r, s.Session.Table, p.X, p.Y, Cap) : null;
     }
 
+    private void Draw(BattleScreen s, MovePlanner.Plan plan, bool placed)
+    {
+        Color c = !plan.Valid ? Palette.WoundsRed : plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
+            : plan.Distance <= _r.MaxRushDistance + 0.01f ? HudKit.Gold : HudKit.Enemy;
+        if (placed) c = c.Lightened(0.25f);
+        var ghosts = plan.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), c with { A = placed ? 1.6f : 1f })).ToList();
+        var lines = new List<BattleTable.GhostLine>();
+        var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        if (models.Count > 0 && plan.Ends.Count > 0)
+        {
+            var from = new Vector2(models.Average(m => m.Position.x), models.Average(m => m.Position.z));
+            var to = new Vector2(plan.Ends.Average(e => e.X), plan.Ends.Average(e => e.Z));
+            lines.Add(new BattleTable.GhostLine(from, to, c with { A = 0.85f }));
+        }
+        s.Table.SetGhosts("move", ghosts, lines);
+    }
+
     public override void TableHover(BattleScreen s, Vector2 at)
     {
+        if (_pending != null) return;   // the placed move stays put until confirmed or changed
         if (at.DistanceTo(_lastHover) < 3) return;
         _lastHover = at;
         _plan = PlanFor(s, at);
-        if (_plan == null || _plan.Valid && _plan.Distance < 0.05f) { s.Table.ClearGhosts(); _note = ""; Version++; return; }
-        Color c = !_plan.Valid ? Palette.WoundsRed : _plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
-            : _plan.Distance <= _r.MaxRushDistance + 0.01f ? HudKit.Gold : HudKit.Enemy;
-        var ghosts = _plan.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), c)).ToList();
-        var lines = new List<(Vector2, Vector2, Color)>();
-        var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
-        if (models.Count > 0 && _plan.Ends.Count > 0)
-        {
-            var from = new Vector2(models.Average(m => m.Position.x), models.Average(m => m.Position.z));
-            var to = new Vector2(_plan.Ends.Average(e => e.X), _plan.Ends.Average(e => e.Z));
-            lines.Add((from, to, c));
-        }
-        s.Table.SetGhosts(ghosts, lines);
-        string kind = _kind?.ToString() ?? (_plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : _plan.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge");
-        _note = _plan.Valid ? $"{kind}: {_plan.Distance:0.0}\" - click to move." : $"Can't go there: {_plan.Problem}.";
+        if (_plan == null || _plan.Valid && _plan.Distance < 0.05f) { s.Table.ClearGhosts("move"); _note = ""; Version++; return; }
+        Draw(s, _plan, placed: false);
+        _note = _plan.Valid ? $"{KindName(_plan)}: {_plan.Distance:0.0}\" - click to place the move." : $"Can't go there: {_plan.Problem}.";
         Version++;
     }
 
@@ -364,22 +496,33 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             s.Toast(plan.Valid ? "That is where the unit already is." : $"Can't move there: {plan.Problem}.");
             return true;
         }
-        s.Table.ClearGhosts();
-        Complete(new Selected<List<ModelMoveEntry>>(plan.Moves));
+        _pending = plan;
+        Draw(s, plan, placed: true);
+        Version++;
         return true;
     }
 }
 
 // ====================================================================== shooting
 
-/// <summary>Shoot: each weapon's targets as rows with the engine's forecast; clicking an enemy fires the first weapon that can reach it.</summary>
+/// <summary>
+/// Shoot (Kai, 2026-11-10): the shooter's weapon ranges are drawn round it, you click the enemy unit to shoot,
+/// and a confirm box shows what will fire at it with the engine's forecast. Confirming fires every weapon that
+/// can reach that target (the engine asks weapon by weapon; the rest are answered the same way). The actions
+/// area lists the weapons with Hold fire for each, and Done shooting / Back.
+/// </summary>
 public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoice>>
 {
     private readonly ChooseRangedAttackRequest _r;
+    private IUnit? _target;
+    private BattleScreen? _s;
     public ShootDecision(ChooseRangedAttackRequest r) => _r = r;
 
-    public override string Prompt => _r.DeclareFirst ? "Declare shots" : "Shoot";
-    public override string Hint => $"{_r.AttackingUnit.GetValue().Name}: pick a weapon and target, or click an enemy.";
+    private IUnit Shooter => _r.AttackingUnit.GetValue();
+
+    public override string Prompt => _r.DeclareFirst ? $"{Shooter.Name} - declare shots" : $"{Shooter.Name} - shoot";
+    public override string Hint => _target != null ? "Space to confirm - click another enemy to change - right-click to clear."
+        : "Click the enemy unit to shoot. The rings show each weapon's range.";
     public override string? RowsTitle => "Weapons";
 
     public override string? CancelLabel => _r.AllowCancel ? "Back" : _r.AllowStopShooting ? "Done shooting" : null;
@@ -390,34 +533,88 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
 
     private static bool CanFire(WeaponTargetStats t) => t.modelsThatCanShoot.Count > 0 && t.UnselectableReason == null;
 
+    private IEnumerable<(WeaponOption W, WeaponTargetStats T)> At(UnitID target) =>
+        _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats.Where(t => t.TargetUnit.GetValue().ID.Equals(target) && CanFire(t)).Select(t => (w, t)));
+
     private void Fire(WeaponOption w, WeaponTargetStats t) =>
         Complete(new Selected<RangedAttackChoice>(new RangedAttackChoice(w.Weapon, t.TargetUnit)));
 
-    public override IReadOnlyList<ChoiceRow> Rows
+    private static string Forecast(WeaponOption w, WeaponTargetStats t) => t.Forecast is { } f
+        ? $"{(f.AttacksFiring > 0 ? f.AttacksFiring : w.Weapon.Attacks)} attacks, hit on {f.HitRollNeeded}+, they save on {f.SaveRollNeeded}+"
+          + (t.HasCover && !w.IgnoresCover ? " (cover)" : "")
+        : "";
+
+    public override string? ConfirmText
     {
         get
         {
-            var rows = new List<ChoiceRow>();
-            foreach (WeaponOption w in _r.WeaponOptions)
-            {
-                string limited = w.LimitedRule != null ? (w.LimitedAlreadyFired ? $" ({w.LimitedRule}: spent)" : $" ({w.LimitedRule}: once per game)") : "";
-                foreach (WeaponTargetStats t in w.WeaponTargetStats)
-                {
-                    string target = t.TargetUnit.GetValue().Name;
-                    string detail = t.Forecast is { } f
-                        ? $"{(f.AttacksFiring > 0 ? f.AttacksFiring : w.Weapon.Attacks)} attacks, hit on {f.HitRollNeeded}+, they save on {f.SaveRollNeeded}+"
-                          + (t.HasCover && !w.IgnoresCover ? " (cover)" : "")
-                        : "";
-                    string? why = t.UnselectableReason ?? (t.modelsThatCanShoot.Count == 0 ? "Out of range or line of sight." : null);
-                    rows.Add(new ChoiceRow($"{w.Weapon.Name}{limited} -> {target}", detail, CanFire(t), why, () => Fire(w, t),
-                        "Hold fire", () => Complete(new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(w.Weapon)))));
-                }
-            }
-            return rows;
+            if (_target is not { } t) return null;
+            var shots = At(t.ID).ToList();
+            return $"Shoot {t.Name}?\n" + string.Join("\n", shots.Select(x => $"{x.W.Weapon.Name}: {Forecast(x.W, x.T)}"));
         }
     }
 
-    public override void Shown(BattleScreen s) => s.SelectUnit(_r.AttackingUnit.GetValue(), focus: false);
+    public override void Confirm()
+    {
+        if (_target is not { } t || At(t.ID).FirstOrDefault() is not { W: not null } first) return;
+        BattleResolvers.ShootAt = (Shooter.ID, t.ID);
+        Fire(first.W, first.T);
+    }
+
+    public override void ClearPending() { _target = null; _s?.Table.ClearGhosts("target"); Version++; }
+
+    /// <summary>The weapons, each with where it can shoot and a Hold fire button.</summary>
+    public override IReadOnlyList<ChoiceRow> Rows => _r.WeaponOptions.Select(w =>
+    {
+        var targets = w.WeaponTargetStats.Where(CanFire).Select(t => t.TargetUnit.GetValue().Name).ToList();
+        string limited = w.LimitedRule != null ? (w.LimitedAlreadyFired ? $" - {w.LimitedRule}: spent" : $" - {w.LimitedRule}: once per game") : "";
+        string range = w.Weapon.RangeInches > 0 ? $" {w.Weapon.RangeInches:0}\"" : "";
+        return new ChoiceRow($"{w.Weapon.Name}{range}{limited}", targets.Count > 0 ? "Can hit: " + string.Join(", ", targets) : "Nothing in range or sight.",
+            true, null, null, "Hold fire", () => Complete(new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(w.Weapon))));
+    }).ToList();
+
+    public override void Shown(BattleScreen s)
+    {
+        _s = s;
+        s.SelectUnit(Shooter);
+        // The rest of a confirmed volley: every other weapon that can reach the same target fires at it.
+        if (BattleResolvers.ShootAt is { } again && again.Shooter.Equals(Shooter.ID))
+        {
+            if (At(again.Target).FirstOrDefault() is { W: not null } next) { Fire(next.W, next.T); return; }
+            BattleResolvers.ShootAt = null;
+        }
+        DrawRanges(s);
+    }
+
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("range"); s.Table.ClearGhosts("target"); }
+
+    /// <summary>Each weapon range as an outline round the unit (the furthest any of its models reaches).</summary>
+    private void DrawRanges(BattleScreen s)
+    {
+        var models = Shooter.Models.Where(m => m.GetIsAlive()).ToList();
+        var ranges = _r.WeaponOptions.Where(w => w.Weapon.RangeInches > 0)
+            .GroupBy(w => w.Weapon.RangeInches).OrderBy(g => g.Key).ToList();
+        Color[] palette = { HudKit.Teal, HudKit.Gold, HudKit.Lime, new Color(0.8f, 0.55f, 1f) };
+        var lines = new List<BattleTable.GhostLine>();
+        var texts = new List<BattleTable.GhostText>();
+        for (int i = 0; i < ranges.Count; i++)
+        {
+            float range = ranges[i].Key;
+            Color c = palette[i % palette.Length];
+            var pts = new List<Vector2>();
+            foreach (IModel m in models)
+                for (int a = 0; a < 360; a += 6)
+                {
+                    float rad = Mathf.DegToRad(a), r = range + m.BaseRadiusInches;
+                    pts.Add(new Vector2(m.Position.x + Mathf.Cos(rad) * r, m.Position.z + Mathf.Sin(rad) * r));
+                }
+            Vector2[] hull = Geometry2D.ConvexHull(pts.ToArray());
+            for (int k = 0; k + 1 < hull.Length; k++) lines.Add(new BattleTable.GhostLine(hull[k], hull[k + 1], c with { A = 0.9f }, 0.16f));
+            Vector2 top = hull.OrderByDescending(p => p.Y).FirstOrDefault();
+            texts.Add(new BattleTable.GhostText(top.X, top.Y + 0.6f, $"{string.Join(", ", ranges[i].Select(w => w.Weapon.Name).Distinct())} {range:0}\"", c));
+        }
+        s.Table.SetGhosts("range", Array.Empty<BattleTable.Ghost>(), lines, texts);
+    }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -431,15 +628,24 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (s.Table.UnitAt(at) is not { } unit || s.Session.IsMine(unit.PlayerID)) return false;
-        foreach (WeaponOption w in _r.WeaponOptions)
-            foreach (WeaponTargetStats t in w.WeaponTargetStats)
-                if (t.TargetUnit.GetValue().ID.Equals(unit.ID) && CanFire(t)) { Fire(w, t); return true; }
-        s.Toast($"No weapon can shoot {unit.Name} right now.");
+        if (!At(unit.ID).Any())
+        {
+            string why = _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats)
+                .Where(t => t.TargetUnit.GetValue().ID.Equals(unit.ID)).Select(t => t.UnselectableReason).FirstOrDefault(r => r != null)
+                ?? "out of range or out of sight";
+            s.Toast($"Can't shoot {unit.Name}: {why}");
+            return true;
+        }
+        _target = unit;
+        // The shooter keeps its selection ring; the target gets red rings.
+        s.Table.SetGhosts("target", unit.Models.Where(m => m.GetIsAlive())
+            .Select(m => new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + 0.35f, Palette.WoundsRed, Ring: true)));
+        Version++;
         return true;
     }
 }
 
-// ====================================================================== generic lists
+// ====================================================================== generic lists (docked in the actions area)
 
 public sealed class StringListDecision : Decision<string>
 {
@@ -447,9 +653,10 @@ public sealed class StringListDecision : Decision<string>
     public StringListDecision(StringSelectionRequest r) => _r = r;
 
     public override string Prompt => _r.Instructions;
+    public override string? RowsTitle => "Choose";
     public override string? CancelLabel => _r.AllowCancel ? "Back" : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
-    public override void AutoPlay(BattleScreen s) => Rows.First(r => r.Enabled).Pick();
+    public override void AutoPlay(BattleScreen s) => Rows.First(r => r.Enabled && r.Pick != null).Pick!();
 
     public override IReadOnlyList<ChoiceRow> Rows
     {
@@ -467,7 +674,7 @@ public sealed class StringListDecision : Decision<string>
                     c?.ShortLabel, c == null ? null : () => Complete(c.Option)));
             }
             foreach (var i in _r.InvalidOptions.Where(i => !companionOptions.Contains(i.Option)))
-                rows.Add(new ChoiceRow(i.Option, Desc(i.Option), false, i.Reason, () => { }));
+                rows.Add(new ChoiceRow(i.Option, Desc(i.Option), false, i.Reason, null));
             return rows;
         }
     }
@@ -478,6 +685,7 @@ public sealed class YesNoDecision : Decision<bool>
     private readonly YesNoRequest _r;
     public YesNoDecision(YesNoRequest r) => _r = r;
     public override string Prompt => _r.QuestionText;
+    public override string? RowsTitle => "Choose";
     public override void AutoPlay(BattleScreen s) => Complete(_r.DefaultAnswer);
     public override IReadOnlyList<ChoiceRow> Rows => new[]
     {
@@ -486,20 +694,32 @@ public sealed class YesNoDecision : Decision<bool>
     };
 }
 
-/// <summary>Pick a unit (a spell target, a transport, a melee defender...): from the list or by clicking it on the table.</summary>
+/// <summary>
+/// Pick a unit (which to deploy, a spell target, a transport...). Kai, 2026-11-10: no pop-up list - the
+/// left-hand list marks the choices (and why the others can't be picked), and the table is clickable.
+/// </summary>
 public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
 {
     private readonly SelectionRequest<UnitData> _r;
+    private BattleScreen? _s;
     public UnitPickDecision(SelectionRequest<UnitData> r) => _r = r;
     public override string Prompt => _r.Instructions;
-    public override string Hint => "Pick from the list or click the unit on the table.";
+    public override string Hint => "Click it in the list on the left, or on the table.";
     public override void AutoPlay(BattleScreen s) => Complete(_r.ValidOptions[0].Option);
     public override string? CancelLabel => _r.AllowCancel ? _r.CancelLabel : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
 
-    public override IReadOnlyList<ChoiceRow> Rows =>
-        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, () => { }))).ToList();
+    public override UnitMark? ListMark(IUnit unit)
+    {
+        if (_r.ValidOptions.Any(o => o.Option.GetValue().ID.Equals(unit.ID))) return new UnitMark(true, null);
+        var bad = _r.InvalidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID));
+        return bad != null ? new UnitMark(false, bad.Reason) : null;
+    }
+
+    public override bool WantsEnemyList => _s != null && _r.ValidOptions.Count > 0
+        && _r.ValidOptions.All(o => !_s.Session.IsMine(o.Option.GetValue().PlayerID));
+
+    public override void Shown(BattleScreen s) => _s = s;
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
@@ -513,6 +733,7 @@ public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
     public override void UnitPicked(BattleScreen s, IUnit unit)
     {
         if (_r.ValidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(unit.ID)) is { } o) Complete(o.Option);
+        else if (_r.InvalidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(unit.ID)) is { } bad) s.Toast($"{unit.Name}: {bad.Reason}");
     }
 }
 
@@ -522,10 +743,11 @@ public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
     public ModelPickDecision(SelectionRequest<ModelData> r) => _r = r;
     public override void AutoPlay(BattleScreen s) => Complete(_r.ValidOptions[0].Option);
     public override string Prompt => _r.Instructions;
+    public override string? RowsTitle => "Choose";
     public override string? CancelLabel => _r.AllowCancel ? _r.CancelLabel : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
 
     public override IReadOnlyList<ChoiceRow> Rows =>
         _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, () => { }))).ToList();
+            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
 }
