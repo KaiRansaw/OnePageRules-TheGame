@@ -106,6 +106,8 @@ public partial class ScriptedRun : Node
         _wait = 3;
         string? kind = battle?.Decisions.Current?.GetType().Name;
         if (kind == null || !Battle.BattleScreen.Hold.Contains(kind)) { _snapSettle = -1; return; }
+        // Only photograph the action menu when it has extra actions beside the four (that is what is being reviewed).
+        if (battle!.Decisions.Current is Battle.ActionDecision { Rows: null } plain) { plain.AutoPlay(battle); _snapSettle = -1; return; }
         if (_snapSettle < 0) { _snapSettle = 25; return; }
         if (--_snapSettle > 0) return;
         string dir = System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp";

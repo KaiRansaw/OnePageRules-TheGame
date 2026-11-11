@@ -308,15 +308,30 @@ public sealed class ActionDecision : Decision<string>
         get
         {
             var extra = _r.ValidOptions.Where(o => !Handled.Contains(o))
-                .Select(o => new ChoiceRow(o, Describe(o), true, null, () => Complete(o)))
+                .Select(o => new ChoiceRow(o, Describe(o), true, null, () => Complete(o), Icon: ActionIcon(o)))
                 .Concat(_r.InvalidOptions.Where(i => !Handled.Contains(i.Option))
-                    .Select(i => new ChoiceRow(i.Option, null, false, i.Reason, null)))
+                    .Select(i => new ChoiceRow(i.Option, null, false, i.Reason, null, Icon: ActionIcon(i.Option))))
                 .ToList();
             return extra.Count > 0 ? extra : null;
         }
     }
 
     public override string? RowsTitle => "Other actions";
+    // Kai, 2026-11-11: other actions are square buttons extending right of the four, not a list under them.
+    public override bool ButtonChoices => true;
+
+    private static string ActionIcon(string option)
+    {
+        string o = option.ToLowerInvariant();
+        if (o.Contains("cast") || o.Contains("spell")) return "magic-swirl";
+        if (o.Contains("embark") || o.Contains("transport")) return "stack";
+        if (o.Contains("shoot") || o.Contains("fire")) return "crosshair";
+        if (o.Contains("pass") || o.Contains("end")) return "hourglass";
+        if (o.Contains("objective") || o.Contains("seize")) return "flag-objective";
+        if (o.Contains("move") || o.Contains("walk")) return "walk";
+        if (o.Contains("fight") || o.Contains("melee") || o.Contains("charge")) return "crossed-swords";
+        return "bolt-shield";
+    }
 
     public override void AutoPlay(BattleScreen s)
     {

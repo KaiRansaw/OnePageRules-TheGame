@@ -72,9 +72,11 @@ public sealed class BattleDecisions
     public bool HotKey(int index)
     {
         // The numbered choice buttons (style A) answer to their number keys.
-        if (Current is { ButtonChoices: true, Actions: null, Rows: { } rows } && Style != RowStyle.List)
+        int first = Current?.Actions?.Count ?? 0;
+        if (Current is { ButtonChoices: true, Rows: { } rows } && Style != RowStyle.List && index >= first)
         {
             var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
+            index -= first;
             if (index >= buttons.Count || !buttons[index].Enabled || buttons[index].Pick is not { } pick) return false;
             pick();
             return true;
@@ -270,10 +272,12 @@ public sealed class BattleDecisions
         var g = new GridContainer { Columns = Math.Max(1, (buttons.Count + perColumn - 1) / perColumn) };
         g.AddThemeConstantOverride("h_separation", 6);
         g.AddThemeConstantOverride("v_separation", 6);
-        int n = 0;
+        // Numbered on from the four action buttons when they are showing (5, 6...), so every key is unique.
+        int n = d.Actions?.Count ?? 0;
+        float size = d.Actions != null ? 74 : 96;
         foreach (ChoiceRow r in buttons)
         {
-            Control c = square ? SquareChoice(r, d.RowIcon, ++n) : TileChoice(r, d.RowIcon, ++n);
+            Control c = square ? SquareChoice(r, d.RowIcon, ++n, size) : TileChoice(r, d.RowIcon, ++n);
             if (r.SecondaryLabel != null && r.Secondary != null)
             {
                 // A companion action on the same choice (#321) - a small button under it.
@@ -301,9 +305,8 @@ public sealed class BattleDecisions
     private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail ?? "") : (r.Reason ?? "Not available.");
 
     /// <summary>Like the four action buttons: picture, name, number key; the detail on hover.</summary>
-    private static Control SquareChoice(ChoiceRow r, string icon, int n)
+    private static Control SquareChoice(ChoiceRow r, string icon, int n, float size = 96)
     {
-        const float size = 96;
         var b = new Button { CustomMinimumSize = new Vector2(size, size + 6), Disabled = !r.Enabled || r.Pick == null, FocusMode = Control.FocusModeEnum.None, TooltipText = Tip(r) };
         HudKit.StyleButton(b, new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 }, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
