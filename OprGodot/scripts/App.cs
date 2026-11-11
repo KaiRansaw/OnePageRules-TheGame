@@ -108,4 +108,5 @@ public static class Scenes
     public const string Settings = "res://scenes/screens/Settings.tscn";
     public const string ComingSoon = "res://scenes/screens/ComingSoon.tscn";
     public const string JoinPopup = "res://scenes/JoinPopup.tscn";
+    public const string Lobby = "res://scenes/screens/Lobby.tscn";
 }

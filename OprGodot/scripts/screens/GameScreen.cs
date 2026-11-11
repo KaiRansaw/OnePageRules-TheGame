@@ -191,10 +191,23 @@ public partial class GameScreen : Control
                     "My Heroes cards, New Hero in 4 steps (Hero & Name / Class / Starter Skills / Gear), the Shop. Port step 5.");
                 break;
             default:
-                App.I.OpenNotYet($"Lobby - {game} - {ModeLabel(mode)}",
-                    "Tabbed settings (Game / Table / Rules / Advanced / Connect) with a tooltip on every setting, "
-                    + "2x2 seat cards, the clicked seat's army list under the map preview, LAUNCH. Port step 2 - next.");
+                OpenLobby(system, mode switch
+                {
+                    EMode.Horde => GameSystemInfo.IsQuest(system) ? EGameMode.StarQuestHorde : EGameMode.Horde,
+                    EMode.Mission => EGameMode.StarQuestMission,
+                    _ => EGameMode.Standard,
+                });
                 break;
         }
+    }
+
+    /// <summary>A mode that plays a game hosts straight away and opens the lobby (no Host screen - decision 5).
+    /// Only a taken port stops it, and that says so in plain words.</summary>
+    private static void OpenLobby(EGameSystem system, EGameMode mode)
+    {
+        if (FdgRaylib.Lobby.LobbySession.TryHost(system, mode, out var session, out string error) && session != null)
+            App.I.Open<LobbyScreen>(Scenes.Lobby, s => s.Session = session);
+        else
+            App.I.OpenNotYet("Could not start the game", error);
     }
 }

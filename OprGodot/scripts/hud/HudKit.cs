@@ -165,4 +165,67 @@ public static class HudKit
         c.GrowVertical = c.AnchorTop >= 1 ? Control.GrowDirection.Begin : c.AnchorTop > 0 ? Control.GrowDirection.Both : Control.GrowDirection.End;
         return c;
     }
+
+    // ---- Unit pictures
+
+    private static readonly Dictionary<string, Texture2D?> Pictures = new();
+
+    /// <summary>
+    /// A unit's Army Forge portrait from UnitImages/&lt;faction&gt;/Portraits (what the "Download Unit Pictures"
+    /// tool fetches; a loose UnitImages/Portraits picture works for every faction), or null. Looked for next to
+    /// the repo / the game, like the Raylib build. Name matching ignores case, spaces and punctuation.
+    /// </summary>
+    public static Texture2D? UnitPicture(string faction, string unit)
+    {
+        string key = faction + "/" + unit;
+        if (Pictures.TryGetValue(key, out var t)) return t;
+        t = null;
+        static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+        string want = Norm(unit);
+        foreach (string root in new[] { System.IO.Path.Combine(FdgRaylib.AppAssets.Root, ".."), FdgRaylib.AppAssets.Root, System.Environment.CurrentDirectory })
+        {
+            foreach (string folder in new[] { System.IO.Path.Combine(root, "UnitImages", faction, "Portraits"), System.IO.Path.Combine(root, "UnitImages", "Portraits") })
+            {
+                if (!System.IO.Directory.Exists(folder)) continue;
+                string? file = System.IO.Directory.EnumerateFiles(folder)
+                    .FirstOrDefault(f => Norm(System.IO.Path.GetFileNameWithoutExtension(f)) == want
+                        && new[] { ".png", ".jpg", ".jpeg" }.Contains(System.IO.Path.GetExtension(f).ToLowerInvariant()));
+                if (file == null) continue;
+                var img = Image.LoadFromFile(file);
+                if (img != null) { t = ImageTexture.CreateFromImage(img); break; }
+            }
+            if (t != null) break;
+        }
+        return Pictures[key] = t;
+    }
+
+    /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
+    public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f)
+    {
+        Control inner;
+        if (UnitPicture(faction, unit) is { } tex)
+            inner = new TextureRect { Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, CustomMinimumSize = new Vector2(size, size), SelfModulate = Colors.White with { A = alpha }, ClipContents = true, MouseFilter = Control.MouseFilterEnum.Ignore };
+        else
+            inner = Icon(fallbackIcon, size * 0.72f, team with { A = alpha * 0.9f });
+        var frame = Panel(new ChamferBox
+        {
+            Fill = new Color(team, 0.12f * alpha), Border = team with { A = 0.55f * alpha }, Cut = 6,
+            ContentMarginLeft = 2, ContentMarginRight = 2, ContentMarginTop = 2, ContentMarginBottom = 2,
+        }, inner);
+        frame.CustomMinimumSize = new Vector2(size + 4, size + 4);
+        frame.MouseFilter = Control.MouseFilterEnum.Ignore;
+        inner.SizeFlagsHorizontal = inner.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+        return frame;
+    }
+
+    /// <summary>A rough icon for a unit's kind, for when there is no picture.</summary>
+    public static string KindIcon(string name, bool hero, bool shoots, int tough)
+    {
+        string n = name.ToLowerInvariant();
+        if (n.Contains("artillery") || n.Contains("cannon") || n.Contains("catapult")) return "fire-ray";
+        if (tough >= 6) return "gears";
+        if (n.Contains("knight") || n.Contains("rider") || n.Contains("cavalry") || n.Contains("hound") || n.Contains("bike")) return "running-shoe";
+        if (hero) return "rally-the-troops";
+        return shoots ? "targeting" : "person";
+    }
 }

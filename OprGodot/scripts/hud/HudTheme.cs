@@ -84,6 +84,16 @@ public static class HudTheme
             t.SetColor("font_pressed_color", type, HudKit.Lime);
             t.SetColor("font_hover_pressed_color", type, HudKit.Lime);
         }
+        // Tick boxes drawn to match: a steel square, lime-filled when on.
+        Texture2D box = CheckIcon(false, false), ticked = CheckIcon(true, false);
+        foreach (string type in new[] { "CheckBox", "CheckButton" })
+        {
+            t.SetIcon("unchecked", type, box);
+            t.SetIcon("checked", type, ticked);
+            t.SetIcon("unchecked_disabled", type, CheckIcon(false, true));
+            t.SetIcon("checked_disabled", type, CheckIcon(true, true));
+        }
+        t.SetConstant("h_separation", "CheckBox", 10);
         var track = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.5f), ContentMarginTop = 3, ContentMarginBottom = 3 };
         t.SetStylebox("slider", "HSlider", track);
         t.SetStylebox("grabber_area", "HSlider", new StyleBoxFlat { BgColor = HudKit.Teal, ContentMarginTop = 3, ContentMarginBottom = 3 });
@@ -111,6 +121,23 @@ public static class HudTheme
         t.SetStylebox("grabber_highlight", "VScrollBar", new StyleBoxFlat { BgColor = HudKit.Teal });
         t.SetStylebox("grabber_pressed", "VScrollBar", new StyleBoxFlat { BgColor = HudKit.Lime });
         return t;
+    }
+
+    private static ImageTexture CheckIcon(bool on, bool disabled)
+    {
+        const int n = 22;
+        var img = Image.CreateEmpty(n, n, false, Image.Format.Rgba8);
+        img.Fill(Colors.Transparent);
+        Color edge = disabled ? HudKit.Edge with { A = 0.4f } : on ? HudKit.Lime : HudKit.EdgeHot with { A = 0.85f };
+        Color fill = on ? (disabled ? HudKit.Lime with { A = 0.35f } : HudKit.Lime) : new Color(0, 0, 0, 0.45f);
+        for (int y = 1; y < n - 1; y++)
+            for (int x = 1; x < n - 1; x++)
+            {
+                bool border = x <= 2 || y <= 2 || x >= n - 3 || y >= n - 3;
+                bool inner = x >= 6 && y >= 6 && x <= n - 7 && y <= n - 7;
+                img.SetPixel(x, y, border ? edge : on && inner ? fill : new Color(0, 0, 0, 0.45f));
+            }
+        return ImageTexture.CreateFromImage(img);
     }
 
     private static void Variation(Theme t, string name, string baseType) => t.SetTypeVariation(name, baseType);

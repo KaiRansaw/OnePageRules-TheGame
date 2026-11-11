@@ -44,6 +44,10 @@ public partial class ScriptedRun : Node
 
         if (_presses.TryDequeue(out string? name))
         {
+            // "wait:N" waits N more frames (a lobby filling its seats, a scan finishing).
+            if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
+            // "tab:Name" opens the tab called Name in whatever TabContainer has one.
+            if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
             if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
             return;
@@ -56,6 +60,16 @@ public partial class ScriptedRun : Node
             GD.Print($"ScriptedRun: screenshot {(saved == Error.Ok ? "saved" : "FAILED")} - {_shot}");
         }
         GetTree().Quit();
+    }
+
+    private static bool OpenTab(Node node, string name)
+    {
+        if (node is TabContainer tabs)
+            for (int i = 0; i < tabs.GetTabCount(); i++)
+                if (tabs.GetTabControl(i).Name == name) { tabs.CurrentTab = i; return true; }
+        foreach (Node child in node.GetChildren())
+            if (OpenTab(child, name)) return true;
+        return false;
     }
 
     private static BaseButton? FindButton(Node node, string name)
