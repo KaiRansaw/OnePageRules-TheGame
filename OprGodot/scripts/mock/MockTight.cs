@@ -25,7 +25,14 @@ public partial class MockScene
         var block = TightUnitBlock();
         HudKit.Place(_ui, block, Control.LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
 
-        HudKit.Place(_ui, TightReport(), Control.LayoutPreset.BottomRight, new Vector2(-Pad, -Pad));
+        // Bottom right: the Mission panel (folds away) stacked on the battle report.
+        var stack = new VBoxContainer();
+        stack.AddThemeConstantOverride("separation", 6);
+        var mission = (CollapsePanel)MissionPanel();
+        stack.AddChild(mission);
+        if (State == 1) mission.Collapsed = true;
+        stack.AddChild(TightReport());
+        HudKit.Place(_ui, stack, Control.LayoutPreset.BottomRight, new Vector2(-Pad, -Pad));
         HudKit.Place(_ui, MockTag(), Control.LayoutPreset.CenterBottom, new Vector2(150, -2));
 
         // The list fills the space between the round panel and the unit block.
@@ -369,5 +376,60 @@ public partial class MockScene
             rep.AddChild(l);
         }
         return HudKit.Panel(Tight(10).With(x => x.Fill = x.Fill with { A = 0.8f }), rep);
+    }
+
+    // ------------------------------------------------------------------ mission panel
+    /// <summary>
+    /// The mission: how the game is won, the score, objectives held, and (with Mission Cards on) your face-up
+    /// cards with what each needs and how close you are. Cards and wording from the engine's MissionCards
+    /// (AoF Mission Cards v3.6.0, Battle of Wits).
+    /// </summary>
+    private static Control MissionPanel()
+    {
+        var v = new VBoxContainer();
+        v.AddThemeConstantOverride("separation", 5);
+
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 10);
+        var what = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        what.AddThemeConstantOverride("separation", -2);
+        what.AddChild(HudKit.Text("Mission Cards - Battle of Wits", 16, HudKit.Fg, HudKit.Bold));
+        what.AddChild(HudKit.Text("Ends after round 4. Most victory points wins.", 13, HudKit.Dim, HudKit.Semi));
+        what.AddChild(HudKit.Text("+1 VP per objective you control at the end.", 13, HudKit.Dim, HudKit.Semi));
+        top.AddChild(what);
+        foreach (var (who, vp, c) in new[] { ("YOU", "3", HudKit.Friendly), ("ORCS", "2", HudKit.Enemy) })
+        {
+            var b = new VBoxContainer();
+            b.AddThemeConstantOverride("separation", -6);
+            b.AddChild(HudKit.Text(who, 11, c, HudKit.Tracked(HudKit.Bold, 2), HorizontalAlignment.Center));
+            b.AddChild(HudKit.Text(vp + " VP", 22, c, HudKit.Bold, HorizontalAlignment.Center));
+            top.AddChild(b);
+        }
+        v.AddChild(top);
+
+        v.AddChild(HudKit.Text("YOUR CARDS", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+        v.AddChild(MissionCard(32, "Hold 2", "Control objective 2 at the beginning and end of the same round.", "2 VP", "Held at the start - keep it", HudKit.Lime));
+        v.AddChild(MissionCard(51, "Fire at Will", "Destroy one enemy unit by shooting (1 VP) / three or more (2 VP).", "1-2 VP", "0 destroyed this round", HudKit.Dim));
+        v.AddChild(MissionCard(45, "Tactical Precision", "Control any three objectives.", "2 VP", "You control 1 of 3", HudKit.Dim));
+        return new CollapsePanel("Mission", "M", "You 3 VP - Orcs 2 VP", v, 350);
+    }
+
+    private static Control MissionCard(int number, string name, string needs, string vp, string status, Color statusColour)
+    {
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 0);
+        var h = new HBoxContainer();
+        h.AddThemeConstantOverride("separation", 6);
+        h.AddChild(HudKit.Text(number.ToString(), 12, HudKit.Dim, HudKit.Bold));
+        var n = HudKit.Text(name.ToUpperInvariant(), 14, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1));
+        n.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        h.AddChild(n);
+        h.AddChild(HudKit.Chip(vp, Palette.RuleGold, true, 12));
+        col.AddChild(h);
+        var t = HudKit.Text(needs, 13, HudKit.Dim, HudKit.Medium);
+        t.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        col.AddChild(t);
+        col.AddChild(HudKit.Text(status, 12, statusColour, HudKit.Semi));
+        return HudKit.Panel(new ChamferBox { Fill = new Color(0, 0, 0, 0.28f), Border = HudKit.Edge with { A = 0.45f }, Cut = 6, ContentMarginLeft = 7, ContentMarginRight = 7, ContentMarginTop = 3, ContentMarginBottom = 4 }, col);
     }
 }
