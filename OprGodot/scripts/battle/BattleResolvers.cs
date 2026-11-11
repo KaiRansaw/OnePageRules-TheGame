@@ -60,6 +60,18 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<ChooseSpellRequest, ChooseSpellReply>(r => new SpellDecision(r)));
         registry.RegisterResolver(new Ask<CastAssistRequest, CastAssistReply>(r => new CastAssistDecision(r)));
         registry.RegisterResolver(new Ask<PlaceObjectsRequest<ModelData>, CancellableResult<List<PlacedObjectEntry<ModelData>>>>(r => new PlaceDecision(r)));
+        // Build 1.54: the rest of the battle's decisions (they were the bot's until now).
+        registry.RegisterResolver<CancellableSelectionRequest<UnitData>, CancellableResult<DataBinding<UnitData>>>(
+            new Ask<CancellableSelectionRequest<UnitData>, CancellableResult<DataBinding<UnitData>>>(r => new CancellableUnitPickDecision(r)));
+        registry.RegisterResolver(new Ask<AssignWoundsRequest, AssignWoundsResults>(r => new WoundsDecision(r)));
+        registry.RegisterResolver(new Ask<ConsolidationMoveRequest, List<ModelMoveEntry>>(r => new ConsolidateDecision(r)));
+        registry.RegisterResolver(new Ask<PickUnitLeadersRequest, CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(r => new LeadersDecision(r)));
+        registry.RegisterResolver(new Ask<PickCommandGroupUnitsRequest, CancellableResult<List<DataBinding<UnitData>>>>(r => new CommandGroupDecision(r)));
+        registry.RegisterResolver(new Ask<PickStringsRequest, List<string>>(r => new PickStringsDecision(r)));
+        registry.RegisterResolver(new Ask<ChooseDeploymentZoneRequest, DataBinding<RectangularZone>>(r => new ZoneDecision(r)));
+        registry.RegisterResolver(new Ask<AircraftAdvanceRequest, AircraftAdvanceResult>(r => new AircraftDecision(r)));
+        registry.RegisterResolver(new Ask<PlaceObjectiveRequest, Position>(r => new ObjectiveDecision(r)));
+        registry.RegisterResolver(new Ask<PlaceOneTerrainRequest, TerrainPlacementResult>(r => new TerrainDecision(r)));
         registry.RegisterResolver(new Ask<ChooseRangedAttackRequest, CancellableResult<ChooseRangedAttackRequest.RangedAttackChoice>>(r => new ShootDecision(r)));
     }
 

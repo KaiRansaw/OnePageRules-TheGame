@@ -58,6 +58,8 @@ public partial class ScriptedRun : Node
             }
             // "import:<share link>" pastes a link into the open Import from Army Forge box and imports it.
             if (name.StartsWith("import:") && Find<ImportArmyPopup>(GetTree().Root) is { } import) { import.ImportLink(name[7..]); _wait = 240; return; }
+            // "vm:SetFastPlay=true;true;true" calls that lobby setter (test runs of settings with no button press path).
+            if (name.StartsWith("vm:") && Find<LobbyScreen>(GetTree().Root) is { } vmLobby) { CallVm(vmLobby.Session.Vm, name[3..]); return; }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
@@ -126,6 +128,23 @@ public partial class ScriptedRun : Node
         if (node is T t) yield return t;
         foreach (Node child in node.GetChildren())
             foreach (T x in AllOf<T>(child)) yield return x;
+    }
+
+    private static void CallVm(object vm, string call)
+    {
+        string method = call.Split('=')[0];
+        string[] args = call.Contains('=') ? call[(call.IndexOf('=') + 1)..].Split(';') : Array.Empty<string>();
+        var m = vm.GetType().GetMethods().FirstOrDefault(x => x.Name == method && x.GetParameters().Length == args.Length);
+        if (m == null) { GD.PrintErr($"ScriptedRun: no lobby setter {method}/{args.Length}"); return; }
+        var ps = m.GetParameters();
+        object?[] values = new object?[args.Length];
+        for (int i = 0; i < args.Length; i++)
+        {
+            Type t = Nullable.GetUnderlyingType(ps[i].ParameterType) ?? ps[i].ParameterType;
+            values[i] = t.IsEnum ? Enum.Parse(t, args[i]) : Convert.ChangeType(args[i], t, System.Globalization.CultureInfo.InvariantCulture);
+        }
+        m.Invoke(vm, values);
+        GD.Print($"ScriptedRun: {call}");
     }
 
     private static T? Find<T>(Node node) where T : Node

@@ -695,48 +695,77 @@ public sealed class YesNoDecision : Decision<bool>
 /// Pick a unit (which to deploy, a spell target, a transport...). Kai, 2026-11-10: no pop-up list - the
 /// left-hand list marks the choices (and why the others can't be picked), and the table is clickable.
 /// </summary>
-public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
+/// <summary>A unit pick of any reply shape - the battle screen follows its side of the list (the ENEMY tab).</summary>
+public interface IUnitPick { }
+
+/// <summary>
+/// Pick a unit: in the left-hand list or on the table, the choices outlined in gold. One class for every unit pick
+/// the engine asks (a plain selection, a cancellable one, ...); <paramref name="pick"/> turns the chosen unit into
+/// the reply and <paramref name="cancel"/>, when there is a way out, makes the "no thanks" reply.
+/// </summary>
+public class UnitPickDecision<T> : Decision<T>, IUnitPick
 {
-    private readonly SelectionRequest<UnitData> _r;
+    public sealed record Option(DataBinding<UnitData> Unit, string Name, string? Reason = null);
+
+    private readonly string _instructions;
+    private readonly IReadOnlyList<Option> _valid, _invalid;
+    private readonly string? _cancelLabel;
+    private readonly Func<DataBinding<UnitData>, T> _pick;
+    private readonly Func<T>? _cancel;
     private BattleScreen? _s;
-    public UnitPickDecision(SelectionRequest<UnitData> r) => _r = r;
-    public override string Prompt => _r.Instructions;
+
+    public UnitPickDecision(string instructions, IReadOnlyList<Option> valid, IReadOnlyList<Option> invalid,
+        Func<DataBinding<UnitData>, T> pick, string? cancelLabel = null, Func<T>? cancel = null)
+    {
+        _instructions = instructions;
+        _valid = valid;
+        _invalid = invalid;
+        _pick = pick;
+        _cancelLabel = cancel != null ? cancelLabel ?? "Back" : null;
+        _cancel = cancel;
+    }
+
+    public override string Prompt => _instructions;
     public override string Hint => "Click it in the list on the left, or on the table.";
-    public override void AutoPlay(BattleScreen s) => Complete(_r.ValidOptions[0].Option);
-    public override string? CancelLabel => _r.AllowCancel ? _r.CancelLabel : null;
-    public override void Cancel() { if (_r.AllowCancel) Complete(null!); }
+    public override void AutoPlay(BattleScreen s)
+    {
+        if (_valid.Count > 0) Complete(_pick(_valid[0].Unit));
+        else if (_cancel != null) Complete(_cancel());
+    }
+    public override string? CancelLabel => _cancelLabel;
+    public override void Cancel() { if (_cancel != null) Complete(_cancel()); }
 
     public override UnitMark? ListMark(IUnit unit)
     {
-        if (_r.ValidOptions.Any(o => o.Option.GetValue().ID.Equals(unit.ID))) return new UnitMark(true, null);
-        var bad = _r.InvalidOptions.FirstOrDefault(o => o.Option.GetValue().ID.Equals(unit.ID));
+        if (_valid.Any(o => o.Unit.GetValue().ID.Equals(unit.ID))) return new UnitMark(true, null);
+        var bad = _invalid.FirstOrDefault(o => o.Unit.GetValue().ID.Equals(unit.ID));
         return bad != null ? new UnitMark(false, bad.Reason) : null;
     }
 
-    public override bool WantsEnemyList => _s != null && _r.ValidOptions.Count > 0
-        && _r.ValidOptions.All(o => !_s.Session.IsMine(o.Option.GetValue().PlayerID));
+    public override bool WantsEnemyList => _s != null && _valid.Count > 0
+        && _valid.All(o => !_s.Session.IsMine(o.Unit.GetValue().PlayerID));
 
     /// <summary>
     /// The choices are also listed in the actions area when the list on the left can't show them all on one
     /// tab (targets on both sides - a spell that can hit friend or foe), or when the engine's labels say more
     /// than the unit's name ("Hive Lord (via Synaptic Relay, +1)"). A plain deploy / activate pick has no list.
     /// </summary>
-    private bool Listed => _s != null && _r.ValidOptions.Count > 0
-        && (_r.ValidOptions.Select(o => _s.Session.IsMine(o.Option.GetValue().PlayerID)).Distinct().Count() > 1
-            || _r.ValidOptions.Any(o => o.Name != o.Option.GetValue().Name));
+    private bool Listed => _s != null && _valid.Count > 0
+        && (_valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1
+            || _valid.Any(o => o.Name != o.Unit.GetValue().Name));
 
     public override string? RowsTitle => "Choose";
 
     public override IReadOnlyList<ChoiceRow>? Rows => !Listed ? null
-        : _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(o.Option)))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+        : _valid.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(_pick(o.Unit))))
+            .Concat(_invalid.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
 
     public override void Shown(BattleScreen s)
     {
         _s = s;
         // Every unit that can be picked gets a gold outline on the table (spell targets, transports...).
-        s.Table.SetGhosts("targets", Array.Empty<BattleTable.Ghost>(), _r.ValidOptions
-            .SelectMany(o => BattleTable.Outline(o.Option.GetValue(), 0.45f, HudKit.Gold, 0.16f)));
+        s.Table.SetGhosts("targets", Array.Empty<BattleTable.Ghost>(), _valid
+            .SelectMany(o => BattleTable.Outline(o.Unit.GetValue(), 0.45f, HudKit.Gold, 0.16f)));
         Version++;
     }
 
@@ -745,17 +774,38 @@ public sealed class UnitPickDecision : Decision<DataBinding<UnitData>>
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (s.Table.UnitAt(at) is not { } unit) return false;
-        var o = _r.ValidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(unit.ID));
+        var o = _valid.FirstOrDefault(v => v.Unit.GetValue().ID.Equals(unit.ID));
         if (o == null) return false;
-        Complete(o.Option);
+        Complete(_pick(o.Unit));
         return true;
     }
 
     public override void UnitPicked(BattleScreen s, IUnit unit)
     {
-        if (_r.ValidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(unit.ID)) is { } o) Complete(o.Option);
-        else if (_r.InvalidOptions.FirstOrDefault(v => v.Option.GetValue().ID.Equals(unit.ID)) is { } bad) s.Toast($"{unit.Name}: {bad.Reason}");
+        if (_valid.FirstOrDefault(v => v.Unit.GetValue().ID.Equals(unit.ID)) is { } o) Complete(_pick(o.Unit));
+        else if (_invalid.FirstOrDefault(v => v.Unit.GetValue().ID.Equals(unit.ID)) is { } bad) s.Toast($"{unit.Name}: {bad.Reason}");
     }
+}
+
+/// <summary>The engine's plain unit selection (activate, deploy, spell targets...).</summary>
+public sealed class UnitPickDecision : UnitPickDecision<DataBinding<UnitData>>
+{
+    public UnitPickDecision(SelectionRequest<UnitData> r) : base(r.Instructions,
+        r.ValidOptions.Select(o => new Option(o.Option, o.Name)).ToList(),
+        r.InvalidOptions.Select(o => new Option(o.Option, o.Name, o.Reason)).ToList(),
+        u => u, r.AllowCancel ? r.CancelLabel : null, r.AllowCancel ? () => null! : null) { }
+}
+
+/// <summary>
+/// A pick with a "no thanks": Storm and multi-target abilities, Retreating Strike, a unit to activate next,
+/// moving through an enemy... (24 places in the engine; the bot answered them all until build 1.54).
+/// </summary>
+public sealed class CancellableUnitPickDecision : UnitPickDecision<CancellableResult<DataBinding<UnitData>>>
+{
+    public CancellableUnitPickDecision(CancellableSelectionRequest<UnitData> r) : base(r.Instructions,
+        r.ValidOptions.Select(o => new Option(o.Option, o.Name)).ToList(),
+        r.InvalidOptions.Select(o => new Option(o.Option, o.Name, o.Reason)).ToList(),
+        u => new Selected<DataBinding<UnitData>>(u), "Skip", () => new Cancelled<DataBinding<UnitData>>()) { }
 }
 
 public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>

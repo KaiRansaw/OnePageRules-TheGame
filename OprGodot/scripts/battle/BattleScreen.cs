@@ -85,6 +85,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private static readonly HashSet<string>? AutoPlayOnly = OS.GetCmdlineUserArgs().FirstOrDefault(x => x.StartsWith("--autoplay="))
         ?["--autoplay=".Length..].Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
+    /// <summary>Which kinds of decision the test driver has answered (printed once each, so a run's log shows what was exercised).</summary>
+    private static readonly Dictionary<string, int> AutoPlayCounts = new();
+
     private static bool AutoPlays(Decision d) => AutoPlayOnly == null || AutoPlayOnly.Contains(d.GetType().Name);
     public Control Hud => _hud;
 
@@ -93,7 +96,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public override void _Process(double delta)
     {
         UpdateHover(delta);
-        if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open)) { Decisions.Prompt(); if (!open.Done) open.AutoPlay(this); }
+        if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
+        {
+            Decisions.Prompt();
+            if (!open.Done) { if (AutoPlayCounts.TryAdd(open.GetType().Name, 0)) GD.Print($"Autoplay: first {open.GetType().Name}"); open.AutoPlay(this); }
+        }
         _tick += delta;
         if (_tick < 0.15) return;
         _tick = 0;
@@ -577,7 +584,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         if (!ReferenceEquals(open, _listFollowed))
         {
             _listFollowed = open;
-            if (open is UnitPickDecision && open.WantsEnemyList != _showEnemy) ShowList(open.WantsEnemyList);
+            if (open is IUnitPick && open.WantsEnemyList != _showEnemy) ShowList(open.WantsEnemyList);
             else if (open is ActivateDecision && _showEnemy) ShowList(false);
         }
 
@@ -1357,6 +1364,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     private void ShowGameOver()
     {
+        GD.Print($"Game over: {Session.EndedText}");
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 12);
         v.AddChild(HudKit.Text("GAME OVER", 48, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
