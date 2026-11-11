@@ -13,6 +13,20 @@ public partial class MenuBackdrop : Node
     private float _angle = 2.3f;
     public bool Orbit { get; set; } = true;
 
+    /// <summary>The one backdrop (Main adds it). A game in progress hides it and puts it back on the way out.</summary>
+    public static MenuBackdrop? Instance { get; private set; }
+
+    public void SetActive(bool on)
+    {
+        // Taken out of the tree, not hidden: its environment and camera would fight the battle table's.
+        if (on && _table.GetParent() == null) { AddChild(_table); _table.Camera.MakeCurrent(); Place(); }
+        else if (!on && _table.GetParent() == this) RemoveChild(_table);
+        SetProcess(on);
+    }
+
+    public override void _EnterTree() => Instance = this;
+    public override void _ExitTree() { if (Instance == this) Instance = null; }
+
     public override void _Ready()
     {
         _table = new MockTable { ShowLabels = false };

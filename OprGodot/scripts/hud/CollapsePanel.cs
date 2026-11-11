@@ -17,6 +17,8 @@ public partial class CollapsePanel : PanelContainer
         set { _body.Visible = !value; _arrow.Text = value ? "+" : "-"; _summary.Visible = value; Size = new Vector2(Size.X, 0); }
     }
 
+    public void SetSummary(string text) => _summary.Text = text;
+
     public CollapsePanel(string title, string hotkey, string summary, Control body, float width)
     {
         AddThemeStyleboxOverride("panel", new ChamferBox

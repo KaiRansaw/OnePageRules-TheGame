@@ -138,6 +138,7 @@ public partial class LobbyScreen : Control
     public override void _Process(double delta)
     {
         Session.Tick();
+        TakeLaunch();
         _poll += delta;
         if (_poll < 0.25) return;
         _poll = 0;
@@ -817,11 +818,27 @@ public partial class LobbyScreen : Control
     /// </summary>
     private void StartGame()
     {
-        Session.PersistHostSettings();
-        App.I.OpenNotYet("The table",
-            "Everything in this lobby is set and remembered for next time. The 3D table, the in-game HUD Kai picked "
-            + "and the controls are port steps 3 and 4. Until then, play this game in the Raylib build - its lobby "
-            + "opens on these same settings.");
+        // The engine builds the game on its own thread and hands it back through the lobby's OnLaunched;
+        // _Process picks it up and opens the table.
+        if (!Session.Launch())
+            ShowLaunchError(Session.LastLaunchError ?? "Launch failed.");
+    }
+
+    private void ShowLaunchError(string text)
+    {
+        var d = new AcceptDialog { Title = "Can't launch", DialogText = text };
+        d.Confirmed += () => d.QueueFree();
+        d.Canceled += () => d.QueueFree();
+        AddChild(d);
+        d.PopupCentered();
+    }
+
+    /// <summary>A launched game (host or client) goes straight to the table.</summary>
+    private void TakeLaunch()
+    {
+        if (Session.TakeLaunchedGame() is not { } game) return;
+        var session = FdgRaylib.Game.GameSession.Start(game, Session, Battle.BattleResolvers.Register);
+        App.I.Open<Battle.BattleScreen>(Scenes.Battle, s => s.Session = session);
     }
 }
 
