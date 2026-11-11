@@ -256,9 +256,12 @@ public partial class BattleScreen : Control, IOwnBackdrop
         bool overHud = GetViewport().GuiGetHoveredControl() is { } c && c != this && c != _hud;
         IUnit? under = overHud ? null : _table.UnitAt(mouse);
         if (!overHud) Decisions.TableHover(mouse);
+        _table.ShowCursor(overHud ? null : _table.TableAt(mouse));
         if (under != null && Session.IsMine(under.PlayerID)) under = null;
+        _table.HoverUnit = under?.ID;
         if (!ReferenceEquals(under, _hoverUnit))
         {
+            if (_hoverUnit != null && !_pinned.ContainsKey(_hoverUnit.ID)) _table.ShowEnemyNames.Remove(_hoverUnit.ID);
             _hoverUnit = under;
             _hoverTime = 0;
             _hoverTip?.QueueFree();
@@ -1070,6 +1073,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
         // Click: the camera goes to the fight (or to the unit).
         panel.GuiInput += e =>
         {
+            // Right-click: keep this block's card up as a window (move / minimise / close) - Kai, 2026-11-11.
+            if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }) { PinBlockCard(b); panel.AcceptEvent(); return; }
             if (e is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) return;
             BattleReport.Line? fight = b.Lines.FirstOrDefault(l => l.Attack != null);
             Vector2? at = fight != null ? Where(fight.Target, fight.ToAt) : Where(me, null);
@@ -1093,6 +1098,33 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private void ShowBlockCard(BattleReport.Block b)
     {
         HideBlockCard();
+        if (BlockCardBody(b) is not { } v) return;
+        _blockCard = HudKit.Panel(Tight(8).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = Colors.White with { A = 0.6f }; }), v);
+        _blockCard.MouseFilter = MouseFilterEnum.Ignore;
+        _hud.AddChild(_blockCard);
+        CallDeferred(nameof(PlaceBlockCard));
+    }
+
+    private readonly Dictionary<int, FloatingPanel> _pinnedBlocks = new();
+
+    /// <summary>A block's card as its own window; right-clicking the same block again brings that window back.</summary>
+    private void PinBlockCard(BattleReport.Block b)
+    {
+        int key = b.Activation?.Id ?? b.Lines.FirstOrDefault()?.Id ?? 0;
+        if (_pinnedBlocks.TryGetValue(key, out FloatingPanel? open) && IsInstanceValid(open)) { open.Minimised = false; return; }
+        Control body = BlockCardBody(b) ?? HudKit.Text("Nothing was rolled.", 14, HudKit.Dim, HudKit.Medium);
+        string title = b.Unit is { } u ? NameOf(u, "Report") : "Report";
+        var panel = new FloatingPanel(title, body, b.Unit is { } id ? SideOf(id) : HudKit.Teal);
+        panel.Closed += () => _pinnedBlocks.Remove(key);
+        _hud.AddChild(panel);
+        Vector2 mouse = GetViewport().GetMousePosition();
+        panel.Position = new Vector2(Mathf.Max(10, mouse.X - 460), Mathf.Clamp(mouse.Y - 200, 10, GetViewportRect().Size.Y - 420));
+        _pinnedBlocks[key] = panel;
+        HideBlockCard();
+    }
+
+    private Control? BlockCardBody(BattleReport.Block b)
+    {
         var v = new VBoxContainer { CustomMinimumSize = new Vector2(380, 0), MouseFilter = MouseFilterEnum.Ignore };
         v.AddThemeConstantOverride("separation", 3);
         bool any = false;
@@ -1115,11 +1147,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
             }
             foreach (string d in l.Details) v.AddChild(HudKit.Text("  " + d, 13, HudKit.Dim, HudKit.Medium));
         }
-        if (!any) return;
-        _blockCard = HudKit.Panel(Tight(8).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = Colors.White with { A = 0.6f }; }), v);
-        _blockCard.MouseFilter = MouseFilterEnum.Ignore;
-        _hud.AddChild(_blockCard);
-        CallDeferred(nameof(PlaceBlockCard));
+        if (!any) return null;
+        v.AddChild(HudKit.Text("Right-click the block to keep this open.", 12, HudKit.Dim with { A = 0.7f }, HudKit.Medium));
+        return v;
     }
 
     private void PlaceBlockCard()

@@ -86,44 +86,99 @@ public partial class BattleTable : Node3D
     /// </summary>
     private string _outlineSig = "";
 
+    /// <summary>An enemy unit under the pointer: its ranged weapons' reach is drawn too (Kai, 2026-11-11).</summary>
+    public UnitID? HoverUnit { get; set; }
+
     private void SyncOutlines()
     {
-        IUnit? sel = Selected is { } sid ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(sid)) : null;
+        IUnit? Find(UnitID? id) => id is { } x ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(x)) : null;
+        IUnit? sel = Find(Selected), hover = Find(HoverUnit);
+        if (hover != null && sel != null && hover.ID.Equals(sel.ID)) hover = null;
         var hl = Highlight.Count == 0 ? new List<IUnit>() : Session.Table.Units.Objects.Where(u => Highlight.Contains(u.ID)).ToList();
         static string Sig(IUnit u) => u.ID.ID + (u.GetIsOnBattlefield() ? "" : "off") + string.Concat(u.Models.Where(m => m.GetIsAlive())
             .Select(m => $"{m.Position.x:0.0},{m.Position.z:0.0};"));
-        string sig = (sel == null ? "-" : Sig(sel)) + "|" + string.Join("|", hl.Select(Sig));
+        string sig = (sel == null ? "-" : Sig(sel)) + "|" + (hover == null ? "-" : Sig(hover)) + "|" + string.Join("|", hl.Select(Sig));
         if (sig == _outlineSig) return;
         _outlineSig = sig;
 
         var lines = new List<GhostLine>();
         if (sel != null) lines.AddRange(Outline(sel, 0.35f, HudKit.Lime, 0.2f));
-
         foreach (IUnit u in hl.Where(u => sel == null || !u.ID.Equals(sel.ID))) lines.AddRange(Outline(u, 0.35f, Colors.White, 0.18f));
         SetGhosts("select", Array.Empty<Ghost>(), lines);
 
-        // The selected unit's weapon ranges.
-        var rangeLines = new List<GhostLine>();
+        // The selected unit's weapon ranges, and the hovered enemy's (in warm colours, so the two read apart).
+        var (rl, rt) = sel != null && sel.GetIsOnBattlefield()
+            ? RangeShapes(sel.Models.Where(m => m.GetIsAlive()).Select(m => (m, new Vector2(m.Position.x, m.Position.z))), CoolRanges)
+            : (new List<GhostLine>(), new List<GhostText>());
+        SetGhosts("range", Array.Empty<Ghost>(), rl, rt);
+        var (hlines, htexts) = hover != null && hover.GetIsOnBattlefield()
+            ? RangeShapes(hover.Models.Where(m => m.GetIsAlive()).Select(m => (m, new Vector2(m.Position.x, m.Position.z))), WarmRanges)
+            : (new List<GhostLine>(), new List<GhostText>());
+        SetGhosts("hoverrange", Array.Empty<Ghost>(), hlines, htexts);
+    }
+
+    public static readonly Color[] CoolRanges = { HudKit.Teal, HudKit.Gold, new(0.8f, 0.55f, 1f), HudKit.Lime };
+    public static readonly Color[] WarmRanges = { new(1f, 0.45f, 0.4f), new(1f, 0.7f, 0.35f), new(1f, 0.5f, 0.8f), new(0.95f, 0.85f, 0.5f) };
+
+    /// <summary>
+    /// Weapon ranges as outlines: one per distinct range, measured from the models that carry a weapon of that
+    /// range, at the positions given (where they stand, or where a planned move would put them), named.
+    /// </summary>
+    public static (List<GhostLine> Lines, List<GhostText> Texts) RangeShapes(IEnumerable<(IModel Model, Vector2 At)> models, Color[] palette)
+    {
+        var list = models.ToList();
+        var lines = new List<GhostLine>();
         var texts = new List<GhostText>();
-        if (sel != null && sel.GetIsOnBattlefield())
+        var ranges = list.SelectMany(x => x.Model.Weapons).Where(w => w.RangeInches > 0)
+            .GroupBy(w => w.RangeInches).OrderBy(g => g.Key).ToList();
+        for (int i = 0; i < ranges.Count; i++)
         {
-            var alive = sel.Models.Where(m => m.GetIsAlive()).ToList();
-            var ranges = alive.SelectMany(m => m.Weapons).Where(w => w.RangeInches > 0)
-                .GroupBy(w => w.RangeInches).OrderBy(g => g.Key).ToList();
-            Color[] palette = { HudKit.Teal, HudKit.Gold, new Color(0.8f, 0.55f, 1f), HudKit.Lime };
-            for (int i = 0; i < ranges.Count; i++)
-            {
-                Color c = palette[i % palette.Length];
-                // Measured from the models that carry a weapon of this range, not the whole unit.
-                float range = ranges[i].Key;
-                Vector2[] hull = Hull(alive.Where(m => m.Weapons.Any(w => w.RangeInches == range)).ToList(), range);
-                for (int k = 0; k + 1 < hull.Length; k++) rangeLines.Add(new GhostLine(hull[k], hull[k + 1], c with { A = 0.85f }, 0.14f));
-                if (hull.Length == 0) continue;
-                Vector2 top = hull.OrderByDescending(p => p.Y).First();
-                texts.Add(new GhostText(top.X, top.Y + 0.6f, $"{string.Join(", ", ranges[i].Select(w => w.Name).Distinct())} {ranges[i].Key:0}\"", c));
-            }
+            Color c = palette[i % palette.Length];
+            float range = ranges[i].Key;
+            Vector2[] hull = HullAt(list.Where(x => x.Model.Weapons.Any(w => w.RangeInches == range))
+                .Select(x => (x.At, x.Model.BaseRadiusInches + range)).ToList());
+            for (int k = 0; k + 1 < hull.Length; k++) lines.Add(new GhostLine(hull[k], hull[k + 1], c with { A = 0.85f }, 0.14f));
+            if (hull.Length == 0) continue;
+            Vector2 top = hull.OrderByDescending(p => p.Y).First();
+            texts.Add(new GhostText(top.X, top.Y + 0.6f, $"{string.Join(", ", ranges[i].Select(w => w.Name).Distinct())} {range:0}\"", c));
         }
-        SetGhosts("range", Array.Empty<Ghost>(), rangeLines, texts);
+        return (lines, texts);
+    }
+
+    /// <summary>The convex outline of circles (centre, radius), closed.</summary>
+    public static Vector2[] HullAt(List<(Vector2 At, float Radius)> circles)
+    {
+        if (circles.Count == 0) return Array.Empty<Vector2>();
+        var pts = new List<Vector2>();
+        foreach (var (at, r) in circles)
+            for (int a = 0; a < 360; a += 8)
+            {
+                float rad = Mathf.DegToRad(a);
+                pts.Add(at + new Vector2(Mathf.Cos(rad) * r, Mathf.Sin(rad) * r));
+            }
+        return Geometry2D.ConvexHull(pts.ToArray());
+    }
+
+    // ------------------------------------------------------------------ the pointer on the table
+
+    private MeshInstance3D? _cursor;
+
+    /// <summary>
+    /// Where the pointer is on the table (Kai, 2026-11-11: a marker so it is clear exactly what point a click
+    /// means - placements had looked out of step with the mouse). Null hides it.
+    /// </summary>
+    public void ShowCursor(Vector2? at)
+    {
+        if (_cursor == null)
+        {
+            var mat = Mat(Colors.White with { A = 0.95f }, 0.5f, Colors.White, 1.5f);
+            mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+            mat.NoDepthTest = true;
+            _cursor = Mesh(this, new TorusMesh { InnerRadius = 0.32f, OuterRadius = 0.5f, Rings = 32, RingSegments = 6 }, mat, Vector3.Zero);
+            Mesh(_cursor, new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.12f, Height = 0.05f }, mat, Vector3.Zero);
+        }
+        _cursor.Visible = at != null;
+        if (at is { } p) _cursor.Position = World(p.X, p.Y, 0.12f);
     }
 
     /// <summary>The outline round a unit's models, <paramref name="pad"/> inches out from their bases.</summary>
@@ -178,7 +233,7 @@ public partial class BattleTable : Node3D
     public readonly record struct GhostLine(Vector2 From, Vector2 To, Color Colour, float Width = 0.12f);
 
     /// <summary>A floating word on the table (a weapon's name on its range outline).</summary>
-    public readonly record struct GhostText(float X, float Z, string Text, Color Colour);
+    public readonly record struct GhostText(float X, float Z, string Text, Color Colour, float Size = 0.03f);
 
     private sealed class Layer
     {
@@ -251,7 +306,7 @@ public partial class BattleTable : Node3D
             {
                 var l = new Label3D
                 {
-                    Text = t.Text, Font = HudKit.Bold, FontSize = 48, PixelSize = 0.03f, OutlineSize = 12, Modulate = t.Colour,
+                    Text = t.Text, Font = HudKit.Bold, FontSize = 48, PixelSize = t.Size, OutlineSize = 12, Modulate = t.Colour,
                     Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, OutlineModulate = new Color(0, 0, 0, 0.85f),
                     Position = World(t.X, t.Z, 0.6f),
                 };

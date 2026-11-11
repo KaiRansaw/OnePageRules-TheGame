@@ -421,6 +421,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     {
         if (_pending is not { } p) return;
         _s?.Table.ClearGhosts("move");
+        _s?.Table.ClearGhosts("moverange");
         Complete(new Selected<List<ModelMoveEntry>>(p.Moves));
     }
 
@@ -429,11 +430,12 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _pending = null;
         _lastHover = new(-9999, -9999);
         _s?.Table.ClearGhosts("move");
+        _s?.Table.ClearGhosts("moverange");
         Version++;
     }
 
     public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); }
-    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("move");
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -474,15 +476,20 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             lines.Add(new BattleTable.GhostLine(from, to, c with { A = 0.85f }));
         }
         s.Table.SetGhosts("move", ghosts, lines);
+        // Kai, 2026-11-11: the weapon ranges travel with the ghost, so you see what you'd reach from there.
+        var byId = Unit.Models.Where(m => m.GetIsAlive()).ToDictionary(m => m.ID);
+        var (rl, rt) = BattleTable.RangeShapes(plan.Ends.Where(e => byId.ContainsKey(e.Id))
+            .Select(e => (byId[e.Id], new Vector2(e.X, e.Z))), BattleTable.CoolRanges);
+        s.Table.SetGhosts("moverange", Array.Empty<BattleTable.Ghost>(), rl, rt);
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)
     {
         if (_pending != null) return;   // the placed move stays put until confirmed or changed
-        if (at.DistanceTo(_lastHover) < 3) return;
+        if (at.DistanceTo(_lastHover) < 2) return;
         _lastHover = at;
         _plan = PlanFor(s, at);
-        if (_plan == null || _plan.Valid && _plan.Distance < 0.05f) { s.Table.ClearGhosts("move"); _note = ""; Version++; return; }
+        if (_plan == null || _plan.Valid && _plan.Distance < 0.05f) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); _note = ""; Version++; return; }
         Draw(s, _plan, placed: false);
         _note = _plan.Valid ? $"{KindName(_plan)}: {_plan.Distance:0.0}\" - click to place the move." : $"Can't go there: {_plan.Problem}.";
         Version++;
@@ -776,16 +783,21 @@ public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
     private void Draw()
     {
         if (_s == null) return;
+        // Kai, 2026-11-11: one outline round the unit, a number on each model, a ring only on the hovered one.
         var rings = new List<BattleTable.Ghost>();
         var texts = new List<BattleTable.GhostText>();
+        var lines = new List<BattleTable.GhostLine>();
+        var units = _s.Session.Table.Units.Objects
+            .Where(u => u.Models.Any(m => _r.ValidOptions.Any(o => o.Option.GetValue().ID.Equals(m.ID)))).ToList();
+        foreach (IUnit u in units) lines.AddRange(BattleTable.Outline(u, 0.35f, HudKit.Gold, 0.18f));
         for (int i = 0; i < _r.ValidOptions.Count; i++)
         {
             ModelData m = _r.ValidOptions[i].Option.GetValue();
             bool hot = i == _hovered;
-            rings.Add(new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + (hot ? 0.5f : 0.25f), hot ? HudKit.Lime : HudKit.Gold, Ring: true));
-            texts.Add(new BattleTable.GhostText(m.Position.x, m.Position.z, (i + 1).ToString(), hot ? HudKit.Lime : HudKit.Gold));
+            if (hot) rings.Add(new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + 0.3f, HudKit.Lime, Ring: true));
+            texts.Add(new BattleTable.GhostText(m.Position.x, m.Position.z, (i + 1).ToString(), hot ? HudKit.Lime : HudKit.Gold, 0.02f));
         }
-        _s.Table.SetGhosts("pick", rings, null, texts);
+        _s.Table.SetGhosts("pick", rings, lines, texts);
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
@@ -823,6 +835,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     public override string Hint => AimedPlacement.IsReposition(_r)
         ? "This one can only stay where it is for now."
         : _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+        : _near.Length > 0 ? _near
         : "Click inside the outlined zone - the unit is set up there in formation.";
 
     public override string? CancelLabel => _r.AllowCancel ? "Pick another unit" : null;
@@ -859,8 +872,17 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
                 var b = poly[(i + 1) % poly.Length];
                 lines.Add(new BattleTable.GhostLine(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z), HudKit.Lime with { A = 0.9f }, 0.2f));
             }
-        var rings = _r.EnemyKeepOutDiscs.Select(d => new BattleTable.Ghost(d.Center.x, d.Center.z, d.RadiusInches, Palette.WoundsRed, Ring: true));
-        s.Table.SetGhosts("zone", rings, lines);
+        // Keep-out areas (Scout / Ambush "over 9 inches from enemies"): ONE outline per enemy unit, not a circle per
+        // model (Kai, 2026-11-11). Each disc belongs to the unit whose model it is centred on.
+        var enemyModels = s.Session.Table.Units.Objects.Where(u => u.GetIsOnBattlefield())
+            .SelectMany(u => u.Models.Where(m => m.GetIsAlive()).Select(m => (u.ID, m))).ToList();
+        foreach (var group in _r.EnemyKeepOutDiscs.GroupBy(d => enemyModels.Count == 0 ? default
+                     : enemyModels.OrderBy(x => Mathf.Pow(x.m.Position.x - d.Center.x, 2) + Mathf.Pow(x.m.Position.z - d.Center.z, 2)).First().ID))
+        {
+            Vector2[] hull = BattleTable.HullAt(group.Select(d => (new Vector2(d.Center.x, d.Center.z), d.RadiusInches)).ToList());
+            for (int k = 0; k + 1 < hull.Length; k++) lines.Add(new BattleTable.GhostLine(hull[k], hull[k + 1], Palette.WoundsRed with { A = 0.8f }, 0.16f));
+        }
+        s.Table.SetGhosts("zone", Array.Empty<BattleTable.Ghost>(), lines);
         Version++;
     }
 
@@ -872,27 +894,41 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     private List<PlacedObjectEntry<ModelData>>? PlanAt(BattleScreen s, Vector2 at) =>
         AimedPlacement.IsReposition(_r) || _placer == null || s.Table.TableAt(at) is not { } p ? null : _placer.At(_r, p.X, p.Y);
 
-    private void Draw(BattleScreen s, List<PlacedObjectEntry<ModelData>> plan, bool placed)
+    private string _near = "";
+
+    /// <summary>
+    /// The block, and - when the engine had to shift it away from the pointer to find a legal spot - a line from
+    /// the pointer to where it will really go, so the gap between mouse and unit is never a surprise.
+    /// </summary>
+    private void Draw(BattleScreen s, List<PlacedObjectEntry<ModelData>> plan, bool placed, Vector2? aim)
     {
         Color c = placed ? HudKit.Lime.Lightened(0.25f) : HudKit.Lime;
+        var mid = new Vector2(plan.Average(e => e.Position.x), plan.Average(e => e.Position.z));
+        var lines = new List<BattleTable.GhostLine>();
+        _near = "";
+        if (aim is { } a && a.DistanceTo(mid) > 1.5f)
+        {
+            lines.Add(new BattleTable.GhostLine(a, mid, HudKit.Gold with { A = 0.9f }, 0.1f));
+            _near = $"Can't stand right there - the nearest legal spot is {a.DistanceTo(mid):0}\" away (gold line).";
+        }
         s.Table.SetGhosts("move", plan.Select(e => new BattleTable.Ghost(e.Position.x, e.Position.z,
-            Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), c with { A = placed ? 1.6f : 1f })));
+            Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), c with { A = placed ? 1.6f : 1f })), lines);
+        Version++;
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)
     {
-        if (_pending != null || at.DistanceTo(_lastHover) < 6) return;
+        if (_pending != null || at.DistanceTo(_lastHover) < 2) return;
         _lastHover = at;
-        if (PlanAt(s, at) is { } plan) Draw(s, plan, placed: false);
-        else s.Table.ClearGhosts("move");
+        if (PlanAt(s, at) is { } plan) Draw(s, plan, placed: false, s.Table.TableAt(at));
+        else { s.Table.ClearGhosts("move"); _near = ""; }
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (PlanAt(s, at) is not { } plan) return AimedPlacement.IsReposition(_r);
         _pending = plan;
-        Draw(s, plan, placed: true);
-        Version++;
+        Draw(s, plan, placed: true, s.Table.TableAt(at));
         return true;
     }
 }
