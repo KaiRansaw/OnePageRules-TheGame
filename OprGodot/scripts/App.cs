@@ -144,4 +144,5 @@ public static class Scenes
     public const string Battle = "res://scenes/screens/Battle.tscn";
     public const string LoadGame = "res://scenes/screens/LoadGame.tscn";
     public const string AssetLab = "res://scenes/screens/AssetLab.tscn";
+    public const string FacingReview = "res://scenes/screens/FacingReview.tscn";
 }

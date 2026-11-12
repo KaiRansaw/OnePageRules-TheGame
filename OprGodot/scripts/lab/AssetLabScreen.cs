@@ -66,6 +66,13 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         _folderLabel.Text = _root;
         Rescan();
         GetWindow().FilesDropped += OnFilesDropped;
+        // A screen opened on top (the facing review) hides this one; a hidden Control still draws its 3D world, so the
+        // world comes out of the tree while hidden and goes back, with its camera, when this screen shows again.
+        VisibilityChanged += () =>
+        {
+            if (!Visible && _world.GetParent() == this) RemoveChild(_world);
+            else if (Visible && _world.GetParent() == null) { AddChild(_world); MoveChild(_world, 0); _camera.MakeCurrent(); _list.Clear(); Rescan(); if (_open != null) Open(_open); }
+        };
         ApplyCamera();
         if (_list.FirstOrDefault(UnitModelPaths.IsModel) is { } first) Open(first);
         else ShowNothing();
@@ -74,6 +81,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
     public override void _ExitTree()
     {
         GetWindow().FilesDropped -= OnFilesDropped;
+        if (_world.GetParent() == null) _world.QueueFree();
         MenuBackdrop.Instance?.SetActive(true);
     }
 
@@ -159,6 +167,8 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         left.AddChild(fileRow);
         var dl = Btn("DownloadModels", "Download models...", "Fetch Warhammer 40k models from the ForceOrg Tabletop Simulator mod for an army, saved under each OPR unit's name.", () => OpenDownloads());
         left.AddChild(dl);
+        left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",
+            () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview, r => r.InitialFilter = _filter.Text)));
         _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png) or a picture onto the window to copy it in and open it.", 14, HudKit.Dim, HudKit.Semi);
         _hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         left.AddChild(_hint);
@@ -542,27 +552,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
             float foot = _settings.BaseMm > 0 ? TableLook.BaseTop : 0;
             return (pivot.Transform, new Aabb(new Vector3(-wIn / 2, foot, -0.01f), new Vector3(wIn, hIn, 0.02f)));
         }
-        Basis up = _settings.UpAxis switch
-        {
-            EUpAxis.ZUp => new Basis(Vector3.Right, -Mathf.Pi / 2),
-            EUpAxis.ZDown => new Basis(Vector3.Right, Mathf.Pi / 2),
-            EUpAxis.YDown => new Basis(Vector3.Right, Mathf.Pi),
-            EUpAxis.XUp => new Basis(Vector3.Back, Mathf.Pi / 2),
-            EUpAxis.XDown => new Basis(Vector3.Back, -Mathf.Pi / 2),
-            _ => Basis.Identity,
-        };
-        Basis turn = new Basis(Vector3.Up, Mathf.DegToRad(_settings.YawDegrees)) * up;
-        pivot.Transform = new Transform3D(turn, Vector3.Zero);
-        var holder = (Node3D)pivot.GetParent();
-        Aabb raw = AssetLoader.Bounds(body, holder) ?? new Aabb(Vector3.Zero, Vector3.One);
-        float h = Mathf.Max(raw.Size.Y, 1e-4f);
-        float s = _settings.HeightMm > 0 ? _settings.HeightMm / UnitModelSettings.MmPerInch / h : 1f;
-        Vector3 centre = raw.GetCenter() * s;
-        float footY = (_settings.BaseMm > 0 ? TableLook.BaseTop : 0f) - raw.Position.Y * s;
-        Vector3 offset = _settings.CentreOnBase ? new Vector3(-centre.X, footY, -centre.Z) : new Vector3(0, footY, 0);
-        pivot.Transform = new Transform3D(turn.Scaled(Vector3.One * s), offset);
-        Aabb done = new(raw.Position * s + offset, raw.Size * s);
-        return (pivot.Transform, done);
+        return ModelPlacement.Place(pivot, body, _settings);
     }
 
     /// <summary>A picture standing up on the base, always turned to the camera - how the Raylib build shows a unit's picture.</summary>

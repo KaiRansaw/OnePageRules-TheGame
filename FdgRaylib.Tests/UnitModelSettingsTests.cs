@@ -45,6 +45,20 @@ public class UnitModelSettingsTests
     }
 
     [Test]
+    public void FacingChecked_RoundTrips_AndDownloadDefaultsToo()
+    {
+        string model = Path.Combine(_dir, "Hormagaunt (45).glb");
+        new UnitModelSettings { YawDegrees = 90, FacingChecked = true }.Save(model);
+        Assert.That(UnitModelSettings.Load(model)!.FacingChecked, Is.True);
+        Assert.That(UnitModelSettings.Load(model)!.YawDegrees, Is.EqualTo(90f));
+
+        Assert.That(ModelDownloadDefaults.Load(_dir).YawDegrees, Is.EqualTo(0f), "no file = no turn");
+        new ModelDownloadDefaults { YawDegrees = 180 }.Save(_dir);
+        Assert.That(ModelDownloadDefaults.Load(_dir).YawDegrees, Is.EqualTo(180f));
+        Assert.That(UnitModelPaths.Browse(_dir), Is.Empty, "the defaults file is not a model");
+    }
+
+    [Test]
     public void Load_NoneSaved_OrUnreadable_IsNull()
     {
         string model = Path.Combine(_dir, "Hive Lord.glb");

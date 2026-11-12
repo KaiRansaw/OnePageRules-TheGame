@@ -99,6 +99,16 @@ public partial class ScriptedRun : Node
                 _wait = 30;
                 return;
             }
+            // "rev:turn:90" / "rev:ok" / "rev:skip" / "rev:all:<yaw>" drive the facing review.
+            if (name.StartsWith("rev:") && Find<Lab.FacingReviewScreen>(GetTree().Root) is { } rev)
+            {
+                string[] a = name.Split(':');
+                if (a[1] == "turn" && float.TryParse(a[2], out float deg)) rev.Turn(deg);
+                else if (a[1] == "ok") rev.MarkAndNext();
+                else if (a[1] == "all" && float.TryParse(a[2], out float yaw)) rev.ApplyToAll(yaw);
+                _wait = 40;
+                return;
+            }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);

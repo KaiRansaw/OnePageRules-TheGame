@@ -42,6 +42,9 @@ public sealed class UnitModelSettings
     /// </summary>
     public bool CentreOnBase { get; set; } = true;
 
+    /// <summary>Someone has looked at this model in the facing review and it faces the right way (with <see cref="YawDegrees"/>).</summary>
+    public bool FacingChecked { get; set; }
+
     /// <summary>Free text: where the model came from, which unit it is meant for.</summary>
     public string Notes { get; set; } = "";
 
@@ -147,4 +150,29 @@ public static class UnitModelPaths
             .OrderBy(f => Path.GetRelativePath(root, f), StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+}
+
+/// <summary>
+/// Settings the model downloader gives every new model (<c>UnitModels/_download-defaults.json</c>). Set from the facing
+/// review: once the first models show which way the mod's models face, every later download is turned to match.
+/// </summary>
+public sealed class ModelDownloadDefaults
+{
+    public const string FileName = "_download-defaults.json";
+
+    /// <summary>Turn given to each newly downloaded model.</summary>
+    public float YawDegrees { get; set; }
+
+    public static string PathIn(string root) => Path.Combine(root, FileName);
+
+    public static ModelDownloadDefaults Load(string? root = null)
+    {
+        string path = PathIn(root ?? UnitModelPaths.Root);
+        try { return File.Exists(path) ? JsonConvert.DeserializeObject<ModelDownloadDefaults>(File.ReadAllText(path)) ?? new() : new(); }
+        catch (JsonException) { return new(); }
+        catch (IOException) { return new(); }
+    }
+
+    public void Save(string? root = null) =>
+        File.WriteAllText(PathIn(root ?? UnitModelPaths.Root), JsonConvert.SerializeObject(this, Formatting.Indented));
 }

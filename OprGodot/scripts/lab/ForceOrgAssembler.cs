@@ -97,7 +97,7 @@ public static class ForceOrgAssembler
             HeightMm = 0, // the catalogue is already at table scale (1 unit = 1 inch)
             BaseMm = r.BaseMm ?? 25,
             UpAxis = EUpAxis.YUp,
-            YawDegrees = 0,
+            YawDegrees = ModelDownloadDefaults.Load().YawDegrees, // set from the facing review
             CentreOnBase = false, // parts are placed on the base already; a rider's overhang stays where it was put
             Notes = notes,
         }.Save(glbPath);
