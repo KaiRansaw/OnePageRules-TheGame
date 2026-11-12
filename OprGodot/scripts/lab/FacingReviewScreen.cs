@@ -11,7 +11,7 @@ namespace OprGodot.Lab;
 ///
 /// <para>
 /// The model stands big in the middle on its base, with a lime arrow on the table showing "front" (towards you). The
-/// models before and after it stand either side. <b>Left / Right</b> turn it 90 degrees, <b>Down</b> 180; each turn is
+/// models before and after it stand either side. <b>A / D</b> turn it 90 degrees (Shift for 45), <b>X</b> 180; each turn is
 /// saved to the model's settings file at once. <b>Space</b> marks it right and moves on; <b>Up</b> goes back,
 /// <b>N</b> skips. "Give every unchecked model this facing" turns the rest to match the one on screen and makes that
 /// the facing new downloads get - for when the whole mod faces the same wrong way.
@@ -83,7 +83,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         top.AddChild(head);
         _filter = new LineEdit { Name = "Filter", PlaceholderText = "Only these (e.g. Alien Hives)", ClearButtonEnabled = true, CustomMinimumSize = new Vector2(360, 0), TooltipText = "Review only files whose folder or name contains this." };
         _filter.Text = InitialFilter;
-        _filter.TextSubmitted += _ => Refresh();
+        _filter.TextSubmitted += _ => { Refresh(); _filter.ReleaseFocus(); };
         _filter.TextChanged += _ => Refresh();
         top.AddChild(_filter);
         _uncheckedFirst = new CheckBox { Name = "UncheckedFirst", Text = "Not yet checked first", ButtonPressed = true, TooltipText = "Put the models nobody has checked at the front, so you can stop and pick up later." };
@@ -94,7 +94,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         var topPanel = HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(top, 16, 14, 16, 14));
         HudKit.Place(this, topPanel, LayoutPreset.TopLeft, new Vector2(16, 16));
 
-        var keys = HudKit.Text("Left / Right  turn 90     Down  turn 180     Space  looks right, next     Up  back     N  skip     Right-drag / wheel  look round", 14, HudKit.Dim, HudKit.Semi);
+        var keys = HudKit.Text("A / D  turn 90  (Shift: 45)     X  turn 180     Space  looks right, next     W  next     S  back     Right-drag / wheel  look round     Every change saves itself", 14, HudKit.Dim, HudKit.Semi);
         HudKit.Place(this, keys, LayoutPreset.TopRight, new Vector2(-24, 24));
 
         var bottom = new VBoxContainer();
@@ -107,14 +107,14 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         bottom.AddChild(_state);
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 8);
-        row.AddChild(Btn("Prev", "< Back (Up)", "The model before this one.", () => Step(-1)));
-        row.AddChild(Btn("TurnLeft", "Turn left 90", "Turn it a quarter to the left (Left arrow). Saved at once.", () => Turn(90)));
-        row.AddChild(Btn("Turn180", "Turn 180", "Turn it round (Down arrow). Saved at once.", () => Turn(180)));
-        row.AddChild(Btn("TurnRight", "Turn right 90", "Turn it a quarter to the right (Right arrow). Saved at once.", () => Turn(-90)));
+        row.AddChild(Btn("Prev", "< Back (S)", "The model before this one.", () => Step(-1)));
+        row.AddChild(Btn("TurnLeft", "Turn left 90 (A)", "Turn it a quarter to the left (A; Shift+A for 45). Saved at once.", () => Turn(90)));
+        row.AddChild(Btn("Turn180", "Turn 180 (X)", "Turn it round (X). Saved at once.", () => Turn(180)));
+        row.AddChild(Btn("TurnRight", "Turn right 90 (D)", "Turn it a quarter to the right (D; Shift+D for 45). Saved at once.", () => Turn(-90)));
         var ok = Btn("LooksRight", "Looks right - next (Space)", "It faces the arrow: mark it checked and go to the next one.", MarkAndNext);
         ok.AddThemeColorOverride("font_color", HudKit.Lime);
         row.AddChild(ok);
-        row.AddChild(Btn("Skip", "Skip (N)", "Next model without marking this one.", () => Step(1)));
+        row.AddChild(Btn("Skip", "Next (W)", "Next model without marking this one.", () => Step(1)));
         bottom.AddChild(row);
         var bulk = Btn("ApplyToRest", "Give every unchecked model this facing...", "Turns every model in this list that nobody has checked yet the same way as this one, and makes it the facing new downloads get.", ConfirmBulk);
         bulk.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
@@ -175,6 +175,8 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         s.FacingChecked = false; // a turned model wants a fresh look
         s.Save(file);
         Show();
+        _state.Text = $"Saved - turned {s.YawDegrees:0} degrees. Space when it faces the arrow.";
+        _state.Modulate = HudKit.Lime;
     }
 
     /// <summary>Marks the current model as facing right and goes to the next.</summary>
@@ -357,6 +359,8 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
     public override void _GuiInput(InputEvent e)
     {
         bool onView = GetViewport().GuiGetHoveredControl() == this;
+        // A click on the view gives the keys back from the filter box (W/A/S/D would otherwise type into it).
+        if (e is InputEventMouseButton { Pressed: true } && onView) _filter.ReleaseFocus();
         switch (e)
         {
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true } when onView:
@@ -381,12 +385,13 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         if (e is not InputEventKey { Pressed: true, Echo: false } k || _filter.HasFocus()) return;
         switch (k.Keycode)
         {
-            case Key.Left: Turn(90); break;
-            case Key.Right: Turn(-90); break;
-            case Key.Down: Turn(180); break;
-            case Key.Up: Step(-1); break;
+            // Kai, 2026-11-12: A / D turn (Shift = 45 for fine tuning), W / S next / back, Space confirms.
+            case Key.A: Turn(k.ShiftPressed ? 45 : 90); break;
+            case Key.D: Turn(k.ShiftPressed ? -45 : -90); break;
+            case Key.X: Turn(180); break;
+            case Key.W: Step(1); break;
+            case Key.S: Step(-1); break;
             case Key.Space or Key.Enter or Key.KpEnter: MarkAndNext(); break;
-            case Key.N: Step(1); break;
             default: return;
         }
         GetViewport().SetInputAsHandled();
