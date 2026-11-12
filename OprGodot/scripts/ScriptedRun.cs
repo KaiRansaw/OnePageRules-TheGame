@@ -93,7 +93,8 @@ public partial class ScriptedRun : Node
                 // "labdl:<catalogue>|<unit list>|<book>" runs Download models for that book (test files; "-" = the usual one).
                 else if (name.StartsWith("labdl:") && arg.Split('|') is [var catFile, var mapFile, var book])
                 {
-                    lab.OpenDownloads(catFile == "-" ? null : catFile, mapFile == "-" ? null : mapFile).StartFor(book);
+                    var dlp = lab.OpenDownloads(catFile == "-" ? null : catFile, mapFile == "-" ? null : mapFile);
+                    if (book != "open") dlp.StartFor(book); // "open" = just open the window
                     _wait = 600;
                 }
                 _wait = 30;
@@ -107,6 +108,15 @@ public partial class ScriptedRun : Node
                 else if (a[1] == "ok") rev.MarkAndNext();
                 else if (a[1] == "all" && float.TryParse(a[2], out float yaw)) rev.ApplyToAll(yaw);
                 _wait = 40;
+                return;
+            }
+            // "pick:<unit>|<n>" in Choose models: select that unit's nth version (preview); "pick:tick" ticks the unit.
+            if (name.StartsWith("pick:") && Find<Lab.ModelPickerScreen>(GetTree().Root) is { } picker)
+            {
+                string[] a = name[5..].Split('|');
+                if (a[0] == "tick") picker.TickSelectedUnit();
+                else if (a.Length == 2 && int.TryParse(a[1], out int n)) picker.SelectVersion(a[0], n);
+                _wait = 120;
                 return;
             }
             if (name == "confirm")

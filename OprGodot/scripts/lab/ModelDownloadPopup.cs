@@ -39,7 +39,11 @@ public partial class ModelDownloadPopup : Control
 
     /// <summary>One file to save: put together from fetched parts, or (<see cref="LinkFrom"/>) the same model already saved for another unit.</summary>
     private sealed record Job(ForceOrgCatalog.Model? Model, Dictionary<string, string> Files, string Path, string Notes, string? LinkFrom = null);
-    private Button _all = null!, _clearCache = null!;
+    private Button _all = null!, _clearCache = null!, _pick = null!;
+    private CheckBox _onePerUnit = null!;
+
+    /// <summary>The versions of a unit this run takes: the first only, or all.</summary>
+    private IEnumerable<UnitModelMap.ModelRef> Versions(UnitModelMap.Entry u) => _onePerUnit.ButtonPressed ? u.Models.Take(1) : u.Models;
 
     public static ModelDownloadPopup Open(Control parent, string? catalogue = null, string? map = null)
     {
@@ -84,6 +88,10 @@ public partial class ModelDownloadPopup : Control
         bookRow.AddChild(_book);
         _skip = new CheckBox { Name = "SkipExisting", Text = "Skip models already downloaded", ButtonPressed = true, TooltipText = "Leave models that are already in the folder alone (your saved settings for them are kept)." };
         bookRow.AddChild(_skip);
+        // Kai, 2026-11-12: one model per unit - always the first on the list, so every player gets the same one.
+        _onePerUnit = new CheckBox { Name = "OnePerUnit", Text = "One model per unit", TooltipText = "Only the first model on each unit's list (about a fifth of the space). Everyone who ticks this gets the same model for a unit. Untick for every version." };
+        _onePerUnit.Toggled += _ => ShowBook();
+        bookRow.AddChild(_onePerUnit);
         col.AddChild(bookRow);
         _bookInfo = HudKit.Text("", 14, HudKit.Dim, HudKit.Semi);
         _bookInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -105,7 +113,9 @@ public partial class ModelDownloadPopup : Control
         _stop = Btn("StopDownload", "Stop", "Stop after the models already on their way. What is saved stays; the next run carries on.", Stop);
         _close = Btn("CloseDownload", "Close", "Close this window.", () => { Stop(); QueueFree(); });
         _stop.Disabled = true;
+        _pick = Btn("ChooseModels", "Choose models...", "Look through each unit's versions - each one you click is fetched and shown in 3D - and tick the ones to download.", OpenPicker);
         buttons.AddChild(_clearCache);
+        buttons.AddChild(_pick);
         buttons.AddChild(_all);
         buttons.AddChild(_start);
         buttons.AddChild(_stop);
@@ -125,8 +135,11 @@ public partial class ModelDownloadPopup : Control
 
     // ------------------------------------------------------------------ data
 
+    private string? _mapPath;
+
     private void LoadData(string? catalogue, string? map)
     {
+        _mapPath = map;
         try { _map = UnitModelMap.Load(map); }
         catch (Exception e) { _map = null; Log($"The unit list could not be read: {e.Message}"); }
         _book.Clear();
@@ -184,10 +197,10 @@ public partial class ModelDownloadPopup : Control
     {
         if (SelectedBook is not { } book || _map == null) { _bookInfo.Text = ""; return; }
         var units = _map.ForBook(book).ToList();
-        int models = units.Sum(u => u.Models.Count);
-        int have = units.Sum(u => u.Models.Count(m => File.Exists(UnitModelMap.FileFor(UnitModelPaths.Root, book, u.Unit, m))));
+        int models = units.Sum(u => Versions(u).Count());
+        int have = units.Sum(u => Versions(u).Count(m => File.Exists(UnitModelMap.FileFor(UnitModelPaths.Root, book, u.Unit, m))));
         string broad = units.Any(u => u.TooBroad) ? $"  {units.Count(u => u.TooBroad)} unit(s) matched more models than kept - worth a look." : "";
-        _bookInfo.Text = $"{units.Count} units, {models} model versions ({have} already downloaded). Units in the book with no model on the list are left as they are.{broad}";
+        _bookInfo.Text = $"{units.Count} units, {models} model{(_onePerUnit.ButtonPressed ? "s (one each)" : " versions")} ({have} already downloaded). Units in the book with no model on the list are left as they are.{broad}";
     }
 
     // ------------------------------------------------------------------ the run
@@ -212,7 +225,7 @@ public partial class ModelDownloadPopup : Control
         _skipped = 0;
         foreach (string b in books)
             foreach (var u in _map!.ForBook(b))
-                foreach (var m in u.Models)
+                foreach (var m in Versions(u))
                 {
                     string path = UnitModelMap.FileFor(root, b, u.Unit, m);
                     if (_skip.ButtonPressed && File.Exists(path)) { _skipped++; continue; }
@@ -279,21 +292,37 @@ public partial class ModelDownloadPopup : Control
         dlg.PopupCentered();
     }
 
+    private void OpenPicker()
+    {
+        if (_catalogue == null || _map == null) { Log("Choose the catalogue file first."); return; }
+        App.I.Open<ModelPickerScreen>(Scenes.ModelPicker, p => p.Setup(_catalogue, _map, SelectedBook, _catPath, _mapPath));
+        QueueFree();
+    }
+
     private void Start(bool all)
     {
         if (_catalogue == null || _map == null || _cts != null) return;
         if (!all && SelectedBook == null) return;
         string[] books = all ? _map.Books.ToArray() : new[] { SelectedBook! };
-        var jobs = JobsFor(books);
+        RunJobs(JobsFor(books), all ? $"All {books.Length} armies" : books[0]);
+    }
+
+    /// <summary>
+    /// Fetches, puts together and saves exactly these models (also used by the model picker, which hands over the ticked
+    /// versions). A model already saved under another unit is linked rather than fetched.
+    /// </summary>
+    public void RunJobs(List<(string Book, UnitModelMap.Entry Unit, UnitModelMap.ModelRef Ref, string Path)> jobs, string title)
+    {
+        if (_catalogue == null || _cts != null) return;
         _total = jobs.Count; _done = 0; _savedCount = 0; _failed = 0;
         _log.Clear();
-        Log($"{(all ? $"All {books.Length} armies" : books[0])}: {jobs.Count} model file(s) to save{(_skipped > 0 ? $", {_skipped} already there" : "")}.");
+        Log($"{title}: {jobs.Count} model file(s) to save{(_skipped > 0 ? $", {_skipped} already there" : "")}.");
         _skipped = 0;
         if (jobs.Count == 0) { _status.Text = "Nothing to fetch - every model is already downloaded."; return; }
 
         _cts = new CancellationTokenSource();
         _fetchFinished = false;
-        _start.Disabled = true; _all.Disabled = true; _clearCache.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
+        _start.Disabled = true; _all.Disabled = true; _clearCache.Disabled = true; _pick.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
         CancellationToken ct = _cts.Token;
         ForceOrgCatalog cat = _catalogue;
         var seen = SavedById(); // a model already saved for another unit is linked, not fetched again
@@ -389,7 +418,7 @@ public partial class ModelDownloadPopup : Control
             _cts = null;
             _status.Text = (stopped ? "Stopped. " : "Done. ") + $"{_savedCount} saved, {_failed} failed" + (stopped ? " - press Download to carry on." : ".");
             Log(_status.Text);
-            _start.Disabled = false; _all.Disabled = false; _clearCache.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
+            _start.Disabled = false; _all.Disabled = false; _clearCache.Disabled = false; _pick.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
             ShowBook();
             Saved?.Invoke();
         }
