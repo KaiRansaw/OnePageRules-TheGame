@@ -146,4 +146,5 @@ public static class Scenes
     public const string AssetLab = "res://scenes/screens/AssetLab.tscn";
     public const string FacingReview = "res://scenes/screens/FacingReview.tscn";
     public const string ModelPicker = "res://scenes/screens/ModelPicker.tscn";
+    public const string MatchModels = "res://scenes/screens/MatchModels.tscn";
 }

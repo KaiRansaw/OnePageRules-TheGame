@@ -169,6 +169,8 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         left.AddChild(dl);
         left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",
             () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview, r => r.InitialFilter = _filter.Text)));
+        left.AddChild(Btn("MatchModels", "Match models...", "Give the catalogue models no unit uses yet to an OPR unit by hand, and take wrong matches away.",
+            () => App.I.Open<MatchModelsScreen>(Scenes.MatchModels, m => m.StartBook = _filter.Text.Trim().Length > 0 ? _filter.Text.Trim() : null)));
         _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png) or a picture onto the window to copy it in and open it.", 14, HudKit.Dim, HudKit.Semi);
         _hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         left.AddChild(_hint);

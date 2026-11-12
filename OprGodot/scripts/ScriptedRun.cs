@@ -119,6 +119,13 @@ public partial class ScriptedRun : Node
                 _wait = 120;
                 return;
             }
+            // "match:<command>" drives Match models (see MatchModelsScreen.Drive): "match:fac:Tyranids", "match:use"...
+            if (name.StartsWith("match:") && Find<Lab.MatchModelsScreen>(GetTree().Root) is { } match)
+            {
+                match.Drive(name[6..]);
+                _wait = 30;
+                return;
+            }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);

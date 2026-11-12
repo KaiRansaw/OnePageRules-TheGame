@@ -137,4 +137,62 @@ public class UnitModelDownloadTests
         Assert.That(cat.ById[7].Parts[0].Pos, Is.EqualTo(new[] { 1f, 2f, 3f }));
         Assert.That(cat.ById[7].Parts[0].Parent, Is.EqualTo(-1));
     }
+
+    [Test]
+    public void Matches_GiveAndTakeAway_AndLayOverTheList()
+    {
+        var map = UnitModelMap.Load(ShippedMap);
+        int grunts = map.Units.Single(u => u.Book == "Alien Hives" && u.Unit == "Assault Grunts").Models.Count;
+
+        var m = new ModelMatches();
+        m.Assign("Alien Hives", "Hive Lord", new UnitModelMap.ModelRef { Id = 9001, Name = "Swarmlord" });
+        m.Unassign("Alien Hives", "Assault Grunts", 45);
+        m.Assign("Alien Hives", "Assault Grunts", new UnitModelMap.ModelRef { Id = 9002, Name = "Termagant" });
+        string path = Path.Combine(_dir, ModelMatches.FileName);
+        m.Save(path);
+        Assert.That(ModelMatches.Load(path).Changes, Is.EqualTo(3));
+
+        // A list read from a given path is left as it is; the game's own list gets this computer's matches.
+        string mapCopy = Path.Combine(_dir, "map.json");
+        File.Copy(ShippedMap, mapCopy);
+        Assert.That(UnitModelMap.Load(mapCopy).Units.Any(u => u.Unit == "Hive Lord" && u.Book == "Alien Hives"), Is.EqualTo(map.Units.Any(u => u.Unit == "Hive Lord" && u.Book == "Alien Hives")));
+
+        ModelMatches.Load(path).ApplyTo(map);
+        ModelMatches.Load(path).ApplyTo(map); // twice changes nothing
+        var lord = map.Units.Single(u => u.Book == "Alien Hives" && u.Unit == "Hive Lord");
+        Assert.That(lord.Models.Count(x => x.Id == 9001), Is.EqualTo(1));
+        var g = map.Units.Single(u => u.Book == "Alien Hives" && u.Unit == "Assault Grunts");
+        Assert.That(g.Models.Select(x => x.Id), Does.Not.Contain(45));
+        Assert.That(g.Models.Select(x => x.Id), Does.Contain(9002));
+        Assert.That(g.Models, Has.Count.EqualTo(grunts));
+
+        // Giving a removed model back takes it off the remove list; removing an added one takes it off the add list.
+        m.Assign("Alien Hives", "Assault Grunts", new UnitModelMap.ModelRef { Id = 45, Name = "Hormagaunt" });
+        m.Unassign("Alien Hives", "Hive Lord", 9001);
+        var gm = m.Units.Single(u => u.Unit == "Assault Grunts");
+        Assert.That(gm.Remove, Is.Empty);
+        Assert.That(m.Units.Single(u => u.Unit == "Hive Lord").Add, Is.Empty);
+    }
+
+    [Test]
+    public void Factions_NameTheModsFolders_AndMergeTwoOfOneFaction()
+    {
+        string path = Path.Combine(_dir, ForceOrgCatalog.FileName);
+        File.WriteAllText(path, "{\"source\":\"ForceOrg (Tabletop Simulator workshop 3753014527)\",\"groups\":{\"1\":\"warrior, tyranid\",\"21\":\"raveners, hive\",\"99\":\"new, stuff\"},"
+            + "\"models\":[{\"id\":1,\"name\":\"Warrior\",\"group\":1,\"parts\":[]},{\"id\":2,\"name\":\"Ravener\",\"group\":21,\"parts\":[]},{\"id\":3,\"name\":\"Thing\",\"group\":99,\"parts\":[]}]}");
+        var cat = ForceOrgCatalog.Load(path);
+        var by = CatalogueFactions.ByFaction(cat);
+        Assert.That(by["Tyranids"].Select(m => m.Name), Is.EqualTo(new[] { "Ravener", "Warrior" }));
+        Assert.That(by.Keys, Does.Contain("Other: new, stuff"), "an unknown folder is listed, never hidden");
+    }
+
+    [Test]
+    public void BookUnits_ListEveryGfUnit_IncludingOnesWithNoModel()
+    {
+        string folder = Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "FdgRaylib", "Assets", "Books", "Grimdark Future");
+        var books = GfBookUnits.Load(folder);
+        Assert.That(books.Count, Is.GreaterThan(40));
+        Assert.That(books["Alien Hives"], Does.Contain("Assault Grunts"));
+        Assert.That(books["Alien Hives"], Does.Contain("Hive Lord"));
+    }
 }

@@ -43,10 +43,22 @@ public sealed class UnitModelMap
 
     public IEnumerable<Entry> ForBook(string book) => Units.Where(u => u.Book == book).OrderBy(u => u.Unit, StringComparer.OrdinalIgnoreCase);
 
-    public static UnitModelMap Load(string? path = null)
+    /// <summary>
+    /// The unit list. With no <paramref name="path"/> (the game's own list), Kai's hand matches are laid over it - the
+    /// shipped <see cref="ModelMatches"/> file, then this computer's (<paramref name="matchesRoot"/>, default the
+    /// UnitModels folder). A list read from a given path is returned as the file has it.
+    /// </summary>
+    public static UnitModelMap Load(string? path = null, string? matchesRoot = null)
     {
+        bool own = path == null;
         path ??= Path.Combine(AppAssets.AssetsFolder, RelativePath);
-        return JsonConvert.DeserializeObject<UnitModelMap>(File.ReadAllText(path)) ?? new UnitModelMap();
+        var map = JsonConvert.DeserializeObject<UnitModelMap>(File.ReadAllText(path)) ?? new UnitModelMap();
+        if (own)
+        {
+            ModelMatches.Load(ModelMatches.ShippedPath).ApplyTo(map);
+            ModelMatches.Load(ModelMatches.LocalPath(matchesRoot)).ApplyTo(map);
+        }
+        return map;
     }
 
     /// <summary>

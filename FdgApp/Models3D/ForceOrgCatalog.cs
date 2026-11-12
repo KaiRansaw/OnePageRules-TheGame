@@ -39,16 +39,19 @@ public sealed class ForceOrgCatalog
     private sealed class FileShape
     {
         [JsonProperty("source")] public string Source { get; set; } = "";
+        [JsonProperty("groups")] public Dictionary<int, string> Groups { get; set; } = new();
         [JsonProperty("models")] public List<Model> Models { get; set; } = new();
     }
 
     public string Source { get; private init; } = "";
+    /// <summary>The mod's own folders, by number: a few keywords each ("warrior, tyranid, cannon, hive").</summary>
+    public IReadOnlyDictionary<int, string> Groups { get; private init; } = new Dictionary<int, string>();
     public IReadOnlyDictionary<int, Model> ById { get; private init; } = new Dictionary<int, Model>();
 
     public static ForceOrgCatalog Load(string path)
     {
         var f = JsonConvert.DeserializeObject<FileShape>(File.ReadAllText(path)) ?? new FileShape();
-        return new ForceOrgCatalog { Source = f.Source, ById = f.Models.GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.First()) };
+        return new ForceOrgCatalog { Source = f.Source, Groups = f.Groups, ById = f.Models.GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.First()) };
     }
 
     /// <summary>Where the catalogue is kept: the UnitModels folder.</summary>
