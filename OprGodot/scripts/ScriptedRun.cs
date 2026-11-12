@@ -90,6 +90,12 @@ public partial class ScriptedRun : Node
                 else if (name.StartsWith("labview:") && int.TryParse(arg, out int v)) lab.View(v);
                 else if (name.StartsWith("labcopies:") && int.TryParse(arg, out int c)) lab.SetCopies(c);
                 else if (name.StartsWith("labset:") && arg.Split('=') is [var box, var val]) lab.SetBox(box, val);
+                // "labdl:<catalogue>|<unit list>|<book>" runs Download models for that book (test files; "-" = the usual one).
+                else if (name.StartsWith("labdl:") && arg.Split('|') is [var catFile, var mapFile, var book])
+                {
+                    lab.OpenDownloads(catFile == "-" ? null : catFile, mapFile == "-" ? null : mapFile).StartFor(book);
+                    _wait = 600;
+                }
                 _wait = 30;
                 return;
             }

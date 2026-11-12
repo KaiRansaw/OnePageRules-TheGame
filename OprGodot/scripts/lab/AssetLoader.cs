@@ -112,19 +112,21 @@ public static class AssetLoader
         public string? NormalMap;
     }
 
-    private static Node3D? LoadObj(string file, LoadedAsset asset)
+    /// <summary>An OBJ file read into its points and faces, the faces grouped by material in the order they appear.</summary>
+    private sealed class ObjData
     {
-        var pos = new List<Vector3>();
-        var uvs = new List<Vector2>();
-        var normals = new List<Vector3>();
-        var materials = new Dictionary<string, ObjMaterial>(StringComparer.OrdinalIgnoreCase);
-        string dir = Path.GetDirectoryName(file) ?? ".";
-        // Faces grouped by material, in the order the materials first appear.
-        var groups = new List<(string Material, List<(int V, int T, int N)[]> Faces)>();
-        List<(int V, int T, int N)[]> current = new();
-        groups.Add(("", current));
-        bool anyMtl = false;
+        public readonly List<Vector3> Pos = new();
+        public readonly List<Vector2> Uvs = new();
+        public readonly List<Vector3> Normals = new();
+        public readonly List<(string Material, List<(int V, int T, int N)[]> Faces)> Groups = new();
+        public readonly List<string> MaterialLibraries = new();
+    }
 
+    private static ObjData ParseObj(string file)
+    {
+        var d = new ObjData();
+        List<(int V, int T, int N)[]> current = new();
+        d.Groups.Add(("", current));
         foreach (string raw in System.IO.File.ReadLines(file))
         {
             string line = raw.Trim();
@@ -133,36 +135,98 @@ public static class AssetLoader
             switch (p[0])
             {
                 case "v" when p.Length >= 4:
-                    pos.Add(new Vector3(F(p[1]), F(p[2]), F(p[3])));
+                    d.Pos.Add(new Vector3(F(p[1]), F(p[2]), F(p[3])));
                     break;
                 case "vt" when p.Length >= 3:
-                    uvs.Add(new Vector2(F(p[1]), 1f - F(p[2]))); // OBJ counts V up from the bottom; Godot down from the top
+                    d.Uvs.Add(new Vector2(F(p[1]), 1f - F(p[2]))); // OBJ counts V up from the bottom; Godot down from the top
                     break;
                 case "vn" when p.Length >= 4:
-                    normals.Add(new Vector3(F(p[1]), F(p[2]), F(p[3])));
+                    d.Normals.Add(new Vector3(F(p[1]), F(p[2]), F(p[3])));
                     break;
                 case "f" when p.Length >= 4:
                     var face = new (int, int, int)[p.Length - 1];
                     for (int i = 1; i < p.Length; i++)
                     {
                         string[] k = p[i].Split('/');
-                        face[i - 1] = (Index(k[0], pos.Count), k.Length > 1 && k[1].Length > 0 ? Index(k[1], uvs.Count) : -1,
-                            k.Length > 2 && k[2].Length > 0 ? Index(k[2], normals.Count) : -1);
+                        face[i - 1] = (Index(k[0], d.Pos.Count), k.Length > 1 && k[1].Length > 0 ? Index(k[1], d.Uvs.Count) : -1,
+                            k.Length > 2 && k[2].Length > 0 ? Index(k[2], d.Normals.Count) : -1);
                     }
                     current.Add(face);
                     break;
                 case "usemtl" when p.Length >= 2:
                     string name = line[6..].Trim();
-                    var existing = groups.FirstOrDefault(g => g.Material.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    var existing = d.Groups.FirstOrDefault(g => g.Material.Equals(name, StringComparison.OrdinalIgnoreCase));
                     if (existing.Faces != null) current = existing.Faces;
-                    else { current = new(); groups.Add((name, current)); }
+                    else { current = new(); d.Groups.Add((name, current)); }
                     break;
                 case "mtllib" when p.Length >= 2:
-                    string lib = Path.Combine(dir, line[6..].Trim());
-                    if (System.IO.File.Exists(lib)) { ReadMtl(lib, materials); anyMtl = true; }
-                    else asset.Warnings.Add($"The model names a material file it doesn't come with ({Path.GetFileName(lib)}).");
+                    d.MaterialLibraries.Add(line[6..].Trim());
                     break;
             }
+        }
+        return d;
+    }
+
+    /// <summary>Adds faces to a surface: each polygon as a fan, wound the way Godot draws front faces.</summary>
+    private static void AddFaces(SurfaceTool st, ObjData d, List<(int V, int T, int N)[]> faces, bool withNormals)
+    {
+        foreach (var face in faces)
+            for (int i = 1; i + 1 < face.Length; i++)
+                foreach (var c in new[] { face[0], face[i + 1], face[i] })
+                {
+                    if (c.T >= 0 && c.T < d.Uvs.Count) st.SetUV(d.Uvs[c.T]);
+                    if (withNormals) st.SetNormal(d.Normals[c.N]);
+                    st.AddVertex(d.Pos[c.V]);
+                }
+    }
+
+    /// <summary>
+    /// One OBJ file as a single mesh in one material, whatever its file name (the model downloader's cached parts
+    /// have none). Materials named inside the file are ignored: a Tabletop Simulator part has one skin, given here.
+    /// </summary>
+    public static ArrayMesh? ObjPartMesh(string file, Material material)
+    {
+        ObjData d = ParseObj(file);
+        if (d.Pos.Count == 0) return null;
+        var faces = d.Groups.SelectMany(g => g.Faces).ToList();
+        if (faces.Count == 0) return null;
+        bool withNormals = faces.All(f => f.All(c => c.N >= 0 && c.N < d.Normals.Count));
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        AddFaces(st, d, faces, withNormals);
+        if (!withNormals) st.GenerateNormals();
+        st.SetMaterial(material);
+        return st.Commit();
+    }
+
+    /// <summary>A picture from a file of any name: the format is told from its first bytes (PNG, JPEG, WebP, BMP, TGA).</summary>
+    public static Texture2D? TextureFromBytes(byte[] b)
+    {
+        var img = new Image();
+        Error err;
+        if (b.Length > 8 && b[0] == 0x89 && b[1] == 0x50) err = img.LoadPngFromBuffer(b);
+        else if (b.Length > 3 && b[0] == 0xFF && b[1] == 0xD8) err = img.LoadJpgFromBuffer(b);
+        else if (b.Length > 12 && b[0] == 'R' && b[8] == 'W' && b[9] == 'E') err = img.LoadWebpFromBuffer(b);
+        else if (b.Length > 2 && b[0] == 'B' && b[1] == 'M') err = img.LoadBmpFromBuffer(b);
+        else err = img.LoadTgaFromBuffer(b);
+        if (err != Godot.Error.Ok || img.IsEmpty()) return null;
+        img.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(img);
+    }
+
+    private static Node3D? LoadObj(string file, LoadedAsset asset)
+    {
+        var materials = new Dictionary<string, ObjMaterial>(StringComparer.OrdinalIgnoreCase);
+        string dir = Path.GetDirectoryName(file) ?? ".";
+        ObjData d = ParseObj(file);
+        var pos = d.Pos;
+        var groups = d.Groups;
+        bool anyMtl = false;
+        foreach (string libName in d.MaterialLibraries)
+        {
+            string lib = Path.Combine(dir, libName);
+            if (System.IO.File.Exists(lib)) { ReadMtl(lib, materials); anyMtl = true; }
+            else asset.Warnings.Add($"The model names a material file it doesn't come with ({Path.GetFileName(lib)}).");
         }
         if (pos.Count == 0) { asset.Error = "No points in this OBJ file."; return null; }
 
@@ -185,18 +249,8 @@ public static class AssetLoader
             if (faces.Count == 0) continue;
             var st = new SurfaceTool();
             st.Begin(Mesh.PrimitiveType.Triangles);
-            bool hasNormals = faces.All(f => f.All(c => c.N >= 0));
-            foreach (var face in faces)
-            {
-                // A polygon as a fan; Godot's front faces wind the other way round from OBJ's.
-                for (int i = 1; i + 1 < face.Length; i++)
-                    foreach (var c in new[] { face[0], face[i + 1], face[i] })
-                    {
-                        if (c.T >= 0) st.SetUV(uvs[c.T]);
-                        if (hasNormals) st.SetNormal(normals[c.N]);
-                        st.AddVertex(pos[c.V]);
-                    }
-            }
+            bool hasNormals = faces.All(f => f.All(c => c.N >= 0 && c.N < d.Normals.Count));
+            AddFaces(st, d, faces, hasNormals);
             if (!hasNormals) st.GenerateNormals();
             materials.TryGetValue(matName, out ObjMaterial? om);
             var mat = new StandardMaterial3D { Roughness = 0.75f, AlbedoColor = om?.Diffuse ?? new Color(0.7f, 0.7f, 0.7f) };

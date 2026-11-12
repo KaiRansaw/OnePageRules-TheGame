@@ -134,7 +134,10 @@ public static class UnitModelPaths
     public static List<string> Browse(string root)
     {
         if (!Directory.Exists(root)) return new();
-        var all = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).ToList();
+        // The downloader's cache (raw parts, no file names) is not something to open.
+        var all = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Where(f => !Path.GetRelativePath(root, f).StartsWith(ModelDownloader.CacheFolderName + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         // A picture with the same name as a model beside it (Grunt.obj + Grunt.png) is that model's skin, not an asset of its own.
         var modelStems = all.Where(IsModel).Select(f => Path.Combine(Path.GetDirectoryName(f)!, Path.GetFileNameWithoutExtension(f)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);

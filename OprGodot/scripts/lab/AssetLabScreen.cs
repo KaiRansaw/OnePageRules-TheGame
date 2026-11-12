@@ -33,6 +33,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
     private Label3D _sizeLabel = null!;
 
     private ItemList _files = null!;
+    private LineEdit _filter = null!;
     private Label _folderLabel = null!, _info = null!, _fps = null!, _saved = null!, _hint = null!;
     private OptionButton _base = null!, _up = null!, _copies = null!, _seat = null!, _light = null!, _anim = null!;
     private SpinBox _height = null!, _yaw = null!;
@@ -145,6 +146,9 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         _folderLabel.TooltipText = "The UnitModels folder. Put models in UnitModels/<Faction>/<Unit Name>.glb, the same way pictures go in UnitImages.";
         _folderLabel.MouseFilter = MouseFilterEnum.Pass;
         left.AddChild(_folderLabel);
+        _filter = new LineEdit { Name = "Filter", PlaceholderText = "Filter files (e.g. Alien Hives, Grunts)", ClearButtonEnabled = true, TooltipText = "Show only files whose folder or name contains this." };
+        _filter.TextChanged += _ => { _list.Clear(); Rescan(); };
+        left.AddChild(_filter);
         _files = new ItemList { Name = "Files", CustomMinimumSize = new Vector2(0, 250), SizeFlagsVertical = SizeFlags.ExpandFill, SelectMode = ItemList.SelectModeEnum.Single };
         _files.ItemSelected += i => { if (i >= 0 && i < _list.Count) Open(_list[(int)i]); };
         left.AddChild(_files);
@@ -153,6 +157,8 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         fileRow.AddChild(Btn("OpenFolder", "Open folder", "Open the UnitModels folder in Windows, to add or rename files.", () => OS.ShellOpen(_root)));
         fileRow.AddChild(Btn("Rescan", "Refresh", "Look for new files now (it also checks by itself every couple of seconds).", Rescan));
         left.AddChild(fileRow);
+        var dl = Btn("DownloadModels", "Download models...", "Fetch Warhammer 40k models from the ForceOrg Tabletop Simulator mod for an army, saved under each OPR unit's name.", () => OpenDownloads());
+        left.AddChild(dl);
         _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png) or a picture onto the window to copy it in and open it.", 14, HudKit.Dim, HudKit.Semi);
         _hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         left.AddChild(_hint);
@@ -300,7 +306,8 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
 
     private void Rescan()
     {
-        var now = UnitModelPaths.Browse(_root);
+        string filter = _filter?.Text.Trim() ?? "";
+        var now = UnitModelPaths.Browse(_root).Where(x => filter.Length == 0 || Path.GetRelativePath(_root, x).Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
         if (now.SequenceEqual(_list) && _files.ItemCount == now.Count) return;
         _list = now;
         _files.Clear();
@@ -345,6 +352,14 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         }
         Rescan();
         if (firstModel != null) Open(firstModel);
+    }
+
+    /// <summary>Opens the Download models window (the screenshot driver can point it at a test catalogue and list).</summary>
+    public ModelDownloadPopup OpenDownloads(string? catalogue = null, string? map = null)
+    {
+        var p = ModelDownloadPopup.Open(this, catalogue, map);
+        p.Saved += () => { _list.Clear(); Rescan(); };
+        return p;
     }
 
     /// <summary>Opens a file (also used by the screenshot driver: <c>lab:&lt;path&gt;</c>).</summary>
