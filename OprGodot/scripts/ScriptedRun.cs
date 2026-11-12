@@ -60,6 +60,9 @@ public partial class ScriptedRun : Node
                 return;
             }
             // "join:127.0.0.1" types that address into the open Join a Game popup and joins.
+            // "friend:Marcus|marcus-pc.tail1.ts.net|fav" adds a friend in the open Join a Game popup ("fav" stars them).
+            if (name.StartsWith("friend:") && Find<JoinPopup>(GetTree().Root) is { } fp && name[7..].Split('|') is { Length: >= 2 } fa)
+            { fp.AddFriendForTest(fa[0], fa[1], fa.Length > 2 && fa[2] == "fav"); return; }
             if (name.StartsWith("join:") && Find<JoinPopup>(GetTree().Root) is { } joinPopup) { joinPopup.JoinAddress(name[5..]); _wait = 240; return; }
             // "waitplayers:2" holds the host until that many seats are filled (a friend has joined).
             if (name.StartsWith("waitplayers:") && int.TryParse(name[12..], out int players))

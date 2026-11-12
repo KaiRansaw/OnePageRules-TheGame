@@ -38,6 +38,9 @@ public sealed class UserConfig
     /// <summary>The last host address joined successfully, so Join opens on it (a friend's Tailscale name).</summary>
     public string LastHostAddress { get; set; } = "";
 
+    /// <summary>Friends saved on the Join a Game popup (name + Tailscale address, starred ones first).</summary>
+    public List<FriendEntry> Friends { get; set; } = new();
+
     /// <summary>Retired with the Host dialog (2026-11-07): nothing is ever listed publicly now (Tailscale
     /// only). Kept so an older config file still reads; nothing reads it.</summary>
     public bool ListPublicly { get; set; }
