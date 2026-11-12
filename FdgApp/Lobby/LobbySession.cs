@@ -358,6 +358,10 @@ public sealed class LobbySession : IDisposable
         {
             LaunchStarted = true;
             PersistHostSettings();
+            // Rematch: what this game was set up with, while the lobby still has it. A resumed save keeps
+            // the last fresh launch's plan cleared - it has no set-up of its own to repeat.
+            LastLaunch = !resume && Vm is LobbyViewModel_Host host
+                ? new RematchPlan(host.GameSystem, host.GameMode, host.GetSeats()) : null;
         }
         return started;
     }
@@ -368,5 +372,116 @@ public sealed class LobbySession : IDisposable
         if (!Vm.HasHostPrivileges || Vm.IsResumeMode) return;
         UserConfig.Current.HostSettings = HostGameSettings.CaptureFrom(Vm);
         UserConfig.Save();
+    }
+
+    // ------------------------------------------------------------------ rematch, save, load
+
+    /// <summary>What a game was launched with, for the Game Over card's Rematch (Kai, 2026-11-07: "back to the
+    /// same lobby, same armies").</summary>
+    public sealed record RematchPlan(EGameSystem System, EGameMode Mode, IReadOnlyList<LobbyViewModel_Host.SeatSnapshot> Seats);
+
+    /// <summary>The last game this computer launched fresh as host; null after a loaded game.</summary>
+    public static RematchPlan? LastLaunch { get; private set; }
+
+    /// <summary>Why Rematch can't be offered right now, or null when it can.</summary>
+    public static string? RematchUnavailableReason(LobbySession? playing) =>
+        playing?.Vm is not { HasHostPrivileges: true } ? "Only the host can start a rematch."
+        : LastLaunch == null ? "A loaded game can't be rematched - start it again from the game screen."
+        : null;
+
+    /// <summary>
+    /// Re-seats this fresh host lobby the way the last game was seated - same order, bots with the same AI, the
+    /// same teams, colours and armies (ported from the Raylib lobby's ApplyPendingRematch). The settings already
+    /// match: they are the saved host settings the last launch wrote. A friend who joined over the network has to
+    /// join again, so a network seat is not re-created.
+    /// </summary>
+    public void ApplyRematch(RematchPlan plan)
+    {
+        if (!Vm.HasHostPrivileges || Vm.IsResumeMode || Vm.PlayerInfos.Count == 0 || plan.Seats.Count == 0) return;
+        Vm.SetArmyPoints(UserConfig.Current.HostSettings.ArmyPoints);
+        var teams = new List<(PlayerID Id, ETeamOption Team)>();
+        for (int i = 0; i < plan.Seats.Count; i++)
+        {
+            LobbyViewModel_Host.SeatSnapshot seat = plan.Seats[i];
+            PlayerID id;
+            if (i == 0) id = Vm.PlayerInfos[0].PlayerID;   // the host's own seat is always row 0
+            else
+            {
+                if (seat.PlayerType == EPlayerType.Network) continue;
+                var before = Vm.PlayerInfos.Select(p => p.PlayerID.ID).ToHashSet();
+                if (seat.PlayerType == EPlayerType.AI) Vm.AddAiPlayer(seat.AiProfile);
+                else Vm.AddLocalPlayer();
+                if (Vm.PlayerInfos.FirstOrDefault(p => !before.Contains(p.PlayerID.ID)) is not { } added) continue;
+                id = added.PlayerID;
+            }
+            _served.Add(id.ID);
+            if (seat.TeamNumber != ETeamOption.None) teams.Add((id, seat.TeamNumber));
+            if (seat.ColorIndex >= 0) Vm.SetPlayerColor(id, seat.ColorIndex);
+            if (seat.Army != null) Vm.UpdateArmyListFile(id, seat.Army);
+        }
+        foreach (var (id, team) in teams) Vm.SetPlayerTeam(id, team);
+    }
+
+    /// <summary>
+    /// Writes the running game to the Saved Games folder as <paramref name="name"/> (made safe for a file name; a
+    /// clash gets " (2)"). Returns the path, or null with a sentence in <paramref name="error"/>. Host only - a
+    /// client has no authoritative copy of the game to save.
+    /// </summary>
+    public string? SaveGame(string name, out string error)
+    {
+        error = "";
+        string? json = Vm.SaveGameToJson();
+        if (json == null) { error = "Only the host can save a game."; return null; }
+        try
+        {
+            string safe = string.Concat(name.Trim().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '-' : c));
+            if (safe.Length == 0) safe = $"Saved Game {DateTime.Now:yyyy-MM-dd HH-mm}";
+            string folder = FdgRaylib.SaveLoad.SavePaths.FolderPath;
+            string path = Path.Combine(folder, safe + GameSaveFile.EXTENSION_WITH_PERIOD);
+            for (int n = 2; File.Exists(path); n++) path = Path.Combine(folder, $"{safe} ({n}){GameSaveFile.EXTENSION_WITH_PERIOD}");
+            File.WriteAllText(path, json);
+            return path;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            error = "The save couldn't be written: " + ex.Message;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Opens a host lobby around a saved game (ported from the Raylib Load Game flow): the lobby is in resume
+    /// mode - the armies and settings are the save's - and LAUNCH carries on from where it was saved. False with
+    /// a sentence for the player when the save can't be read, was made before round 1, or the port is taken.
+    /// </summary>
+    public static bool TryResume(string path, out LobbySession? session, out string error)
+    {
+        session = null;
+        FDG.Data.GameDataStore store;
+        try { store = GameSaveSerializer.Load(File.ReadAllText(path)); }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Load game failed: {ex.GetBaseException().Message}");
+            error = "That save couldn't be read.";
+            return false;
+        }
+        if (GameProgressUtilities.TryGetProgress(store) == null)
+        {
+            error = "That game was saved before round 1 started, so it can't be resumed.";
+            return false;
+        }
+        var host = new FDG.Network.Connection.FDGHost(port: HostStarter.Port);
+        Task hostTask = host.StartAsync();
+        if (hostTask.IsFaulted)
+        {
+            Console.WriteLine($"Host failed to start: {hostTask.Exception?.GetBaseException().Message}");
+            error = $"The game could not start, because network port {HostStarter.Port} is already in use. Is another copy of the game open?";
+            return false;
+        }
+        string name = string.IsNullOrWhiteSpace(UserConfig.Current.PlayerName) ? UserConfig.DefaultPlayerName : UserConfig.Current.PlayerName;
+        session = new LobbySession(new LobbyViewModel_Host(name, "Loaded Game", "", host, store));
+        LastLaunch = null;   // a loaded game has no fresh set-up to rematch
+        error = "";
+        return true;
     }
 }

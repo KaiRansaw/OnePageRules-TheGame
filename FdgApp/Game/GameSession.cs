@@ -51,7 +51,7 @@ public sealed class GameSession
         int[] colours = lobby.EffectiveColours();
         var seats = infos.Select((p, i) => new Seat(p.PlayerID, p.PlayerName, colours[i], (int)p.TeamNumber,
             game.LocalPlayerIDs.Contains(p.PlayerID), p.PlayerType == EPlayerType.AI,
-            lobby.SeatArmy(p.PlayerID).Army?.Faction ?? "")).ToList();
+            FactionOf(game, lobby, p.PlayerID))).ToList();
 
         PlayerID autopilotFor = game.LocalPlayerIDs.Count > 0 ? game.LocalPlayerIDs[0] : infos[0].PlayerID;
         EAiProfile profile = GameSystemInfo.IsQuest(vm.GameSystem) ? EAiProfile.StarQuest : EAiProfile.SoloCoOp;
@@ -65,6 +65,13 @@ public sealed class GameSession
         session.Report = new BattleReport(game.TableState) { PlayerName = id => session.SeatOf(id)?.Name ?? "" };
         game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
         return session;
+    }
+
+    /// <summary>A seat's faction: the lobby's army, or (a resumed save, whose armies are in the game) the game's own.</summary>
+    private static string FactionOf(IFDGGame game, LobbySession lobby, PlayerID id)
+    {
+        if (lobby.SeatArmy(id).Army?.Faction is { Length: > 0 } f) return f;
+        return game.TableState.Armies.Objects.OfType<FDG.ArmyData>().FirstOrDefault(a => a.PlayerID.Equals(id))?.Faction ?? "";
     }
 
     public Seat? SeatOf(PlayerID id) => Seats.FirstOrDefault(s => s.Id == id);

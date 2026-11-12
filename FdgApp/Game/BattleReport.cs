@@ -109,6 +109,35 @@ public sealed class BattleReport : IPresentationSink
 
     // ================================================================== reading
 
+    /// <summary>
+    /// The whole report as plain text, oldest first - a header (game, date, result), then every line with its
+    /// dice. Written to the Saved Games folder by the Game Over card's "Save battle report".
+    /// </summary>
+    public string ExportText(string game, string result, IEnumerable<string> scoreLines)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("BATTLE REPORT");
+        sb.AppendLine(game);
+        sb.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+        sb.AppendLine();
+        sb.AppendLine("Result: " + result);
+        foreach (string l in scoreLines) sb.AppendLine("  " + l);
+        sb.AppendLine();
+        sb.AppendLine("--- Everything that happened, oldest first ---");
+        foreach (Line line in Snapshot())
+        {
+            string title = string.Concat(line.Title.Select(p => p.Text));
+            if (line.Kind == Kind.Divider) { sb.AppendLine(); sb.AppendLine($"== {title} =="); continue; }
+            sb.AppendLine(title);
+            if (line.Body.Length > 0) sb.AppendLine("    " + line.Body.Replace("\n", "\n    "));
+            foreach (Roll r in line.Rolls)
+                sb.AppendLine($"    {r.Who} {r.Label} ({r.Threshold}+): [{string.Join(" ", r.Faces)}] {r.Result}"
+                    + (r.Modifiers.Count > 0 ? "  " + string.Join(", ", r.Modifiers) : ""));
+            foreach (string d in line.Details) sb.AppendLine("    " + d);
+        }
+        return sb.ToString();
+    }
+
     public IReadOnlyList<Line> Snapshot()
     {
         lock (_gate) return _entries.Select(e => e.Freeze()).ToList();

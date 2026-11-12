@@ -234,6 +234,14 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.M }:
                 _mission.Collapsed = !_mission.Collapsed; break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.S, CtrlPressed: true }:
+                SaveNow(SuggestedSaveName());
+                GetViewport().SetInputAsHandled();
+                break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape } when _menu != null && IsInstanceValid(_menu):
+                CloseMenu();
+                GetViewport().SetInputAsHandled();
+                break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }:
                 if (_pinned.Count > 0) CloseNewestPin();
                 else if (!Decisions.Cancel()) OpenMenu();
@@ -609,6 +617,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
             if (Session.EndedText != null) { prompt = "GAME OVER"; hint = Session.EndedText; }
             else if (activating != null && !Session.IsMine(activating.PlayerID)) { prompt = $"{Session.SeatOf(activating.PlayerID)?.Name ?? "Enemy"} IS PLAYING"; hint = activating.Name; }
             else if (Session.Registry.LastAutopilotTask is { } auto) { prompt = "AUTOPILOT"; hint = $"The bot plays this part for you for now: {auto}"; }
+            else if (progress.RoundCount is int r) { prompt = $"ROUND {r}"; hint = "Between activations - the game is working out what happens next."; }
             else { prompt = "SETTING UP"; hint = "The table is being laid out."; }
         }
         _prompt.Text = prompt.ToUpperInvariant();
@@ -1416,17 +1425,135 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _armiesPanel.Position = new Vector2(GetViewportRect().Size.X / 2 - 250, 90);
     }
 
+    // ================================================================== Esc menu, saving
+
+    private Control? _menu;
+
+    /// <summary>
+    /// The in-game menu (Esc): Resume, Save game, Load game, Settings, Main menu, Quit. Saving writes to the Saved
+    /// Games folder under a name you can change; Ctrl+S saves straight away under the suggested name.
+    /// </summary>
     private void OpenMenu()
     {
-        var confirm = new ConfirmationDialog
+        if (_menu != null && IsInstanceValid(_menu)) { CloseMenu(); return; }
+        var veil = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Stop, Name = "EscMenu" };
+        veil.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(420, 0) };
+        v.AddThemeConstantOverride("separation", 10);
+        v.AddChild(HudKit.Text("MENU", 34, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
+        Button Big(string text, Action go, string tip, string variation = "BackButton")
         {
-            Title = "Menu", DialogText = "Leave this game and go back to the main menu?\n(Saving comes with Load Game.)",
-            OkButtonText = "Leave game", CancelButtonText = "Keep playing",
-        };
-        confirm.Confirmed += App.I.ToMainMenu;
-        confirm.Canceled += () => confirm.QueueFree();
-        _hud.AddChild(confirm);
-        confirm.PopupCentered();
+            var b = Ui.Button(text, go, tip, variation);
+            b.CustomMinimumSize = new Vector2(0, 48);
+            v.AddChild(b);
+            return b;
+        }
+        Big("Resume  (Esc)", CloseMenu, "Back to the game.", "CommitButton").Name = "MenuResume";
+
+        // Save: a name box (pre-filled), then Save.
+        bool canSave = Session.Lobby.Vm.HasHostPrivileges && Session.Table.Progress.RoundCount != null;
+        var saveRow = new HBoxContainer();
+        saveRow.AddThemeConstantOverride("separation", 8);
+        var name = new LineEdit { Text = SuggestedSaveName(), SizeFlagsHorizontal = SizeFlags.ExpandFill, Editable = canSave, Name = "SaveName" };
+        var save = Ui.Button("Save game", () => SaveNow(name.Text), canSave ? "Save this game to the Saved Games folder (Ctrl+S saves straight away)."
+            : !Session.Lobby.Vm.HasHostPrivileges ? "Only the host can save the game." : "Saving opens once round 1 starts (a game saved during set-up can't be resumed).", "CommitButton");
+        save.Disabled = !canSave;
+        save.Name = "MenuSave";
+        name.TextSubmitted += t => { if (canSave) SaveNow(t); };
+        saveRow.AddChild(name);
+        saveRow.AddChild(save);
+        v.AddChild(saveRow);
+
+        Big("Load game", () => Leave("Load another game?", () => App.I.Later(() => App.I.Open<LoadGameScreen>(Scenes.LoadGame))),
+            "Pick a saved game to carry on. This game ends - save it first if you want to come back to it.");
+        Big("Settings", () => { CloseMenu(); App.I.Open<SettingsScreen>(Scenes.Settings); }, "Your name, display, camera and sound settings.");
+        Big("Main menu", () => Leave("Leave this game?", () => { }), "Leave this game and go back to the main menu.");
+        Big("Quit game", () => Leave("Quit the game?", App.I.Quit), "Close the game.").AddThemeColorOverride("font_color", Palette.WoundsRed);
+
+        var panel = HudKit.Panel(new ChamferBox
+        {
+            Fill = HudKit.Glass with { A = 0.97f }, Border = HudKit.Lime, Cut = 14, Glow = HudKit.Lime with { A = 0.3f },
+            ContentMarginLeft = 30, ContentMarginRight = 30, ContentMarginTop = 22, ContentMarginBottom = 26,
+        }, v);
+        veil.AddChild(panel);
+        panel.SetAnchorsPreset(LayoutPreset.Center);
+        panel.GrowHorizontal = GrowDirection.Both;
+        panel.GrowVertical = GrowDirection.Both;
+        _hud.AddChild(veil);
+        _menu = veil;
+    }
+
+    private void CloseMenu()
+    {
+        if (_menu != null && IsInstanceValid(_menu)) _menu.QueueFree();
+        _menu = null;
+    }
+
+    /// <summary>Leaving the game: asks first (unsaved progress is lost), then goes to the main menu and does <paramref name="then"/>.</summary>
+    private void Leave(string question, Action then)
+    {
+        bool saved = _lastSaveRound == Session.Table.Progress.RoundCount && Session.Table.Progress.RoundCount != null;
+        Confirm(question, Session.EndedText != null || saved ? "This game ends." : "This game ends - anything since your last save is lost.",
+            "Leave", () => { App.I.ToMainMenu(); then(); }, "Stay");
+    }
+
+    private int? _lastSaveRound;
+
+    private string SuggestedSaveName()
+    {
+        var p = Session.Table.Progress;
+        string game = FDG.GameSystemInfo.DisplayName(p.GameSystem);
+        string round = p.RoundCount is int r ? $"Round {r}" : "Set-up";
+        string them = string.Join(" vs ", Session.Seats.Select(x => x.Faction.Length > 0 ? x.Faction : x.Name));
+        return $"{game} - {them} - {round} - {DateTime.Now:yyyy-MM-dd HH-mm}";
+    }
+
+    private void SaveNow(string name)
+    {
+        if (!Session.Lobby.Vm.HasHostPrivileges) { Toast("Only the host can save the game."); return; }
+        if (Session.Table.Progress.RoundCount == null) { Toast("Saving opens once round 1 starts."); return; }
+        string? path = Session.Lobby.SaveGame(name, out string error);
+        if (path == null) { Toast(error); return; }
+        _lastSaveRound = Session.Table.Progress.RoundCount;
+        Toast($"Saved: {System.IO.Path.GetFileNameWithoutExtension(path)}");
+        CloseMenu();
+    }
+
+    // ================================================================== game over
+
+    private void Rematch()
+    {
+        if (FdgRaylib.Lobby.LobbySession.LastLaunch is not { } plan) return;
+        App.I.ToMainMenu();
+        // The old lobby lets go of the network port as it leaves the tree; host the new one a moment later.
+        App.I.Later(() =>
+        {
+            if (FdgRaylib.Lobby.LobbySession.TryHost(plan.System, plan.Mode, out var lobby, out string error) && lobby != null)
+            {
+                lobby.ApplyRematch(plan);
+                App.I.Open<LobbyScreen>(Scenes.Lobby, l => l.Session = lobby);
+            }
+            else App.I.Message("Can't start the rematch", error);
+        });
+    }
+
+    private void SaveReport()
+    {
+        var p = Session.Table.Progress;
+        var scores = p.Scores;
+        var lines = Session.Seats.Select(seat => $"{seat.Name}{(seat.Faction.Length > 0 ? $" ({seat.Faction})" : "")}: {scores.FirstOrDefault(x => x.PlayerID.Equals(seat.Id)).ObjectiveCount} objectives");
+        try
+        {
+            string text = Session.Report.ExportText($"{FDG.GameSystemInfo.DisplayName(p.GameSystem)} - {FDG.GameSystemInfo.ModeLabel(p.GameMode, p.GameSystem)}",
+                Session.EndedText ?? "", lines);
+            string path = System.IO.Path.Combine(FdgRaylib.SaveLoad.SavePaths.FolderPath, $"Battle Report {DateTime.Now:yyyy-MM-dd HH-mm-ss}.txt");
+            System.IO.File.WriteAllText(path, text);
+            Toast($"Battle report saved in Saved Games: {System.IO.Path.GetFileName(path)}");
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            Toast("Couldn't write the battle report: " + ex.Message);
+        }
     }
 
     private void ShowGameOver()
@@ -1455,8 +1582,16 @@ public partial class BattleScreen : Control, IOwnBackdrop
         v.AddChild(grid);
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);
+        string? noRematch = FdgRaylib.Lobby.LobbySession.RematchUnavailableReason(Session.Lobby);
+        var rematch = Ui.Button("Rematch", Rematch, noRematch ?? "Same game, same seats, same armies - back to the lobby to LAUNCH again.", "CommitButton");
+        rematch.Disabled = noRematch != null;
+        rematch.Name = "Rematch";
+        var report = Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.");
+        report.Name = "SaveReport";
         var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table.");
-        var menu = Ui.Button("Main menu", App.I.ToMainMenu, "Back to the main menu.", "CommitButton");
+        var menu = Ui.Button("Main menu", App.I.ToMainMenu, "Back to the main menu.", "BackButton");
+        row.AddChild(rematch);
+        row.AddChild(report);
         row.AddChild(look);
         row.AddChild(menu);
         v.AddChild(row);

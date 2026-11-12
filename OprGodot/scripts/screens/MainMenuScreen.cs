@@ -37,8 +37,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
 
         var tools = new HBoxContainer();
         tools.AddThemeConstantOverride("separation", 10);
-        tools.AddChild(Tool("LoadGame", "open-book", "Load Game", "Resume a game you saved.", () => App.I.OpenNotYet("Load Game",
-            "Save tiles with a board picture, All / Grimdark Future / Age of Fantasy filters, a big preview, LOAD and Delete. Comes with the in-game table (port step 3).")));
+        tools.AddChild(Tool("LoadGame", "open-book", "Load Game", "Resume a game you saved.", () => App.I.Open<LoadGameScreen>(Scenes.LoadGame)));
         tools.AddChild(Tool("JoinGame", "radar-sweep", "Join a Game", "Join a friend's game over Tailscale.", OpenJoin));
         // The full builder is port step 5; until then the button imports a list from the Army Forge website.
         tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Import an army list from the Army Forge website (paste its share link). The full builder comes later.",

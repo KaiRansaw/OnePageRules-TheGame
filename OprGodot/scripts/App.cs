@@ -96,6 +96,20 @@ public partial class App : Node
         _screens.Peek().Visible = true;
     }
 
+    /// <summary>Runs <paramref name="action"/> a moment later - after screens just closed have let go of things
+    /// (a closed lobby releases the network port when it leaves the tree, at the end of the frame).</summary>
+    public void Later(Action action) => GetTree().CreateTimer(0.2).Timeout += action;
+
+    /// <summary>A plain message box over whatever is showing.</summary>
+    public void Message(string title, string text)
+    {
+        var d = new AcceptDialog { Title = title, DialogText = text };
+        d.Confirmed += () => d.QueueFree();
+        d.Canceled += () => d.QueueFree();
+        GetTree().Root.AddChild(d);
+        d.PopupCentered();
+    }
+
     public void ToMainMenu()
     {
         while (_screens.Count > 1) _screens.Pop().QueueFree();
@@ -128,4 +142,5 @@ public static class Scenes
     public const string JoinPopup = "res://scenes/JoinPopup.tscn";
     public const string Lobby = "res://scenes/screens/Lobby.tscn";
     public const string Battle = "res://scenes/screens/Battle.tscn";
+    public const string LoadGame = "res://scenes/screens/LoadGame.tscn";
 }

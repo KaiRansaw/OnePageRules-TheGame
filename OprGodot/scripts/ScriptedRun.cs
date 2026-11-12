@@ -80,6 +80,24 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
                 return;
             }
+            // "waitround:2" holds until the battle has reached that round (or ended).
+            if (name.StartsWith("waitround:") && int.TryParse(name[10..], out int round))
+            {
+                var b = Find<Battle.BattleScreen>(GetTree().Root);
+                bool there = b != null && (b.Session.Table.Progress.RoundCount >= round || b.Session.EndedText != null);
+                if (!there && ++_waitedFor < 2000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
+                return;
+            }
+            // "snap:Name" saves a picture of the screen as it is now (<shot dir>/Name.png).
+            if (name.StartsWith("snap:"))
+            {
+                string file = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp", name[5..] + ".png");
+                GetViewport().GetTexture().GetImage().SavePng(file);
+                GD.Print($"ScriptedRun: snapped {name[5..]} - {file}");
+                return;
+            }
             // Real mouse clicks through the whole input pipeline, on the battle table:
             // "clickmine" (your first ready unit), "clickenemy" (the enemy nearest it), "clickrel:dx;dz"
             // (the selected unit's middle + dx,dz inches), "hoverrel:dx;dz" (the same, pointer only).
