@@ -484,4 +484,67 @@ public sealed class LobbySession : IDisposable
         error = "";
         return true;
     }
+
+    // ------------------------------------------------------------------ joining a friend's game
+
+    /// <summary>
+    /// Joins the lobby a friend is hosting at <paramref name="address"/> - their Tailscale name or IP (Kai,
+    /// 2026-11-07: "Tailscale only, one box"). Ported from the Raylib Join popup: look the address up, connect on
+    /// the game's port, then the join handshake (the host checks both copies of the game match and hands out a
+    /// seat). <paramref name="status"/> reports each step in words. Returns the lobby, or null with the reason.
+    /// </summary>
+    public static async Task<(LobbySession? Session, string Error)> JoinAsync(string address, Action<string>? status = null)
+    {
+        string name = UserConfig.Current.PlayerName;
+        if (string.IsNullOrWhiteSpace(name)) return (null, "Your name is empty - set it in Settings first.");
+        if (string.IsNullOrWhiteSpace(address)) return (null, "Type your friend's Tailscale address first.");
+
+        status?.Invoke("Looking up the address...");
+        System.Net.IPAddress? ip = await ResolveAsync(address).ConfigureAwait(false);
+        if (ip == null) return (null, "Could not find that address. Check the spelling, and that Tailscale is running on both computers.");
+
+        status?.Invoke("Connecting...");
+        var client = new FDG.Network.Connection.FDGClient();
+        bool connected;
+        try { connected = await client.ConnectAsync(ip, HostStarter.Port).ConfigureAwait(false); }
+        catch (Exception ex) { Console.WriteLine($"Join: connect failed: {ex.GetBaseException().Message}"); connected = false; }
+        if (!connected) return (null, "Could not connect. Is your friend's game open on its lobby screen?");
+
+        // The two-step handshake (#075): the client greets with its version + data fingerprint, the host either
+        // hands out a PlayerID or says why not (a different build of the game, a game already running).
+        status?.Invoke("Joining the lobby...");
+        var vm = new LobbyViewModel_Client(name, client, password: "");
+        Task<string?> join = vm.JoinResultTask;
+        if (await Task.WhenAny(join, Task.Delay(TimeSpan.FromSeconds(JoinTimeoutSeconds))).ConfigureAwait(false) != join)
+        {
+            vm.Dispose();
+            client.Disconnect();
+            return (null, "Timed out waiting for the host to let you in.");
+        }
+        if (await join.ConfigureAwait(false) is { } reject)
+        {
+            vm.Dispose();
+            client.Disconnect();
+            return (null, reject);
+        }
+        // Remembered only once the host lets you in, so a typo doesn't replace the last good address.
+        UserConfig.Current.LastHostAddress = address.Trim();
+        UserConfig.Save();
+        return (new LobbySession(vm), "");
+    }
+
+    public const int JoinTimeoutSeconds = 15;
+
+    /// <summary>An IP passes straight through; a name is looked up. The host listens on IPv4 only.</summary>
+    private static async Task<System.Net.IPAddress?> ResolveAsync(string text)
+    {
+        string t = text.Trim();
+        if (System.Net.IPAddress.TryParse(t, out var literal)) return literal;
+        try
+        {
+            var all = await System.Net.Dns.GetHostAddressesAsync(t).ConfigureAwait(false);
+            return all.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+        }
+        catch { return null; }
+    }
 }

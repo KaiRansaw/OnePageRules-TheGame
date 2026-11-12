@@ -51,9 +51,24 @@ public partial class ScriptedRun : Node
             // "army:<file>" gives the first (host) seat that army in the lobby; "confirm" presses OK on an open dialog.
             if (name.StartsWith("army:") && Find<LobbyScreen>(GetTree().Root) is { } lobby)
             {
-                var seat = lobby.Session.Vm.PlayerInfos.First().PlayerID;
+                var vm = lobby.Session.Vm;
+                // The host's own seat is row 0; a guest's is the one seat it may edit.
+                var seat = vm.HasHostPrivileges ? vm.PlayerInfos.First().PlayerID
+                    : vm.PlayerInfos.First(p => vm.CheckCanModifyPlayerIDInfo(p.PlayerID)).PlayerID;
                 if (FdgRaylib.Lobby.LobbySession.LoadArmyFile(name[5..]) is { } army) lobby.Session.Vm.UpdateArmyListFile(seat, army);
                 else GD.PrintErr($"ScriptedRun: no army at {name[5..]}");
+                return;
+            }
+            // "join:127.0.0.1" types that address into the open Join a Game popup and joins.
+            if (name.StartsWith("join:") && Find<JoinPopup>(GetTree().Root) is { } joinPopup) { joinPopup.JoinAddress(name[5..]); _wait = 240; return; }
+            // "waitplayers:2" holds the host until that many seats are filled (a friend has joined).
+            if (name.StartsWith("waitplayers:") && int.TryParse(name[12..], out int players))
+            {
+                bool full = Find<LobbyScreen>(GetTree().Root) is { } wl && wl.Session.Vm.PlayerInfos.Count >= players
+                    && wl.Session.Vm.PlayerInfos.Any(p => p.PlayerType == FDG.Players.EPlayerType.Network);
+                if (!full && ++_waitedFor < 3000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} {(full ? "a friend joined" : "timed out")}");
                 return;
             }
             // "import:<share link>" pastes a link into the open Import from Army Forge box and imports it.
