@@ -22,6 +22,49 @@ public static class GfBookUnits
 
     public static string DefaultFolder => Path.Combine(AppAssets.AssetsFolder, "Books", "Grimdark Future");
 
+    /// <summary>The other GF games whose units use GF's models, by the system name the unit list uses.</summary>
+    public static readonly (string System, string Folder)[] OtherGames =
+    {
+        ("GF Firefight", "GF Firefight"),
+        ("GF Star Quest", "GF Star Quest"),
+    };
+
+    /// <summary>Firefight's and Star Quest's books (system -> book -> units), for <see cref="AliasesFor"/>.</summary>
+    public static Dictionary<string, SortedDictionary<string, List<string>>> LoadOtherGames(string? booksFolder = null)
+    {
+        booksFolder ??= Path.Combine(AppAssets.AssetsFolder, "Books");
+        return OtherGames.ToDictionary(g => g.System, g => Load(Path.Combine(booksFolder, g.Folder)));
+    }
+
+    /// <summary>
+    /// A GF unit's name in Firefight and Star Quest: the same army book, and a unit with the same name or the same
+    /// name made singular ("Shooter Grunts" -> Star Quest's "Shooter Grunt"). The rule the shipped unit list was built
+    /// with (tools/unit-models/build_map.py), so a hand match links up the same way an automatic one does.
+    /// </summary>
+    public static List<UnitModelMap.Alias> AliasesFor(string book, string unit, Dictionary<string, SortedDictionary<string, List<string>>> others)
+    {
+        var found = new List<UnitModelMap.Alias>();
+        foreach (var (system, books) in others)
+        {
+            if (!books.TryGetValue(book, out var units)) continue;
+            string k = Key(unit), ks = Key(StemAll(unit));
+            string? hit = units.FirstOrDefault(u => Key(u) == k || Key(StemAll(u)) == ks);
+            if (hit != null) found.Add(new UnitModelMap.Alias { System = system, Unit = hit });
+        }
+        return found;
+    }
+
+    private static string Key(string s) => new string(s.ToLowerInvariant().Where(c => c is >= 'a' and <= 'z' or >= '0' and <= '9').ToArray());
+
+    private static string StemAll(string s) => string.Join(' ', s.ToLowerInvariant().Split(' ').Select(Stem));
+
+    private static string Stem(string w)
+    {
+        foreach (var (suf, rep) in new[] { ("ies", "y"), ("ves", "f"), ("es", "e"), ("s", "") })
+            if (w.Length > 4 && w.EndsWith(suf, StringComparison.Ordinal)) return w[..^suf.Length] + rep;
+        return w;
+    }
+
     /// <summary>Book name -> its unit names (A-Z, each once). Unreadable files are skipped.</summary>
     public static SortedDictionary<string, List<string>> Load(string? folder = null)
     {

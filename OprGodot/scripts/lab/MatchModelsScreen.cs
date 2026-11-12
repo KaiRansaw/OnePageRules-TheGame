@@ -29,6 +29,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
     private UnitModelMap _map = null!;
     private ModelMatches _matches = null!;
     private SortedDictionary<string, List<string>> _books = null!;
+    private Dictionary<string, SortedDictionary<string, List<string>>> _otherGames = new();
     private SortedDictionary<string, List<ForceOrgCatalog.Model>> _factions = new();
     private string _root = "", _matchesPath = "";
     private string? _startBook;
@@ -66,6 +67,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         _matches = ModelMatches.Load(_matchesPath);
         _map = UnitModelMap.Load(matchesRoot: _root);
         _books = GfBookUnits.Load();
+        _otherGames = GfBookUnits.LoadOtherGames();
         if (_books.Count == 0) foreach (string b in _map.Books) _books[b] = new();
         if (File.Exists(ForceOrgCatalog.DefaultPath))
         {
@@ -371,7 +373,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         _busy = true;
         UpdateTarget();
 
-        _matches.Assign(book, unit, mref);
+        _matches.Assign(book, unit, mref, GfBookUnits.AliasesFor(book, unit, _otherGames)); // shows in Firefight / Star Quest too
         string? err = SaveMatches();
         _map = UnitModelMap.Load(matchesRoot: _root);
 

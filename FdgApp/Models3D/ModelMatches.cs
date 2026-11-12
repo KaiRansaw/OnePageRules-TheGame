@@ -29,6 +29,8 @@ public sealed class ModelMatches
         [JsonProperty("unit")] public string Unit { get; set; } = "";
         [JsonProperty("add")] public List<UnitModelMap.ModelRef> Add { get; set; } = new();
         [JsonProperty("remove")] public List<int> Remove { get; set; } = new();
+        /// <summary>The unit's name in Firefight / Star Quest, so a hand match shows there too.</summary>
+        [JsonProperty("alsoIn")] public List<UnitModelMap.Alias> AlsoIn { get; set; } = new();
     }
 
     [JsonProperty("_comment")]
@@ -57,6 +59,7 @@ public sealed class ModelMatches
     public void Save(string path)
     {
         Units.RemoveAll(u => u.Add.Count == 0 && u.Remove.Count == 0);
+        foreach (var u in Units) if (u.Add.Count == 0) u.AlsoIn.Clear(); // only a unit given models needs its other names
         Units.Sort((a, b) => string.Compare(a.Book + "\u0001" + a.Unit, b.Book + "\u0001" + b.Unit, StringComparison.OrdinalIgnoreCase));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
@@ -69,10 +72,12 @@ public sealed class ModelMatches
         return u;
     }
 
-    /// <summary>Gives a catalogue model to a unit.</summary>
-    public void Assign(string book, string unit, UnitModelMap.ModelRef model)
+    /// <summary>Gives a catalogue model to a unit (<paramref name="alsoIn"/>: its name in the other games).</summary>
+    public void Assign(string book, string unit, UnitModelMap.ModelRef model, IEnumerable<UnitModelMap.Alias>? alsoIn = null)
     {
         var u = For(book, unit);
+        foreach (var a in alsoIn ?? Enumerable.Empty<UnitModelMap.Alias>())
+            if (!u.AlsoIn.Any(x => x.System == a.System && x.Unit == a.Unit)) u.AlsoIn.Add(new UnitModelMap.Alias { System = a.System, Unit = a.Unit });
         u.Remove.Remove(model.Id);
         if (u.Add.All(m => m.Id != model.Id)) u.Add.Add(new UnitModelMap.ModelRef { Id = model.Id, Name = model.Name });
     }
@@ -97,6 +102,8 @@ public sealed class ModelMatches
                 map.Units.Add(e = new UnitModelMap.Entry { Book = m.Book, Unit = m.Unit, Warhammer = "(matched by hand)" });
             }
             e.Models.RemoveAll(r => m.Remove.Contains(r.Id));
+            foreach (var a in m.AlsoIn)
+                if (!e.AlsoIn.Any(x => x.System == a.System && x.Unit == a.Unit)) e.AlsoIn.Add(new UnitModelMap.Alias { System = a.System, Unit = a.Unit });
             foreach (var r in m.Add)
                 if (e.Models.All(x => x.Id != r.Id)) e.Models.Add(new UnitModelMap.ModelRef { Id = r.Id, Name = r.Name });
         }

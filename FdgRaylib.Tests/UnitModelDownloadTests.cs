@@ -195,4 +195,29 @@ public class UnitModelDownloadTests
         Assert.That(books["Alien Hives"], Does.Contain("Assault Grunts"));
         Assert.That(books["Alien Hives"], Does.Contain("Hive Lord"));
     }
+
+    [Test]
+    public void HandMatch_FindsTheUnitsNameInFirefightAndStarQuest()
+    {
+        string books = Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "FdgRaylib", "Assets", "Books");
+        var others = GfBookUnits.LoadOtherGames(books);
+        var a = GfBookUnits.AliasesFor("Alien Hives", "Assault Grunts", others);
+        Assert.That(a.Single(x => x.System == "GF Star Quest").Unit, Is.EqualTo("Assault Grunt"), "Star Quest's singular");
+        Assert.That(a.Single(x => x.System == "GF Firefight").Unit, Is.EqualTo("Assault Grunts"));
+
+        // Saved with the match and laid over the list, so the table finds the GF unit's models from a Star Quest army.
+        var m = new ModelMatches();
+        m.Assign("Alien Hives", "Made-up Unit", new UnitModelMap.ModelRef { Id = 9003, Name = "X" },
+            new[] { new UnitModelMap.Alias { System = "GF Star Quest", Unit = "Made-up Thing" } });
+        string path = Path.Combine(_dir, ModelMatches.FileName);
+        m.Save(path);
+        var map = new UnitModelMap();
+        ModelMatches.Load(path).ApplyTo(map);
+        Assert.That(map.Units.Single().AlsoIn.Single().Unit, Is.EqualTo("Made-up Thing"));
+
+        string unitDir = Path.Combine(_dir, "lib", "Alien Hives", "Made-up Unit");
+        Directory.CreateDirectory(unitDir);
+        File.WriteAllText(Path.Combine(unitDir, "X (9003).glb"), "x");
+        Assert.That(UnitModelLibrary.Scan(Path.Combine(_dir, "lib"), map).FilesFor("Alien Hives", "Made-up Thing"), Has.Count.EqualTo(1));
+    }
 }
