@@ -1,5 +1,7 @@
 using FDG;
+using FdgRaylib.Config;
 using FdgRaylib.Game;
+using FdgRaylib.Models3D;
 using FdgRaylib.Rendering;
 using Godot;
 using OprGodot.Hud;
@@ -42,6 +44,8 @@ public partial class BattleTable : Node3D
         public required StandardMaterial3D RingMat;
         public required IModel Model;
         public required IUnit Unit;
+        /// <summary>How tall it stands (inches): a downloaded model's own height, or the token's.</summary>
+        public float Height = 1.6f;
     }
 
     /// <summary>Table point (inches) -> world.</summary>
@@ -119,6 +123,75 @@ public partial class BattleTable : Node3D
         AddChild(_modelRoot);
         Camera = new Camera3D { Fov = 44, Current = true, Far = 2000 };
         AddChild(Camera);
+        LoadUnitModels();
+    }
+
+    // ------------------------------------------------------------------ downloaded 3D models
+
+    private UnitModelLibrary? _library;
+    private readonly Dictionary<string, Lab.LoadedAsset?> _modelFiles = new();
+    private readonly Dictionary<string, UnitModelSettings> _modelSettings = new();
+
+    /// <summary>
+    /// Finds the downloaded models for this game's units (UnitModels, see the Asset Lab) and loads, before the first
+    /// frame, every file this game will need - each file once, shared by every model that uses it. A unit with no
+    /// download keeps the token. Settings: "3D unit models" turns this off.
+    /// </summary>
+    private void LoadUnitModels()
+    {
+        if (!UserConfig.Current.View.ShowUnitModels) return;
+        UnitModelMap? map = null;
+        try { map = UnitModelMap.Load(); } catch (Exception) { }
+        _library = UnitModelLibrary.Scan(UnitModelPaths.Root, map);
+        if (_library.FileCount == 0) { _library = null; return; }
+        try
+        {
+            foreach (IUnit unit in Session.Table.Units.Objects)
+                for (int i = 0; i < unit.Models.Count; i++)
+                    if (FileFor(unit, i) is { } f) Asset(f);
+        }
+        catch (InvalidOperationException) { } // the engine thread changed the list; the rest load as they appear
+    }
+
+    /// <summary>The model file for a unit's i-th model: its versions in turn, so a squad mixes them.</summary>
+    private string? FileFor(IUnit unit, int index)
+    {
+        if (_library == null) return null;
+        string faction = Session.SeatOf(unit.PlayerID)?.Faction ?? "";
+        var files = _library.FilesFor(faction, unit.Name);
+        return files.Count == 0 ? null : files[index % files.Count];
+    }
+
+    private Lab.LoadedAsset? Asset(string file)
+    {
+        if (_modelFiles.TryGetValue(file, out var a)) return a;
+        a = Lab.AssetLoader.Load(file);
+        if (a.Model == null) { GD.PrintErr($"Unit model not usable: {file}: {a.Error}"); a = null; }
+        _modelFiles[file] = a;
+        _modelSettings[file] = UnitModelSettings.Load(file) ?? new UnitModelSettings { HeightMm = 0 };
+        return a;
+    }
+
+    /// <summary>Stands a downloaded model on a base already built in <paramref name="root"/>; false = none for it.</summary>
+    private bool AddUnitModel(Node3D root, IModel m, IUnit unit, out float height)
+    {
+        height = 0;
+        int index = unit.Models.IndexOf(m);
+        if (FileFor(unit, Math.Max(0, index)) is not { } file || Asset(file) is not { Model: { } source }) return false;
+        UnitModelSettings s = _modelSettings[file].Copy();
+        if (s.BaseMm <= 0) s.BaseMm = 1; // feet on the game's base, whatever base the model was saved with
+        var pivot = new Node3D { Name = "UnitModel" };
+        root.AddChild(pivot);
+        var body = (Node3D)source.Duplicate();
+        pivot.AddChild(body);
+        var (_, box) = Lab.ModelPlacement.Place(pivot, body, s);
+        height = box.End.Y;
+        return true;
+    }
+
+    public override void _ExitTree()
+    {
+        foreach (var a in _modelFiles.Values) a?.Model?.QueueFree();
     }
 
     public override void _Process(double delta)
@@ -495,7 +568,7 @@ public partial class BattleTable : Node3D
                 view.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
                 sum += target;
                 placed++;
-                top = Mathf.Max(top, m.BaseRadiusInches > 1.4f ? 3.6f : 2.6f);
+                top = Mathf.Max(top, view.Height + 1f); // the name floats a little over the tallest model
             }
 
             bool shaken = unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
@@ -535,21 +608,27 @@ public partial class BattleTable : Node3D
         var body = Mat(team.Darkened(0.45f).Lerp(new Color(0.55f, 0.55f, 0.55f), 0.25f), 0.55f);
         TableLook.AddBase(root, m.BaseRadiusInches, team);
         var rim = (StandardMaterial3D)((MeshInstance3D)root.GetChild(0)).MaterialOverride;
+        float height;
         bool big = m.TotalWounds >= 6 || rad > 1.4f;
-        if (big)
+        if (AddUnitModel(root, m, unit, out float modelHeight)) height = modelHeight;
+        else if (big)
+        {
             Mesh(root, new BoxMesh { Size = new Vector3(rad * 1.3f, 1.8f, rad * 1.6f) }, body, new Vector3(0, 1.15f, 0));
+            height = 2.05f;
+        }
         else
         {
             float h = m.TotalWounds >= 3 ? 1.5f : 1.05f;
             Mesh(root, new CapsuleMesh { Radius = rad * 0.42f, Height = h }, body, new Vector3(0, 0.25f + h / 2, 0));
             Mesh(root, new SphereMesh { Radius = rad * 0.3f, Height = rad * 0.6f }, body, new Vector3(0, 0.3f + h, 0));
+            height = 0.3f + h + rad * 0.3f;
         }
         var ringMat = Mat(HudKit.Lime, 0.5f, HudKit.Lime, 1.5f);
         ringMat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
         ringMat.NoDepthTest = true;
         var ring = Mesh(root, new TorusMesh { InnerRadius = rad + 0.18f, OuterRadius = rad + 0.42f, Rings = 48, RingSegments = 6 }, ringMat, new Vector3(0, 0.1f, 0));
         ring.Visible = false;
-        return new ModelView { Root = root, Body = body, Rim = rim, Ring = ring, RingMat = ringMat, Model = m, Unit = unit };
+        return new ModelView { Root = root, Body = body, Rim = rim, Ring = ring, RingMat = ringMat, Model = m, Unit = unit, Height = height };
     }
 
     private Label3D Label(IUnit unit, bool mine)

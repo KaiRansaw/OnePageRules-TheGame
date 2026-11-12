@@ -107,6 +107,28 @@ public class UnitModelDownloadTests
     }
 
     [Test]
+    public void Library_FindsAUnitsModels_ByArmyNameAndOtherGamesNames()
+    {
+        string grunts = Path.Combine(_dir, "Alien Hives", "Assault Grunts");
+        string blood = Path.Combine(_dir, "Blood Brothers", "Blood Destroyers");
+        Directory.CreateDirectory(grunts);
+        Directory.CreateDirectory(blood);
+        File.WriteAllText(Path.Combine(grunts, "Hormagaunt (46).glb"), "x");
+        File.WriteAllText(Path.Combine(grunts, "Hormagaunt (45).glb"), "x");
+        File.WriteAllText(Path.Combine(blood, "Terminator (9).glb"), "x");
+        Directory.CreateDirectory(Path.Combine(_dir, "_cache"));
+        var map = new UnitModelMap();
+        map.Units.Add(new UnitModelMap.Entry { Book = "Alien Hives", Unit = "Assault Grunts", AlsoIn = { new UnitModelMap.Alias { System = "GF Star Quest", Unit = "Assault Grunt" } } });
+
+        var lib = UnitModelLibrary.Scan(_dir, map);
+        Assert.That(lib.FileCount, Is.EqualTo(3));
+        Assert.That(lib.FilesFor("Alien Hives", "Assault Grunts").Select(Path.GetFileName), Is.EqualTo(new[] { "Hormagaunt (45).glb", "Hormagaunt (46).glb" }));
+        Assert.That(lib.FilesFor("alien hives", "Assault Grunt"), Has.Count.EqualTo(2), "Star Quest's singular name");
+        Assert.That(lib.FilesFor("Battle Brothers", "Blood Destroyers"), Has.Count.EqualTo(1), "an allied unit from another book");
+        Assert.That(lib.FilesFor("Alien Hives", "Hive Lord"), Is.Empty, "no download = the token");
+    }
+
+    [Test]
     public void Catalogue_LoadsPartsAndIds()
     {
         string path = Path.Combine(_dir, ForceOrgCatalog.FileName);

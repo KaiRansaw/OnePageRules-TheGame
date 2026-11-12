@@ -74,6 +74,8 @@ public partial class SettingsScreen : Control
                 Config.StartFullscreen = on;
                 DisplayServer.WindowSetMode(on ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
             }));
+        rows.AddChild(Check("3D unit models", "Show the models you downloaded in the Asset Lab on the battle table. Off: everyone is the plain token (quicker on a slow computer). Takes effect from the next game.",
+            View.ShowUnitModels, on => View.ShowUnitModels = on));
         rows.AddChild(Check("Unit labels", "Show each unit's name over it on the table.",
             View.ShowLabels, on => View.ShowLabels = on));
         rows.AddChild(Check("Table grid", "Draw faint lines every 6\" across the table, to judge distances at a glance.",
