@@ -56,6 +56,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         MenuBackdrop.Instance?.SetActive(false);
         BattleDecisions.PortraitFaction = u => Session.SeatOf(u.PlayerID)?.Faction ?? "";
+        Session.Report.BeatSeen += OnBeat;
         // The table takes the clicks the HUD doesn't: this screen is the bottom-most control under the pointer
         // wherever no panel is, so table clicks arrive in _GuiInput. (In 1.45 they were left for
         // _UnhandledInput, and the main scene's full-window control ate them first - nothing on the table
@@ -75,7 +76,18 @@ public partial class BattleScreen : Control, IOwnBackdrop
         ApplyCamera();
     }
 
-    public override void _ExitTree() => MenuBackdrop.Instance?.SetActive(true);
+    public override void _ExitTree()
+    {
+        Session.Report.BeatSeen -= OnBeat;
+        MenuBackdrop.Instance?.SetActive(true);
+    }
+
+    // Attacks arrive on the engine thread; the table effect is played on the next frame.
+    private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.Presentation.Beats.AttackBeat> _shots = new();
+    private void OnBeat(FDG.Presentation.PresentationBeat beat)
+    {
+        if (beat is FDG.Presentation.Beats.AttackBeat a && _shots.Count < 64) _shots.Enqueue(a);
+    }
 
     public BattleTable Table => _table;
 
@@ -102,6 +114,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public override void _Process(double delta)
     {
         UpdateHover(delta);
+        while (_shots.TryDequeue(out var shot)) _table.Shots(shot.From, shot.To, shot.VolleyCount, shot.IsMelee);
         if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
         {
             Decisions.Prompt();
@@ -824,13 +837,31 @@ public partial class BattleScreen : Control, IOwnBackdrop
             .GroupBy(w => (w.Name, w.RangeInches, w.Attacks, w.ArmorPenetration)).ToList();
         foreach (var g in weapons)
         {
+            // Kai, 2026-11-11: a weapon's special rules show in gold under its name, each with the book's
+            // wording on hover.
+            var cell = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(120, 0) };
+            cell.AddThemeConstantOverride("separation", -3);
             var name = HudKit.Text((g.Count() > 1 ? $"{g.Count()}x " : "") + g.Key.Name, 15, HudKit.Fg, HudKit.Semi);
-            name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             name.ClipText = true;
-            name.CustomMinimumSize = new Vector2(120, 0);
-            string rules = string.Join(", ", g.First().RuleDefinitions.Select(r => r.RequestedName));
-            if (rules.Length > 0) { name.TooltipText = rules; name.MouseFilter = MouseFilterEnum.Stop; }
-            grid.AddChild(name);
+            cell.AddChild(name);
+            var weaponRules = g.First().RuleDefinitions.GroupBy(r => r.RequestedName).Select(x => x.First()).ToList();
+            if (weaponRules.Count > 0)
+            {
+                var flow = new HFlowContainer();
+                flow.AddThemeConstantOverride("h_separation", 6);
+                foreach (var wr in weaponRules)
+                {
+                    var l = HudKit.Text(wr.RequestedName, 12, Palette.RuleGold, HudKit.Semi);
+                    l.TooltipText = BookText(wr);
+                    l.MouseFilter = MouseFilterEnum.Stop;
+                    l.MouseDefaultCursorShape = CursorShape.Help;
+                    flow.AddChild(l);
+                }
+                cell.AddChild(flow);
+                name.TooltipText = string.Join("\n\n", weaponRules.Select(BookText));
+                name.MouseFilter = MouseFilterEnum.Stop;
+            }
+            grid.AddChild(cell);
             grid.AddChild(HudKit.Text(g.Key.RangeInches > 0 ? $"{g.Key.RangeInches:0}\"" : "-", 15, g.Key.RangeInches > 0 ? HudKit.Lime : HudKit.Dim, HudKit.Bold));
             grid.AddChild(HudKit.Text($"A{g.Key.Attacks}", 15, HudKit.Fg, HudKit.Bold));
             grid.AddChild(HudKit.Text(g.Key.ArmorPenetration > 0 ? g.Key.ArmorPenetration.ToString() : "-", 15, g.Key.ArmorPenetration > 0 ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
@@ -843,13 +874,21 @@ public partial class BattleScreen : Control, IOwnBackdrop
         foreach (var rule in u.RuleDefinitions.GroupBy(r => r.RequestedName).Select(g => g.First()))
         {
             var chip = HudKit.Chip(rule.RequestedName, Palette.RuleGold, false, 13);
-            chip.TooltipText = RuleText(rule);
+            chip.TooltipText = BookText(rule);
             chip.MouseFilter = MouseFilterEnum.Stop;
             rulesFlow.AddChild(chip);
         }
         col.AddChild(rulesFlow);
         if (hint != null) col.AddChild(HudKit.Text(hint, 12, HudKit.Dim with { A = 0.7f }, HudKit.Medium));
         return col;
+    }
+
+    /// <summary>A rule's name and the book's wording (Army Forge's own text for this game), else the engine's summary.</summary>
+    private string BookText(FDG.Rules.Dispatch.ResolvedRule rule)
+    {
+        string bare = rule.RequestedName.Contains('(') ? rule.RequestedName[..rule.RequestedName.IndexOf('(')].Trim() : rule.RequestedName;
+        string? book = RuleText(rule.Definition.Name) ?? RuleText(bare) ?? RuleText(rule.RequestedName);
+        return book != null ? $"{rule.RequestedName}:\n{book}" : RuleText(rule);
     }
 
     private static string RuleText(FDG.Rules.Dispatch.ResolvedRule rule) =>

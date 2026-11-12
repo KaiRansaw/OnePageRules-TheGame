@@ -39,52 +39,86 @@ public static class MovePlanner
 
     /// <summary>Slides the unit so its middle heads for (<paramref name="x"/>, <paramref name="z"/>).</summary>
     public static Plan Towards(DefineMovementPathRequest request, ITableState table, float x, float z, float? cap = null) =>
-        Towards(For(request, table), x, z, cap);
+        Towards(For(request, table), Array.Empty<(float, float)>(), x, z, cap);
+
+    /// <summary>
+    /// The same, going through turn points first (Kai, 2026-11-11: "a click should mark a point so a unit could go
+    /// around corners"). <paramref name="via"/> are where the unit's middle passes, in order; every model follows the
+    /// same bends, so the formation is kept and each model's path is measured along its bends.
+    /// </summary>
+    public static Plan Towards(DefineMovementPathRequest request, ITableState table, IReadOnlyList<(float X, float Z)> via,
+        float x, float z, float? cap = null) => Towards(For(request, table), via, x, z, cap);
 
     /// <summary>
     /// A consolidation move (after a melee): the unit slides towards (x, z), up to the request's 3" (wipeout) or
     /// 1" (disengage), checked with the same <c>ValidateConsolidationPaths</c> the ConsolidateStage runs.
     /// </summary>
     public static Plan Consolidate(ConsolidationMoveRequest request, ITableState table, float x, float z) =>
-        Towards(For(request, table), x, z, null);
+        Towards(For(request, table), Array.Empty<(float, float)>(), x, z, null);
 
     /// <summary>A consolidation that leaves every model where it stands.</summary>
     public static List<ModelMoveEntry> StayInPlace(ConsolidationMoveRequest request) =>
         request.UnitDataBinding.GetValue().ModelBindings.Select(b => new ModelMoveEntry(b, new List<Position>())).ToList();
 
-    private static Plan Towards(Mover mover, float x, float z, float? cap)
+    private static Plan Towards(Mover mover, IReadOnlyList<(float X, float Z)> via, float x, float z, float? cap)
     {
         var movers = Movers(mover);
-        if (movers.Count == 0) return Build(mover, 0, 0);
+        if (movers.Count == 0) return Build(mover, Prefix.None, 0, 0);
+        Prefix prefix = PrefixFor(movers, via);
+        var (lx, lz) = prefix.Last;
         float cx = movers.Average(b => b.GetValue().Position.x), cz = movers.Average(b => b.GetValue().Position.z);
-        return Furthest(mover, x - cx, z - cz, cap);
+        return Furthest(mover, prefix, x - cx - lx, z - cz - lz, cap);
+    }
+
+    /// <summary>The turn points as offsets from where the unit stands, and the length of path they already use.</summary>
+    private sealed record Prefix(IReadOnlyList<(float X, float Z)> Offsets, float Length)
+    {
+        public static readonly Prefix None = new(Array.Empty<(float, float)>(), 0);
+        public (float X, float Z) Last => Offsets.Count > 0 ? Offsets[^1] : (0, 0);
+    }
+
+    private static Prefix PrefixFor(List<DataBinding<ModelData>> movers, IReadOnlyList<(float X, float Z)> via)
+    {
+        if (via.Count == 0 || movers.Count == 0) return Prefix.None;
+        float cx = movers.Average(b => b.GetValue().Position.x), cz = movers.Average(b => b.GetValue().Position.z);
+        var offsets = via.Select(p => (p.X - cx, p.Z - cz)).ToList();
+        float length = 0, px = 0, pz = 0;
+        foreach (var (ox, oz) in offsets) { length += Dist(px, pz, ox, oz); px = ox; pz = oz; }
+        return new Prefix(offsets, length);
     }
 
     /// <summary>
     /// Slides the unit straight at <paramref name="target"/> until its closest model touches the closest
     /// enemy model (a charge, or moving up to an enemy).
     /// </summary>
-    public static Plan IntoContact(DefineMovementPathRequest request, ITableState table, IUnit target, float? cap = null)
+    public static Plan IntoContact(DefineMovementPathRequest request, ITableState table, IUnit target, float? cap = null) =>
+        IntoContact(request, table, Array.Empty<(float, float)>(), target, cap);
+
+    /// <summary>Into contact after going through the turn points <paramref name="via"/> (a charge round a corner).</summary>
+    public static Plan IntoContact(DefineMovementPathRequest request, ITableState table, IReadOnlyList<(float X, float Z)> via,
+        IUnit target, float? cap = null)
     {
         Mover mover = For(request, table);
         var movers = Movers(mover);
         var enemies = target.Models.Where(m => m.GetIsAlive()).ToList();
-        if (movers.Count == 0 || enemies.Count == 0) return Build(mover, 0, 0);
-        (IModel a, IModel b, float d) best = (movers[0].GetValue(), enemies[0], float.MaxValue);
+        if (movers.Count == 0 || enemies.Count == 0) return Build(mover, Prefix.None, 0, 0);
+        Prefix prefix = PrefixFor(movers, via);
+        var (lx, lz) = prefix.Last;
+        (ModelData a, IModel b, float d) best = (movers[0].GetValue(), enemies[0], float.MaxValue);
         foreach (var mb in movers)
         {
             ModelData m = mb.GetValue();
             foreach (IModel e in enemies)
             {
-                float d = Dist(m.Position.x, m.Position.z, e.Position.x, e.Position.z);
+                float d = Dist(m.Position.x + lx, m.Position.z + lz, e.Position.x, e.Position.z);
                 if (d < best.d) best = (m, e, d);
             }
         }
         float gap = best.d - best.a.BaseRadiusInches - best.b.BaseRadiusInches;
-        if (best.d < 0.001f || gap <= 0.02f) return Build(mover, 0, 0);
+        if (best.d < 0.001f || gap <= 0.02f) return Build(mover, prefix, 0, 0);
         float travel = gap - 0.02f;   // a hair short of overlapping: base contact
-        float ux = (best.b.Position.x - best.a.Position.x) / best.d, uz = (best.b.Position.z - best.a.Position.z) / best.d;
-        return Furthest(mover, ux * travel, uz * travel, cap);
+        float ux = (best.b.Position.x - best.a.Position.x - lx) / best.d, uz = (best.b.Position.z - best.a.Position.z - lz) / best.d;
+        return Furthest(mover, prefix, ux * travel, uz * travel, cap);
     }
 
     /// <summary>
@@ -92,42 +126,46 @@ public static class MovePlanner
     /// <paramref name="limit"/> caps the distance below the request's own maximum (the Advance or Rush the
     /// player picked).
     /// </summary>
-    private static Plan Furthest(Mover mover, float dx, float dz, float? limit)
+    private static Plan Furthest(Mover mover, Prefix prefix, float dx, float dz, float? limit)
     {
-        // Never ask for more than the furthest any model may go.
+        // Never ask for more than the furthest any model may go (the turn points already use some of it).
         float len = MathF.Sqrt(dx * dx + dz * dz);
-        float cap = Math.Max(0f, Math.Min(limit ?? float.MaxValue, mover.MaxDistance) - 0.01f);
+        float cap = Math.Max(0f, Math.Min(limit ?? float.MaxValue, mover.MaxDistance) - 0.01f - prefix.Length);
         if (len > cap && len > 0.0001f) { dx *= cap / len; dz *= cap / len; }
 
-        Plan full = Build(mover, dx, dz);
+        Plan full = Build(mover, prefix, dx, dz);
         if (full.Valid) return full;
         float lo = 0f, hi = 1f;
         Plan? good = null;
         for (int i = 0; i < 14; i++)
         {
             float mid = (lo + hi) / 2;
-            Plan p = Build(mover, dx * mid, dz * mid);
+            Plan p = Build(mover, prefix, dx * mid, dz * mid);
             if (p.Valid) { lo = mid; good = p; } else hi = mid;
         }
         // Nothing short of standing still works: report the full attempt's problem so the player sees why.
-        return good is { Distance: > 0.05f } ? good : full;
+        return good is { } g && g.Distance - prefix.Length > 0.05f ? g : full;
     }
 
-    private static Plan Build(Mover mover, float dx, float dz)
+    /// <summary>Every model goes through the turn points (as offsets from where it stands), then the last leg.</summary>
+    private static Plan Build(Mover mover, Prefix prefix, float dx, float dz)
     {
         var moves = new List<ModelMoveEntry>();
         var ends = new List<(ModelID, float, float, float)>();
+        var (lx, lz) = prefix.Last;
+        bool leg = dx * dx + dz * dz > 1e-6f;
         foreach (var b in mover.Unit.GetValue().ModelBindings)
         {
             ModelData m = b.GetValue();
             if (!m.GetIsAlive()) { moves.Add(new ModelMoveEntry(b, new List<Position>())); continue; }
-            bool moving = dx * dx + dz * dz > 1e-6f;
-            var end = new Position(m.Position.x + dx, m.Position.z + dz);
-            moves.Add(new ModelMoveEntry(b, moving ? new List<Position> { end } : new List<Position>()));
+            var path = prefix.Offsets.Select(o => new Position(m.Position.x + o.X, m.Position.z + o.Z)).ToList();
+            if (leg) path.Add(new Position(m.Position.x + lx + dx, m.Position.z + lz + dz));
+            moves.Add(new ModelMoveEntry(b, path));
+            var end = path.Count > 0 ? path[^1] : m.Position;
             ends.Add((m.ID, end.x, end.z, m.BaseRadiusInches));
         }
         string? problem = mover.Problem(moves);
-        return new Plan(moves, MathF.Sqrt(dx * dx + dz * dz), problem == null, problem, ends);
+        return new Plan(moves, prefix.Length + MathF.Sqrt(dx * dx + dz * dz), problem == null, problem, ends);
     }
 
     /// <summary>Null when the stage will accept the move; otherwise the reason, in plain words.</summary>

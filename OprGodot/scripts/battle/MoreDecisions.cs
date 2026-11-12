@@ -136,25 +136,29 @@ public sealed class WoundsDecision : Decision<AssignWoundsResults>
     public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); Draw(); Version++; }
     public override void Closed(BattleScreen s) => s.Table.ClearGhosts("pick");
 
-    /// <summary>A number on each model (matches the list); lime = can take the next wounds; red = wounds placed on it.</summary>
+    /// <summary>
+    /// A small number on each model, matching the buttons; a model taking wounds shows them in red; the hovered model
+    /// gets a ring. Kai, 2026-11-11: the red outline, lime rings and big numbers on top of the selection were too
+    /// busy - the unit's own selection outline is enough.
+    /// </summary>
     private void Draw()
     {
-        if (_s == null) return;
+        // A button's hover-off can fire after the reply is sent; drawing then would leave the marks on the table.
+        if (_s == null || Done) return;
         var rings = new List<BattleTable.Ghost>();
         var texts = new List<BattleTable.GhostText>();
-        var lines = BattleTable.Outline(Unit, 0.35f, Palette.WoundsRed, 0.16f).ToList();
         for (int i = 0; i < _res.PendingWounds.Count; i++)
         {
             PendingWounds e = _res.PendingWounds[i];
             ModelData m = e.Model.GetValue();
-            bool can = _res.CanAssignWoundTo(e);
             bool hot = i == _hovered;
-            if (can || hot) rings.Add(new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + 0.25f, hot ? Colors.White : HudKit.Lime, Ring: true));
-            string label = (i + 1).ToString() + (e.Wounds > 0.001f ? $" (-{WoundFormat.Format(e.Wounds)})" : "");
+            if (hot) rings.Add(new BattleTable.Ghost(m.Position.x, m.Position.z, m.BaseRadiusInches + 0.25f, Colors.White, Ring: true));
+            bool hit = e.Wounds > 0.001f;
+            string label = hit ? $"-{WoundFormat.Format(e.Wounds)}" : (i + 1).ToString();
             texts.Add(new BattleTable.GhostText(m.Position.x, m.Position.z, label,
-                e.Wounds > 0.001f ? Palette.WoundsRed : can ? HudKit.Lime : HudKit.Dim, 0.02f));
+                hit ? Palette.WoundsRed : hot ? Colors.White : HudKit.Fg with { A = 0.7f }, 0.016f));
         }
-        _s.Table.SetGhosts("pick", rings, lines, texts);
+        _s.Table.SetGhosts("pick", rings, null, texts);
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
@@ -526,7 +530,7 @@ public sealed class ZoneDecision : Decision<DataBinding<RectangularZone>>
 
     private void Draw()
     {
-        if (_s == null) return;
+        if (_s == null || Done) return;
         var lines = new List<BattleTable.GhostLine>();
         var texts = new List<BattleTable.GhostText>();
         for (int i = 0; i < _r.AvailableZones.Count; i++)

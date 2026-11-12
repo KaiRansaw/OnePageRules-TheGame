@@ -48,6 +48,65 @@ public partial class BattleTable : Node3D
     public Vector3 World(float x, float z, float y = 0) => new(x - W / 2, y, D / 2 - z);
     public Vector3 World(Position p) => World(p.x, p.z, p.y);
 
+    /// <summary>
+    /// Placeholder shot effect (Kai, 2026-11-11): a fading tracer from every firing model to the target, a volley at a
+    /// time (up to three), with a small flash where it lands; melee is a red flash on each struck model. To be replaced
+    /// by real projectile and swing effects (the beats carry an effect key for that).
+    /// </summary>
+    public void Shots(IReadOnlyList<Position> from, IReadOnlyList<Position> to, int volleys, bool melee, float life = 1.5f)
+    {
+        if (from.Count == 0 || to.Count == 0) return;
+        var rng = new RandomNumberGenerator();
+        int waves = Math.Clamp(volleys, 1, 3);
+        for (int w = 0; w < waves; w++)
+        {
+            float delay = w * 0.16f;
+            for (int i = 0; i < from.Count; i++)
+            {
+                Position f = from[i], t = to[(i + w) % to.Count];
+                Vector3 a = World(f.x, f.z, 0.9f), b = World(t.x + rng.RandfRange(-0.3f, 0.3f), t.z + rng.RandfRange(-0.3f, 0.3f), 0.7f);
+                if (melee) Flash(b, new Color(1f, 0.3f, 0.25f), 0.5f, delay, life);
+                else
+                {
+                    Tracer(a, b, new Color(1f, 0.85f, 0.4f), delay, life);
+                    Flash(b, new Color(1f, 0.6f, 0.2f), 0.3f, delay + 0.08f, life);
+                }
+            }
+        }
+    }
+
+    private void Tracer(Vector3 a, Vector3 b, Color c, float delay, float life)
+    {
+        float len = a.DistanceTo(b);
+        if (len < 0.1f) return;
+        var mat = Mat(c, 0.5f, c, 3f);
+        mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        mat.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+        var mi = Mesh(this, new BoxMesh { Size = new Vector3(0.08f, 0.08f, len) }, mat, (a + b) / 2);
+        mi.LookAt(b, Vector3.Up);
+        mi.Visible = false;
+        Fade(mi, mat, c, delay, 0.35f * life);
+    }
+
+    private void Flash(Vector3 at, Color c, float size, float delay, float life)
+    {
+        var mat = Mat(c, 0.5f, c, 3f);
+        mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        mat.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+        var mi = Mesh(this, new SphereMesh { Radius = size, Height = size * 2 }, mat, at);
+        mi.Visible = false;
+        Fade(mi, mat, c, delay, 0.3f * life);
+    }
+
+    private void Fade(MeshInstance3D mi, StandardMaterial3D mat, Color c, float delay, float time)
+    {
+        Tween tw = CreateTween();
+        if (delay > 0) tw.TweenInterval(delay);
+        tw.TweenCallback(Callable.From(() => mi.Visible = true));
+        tw.TweenMethod(Callable.From<float>(v => mat.AlbedoColor = c with { A = v }), 1f, 0f, time);
+        tw.TweenCallback(Callable.From(mi.QueueFree));
+    }
+
     public override void _Ready()
     {
         W = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES;

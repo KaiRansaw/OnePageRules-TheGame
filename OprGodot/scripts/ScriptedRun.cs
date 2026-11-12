@@ -126,6 +126,7 @@ public partial class ScriptedRun : Node
     }
 
     private int _snapSettle = -1, _snapTries;
+    private FDG.IUnit? _fireFrom, _fireAt;
 
     private void SnapAll()
     {
@@ -151,7 +152,24 @@ public partial class ScriptedRun : Node
                 case Battle.ShootDecision shoot when shoot.AnyTarget is { } target:
                     battle.TestHover = target;
                     _snapSettle = 40;
+                    _fireFrom = shoot.ShooterUnit; _fireAt = target;
                     break;
+                case Battle.MoveDecision move:
+                {
+                    // Two turn points, then the photo shows the bent path.
+                    var mine = battle.SelectedUnit?.Models.Where(m => m.RemainingWounds > 0).ToList();
+                    if (mine is { Count: > 0 })
+                    {
+                        float cx = mine.Average(m => m.Position.x), cz = mine.Average(m => m.Position.z);
+                        float way = cz < battle.Table.D / 2 ? 1 : -1;
+                        foreach (var (dx, dz) in new[] { (0f, 3f * way), (3f, 5f * way) })
+                        {
+                            move.TableClick(battle, battle.Table.Camera.UnprojectPosition(battle.Table.World(cx + dx, cz + dz, 0)));
+                            GD.Print($"ScriptedRun: move click ({cx + dx:0.0},{cz + dz:0.0}) -> {move.ConfirmText ?? "-"} | {move.Hint}");
+                        }
+                    }
+                    break;
+                }
                 case Battle.MissionCardPickMany many when many.SnapName != "MissionCardDeck":
                     many.PickForPhoto();
                     break;
@@ -163,6 +181,14 @@ public partial class ScriptedRun : Node
                     break;
             }
             return;
+        }
+        if (_snapSettle == 4 && _fireFrom != null && _fireAt != null)
+        {
+            // A volley just before the photo, so the shot effect shows.
+            battle.Table.Shots(_fireFrom.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(),
+                _fireAt.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 1, false, life: 20f);
+            _fireFrom = _fireAt = null;
+            GD.Print($"ScriptedRun: shots fired, table children {battle.Table.GetChildCount()}");
         }
         if (--_snapSettle > 0) return;
         string dir = System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp";

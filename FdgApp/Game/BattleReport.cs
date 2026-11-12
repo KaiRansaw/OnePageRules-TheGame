@@ -172,7 +172,12 @@ public sealed class BattleReport : IPresentationSink
     {
         try { lock (_gate) Handle(beat); }
         catch { /* the report is information only - it never stops the game */ }
+        try { BeatSeen?.Invoke(beat); }
+        catch { /* a screen's effect must never stop the game either */ }
     }
+
+    /// <summary>Every beat, as it arrives (engine thread) - for effects on the table (shots, swings).</summary>
+    public event Action<PresentationBeat>? BeatSeen;
 
     private void Add(Entry e)
     {

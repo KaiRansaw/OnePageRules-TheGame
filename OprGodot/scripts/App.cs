@@ -37,10 +37,28 @@ public partial class App : Node
         bool scripted = ScriptedRun.Requested(out ScriptedRun run);
         if (UserConfig.Current.StartFullscreen && !OS.HasFeature("editor") && !scripted)
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+        else if (!scripted && DisplayServer.WindowGetMode() == DisplayServer.WindowMode.Windowed)
+        {
+            // Kai, 2026-11-11: the 1920x1080 window ran off the bottom of the screen (taskbar, scaling). A window
+            // that doesn't fit the usable screen starts maximized instead; the picture scales to fit.
+            Rect2I usable = DisplayServer.ScreenGetUsableRect(DisplayServer.WindowGetCurrentScreen());
+            Vector2I size = DisplayServer.WindowGetSize();
+            if (size.X > usable.Size.X || size.Y > usable.Size.Y)
+                DisplayServer.WindowSetMode(DisplayServer.WindowMode.Maximized);
+        }
         if (scripted) AddChild(run);
 
         // The tactical HUD look for every screen (Kai, 2026-11-10).
         GetTree().Root.Theme = Hud.HudTheme.Build();
+    }
+
+    /// <summary>F11 switches fullscreen on and off on every screen (also in an editor run).</summary>
+    public override void _UnhandledKeyInput(InputEvent e)
+    {
+        if (e is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.F11 }) return;
+        bool full = DisplayServer.WindowGetMode() is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
+        DisplayServer.WindowSetMode(full ? DisplayServer.WindowMode.Maximized : DisplayServer.WindowMode.Fullscreen);
+        GetViewport().SetInputAsHandled();
     }
 
     /// <summary>The main scene hands over the control screens are shown in.</summary>

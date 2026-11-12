@@ -444,13 +444,17 @@ public sealed class ActionDecision : Decision<string>
 
 /// <summary>
 /// Move a unit: point at the table and the unit's ghost follows (green = Advance, amber = Rush, red = can't go
-/// there, with why). A click PLACES the move; Space or the confirm box sends it (Kai, 2026-11-10). Click
-/// elsewhere to move the placed ghost, right-click to drop it, right-click again to go back.
+/// there, with why). Each click drops a TURN POINT and places the move there (Kai, 2026-11-11: "a click should mark
+/// a point so a unit could go around corners"); keep clicking to bend the path, Space or the confirm box sends it
+/// (Kai, 2026-11-10). Right-click takes the last point back, and with none left goes back. Clicking an enemy ends
+/// the path in contact with it (a charge).
 /// </summary>
 public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntry>>>
 {
     private readonly DefineMovementPathRequest _r;
-    private MovePlanner.Plan? _plan, _pending;
+    private MovePlanner.Plan? _pending;
+    private readonly List<(float X, float Z)> _via = new();   // the unit's middle at each turn point
+    private bool _final;                                       // the path ends in contact - no more points
     private Vector2 _lastHover = new(-9999, -9999);
     private string _note = "";
     private readonly MoveKind? _kind;
@@ -482,12 +486,14 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _ => $"Move {Unit.Name}",
     };
 
-    public override string Hint => _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+    public override string Hint => _pending != null
+        ? (_final ? "Space to confirm - right-click to take the last point back."
+                  : "Click again to add a turn, Space to confirm, right-click to take the last point back.")
         : _note.Length > 0 ? _note : _kind switch
         {
-            MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Right-click = back.",
-            MoveKind.Rush => $"Click where to go - up to {_r.MaxRushDistance:0.#}\". Right-click = back.",
-            MoveKind.Charge => $"Click the enemy unit to charge - up to {_r.MaxDistanceInches:0.#}\". Right-click = back.",
+            MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Each click is a turn point. Right-click = back.",
+            MoveKind.Rush => $"Click where to go - up to {_r.MaxRushDistance:0.#}\". Each click is a turn point. Right-click = back.",
+            MoveKind.Charge => $"Click the enemy unit to charge - up to {_r.MaxDistanceInches:0.#}\". Click the table first to go round something.",
             _ => $"Click where to go - click an enemy to move into contact. Advance {_r.MaxAdvanceDistance:0.#}\", Rush {_r.MaxRushDistance:0.#}\""
                  + (_r.MaxDistanceInches > _r.MaxRushDistance + 0.01f ? $", Charge {_r.MaxDistanceInches:0.#}\"" : "") + ".",
         };
@@ -503,7 +509,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private string KindName(MovePlanner.Plan p) => _kind?.ToString()
         ?? (p.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : p.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge");
 
-    public override string? ConfirmText => _pending is { } p ? $"{KindName(p)} {p.Distance:0.0}\" to here?" : null;
+    public override string? ConfirmText => _pending is { } p
+        ? $"{KindName(p)} {p.Distance:0.0}\" to here?" + (_via.Count > (_final ? 0 : 1) ? $" ({_via.Count - (_final ? 0 : 1)} turn{(_via.Count - (_final ? 0 : 1) == 1 ? "" : "s")})" : "")
+        : null;
 
     public override void Confirm()
     {
@@ -513,12 +521,17 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         Complete(new Selected<List<ModelMoveEntry>>(p.Moves));
     }
 
+    /// <summary>Right-click: takes the last turn point back (the move then ends at the one before).</summary>
     public override void ClearPending()
     {
-        _pending = null;
+        if (_final) _final = false;
+        else if (_via.Count > 0) _via.RemoveAt(_via.Count - 1);
+        _pending = _s != null && _via.Count > 0 ? MovePlanner.Towards(_r, _s.Session.Table, _via.Take(_via.Count - 1).ToList(), _via[^1].X, _via[^1].Z, Cap) : null;
+        if (_pending is { Valid: false }) { _pending = null; _via.Clear(); }
         _lastHover = new(-9999, -9999);
         _s?.Table.ClearGhosts("move");
         _s?.Table.ClearGhosts("moverange");
+        if (_pending != null && _s != null) Draw(_s, _pending, placed: true, null);
         Version++;
     }
 
@@ -539,65 +552,95 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         Complete(new Selected<List<ModelMoveEntry>>(plan is { Valid: true } ? plan.Moves : MovePlanner.StayInPlace(_r)));
     }
 
-    private MovePlanner.Plan? PlanFor(BattleScreen s, Vector2 at)
+    /// <summary>The move through the turn points so far, then to the pointer (or into contact with an enemy there).</summary>
+    private (MovePlanner.Plan? Plan, bool Contact) PlanFor(BattleScreen s, Vector2 at)
     {
         IUnit? enemy = s.Table.UnitAt(at) is { } target && !s.Session.IsMine(target.PlayerID) && !target.ID.Equals(Unit.ID) ? target : null;
-        // A charge goes into contact with the enemy pointed at, and nowhere else.
-        if (_kind == MoveKind.Charge) return enemy == null ? null : MovePlanner.IntoContact(_r, s.Session.Table, enemy);
-        // Advance and Rush may not end in contact (that is a charge); with no action picked, an enemy is a charge.
-        if (enemy != null && _kind == null) return MovePlanner.IntoContact(_r, s.Session.Table, enemy);
-        return s.Table.TableAt(at) is { } p ? MovePlanner.Towards(_r, s.Session.Table, p.X, p.Y, Cap) : null;
+        // A charge goes into contact with the enemy pointed at; the table can be clicked first to go round something.
+        if (enemy != null && _kind is MoveKind.Charge or null) return (MovePlanner.IntoContact(_r, s.Session.Table, _via, enemy, Cap), true);
+        // Advance and Rush may not end in contact (that is a charge).
+        return (s.Table.TableAt(at) is { } p ? MovePlanner.Towards(_r, s.Session.Table, _via, p.X, p.Y, Cap) : null, false);
     }
 
-    private void Draw(BattleScreen s, MovePlanner.Plan plan, bool placed)
+    private static Vector2 EndCentre(MovePlanner.Plan plan) =>
+        new(plan.Ends.Average(e => e.X), plan.Ends.Average(e => e.Z));
+
+    private void Draw(BattleScreen s, MovePlanner.Plan plan, bool placed, MovePlanner.Plan? preview)
     {
-        Color c = !plan.Valid ? Palette.WoundsRed : plan.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
-            : plan.Distance <= _r.MaxRushDistance + 0.01f ? HudKit.Gold : HudKit.Enemy;
+        Color Of(MovePlanner.Plan p) => !p.Valid ? Palette.WoundsRed : p.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
+            : p.Distance <= _r.MaxRushDistance + 0.01f ? HudKit.Gold : HudKit.Enemy;
+        Color c = Of(plan);
         if (placed) c = c.Lightened(0.25f);
         var ghosts = plan.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), c with { A = placed ? 1.6f : 1f })).ToList();
         var lines = new List<BattleTable.GhostLine>();
         var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
         if (models.Count > 0 && plan.Ends.Count > 0)
         {
+            // The path through each turn point, with a small ring on each.
             var from = new Vector2(models.Average(m => m.Position.x), models.Average(m => m.Position.z));
-            var to = new Vector2(plan.Ends.Average(e => e.X), plan.Ends.Average(e => e.Z));
-            lines.Add(new BattleTable.GhostLine(from, to, c with { A = 0.85f }));
+            var points = _via.Select(v => new Vector2(v.X, v.Z)).ToList();
+            if (points.Count == 0 || points[^1].DistanceTo(EndCentre(plan)) > 0.05f) points.Add(EndCentre(plan));
+            foreach (Vector2 to in points) { lines.Add(new BattleTable.GhostLine(from, to, c with { A = 0.85f })); from = to; }
+            foreach (var v in _via) ghosts.Add(new BattleTable.Ghost(v.X, v.Z, 0.45f, c with { A = 0.9f }, Ring: true));
+            // The next leg being pointed at, faint.
+            if (preview != null && preview.Ends.Count > 0)
+            {
+                Vector2 to = EndCentre(preview);
+                lines.Add(new BattleTable.GhostLine(from, to, Of(preview) with { A = 0.4f }));
+                ghosts.AddRange(preview.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), Of(preview) with { A = 0.35f })));
+            }
         }
         s.Table.SetGhosts("move", ghosts, lines);
         // Kai, 2026-11-11: the weapon ranges travel with the ghost, so you see what you'd reach from there.
+        MovePlanner.Plan rangeFrom = preview ?? plan;
         var byId = Unit.Models.Where(m => m.GetIsAlive()).ToDictionary(m => m.ID);
-        var (rl, rt) = BattleTable.RangeShapes(plan.Ends.Where(e => byId.ContainsKey(e.Id))
+        var (rl, rt) = BattleTable.RangeShapes(rangeFrom.Ends.Where(e => byId.ContainsKey(e.Id))
             .Select(e => (byId[e.Id], new Vector2(e.X, e.Z))), BattleTable.CoolRanges);
         s.Table.SetGhosts("moverange", Array.Empty<BattleTable.Ghost>(), rl, rt);
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)
     {
-        if (_pending != null) return;   // the placed move stays put until confirmed or changed
+        if (Done || _final) return;   // a path ending in contact takes no more points
         if (at.DistanceTo(_lastHover) < 2) return;
         _lastHover = at;
-        _plan = PlanFor(s, at);
-        if (_plan == null || _plan.Valid && _plan.Distance < 0.05f) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); _note = ""; Version++; return; }
-        Draw(s, _plan, placed: false);
-        _note = _plan.Valid ? $"{KindName(_plan)}: {_plan.Distance:0.0}\" - click to place the move." : $"Can't go there: {_plan.Problem}.";
+        var (plan, _) = PlanFor(s, at);
+        bool nothing = plan == null || plan.Valid && plan.Distance - (_pending?.Distance ?? 0) < 0.05f;
+        if (_pending != null) { Draw(s, _pending, placed: true, nothing ? null : plan); }
+        else if (nothing) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); _note = ""; Version++; return; }
+        else Draw(s, plan!, placed: false, null);
+        string next = _pending != null ? "add a turn there" : "place the move";
+        _note = nothing ? "" : plan!.Valid ? $"{KindName(plan)}: {plan.Distance:0.0}\" - click to {next}." : $"Can't go there: {plan.Problem}.";
         Version++;
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
-        MovePlanner.Plan? plan = PlanFor(s, at);
+        if (_final) { s.Toast("The move ends in contact - Space to confirm, or right-click to change it."); return true; }
+        var (plan, contact) = PlanFor(s, at);
         if (plan == null)
         {
             if (_kind == MoveKind.Charge) s.Toast("Click the enemy unit you want to charge.");
             return true;
         }
-        if (!plan.Valid || plan.Distance < 0.05f)
+        if (!plan.Valid || plan.Distance - (_pending?.Distance ?? 0) < 0.05f)
         {
             s.Toast(plan.Valid ? "That is where the unit already is." : $"Can't move there: {plan.Problem}.");
             return true;
         }
+        if (_kind == MoveKind.Charge && !contact)
+        {
+            // A charge must end in contact: a table click is only a turn point on the way.
+            _via.Add((EndCentre(plan).X, EndCentre(plan).Y));
+            _pending = null;
+            Draw(s, plan, placed: true, null);
+            Version++;
+            return true;
+        }
         _pending = plan;
-        Draw(s, plan, placed: true);
+        if (contact) _final = true;
+        else _via.Add((EndCentre(plan).X, EndCentre(plan).Y));
+        Draw(s, plan, placed: true, null);
         Version++;
         return true;
     }
@@ -626,6 +669,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
 
     private IUnit Shooter => _r.AttackingUnit.GetValue();
     /// <summary>Some enemy a weapon can fire at now (the test driver hovers it for the odds photo).</summary>
+    public IUnit ShooterUnit => Shooter;
     public IUnit? AnyTarget => _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats).FirstOrDefault(CanFire)?.TargetUnit.GetValue();
 
     public override string Prompt => _r.DeclareFirst ? $"{Shooter.Name} - declare shots" : $"{Shooter.Name} - shoot";
@@ -745,7 +789,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
     /// <summary>The enemies in reach outlined: every weapon's (gold), or the hovered weapon's only (its range colour).</summary>
     private void DrawReach()
     {
-        if (_s == null) return;
+        if (_s == null || Done) return;   // a hover-off after the shot is sent must not redraw
         var lines = new List<BattleTable.GhostLine>();
         for (int i = 0; i < _r.WeaponOptions.Count; i++)
         {
@@ -1031,7 +1075,7 @@ public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
     /// <summary>Each choosable model gets its list number over it; the hovered one gets a bright ring.</summary>
     private void Draw()
     {
-        if (_s == null) return;
+        if (_s == null || Done) return;
         // Kai, 2026-11-11: one outline round the unit, a number on each model, a ring only on the hovered one.
         var rings = new List<BattleTable.Ghost>();
         var texts = new List<BattleTable.GhostText>();
