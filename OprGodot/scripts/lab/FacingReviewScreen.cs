@@ -22,7 +22,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
     private Node3D _world = null!, _stage = null!;
     private Camera3D _camera = null!;
     private Label _title = null!, _sub = null!, _count = null!, _state = null!, _loading = null!;
-    private LineEdit _filter = null!;
+    private OptionButton _faction = null!;
     private CheckBox _uncheckedFirst = null!;
 
     private string _root = "";
@@ -81,11 +81,11 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         t.AddChild(HudKit.Text("Every model should face the lime arrow", 15, HudKit.Dim, HudKit.Semi));
         head.AddChild(t);
         top.AddChild(head);
-        _filter = new LineEdit { Name = "Filter", PlaceholderText = "Only these (e.g. Alien Hives)", ClearButtonEnabled = true, CustomMinimumSize = new Vector2(360, 0), TooltipText = "Review only files whose folder or name contains this." };
-        _filter.Text = InitialFilter;
-        _filter.TextSubmitted += _ => { Refresh(); _filter.ReleaseFocus(); };
-        _filter.TextChanged += _ => Refresh();
-        top.AddChild(_filter);
+        // Kai, 2026-11-12: pick the army from a list rather than typing a filter.
+        _faction = new OptionButton { Name = "Faction", CustomMinimumSize = new Vector2(360, 0), FocusMode = FocusModeEnum.None, TooltipText = "Which army's models to review." };
+        _faction.ItemSelected += _ => Refresh();
+        top.AddChild(_faction);
+        FillFactions();
         _uncheckedFirst = new CheckBox { Name = "UncheckedFirst", Text = "Not yet checked first", ButtonPressed = true, TooltipText = "Put the models nobody has checked at the front, so you can stop and pick up later." };
         _uncheckedFirst.Toggled += _ => Refresh();
         top.AddChild(_uncheckedFirst);
@@ -136,15 +136,60 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
 
     // ================================================================== the list
 
-    private static bool IsChecked(string file) => UnitModelSettings.Load(file)?.FacingChecked == true;
+    // Checked state per file, read once (a full download is ~3,000 settings files) and kept up to date as you go.
+    private readonly Dictionary<string, bool> _checkedCache = new();
+    private bool IsChecked(string file)
+    {
+        if (!_checkedCache.TryGetValue(file, out bool c)) _checkedCache[file] = c = UnitModelSettings.Load(file)?.FacingChecked == true;
+        return c;
+    }
 
-    /// <summary>Rebuilds the list from the folder and the filter, keeping the current model if it is still in it.</summary>
+    /// <summary>
+    /// The army list: every top-level folder in UnitModels that holds models (the downloader makes one per army book),
+    /// with how many are checked. Starts on the army the Asset Lab's filter names, else "All armies".
+    /// </summary>
+    private void FillFactions()
+    {
+        _faction.Clear();
+        var files = _allFiles = UnitModelPaths.Browse(_root).Where(UnitModelPaths.IsModel).ToList();
+        _faction.AddItem($"All armies  ({files.Count(IsChecked)}/{files.Count} checked)");
+        _faction.SetItemMetadata(0, "");
+        var groups = files.GroupBy(f => Path.GetRelativePath(_root, f).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0])
+            .Where(g => g.Key.Length > 0 && !g.Key.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) && !g.Key.EndsWith(".obj", StringComparison.OrdinalIgnoreCase)
+                        && !g.Key.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(g => g.Key.StartsWith('_')).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+        int pick = 0;
+        foreach (var g in groups)
+        {
+            int i = _faction.ItemCount;
+            _faction.AddItem($"{g.Key}  ({g.Count(IsChecked)}/{g.Count()} checked)");
+            _faction.SetItemMetadata(i, g.Key);
+            if (InitialFilter.Length > 0 && g.Key.Contains(InitialFilter.Trim(), StringComparison.OrdinalIgnoreCase) && pick == 0) pick = i;
+        }
+        _faction.Select(pick);
+    }
+
+    /// <summary>Updates the "checked" counts in the army list after a model is marked.</summary>
+    private List<string> _allFiles = new();
+
+    private void RelabelFaction()
+    {
+        var files = _allFiles;
+        for (int i = 0; i < _faction.ItemCount; i++)
+        {
+            string army = _faction.GetItemMetadata(i).AsString();
+            var mine = army.Length == 0 ? files : files.Where(f => Path.GetRelativePath(_root, f).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0] == army).ToList();
+            _faction.SetItemText(i, $"{(army.Length == 0 ? "All armies" : army)}  ({mine.Count(IsChecked)}/{mine.Count} checked)");
+        }
+    }
+
+    /// <summary>Rebuilds the list from the folder and the chosen army, keeping the current model if it is still in it.</summary>
     public void Refresh()
     {
         string? current = _files.Count > 0 ? _files[Math.Clamp(_index, 0, _files.Count - 1)] : null;
-        string f = _filter.Text.Trim();
-        var all = UnitModelPaths.Browse(_root).Where(UnitModelPaths.IsModel)
-            .Where(x => f.Length == 0 || Path.GetRelativePath(_root, x).Contains(f, StringComparison.OrdinalIgnoreCase)).ToList();
+        string? army = _faction.Selected <= 0 ? null : _faction.GetItemMetadata(_faction.Selected).AsString();
+        var all = _allFiles
+            .Where(x => army == null || Path.GetRelativePath(_root, x).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0] == army).ToList();
         _files = _uncheckedFirst.ButtonPressed ? all.OrderBy(IsChecked).ToList() : all;
         _index = current != null && _files.IndexOf(current) is var i and >= 0 ? i : 0;
         Show();
@@ -174,6 +219,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         s.YawDegrees = Wrap(s.YawDegrees + degrees);
         s.FacingChecked = false; // a turned model wants a fresh look
         s.Save(file);
+        _checkedCache[file] = false;
         Show();
         _state.Text = $"Saved - turned {s.YawDegrees:0} degrees. Space when it faces the arrow.";
         _state.Modulate = HudKit.Lime;
@@ -186,6 +232,8 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         var s = SettingsFor(file);
         s.FacingChecked = true;
         s.Save(file);
+        _checkedCache[file] = true;
+        RelabelFaction();
         if (_index < _files.Count - 1) _index++;
         Show();
     }
@@ -360,7 +408,6 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
     {
         bool onView = GetViewport().GuiGetHoveredControl() == this;
         // A click on the view gives the keys back from the filter box (W/A/S/D would otherwise type into it).
-        if (e is InputEventMouseButton { Pressed: true } && onView) _filter.ReleaseFocus();
         switch (e)
         {
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true } when onView:
@@ -382,7 +429,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
-        if (e is not InputEventKey { Pressed: true, Echo: false } k || _filter.HasFocus()) return;
+        if (e is not InputEventKey { Pressed: true, Echo: false } k ) return;
         switch (k.Keycode)
         {
             // Kai, 2026-11-12: A / D turn (Shift = 45 for fine tuning), W / S next / back, Space confirms.
