@@ -81,32 +81,54 @@ public sealed class WoundsDecision : Decision<AssignWoundsResults>
         return (weapons.Length > 0 ? weapons + "  -  " : "") + wounds + taking;
     }
 
+    /// <summary>
+    /// Kai, 2026-11-11: the models are square buttons with wound pips (filled = taken, red = taking now), and what hit
+    /// the unit is the line above them: attacker, weapon, AP and how many wounds (sent by the engine on the request).
+    /// </summary>
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "person";
+
+    private string WhatHit()
+    {
+        string how = _r.IsSpell ? "spell" : _r.IsMelee ? "melee" : "shooting";
+        string ap = _r.WeaponArmorPenetration != 0 ? $" AP({_r.WeaponArmorPenetration})" : "";
+        string who = _r.AttackerName.Length > 0 ? $"{_r.AttackerName} - {(_r.WeaponName.Length > 0 ? _r.WeaponName : how)}{ap}" : "Hit";
+        return $"{who}: {WoundAssignmentText.Wounds(_res.TotalWoundsToAssign)}";
+    }
+
+    /// <summary>One pip per wound the model has: 1 = already taken, 2 = taking now, 0 = left. Null for a big model.</summary>
+    private static int[]? Pips(ModelData m, PendingWounds e)
+    {
+        int total = (int)MathF.Ceiling(m.TotalWounds), dealt = (int)MathF.Round(m.WoundsDealt), now = (int)MathF.Ceiling(e.Wounds - 0.001f);
+        if (total > 10 || total <= 1) return null;   // a 1-wound model needs no pips
+        return Enumerable.Range(0, total).Select(i => i < dealt ? 1 : i < dealt + now ? 2 : 0).ToArray();
+    }
+
     public override IReadOnlyList<ChoiceRow> Rows
     {
         get
         {
-            var rows = new List<ChoiceRow>();
-            string explain = WoundAssignmentText.Explanation(_res);
-            if (explain.Length > 0) rows.Add(new ChoiceRow("Deadly", explain, true, null, null));
-            if (_res.HasConfinedPackets) rows.Add(new ChoiceRow(WoundAssignmentText.Next(_res), null, true, null, null));
-            rows.Add(new ChoiceRow("Auto-assign the rest", "Fills the models in the book's order.", true, null, () => { _res.AutoFill(); Finish(); }));
-            if (_res.Commits.Count > 0)
-                rows.Add(new ChoiceRow("Start over", "Take back the wounds placed so far.", true, null, () =>
-                {
-                    _res = new AssignWoundsResults(_r.UnitReceivingWounds, _r.Packets);
-                    Draw();
-                    Version++;
-                }));
+            var rows = new List<ChoiceRow> { new(WhatHit(), WoundAssignmentText.Explanation(_res) is { Length: > 0 } x ? x : WoundAssignmentText.Progress(_res), true, null, null) };
             for (int i = 0; i < _res.PendingWounds.Count; i++)
             {
                 PendingWounds e = _res.PendingWounds[i];
                 ModelData m = e.Model.GetValue();
                 bool can = _res.CanAssignWoundTo(e);
                 int n = i;
-                string name = $"Model {i + 1}" + (Unit is UnitData ud && ud.HeroAttachment?.HeroModelId is { } hm && hm.Equals(m.ID) ? " (hero)" : "");
+                bool hero = Unit is UnitData ud && ud.HeroAttachment?.HeroModelId is { } hm && hm.Equals(m.ID);
+                int[]? pips = Pips(m, e);
+                string name = (hero ? "Hero" : $"Model {i + 1}") + (m.TotalWounds > 10 ? $" ({Math.Max(0, m.TotalWounds - m.WoundsDealt - e.Wounds):0} left)" : "");
                 rows.Add(new ChoiceRow(name, Describe(m, e), can, can ? null : WhyNot(e) + "  " + Describe(m, e), can ? () => Give(e) : null,
-                    Hover: on => { _hovered = on ? n : -1; Draw(); }));
+                    Hover: on => { _hovered = on ? n : -1; Draw(); }, Selected: e.Wounds > 0.001f, Icon: hero ? "rally-the-troops" : null, Pips: pips));
             }
+            rows.Add(new ChoiceRow("Auto-assign", "Fills the models in the book's order.", true, null, () => { _res.AutoFill(); Finish(); }, Icon: "gears"));
+            if (_res.Commits.Count > 0)
+                rows.Add(new ChoiceRow("Start over", "Take back the wounds placed so far.", true, null, () =>
+                {
+                    _res = new AssignWoundsResults(_r.UnitReceivingWounds, _r.Packets);
+                    Draw();
+                    Version++;
+                }, Icon: "shield-reflect"));
             return rows;
         }
     }
@@ -264,21 +286,32 @@ public sealed class LeadersDecision : Decision<CancellableResult<List<PickUnitLe
     public override void ClearPending() { foreach (var e in _r.Units) _leader[e.Unit.GetValue().ID] = e.Suggested; Draw(); Version++; }
     public override bool RightClick(BattleScreen s) { if (_open == null) return false; _open = null; Version++; return true; }
 
+    // Kai, 2026-11-11: units as square buttons (picture + name); click one to see its models as buttons.
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "person";
+    public override string? CancelLabel => _open != null ? "Back" : null;
+    public override void Cancel() { _open = null; Version++; }
+
+    private static string ShortName(string description) => description.Contains(':') ? description[..description.IndexOf(':')].Trim() : description;
+
     public override IReadOnlyList<ChoiceRow> Rows
     {
         get
         {
             if (_open is { } o)
-                return o.Models.Select(m => new ChoiceRow(m.Description, m.Model.Equals(_leader[o.Unit.GetValue().ID]) ? "leader now" : null, true, null,
-                    () => { _leader[o.Unit.GetValue().ID] = m.Model; _open = null; Draw(); Version++; }))
-                    .Append(new ChoiceRow("Back  (right-click)", null, true, null, () => { _open = null; Version++; })).ToList();
-            var rows = new List<ChoiceRow> { new("Fast-Play", _r.Instructions, true, null, null) };
+            {
+                ModelID now = _leader[o.Unit.GetValue().ID];
+                return o.Models.Select(m => new ChoiceRow(ShortName(m.Description), m.Description, true, null,
+                    () => { _leader[o.Unit.GetValue().ID] = m.Model; _open = null; Draw(); Version++; }, Selected: m.Model.Equals(now))).ToList();
+            }
+            var rows = new List<ChoiceRow> { new("Fast-Play leaders", _r.Instructions, true, null, null) };
             foreach (var e in _r.Units)
             {
                 ModelID id = _leader[e.Unit.GetValue().ID];
                 string who = e.Models.FirstOrDefault(m => m.Model.Equals(id))?.Description ?? "?";
                 var entry = e;
-                rows.Add(new ChoiceRow(e.UnitName, "Leader: " + who, true, null, e.Models.Count > 1 ? () => { _open = entry; Version++; } : null));
+                rows.Add(new ChoiceRow(e.UnitName, $"Leader: {who}" + (e.Models.Count > 1 ? " - click to change." : ""), true, null,
+                    e.Models.Count > 1 ? () => { _open = entry; Version++; } : () => _s?.Toast($"{entry.UnitName} has one model - it leads."), Portrait: e.Unit.GetValue()));
             }
             return rows;
         }
@@ -355,13 +388,18 @@ public sealed class CommandGroupDecision : Decision<CancellableResult<List<DataB
         Version++;
     }
 
+    // Square buttons with the unit's picture, lit when ticked (Kai picked squares everywhere, 2026-11-11).
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "rally-the-troops";
+
     public override IReadOnlyList<ChoiceRow> Rows
     {
         get
         {
             var rows = new List<ChoiceRow>();
             if (_s?.RuleText(_r.RuleName) is { } text) rows.Add(new ChoiceRow(_r.RuleName, text, true, null, null));
-            rows.AddRange(_r.ValidOptions.Select(o => new ChoiceRow((IsPicked(o.Option.GetValue().ID) ? "[x] " : "[  ] ") + o.Name, null, true, null, () => Toggle(o.Option))));
+            rows.AddRange(_r.ValidOptions.Select(o => new ChoiceRow(o.Name, IsPicked(o.Option.GetValue().ID) ? "Gets it - click to untick." : "Click to give it " + _r.RuleName + ".",
+                true, null, () => Toggle(o.Option), Selected: IsPicked(o.Option.GetValue().ID), Portrait: o.Option.GetValue())));
             return rows;
         }
     }
@@ -407,7 +445,10 @@ public sealed class PickStringsDecision : Decision<List<string>>
     public override void Confirm() { if (_r.Legal(_picked)) Complete(_r.Sanitise(_picked)); }
     public override void ClearPending() { _picked.Clear(); Version++; }
 
-    public override IReadOnlyList<ChoiceRow> Rows => _r.Options.Select(o => new ChoiceRow((_picked.Contains(o) ? "[x] " : "[  ] ") + o,
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "scroll-unfurled";
+
+    public override IReadOnlyList<ChoiceRow> Rows => _r.Options.Select(o => new ChoiceRow(o,
         _r.Descriptions != null && _r.Descriptions.TryGetValue(o, out var d) ? d : null, true, null, () =>
         {
             if (!_picked.Remove(o))
@@ -416,7 +457,7 @@ public sealed class PickStringsDecision : Decision<List<string>>
                 _picked.Add(o);
             }
             Version++;
-        })).ToList();
+        }, Selected: _picked.Contains(o))).ToList();
 }
 
 // ====================================================================== deployment zone

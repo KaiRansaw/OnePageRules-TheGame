@@ -17,7 +17,8 @@ public sealed record ActionSlot(string Name, string Icon, string Label, string K
 /// (not clickable). <paramref name="Secondary"/> is a companion button on the same row (#321).
 /// </summary>
 public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action? Pick,
-    string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null, string? Icon = null);
+    string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null, string? Icon = null,
+    bool Selected = false, IUnit? Portrait = null, IReadOnlyList<int>? Pips = null);
 
 /// <summary>A tick box in the confirm box.</summary>
 public sealed record ConfirmCheck(string Label, string Detail, bool On, Action<bool> Set);
@@ -129,6 +130,8 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
     private readonly ChooseUnitToActivateRequest _r;
     private IUnit? _pick;
     public ActivateDecision(ChooseUnitToActivateRequest r) => _r = r;
+    /// <summary>The engine's request (the test driver borrows its unit bindings to stage example screens).</summary>
+    public ChooseUnitToActivateRequest Request => _r;
 
     public override string Prompt => _pick == null ? "Your turn" : $"Activate {_pick.Name}";
     public override string Hint => _pick == null
@@ -261,14 +264,37 @@ public sealed class ActionDecision : Decision<string>
     private bool Allowed(BookAction a) => a switch
     {
         BookAction.Hold => Can(ShootOpt) || Can(PassOpt),
-        BookAction.Charge => Can(ChargeOpt) || Can(MoveOpt),
+        BookAction.Charge => Can(ChargeOpt) || Can(MoveOpt) && ChargeReach().InReach,
         _ => Can(MoveOpt),
     };
+
+    /// <summary>
+    /// Kai, 2026-11-11: grey out what can't do anything. A Charge needs at least one model within charge distance of
+    /// the target (GF Advanced Rules 3.6.0, Charging) - measured base to base from the unit's own charge allowance.
+    /// </summary>
+    private (bool InReach, float Distance) ChargeReach()
+    {
+        if (_s == null || Unit is not { } me) return (true, 12);
+        float reach = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveChargeDistance(me,
+            FDG.Rules.Dispatch.ReadOnlyRuleEvaluators.For(_s.Session.Table), _s.Session.Table.Terrain.Objects.ToList());
+        var mine = me.Models.Where(m => m.GetIsAlive()).ToList();
+        foreach (IUnit u in _s.Session.Table.Units.Objects)
+        {
+            if (_s.Session.IsMine(u.PlayerID) || !u.GetIsOnBattlefield()) continue;
+            foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
+                foreach (IModel m in mine)
+                {
+                    float d = Mathf.Sqrt(Mathf.Pow(e.Position.x - m.Position.x, 2) + Mathf.Pow(e.Position.z - m.Position.z, 2)) - e.BaseRadiusInches - m.BaseRadiusInches;
+                    if (d <= reach + 0.01f) return (true, reach);
+                }
+        }
+        return (false, reach);
+    }
 
     private string NotAllowed(BookAction a) => a switch
     {
         BookAction.Hold => Why(PassOpt) ?? Why(ShootOpt) ?? "Not available.",
-        BookAction.Charge => Why(ChargeOpt) ?? Why(MoveOpt) ?? "Not available.",
+        BookAction.Charge => Why(ChargeOpt) ?? Why(MoveOpt) ?? (Can(MoveOpt) ? $"No enemy within {ChargeReach().Distance:0}\" - nothing to charge." : "Not available."),
         _ => Why(MoveOpt) ?? "Not available.",
     };
 
@@ -588,14 +614,11 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         get
         {
             if (_target is not { } t) return null;
-            return At(t.ID).Count() > 1 ? $"Shoot {t.Name} with:" : $"Shoot {t.Name}?";
+            var lit = At(t.ID).Where(x => !_unticked.Contains(Key(x.W.Weapon))).Select(x => x.W.Weapon.Name).Distinct().ToList();
+            return lit.Count == 0 ? $"No weapon lit for {t.Name} - click a weapon to fire it."
+                : $"Shoot {t.Name} with {string.Join(", ", lit)}?";
         }
     }
-
-    public override IReadOnlyList<ConfirmCheck>? ConfirmChecks => _target is { } t
-        ? At(t.ID).Select(x => new ConfirmCheck(x.W.Weapon.Name, Forecast(x.W, x.T), !_unticked.Contains(Key(x.W.Weapon)),
-            on => { if (on) _unticked.Remove(Key(x.W.Weapon)); else _unticked.Add(Key(x.W.Weapon)); Version++; })).ToList()
-        : null;
 
     public override void Confirm()
     {
@@ -606,22 +629,65 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         Fire(ticked[0].W, ticked[0].T);
     }
 
-    public override void ClearPending() { _target = null; _unticked.Clear(); _s?.Table.ClearGhosts("target"); Version++; }
+    public override void ClearPending() { _target = null; _unticked.Clear(); _s?.Table.ClearGhosts("target"); DrawReach(); Version++; }
 
-    /// <summary>The weapons, each with where it can shoot and a Hold fire button.</summary>
-    public override IReadOnlyList<ChoiceRow> Rows => _r.WeaponOptions.Select(w =>
+    /// <summary>
+    /// Kai, 2026-11-11: the weapons are square buttons like the rest. Lit = it fires at the target you clicked; click a
+    /// lit weapon to keep it for another target (split fire). Hover a weapon to see which enemies it can reach (they
+    /// are outlined on the table, not listed). A weapon that can reach nothing has a Hold fire button under it.
+    /// </summary>
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "crosshair";
+
+    private int _hoverWeapon = -1;
+
+    public override IReadOnlyList<ChoiceRow> Rows => _r.WeaponOptions.Select((w, i) =>
     {
-        var targets = w.WeaponTargetStats.Where(CanFire).Select(t => t.TargetUnit.GetValue().Name).ToList();
-        string limited = w.LimitedRule != null ? (w.LimitedAlreadyFired ? $" - {w.LimitedRule}: spent" : $" - {w.LimitedRule}: once per game") : "";
+        var targets = w.WeaponTargetStats.Where(CanFire).ToList();
+        string limited = w.LimitedRule != null ? (w.LimitedAlreadyFired ? $" ({w.LimitedRule}: spent)" : $" ({w.LimitedRule})") : "";
         string range = w.Weapon.RangeInches > 0 ? $" {w.Weapon.RangeInches:0}\"" : "";
-        return new ChoiceRow($"{w.Weapon.Name}{range}{limited}", targets.Count > 0 ? "Can hit: " + string.Join(", ", targets) : "Nothing in range or sight.",
-            true, null, null, "Hold fire", () => Complete(new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(w.Weapon))));
+        bool atTarget = _target is { } t && targets.Any(x => x.TargetUnit.GetValue().ID.Equals(t.ID));
+        bool lit = atTarget && !_unticked.Contains(Key(w.Weapon));
+        string detail = _target is { } tt
+            ? atTarget ? (lit ? $"Fires at {tt.Name}: " : $"Kept back from {tt.Name} - click to fire. ") + Forecast(w, targets.First(x => x.TargetUnit.GetValue().ID.Equals(tt.ID)))
+                       : $"Can't reach {tt.Name}."
+            : targets.Count > 0 ? "Can hit: " + string.Join(", ", targets.Select(x => x.TargetUnit.GetValue().Name)) : "";
+        bool usable = targets.Count > 0;
+        return new ChoiceRow($"{w.Weapon.Name}{range}{limited}", detail, usable, usable ? null : "Nothing in range or sight.",
+            usable ? () => ToggleWeapon(w) : null,
+            usable ? null : "Hold fire", usable ? null : () => Complete(new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(w.Weapon))),
+            Hover: on => { _hoverWeapon = on ? i : -1; DrawReach(); }, Selected: lit);
     }).ToList();
+
+    private void ToggleWeapon(WeaponOption w)
+    {
+        if (_target == null) { _s?.Toast("Click an enemy on the table first - the lit weapons fire at it."); return; }
+        string k = Key(w.Weapon);
+        if (!_unticked.Remove(k)) _unticked.Add(k);
+        Version++;
+    }
+
+    /// <summary>The enemies in reach outlined: every weapon's (gold), or the hovered weapon's only (its range colour).</summary>
+    private void DrawReach()
+    {
+        if (_s == null) return;
+        var lines = new List<BattleTable.GhostLine>();
+        for (int i = 0; i < _r.WeaponOptions.Count; i++)
+        {
+            if (_hoverWeapon >= 0 && i != _hoverWeapon) continue;
+            Color c = _hoverWeapon >= 0 ? BattleTable.CoolRanges[i % BattleTable.CoolRanges.Length] : HudKit.Gold;
+            foreach (WeaponTargetStats t in _r.WeaponOptions[i].WeaponTargetStats.Where(CanFire))
+                if (_target == null || !t.TargetUnit.GetValue().ID.Equals(_target.ID))
+                    lines.AddRange(BattleTable.Outline(t.TargetUnit.GetValue(), 0.45f, c with { A = 0.9f }, 0.14f));
+        }
+        _s.Table.SetGhosts("targets", Array.Empty<BattleTable.Ghost>(), lines);
+    }
 
     public override void Shown(BattleScreen s)
     {
         _s = s;
         s.SelectUnit(Shooter);
+        DrawReach();
         // The rest of a confirmed volley: every other ticked weapon fires at the same target.
         if (BattleResolvers.ShootAt is { } again && again.Shooter.Equals(Shooter.ID))
         {
@@ -630,7 +696,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         }
     }
 
-    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("target");
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("target"); s.Table.ClearGhosts("targets"); }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -656,6 +722,7 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         _target = unit;
         // The shooter keeps its outline; the target gets a red one.
         s.Table.SetGhosts("target", Array.Empty<BattleTable.Ghost>(), BattleTable.Outline(unit, 0.45f, Palette.WoundsRed, 0.22f));
+        DrawReach();
         Version++;
         return true;
     }
@@ -777,10 +844,12 @@ public class UnitPickDecision<T> : Decision<T>, IUnitPick
         && _valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1;   // Kai, 2026-11-11: else the left list only
 
     public override string? RowsTitle => "Choose";
+    public override bool ButtonChoices => true;
+    public override string RowIcon => "person";
 
     public override IReadOnlyList<ChoiceRow>? Rows => !Listed ? null
-        : _valid.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(_pick(o.Unit))))
-            .Concat(_invalid.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+        : _valid.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(_pick(o.Unit)), Portrait: o.Unit.GetValue()))
+            .Concat(_invalid.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null, Portrait: i.Unit.GetValue()))).ToList();
 
     public override void Shown(BattleScreen s)
     {
@@ -1071,8 +1140,8 @@ public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding
     }
 
     public override IReadOnlyList<ChoiceRow> Rows =>
-        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(new Selected<DataBinding<UnitData>>(o.Option))))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null))).ToList();
+        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(new Selected<DataBinding<UnitData>>(o.Option)), Portrait: o.Option.GetValue()))
+            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null, Portrait: i.Option.GetValue()))).ToList();
     public override string? RowsTitle => "Fight";
 }
 
@@ -1105,7 +1174,7 @@ public sealed class ConcedeDecision : Decision<bool>
     public override void AutoPlay(BattleScreen s) => Complete(false);
     public override IReadOnlyList<ChoiceRow> Rows => new[]
     {
-        new ChoiceRow("Keep fighting", null, true, null, () => Complete(false)),
+        new ChoiceRow("Keep fighting", null, true, null, () => Complete(false), Icon: "crossed-swords"),
         new ChoiceRow("Concede the game", "Ends the game as a loss.", true, null,
             () => { if (_s != null) _s.Confirm("Concede?", "End the game now as a loss?", "Concede", () => Complete(true)); else Complete(true); }),
     };

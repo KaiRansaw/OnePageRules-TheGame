@@ -188,10 +188,10 @@ public sealed class BattleDecisions
         foreach (Node c in _rows.GetChildren()) c.QueueFree();
         IReadOnlyList<ChoiceRow>? rows = d?.Rows;
         bool any = rows is { Count: > 0 };
-        if (any && Style != RowStyle.List && d!.ButtonChoices)
+        if ((any || d?.CancelLabel != null) && Style != RowStyle.List && d!.ButtonChoices)
         {
             // Kai, 2026-11-11 (mockup): the choices as buttons extending to the right of the grid, not a list under it.
-            _grid.AddChild(Side(d!, rows!));
+            _grid.AddChild(Side(d!, rows ?? Array.Empty<ChoiceRow>()));
             _grid.Visible = true;
             _rowsTitle.Visible = false;
             _areaTitle.Text = slots != null ? "ACTIONS" : (d!.RowsTitle ?? "Choose").ToUpperInvariant() + _titleHint;
@@ -268,13 +268,15 @@ public sealed class BattleDecisions
         var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
         bool square = Style == RowStyle.Square;
         // Two rows of squares fill the block; with a line of rule text above, one row (it would not fit).
-        int perColumn = square ? (info.Count > 0 ? 1 : 2) : 3;
+        // Many choices under a line of rule text: two rows of smaller squares instead of one long row.
+        bool many = info.Count > 0 && buttons.Count > 5;
+        int perColumn = square ? (info.Count > 0 && !many ? 1 : 2) : 3;
         var g = new GridContainer { Columns = Math.Max(1, (buttons.Count + perColumn - 1) / perColumn) };
         g.AddThemeConstantOverride("h_separation", 6);
         g.AddThemeConstantOverride("v_separation", 6);
         // Numbered on from the four action buttons when they are showing (5, 6...), so every key is unique.
         int n = d.Actions?.Count ?? 0;
-        float size = d.Actions != null ? 74 : 96;
+        float size = d.Actions != null || many ? 74 : 96;
         foreach (ChoiceRow r in buttons)
         {
             Control c = square ? SquareChoice(r, d.RowIcon, ++n, size) : TileChoice(r, d.RowIcon, ++n);
@@ -302,17 +304,25 @@ public sealed class BattleDecisions
         return outer;
     }
 
+    /// <summary>A unit's faction, for its Army Forge portrait on a choice button (set by the battle screen).</summary>
+    public static Func<IUnit, string>? PortraitFaction { get; set; }
+
     private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail ?? "") : (r.Reason ?? "Not available.");
 
     /// <summary>Like the four action buttons: picture, name, number key; the detail on hover.</summary>
     private static Control SquareChoice(ChoiceRow r, string icon, int n, float size = 96)
     {
         var b = new Button { CustomMinimumSize = new Vector2(size, size + 6), Disabled = !r.Enabled || r.Pick == null, FocusMode = Control.FocusModeEnum.None, TooltipText = Tip(r) };
-        HudKit.StyleButton(b, new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 }, HudKit.Fg, 15);
+        var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 };
+        // Lit (a weapon that will fire, a ticked unit, a model taking wounds): the same look as a picked action.
+        if (r.Selected) box = box.With(x => { x.Border = HudKit.Lime; x.Glow = HudKit.Lime with { A = 0.55f }; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 2);
-        var ic = HudKit.Icon(r.Icon ?? icon, 38, r.Enabled ? HudKit.Lime : HudKit.Dim with { A = 0.4f });
+        Control ic = r.Portrait is { } pu
+            ? HudKit.Portrait(PortraitFaction?.Invoke(pu) ?? "", pu.Name, r.Icon ?? icon, size * 0.42f, r.Enabled ? HudKit.Lime : HudKit.Dim, r.Enabled ? 1f : 0.45f)
+            : HudKit.Icon(r.Icon ?? icon, 38, !r.Enabled ? HudKit.Dim with { A = 0.4f } : r.Selected ? HudKit.Lime : HudKit.Lime with { A = 0.8f });
         ic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         col.AddChild(ic);
         var lbl = HudKit.Text(r.Label.ToUpperInvariant(), 12, r.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }, HudKit.Tracked(HudKit.Bold, 1), HorizontalAlignment.Center);
@@ -320,6 +330,24 @@ public sealed class BattleDecisions
         lbl.CustomMinimumSize = new Vector2(size - 10, 0);
         lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(lbl);
+        if (r.Pips is { Count: > 0 } pips)
+        {
+            // Wound pips: grey = taken already, red = taking now, lime outline = still there.
+            var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
+            row.AddThemeConstantOverride("separation", 3);
+            float pip = pips.Count > 6 ? 6 : 9;
+            foreach (int p in pips)
+                row.AddChild(new Panel
+                {
+                    CustomMinimumSize = new Vector2(pip, pip), MouseFilter = Control.MouseFilterEnum.Ignore,
+                    ThemeTypeVariation = "",
+                }.With(pn => pn.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+                {
+                    BgColor = p == 1 ? HudKit.Dim with { A = 0.6f } : p == 2 ? Palette.WoundsRed : new Color(0, 0, 0, 0),
+                    BorderColor = p == 0 ? HudKit.Lime : new Color(0, 0, 0, 0), BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+                })));
+            col.AddChild(row);
+        }
         b.AddChild(col);
         if (n > 0)
         {

@@ -99,6 +99,8 @@ public sealed class DecisionInbox
     private readonly List<Decision> _open = new();
 
     public void Offer(Decision d) { lock (_gate) _open.Add(d); }
+    /// <summary>Test driver only: show this before what is open (an example screen for the UI review).</summary>
+    public void OfferFirst(Decision d) { lock (_gate) _open.Insert(0, d); }
 
     public Decision? Current
     {

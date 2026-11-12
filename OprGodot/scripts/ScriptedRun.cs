@@ -63,6 +63,9 @@ public partial class ScriptedRun : Node
             // "snapall" photographs the first of each --hold decision kind (to <shot dir>/<Kind>.png) and lets the
             // test driver answer it, until every held kind is done or the game ends.
             if (name == "snapall") { SnapAll(); return; }
+            // "examples" waits for your turn, then stages the rare screens over it (Command Group, aircraft, a pick with
+            // Skip, concede, pick several) using your own units - for the UI review; each is answered after its photo.
+            if (name == "examples") { _examplesPending = true; return; }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
@@ -95,6 +98,33 @@ public partial class ScriptedRun : Node
         GetTree().Quit();
     }
 
+    private bool _examplesPending;
+
+    /// <summary>Stages the example screens once it is your turn (checked from snapall each tick).</summary>
+    private void Examples()
+    {
+        var battle = Find<Battle.BattleScreen>(GetTree().Root);
+        if (battle?.Decisions.Current is not Battle.ActivateDecision act || act.Request.ValidOptions.Count < 2) return;
+        _examplesPending = false;
+        var me = act.Request.TargetPlayerID;
+        var units = act.Request.ValidOptions.Select(o => o.Option).ToList();
+        var inbox = Battle.BattleResolvers.Inbox;
+        inbox.OfferFirst(new Battle.PickStringsDecision(new FDG.StageResolution.Requests.PickStringsRequest(me,
+            "Build your mission card deck: pick 3", new[] { "Seize Ground", "Hold the Line", "Assassinate", "Recon", "Sabotage" }, 3, 3,
+            new[] { "Seize Ground", "Recon" })));
+        inbox.OfferFirst(new Battle.ConcedeDecision(new FDG.StageResolution.Requests.ConcedeCheckRequest(me, 3)));
+        inbox.OfferFirst(new Battle.CancellableUnitPickDecision(new FDG.StageResolution.Requests.CancellableSelectionRequest<FDG.UnitData>(me,
+            "Bold Commander: pick a friendly unit to activate next (or skip)",
+            units.Skip(1).Select(u => new FDG.StageResolution.Requests.CancellableSelectionRequest<FDG.UnitData>.ValidOption(u, u.GetValue().Name + " (next)")).ToList(),
+            Array.Empty<FDG.StageResolution.Requests.CancellableSelectionRequest<FDG.UnitData>.InvalidOption>())));
+        inbox.OfferFirst(new Battle.AircraftDecision(new FDG.StageResolution.Requests.AircraftAdvanceRequest(me, "Aircraft move",
+            units[0], new FDG.Float2(0, 1), 30, 36)));
+        inbox.OfferFirst(new Battle.CommandGroupDecision(new FDG.StageResolution.Requests.PickCommandGroupUnitsRequest(me,
+            units[0].GetValue().Name, "Hold the Line Aura", 2,
+            units.Skip(1).Select(u => new FDG.StageResolution.Requests.PickCommandGroupUnitsRequest.ValidOption(u, u.GetValue().Name)).ToList())));
+        GD.Print("ScriptedRun: examples staged");
+    }
+
     private int _snapSettle = -1, _snapTries;
 
     private void SnapAll()
@@ -104,6 +134,7 @@ public partial class ScriptedRun : Node
         if (!more) { GD.Print($"ScriptedRun: snapall done, not seen: {string.Join(",", Battle.BattleScreen.Hold)}"); return; }
         _presses = new Queue<string>(_presses.Prepend("snapall"));
         _wait = 3;
+        if (_examplesPending) Examples();
         string? kind = battle?.Decisions.Current?.GetType().Name;
         if (kind == null || !Battle.BattleScreen.Hold.Contains(kind)) { _snapSettle = -1; return; }
         // Only photograph the action menu when it has extra actions beside the four (that is what is being reviewed).

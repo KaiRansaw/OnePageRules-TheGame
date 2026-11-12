@@ -55,6 +55,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public override void _Ready()
     {
         MenuBackdrop.Instance?.SetActive(false);
+        BattleDecisions.PortraitFaction = u => Session.SeatOf(u.PlayerID)?.Faction ?? "";
         // The table takes the clicks the HUD doesn't: this screen is the bottom-most control under the pointer
         // wherever no panel is, so table clicks arrive in _GuiInput. (In 1.45 they were left for
         // _UnhandledInput, and the main scene's full-window control ate them first - nothing on the table
@@ -615,7 +616,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _unitBlock.Position = new Vector2(Pad, screen.Y - Pad - min.Y);
         Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
         _confirmBox.Size = cmin;
-        _confirmBox.Position = new Vector2((screen.X - cmin.X) / 2, screen.Y - 170 - cmin.Y);
+        // Centred above the bottom edge, but never over the unit block's choice buttons (they grow to the right).
+        float cx = Mathf.Max((screen.X - cmin.X) / 2, _unitBlock.GetRect().End.X + 16);
+        _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
 
         if (Session.EndedText != null && _gameOver == null) ShowGameOver();
     }
