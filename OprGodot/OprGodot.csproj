@@ -13,6 +13,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OprGodot</RootNamespace>
     <AssemblyName>OprGodot</AssemblyName>
+    <!--
+      AnyCPU, like FdgApp and the engine (Godot's export would make it x64-only). Windows' Smart App Control blocked
+      the x64-only build of this file on Kai's PC while an AnyCPU rebuild loaded (2026-11-12) - see claude/fdg-todo.md.
+    -->
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
