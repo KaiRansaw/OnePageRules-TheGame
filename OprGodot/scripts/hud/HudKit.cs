@@ -203,9 +203,13 @@ public static class HudKit
 
     /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
     public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f)
+        => Portrait(UnitPicture(faction, unit), fallbackIcon, size, team, alpha);
+
+    /// <summary>A framed picture (any texture - the Asset Lab previews a new portrait with this), else the icon.</summary>
+    public static Control Portrait(Texture2D? picture, string fallbackIcon, float size, Color team, float alpha = 1f)
     {
         Control inner;
-        if (UnitPicture(faction, unit) is { } tex)
+        if (picture is { } tex)
             inner = new TextureRect { Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, CustomMinimumSize = new Vector2(size, size), SelfModulate = Colors.White with { A = alpha }, ClipContents = true, MouseFilter = Control.MouseFilterEnum.Ignore };
         else
             inner = Icon(fallbackIcon, size * 0.72f, team with { A = alpha * 0.9f });

@@ -381,65 +381,13 @@ public partial class BattleTable : Node3D
     }
 
     // ------------------------------------------------------------------ world
-    private void Environment()
-    {
-        var env = new Godot.Environment
-        {
-            BackgroundMode = Godot.Environment.BGMode.Color, BackgroundColor = new Color(0.018f, 0.026f, 0.03f),
-            AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.45f, 0.55f, 0.6f), AmbientLightEnergy = 0.45f,
-            TonemapMode = Godot.Environment.ToneMapper.Filmic, GlowEnabled = true, GlowIntensity = 0.35f,
-        };
-        AddChild(new WorldEnvironment { Environment = env });
-        var sun = new DirectionalLight3D { LightEnergy = 1.2f, LightColor = new Color(1f, 0.95f, 0.88f), ShadowEnabled = true };
-        sun.RotationDegrees = new Vector3(-58, 32, 0);
-        AddChild(sun);
-        var rim = new DirectionalLight3D { LightEnergy = 0.3f, LightColor = new Color(0.45f, 0.75f, 0.85f) };
-        rim.RotationDegrees = new Vector3(-25, 200, 0);
-        AddChild(rim);
-    }
+    private void Environment() => TableLook.AddLighting(this);
 
-    private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f)
-    {
-        var m = new StandardMaterial3D { AlbedoColor = c, Roughness = rough };
-        if (emit is { } e) { m.EmissionEnabled = true; m.Emission = e; m.EmissionEnergyMultiplier = emitE; }
-        if (c.A < 1) m.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
-        return m;
-    }
+    private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f) => TableLook.Mat(c, rough, emit, emitE);
 
-    private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos)
-    {
-        var mi = new MeshInstance3D { Mesh = mesh, MaterialOverride = mat, Position = pos };
-        parent.AddChild(mi);
-        return mi;
-    }
+    private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos) => TableLook.Mesh(parent, mesh, mat, pos);
 
-    private void Board()
-    {
-        Mesh(this, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
-        Mesh(this, new BoxMesh { Size = new Vector3(W + 2, 3, D + 2) }, Mat(new Color(0.09f, 0.075f, 0.06f), 0.6f), new Vector3(0, -1.55f, 0));
-
-        const int ppi = 12;
-        int iw = (int)Mathf.Ceil(W) * ppi, ih = (int)Mathf.Ceil(D) * ppi;
-        var img = Image.CreateEmpty(iw, ih, false, Image.Format.Rgba8);
-        var felt = new Color(0.115f, 0.14f, 0.125f);
-        img.Fill(felt);
-        var rng = new RandomNumberGenerator { Seed = 7 };
-        for (int i = 0; i < iw * ih / 30; i++)
-            img.SetPixel(rng.RandiRange(0, iw - 1), rng.RandiRange(0, ih - 1), felt.Darkened(rng.RandfRange(0.02f, 0.12f)));
-        for (int x = 0; x <= (int)W; x++)
-        {
-            float a = x % 12 == 0 ? 0.2f : x % 6 == 0 ? 0.1f : 0.035f;
-            int px = Mathf.Min(x * ppi, iw - 1);
-            for (int y = 0; y < ih; y++) img.SetPixel(px, y, img.GetPixel(px, y).Lerp(Colors.White, a));
-        }
-        for (int z = 0; z <= (int)D; z++)
-        {
-            float a = z % 12 == 0 ? 0.2f : z % 6 == 0 ? 0.1f : 0.035f;
-            int py = Mathf.Min(z * ppi, ih - 1);
-            for (int x = 0; x < iw; x++) img.SetPixel(x, py, img.GetPixel(x, py).Lerp(Colors.White, a));
-        }
-        Mesh(this, new PlaneMesh { Size = new Vector2(W, D) }, new StandardMaterial3D { AlbedoTexture = ImageTexture.CreateFromImage(img), Roughness = 0.95f }, new Vector3(0, 0.01f, 0));
-    }
+    private void Board() => TableLook.AddBoard(this, W, D);
 
     // ------------------------------------------------------------------ terrain
     private void SyncTerrain()
@@ -584,10 +532,9 @@ public partial class BattleTable : Node3D
         var root = new Node3D();
         _modelRoot.AddChild(root);
         float rad = Mathf.Max(0.4f, m.BaseRadiusInches);
-        var rim = Mat(team, 0.4f, team, 1.3f);
         var body = Mat(team.Darkened(0.45f).Lerp(new Color(0.55f, 0.55f, 0.55f), 0.25f), 0.55f);
-        Mesh(root, new CylinderMesh { TopRadius = rad + 0.05f, BottomRadius = rad + 0.07f, Height = 0.08f }, rim, new Vector3(0, 0.05f, 0));
-        Mesh(root, new CylinderMesh { TopRadius = rad * 0.94f, BottomRadius = rad, Height = 0.2f }, Mat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
+        TableLook.AddBase(root, m.BaseRadiusInches, team);
+        var rim = (StandardMaterial3D)((MeshInstance3D)root.GetChild(0)).MaterialOverride;
         bool big = m.TotalWounds >= 6 || rad > 1.4f;
         if (big)
             Mesh(root, new BoxMesh { Size = new Vector3(rad * 1.3f, 1.8f, rad * 1.6f) }, body, new Vector3(0, 1.15f, 0));

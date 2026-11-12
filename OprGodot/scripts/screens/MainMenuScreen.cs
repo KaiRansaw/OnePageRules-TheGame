@@ -44,6 +44,8 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
             () => ImportArmyPopup.Open(this)));
         tools.AddChild(Tool("MapMaker", "position-marker", "Map Maker", "Make and edit your own maps.", () => App.I.OpenNotYet("Map Maker",
             "Maps grouped by table size, preview, Edit / Copy / Delete; the 3D editor with heights comes with the terrain work. Port step 6.")));
+        tools.AddChild(Tool("AssetLab", "stack", "Asset Lab", "Look at 3D models and pictures on the real table, at true scale, and set how each one stands.",
+            () => App.I.Open<Lab.AssetLabScreen>(Scenes.AssetLab)));
         tools.AddChild(Tool("Settings", "cog", "Settings", "Your name, display, gameplay, camera and sound settings.", () => App.I.Open<SettingsScreen>(Scenes.Settings)));
         tools.AddChild(Tool("CloseGame", "stop-sign", "Quit", "Close the game.", App.I.Quit, Palette.WoundsRed));
         HudKit.Place(this, tools, LayoutPreset.BottomLeft, new Vector2(110, -64));

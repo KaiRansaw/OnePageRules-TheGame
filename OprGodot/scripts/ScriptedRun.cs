@@ -66,6 +66,18 @@ public partial class ScriptedRun : Node
             // "examples" waits for your turn, then stages the rare screens over it (Command Group, aircraft, a pick with
             // Skip, concede, pick several) using your own units - for the UI review; each is answered after its photo.
             if (name == "examples") { _examplesPending = true; return; }
+            // "lab:<file>" opens that file in the Asset Lab; "labview:0-3" picks its camera (close / play / table / top);
+            // "labcopies:0-4" its copies (1 / 5 / 10 / 20 / 100); "labset:Height=40" sets one of its boxes by node name.
+            if (name.StartsWith("lab") && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lab)
+            {
+                string arg = name[(name.IndexOf(':') + 1)..];
+                if (name.StartsWith("lab:")) lab.Open(arg);
+                else if (name.StartsWith("labview:") && int.TryParse(arg, out int v)) lab.View(v);
+                else if (name.StartsWith("labcopies:") && int.TryParse(arg, out int c)) lab.SetCopies(c);
+                else if (name.StartsWith("labset:") && arg.Split('=') is [var box, var val]) lab.SetBox(box, val);
+                _wait = 30;
+                return;
+            }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
