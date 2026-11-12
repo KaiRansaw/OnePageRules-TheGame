@@ -145,6 +145,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
                 if (!IsInsideTree()) return;
                 SetUpdateStatus(r);
                 if (r.Error == null) Line(r.Summary, HudKit.Lime);
+                Tell(r.Error == null ? "Updated" : "Couldn't update", r.Summary);
                 return;
             }
             if (!OS.HasFeature("windows"))
@@ -157,10 +158,20 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
             var s = await Check();
             if (!IsInsideTree()) return;
             SetUpdateStatus(s);
-            if (!s.Available) return;
+            // A click always gets an answer you can see (Kai, 2026-11-12: "clicking Update doesnt do anything").
+            if (!s.Available) { Tell(s.Error == null ? "No update" : "Couldn't check", s.Error == null ? $"You have the newest build ({AppVersion.BuildLabel})." : s.Summary); return; }
             ConfirmDownload(s);
         }
         finally { _updating = false; }
+    }
+
+    private void Tell(string title, string text)
+    {
+        var dlg = new AcceptDialog { Title = title, DialogText = text, OkButtonText = "OK" };
+        dlg.Confirmed += () => dlg.QueueFree();
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered();
     }
 
     private void ConfirmDownload(GameUpdater.Status s)
@@ -201,7 +212,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
             await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
             App.I.Quit();
         }
-        catch (Exception e) { if (IsInsideTree()) Line("The update failed: " + e.Message, Palette.WoundsRed); }
+        catch (Exception e) { if (IsInsideTree()) { Line("The update failed: " + e.Message, Palette.WoundsRed); Tell("Update failed", e.Message); } }
         finally { _updating = false; }
     }
 
