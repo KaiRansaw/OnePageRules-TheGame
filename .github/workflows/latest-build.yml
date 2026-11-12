@@ -87,20 +87,34 @@ jobs:
       # The Godot game (Kai, 2026-11-12: "both, Godot first"). Exported for Windows into the same folder as the Raylib
       # build, so both find the one Assets/ folder beside them. build-commit.txt is what the in-game Update button
       # compares with this release's commit.
+      # Godot + its Windows export templates are ~1.2 GB; kept between builds instead of fetched every push (Kai,
+      # 2026-11-12). Change the key when GODOT_VER below changes.
+      - name: Cache Godot and its Windows export templates
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/4.7.2.stable.mono
+          key: godot-4.7.2-mono-win-templates-v1
+
       - name: Add the Godot game
         run: |
           echo "::notice title=step::godot export started"
           set +e
           GODOT_VER=4.7.2
-          curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_linux_x86_64.zip" \
-            && unzip -q godot.zip -d "$HOME/godot" \
-            && curl -fsSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_export_templates.tpz"
-          code=$?
-          if [ $code -ne 0 ]; then echo "::error title=Godot download failed::exit code $code"; exit 1; fi
           TPL="$HOME/.local/share/godot/export_templates/${GODOT_VER}.stable.mono"
-          mkdir -p "$TPL"
-          unzip -q -o -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe -d "$TPL"
-          rm -f templates.tpz godot.zip
+          if ls "$HOME"/godot/*/Godot_v*_mono_linux.x86_64 >/dev/null 2>&1 && [ -f "$TPL/windows_release_x86_64.exe" ]; then
+            echo "::notice title=godot::using the cached Godot and templates"
+          else
+            curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_linux_x86_64.zip" \
+              && unzip -q -o godot.zip -d "$HOME/godot" \
+              && curl -fsSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_export_templates.tpz"
+            code=$?
+            if [ $code -ne 0 ]; then echo "::error title=Godot download failed::exit code $code"; exit 1; fi
+            mkdir -p "$TPL"
+            unzip -q -o -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe -d "$TPL"
+            rm -f templates.tpz godot.zip
+          fi
           GODOT="$(ls "$HOME"/godot/*/Godot_v*_mono_linux.x86_64)"
           DIR="$(ls -d dist/FdgRaylib-win-x64)"
           "$GODOT" --headless --path OprGodot --import > godot.log 2>&1

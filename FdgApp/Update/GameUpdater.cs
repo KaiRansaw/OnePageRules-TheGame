@@ -205,9 +205,31 @@ public static class GameUpdater
     {
         if (Directory.Exists(staging)) Directory.Delete(staging, true);
         string unpacked = Path.Combine(staging, "files");
-        ZipFile.ExtractToDirectory(zip, unpacked);
+        Directory.CreateDirectory(unpacked);
+        // On Windows the zip is unpacked by Windows' own tar.exe, not by the game: Smart App Control blocked the new
+        // build when the (unsigned) game wrote its program files itself (Kai, 1.76 -> 1.77), while the same kind of
+        // files unpacked by Windows ran. ApplyInPlace then only RENAMES them into place, so they stay as Windows
+        // wrote them. Elsewhere, or with no tar.exe, the game unpacks it itself.
+        if (!WindowsTar(zip, unpacked)) ZipFile.ExtractToDirectory(zip, unpacked, true);
         var dirs = Directory.GetDirectories(unpacked);
         return dirs.Length == 1 && Directory.GetFiles(unpacked).Length == 0 ? dirs[0] : unpacked;
+    }
+
+    private static bool WindowsTar(string zip, string into)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        string tar = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "tar.exe");
+        if (!File.Exists(tar)) return false;
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo(tar, $"-xf \"{zip}\" -C \"{into}\"")
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true,
+            })!;
+            p.WaitForExit();
+            return p.ExitCode == 0 && Directory.EnumerateFileSystemEntries(into).Any();
+        }
+        catch (Exception) { return false; }
     }
 
     /// <summary>Lists files moved aside during an update, so the next start can delete them.</summary>
@@ -215,7 +237,7 @@ public static class GameUpdater
     private const string OldSuffix = ".old-update";
 
     /// <summary>
-    /// Copies the new build over the game while it is still running - no script, no helper program (Kai, 2026-11-12:
+    /// Moves the new build over the game while it is still running - no script, no helper program (Kai, 2026-11-12:
     /// Windows' Smart App Control blocked the first version's script). Adds and replaces, never deletes. A file
     /// Windows won't let us overwrite because the game is using it (its own .exe and .dlls) is renamed out of the way
     /// first - Windows allows renaming a running program - and the new one put in its place; the next start deletes the
@@ -231,14 +253,15 @@ public static class GameUpdater
             {
                 string to = Path.Combine(gameDir, Path.GetRelativePath(source, from));
                 Directory.CreateDirectory(Path.GetDirectoryName(to)!);
-                try { File.Copy(from, to, true); }
+                // Moved, not copied: a rename keeps the file exactly as it was unpacked (see Stage).
+                try { File.Move(from, to, true); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
                     string aside = to + OldSuffix;
                     if (File.Exists(aside)) { try { File.Delete(aside); } catch (Exception) { aside = $"{to}.{Guid.NewGuid():N}{OldSuffix}"; } }
                     File.Move(to, aside);
                     moved.Add(aside);
-                    File.Copy(from, to, true);
+                    File.Move(from, to, true);
                 }
                 written++;
             }

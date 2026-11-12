@@ -558,14 +558,25 @@ public partial class BattleTable : Node3D
                 bool onTable = !(p.x == 0 && p.z == 0) && m.RemainingWounds > 0;
                 if (!onTable) continue;
                 live.Add(m.ID);
-                if (!_models.TryGetValue(m.ID, out ModelView? view))
+                bool fresh = !_models.TryGetValue(m.ID, out ModelView? view);
+                if (fresh)
                 {
                     view = MakeModel(m, unit);
                     _models[m.ID] = view;
-                    view.Root.Position = World(p);
+                    view!.Root.Position = World(p);
                 }
                 Vector3 target = World(p);
-                view.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
+                view!.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
+                // Which way it looks: the engine's facing (FacingRules - towards the enemy at deployment, the way it
+                // moved, what it attacked). A model's front is its +Z (the Asset Lab's FRONT arrow); table z runs
+                // the other way to world z. Turns smoothly rather than snapping.
+                Float2 f = m.Facing;
+                if (f.X * f.X + f.Y * f.Y > 0.01f)
+                {
+                    float want = Mathf.Atan2(f.X, -f.Y);
+                    float yaw = fresh ? want : Mathf.LerpAngle(view.Root.Rotation.Y, want, Mathf.Min(1f, delta * 6f));
+                    view.Root.Rotation = new Vector3(0, yaw, 0);
+                }
                 sum += target;
                 placed++;
                 top = Mathf.Max(top, view.Height + 1f); // the name floats a little over the tallest model
