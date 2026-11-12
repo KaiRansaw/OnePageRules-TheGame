@@ -1,4 +1,5 @@
 using FdgRaylib;
+using FdgRaylib.Update;
 using Godot;
 using OprGodot.Hud;
 
@@ -11,6 +12,13 @@ namespace OprGodot;
 /// </summary>
 public partial class MainMenuScreen : Control, IOwnBackdrop
 {
+    private HBoxContainer _tools = null!;
+    private Button _update = null!;
+    private Label _updateLine = null!;
+    private GameUpdater.Status? _updateStatus;
+    private bool _updating, _shownAvailable;
+    private static readonly System.Net.Http.HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(30) };
+
     public override void _Ready()
     {
         // Darken the left of the picture so the menu reads, and the bottom for the tools.
@@ -46,6 +54,9 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
             "Maps grouped by table size, preview, Edit / Copy / Delete; the 3D editor with heights comes with the terrain work. Port step 6.")));
         tools.AddChild(Tool("AssetLab", "stack", "Asset Lab", "Look at 3D models and pictures on the real table, at true scale, and set how each one stands.",
             () => App.I.Open<Lab.AssetLabScreen>(Scenes.AssetLab)));
+        _tools = tools;
+        _update = UpdateButton(false);
+        tools.AddChild(_update);
         tools.AddChild(Tool("Settings", "cog", "Settings", "Your name, display, gameplay, camera and sound settings.", () => App.I.Open<SettingsScreen>(Scenes.Settings)));
         tools.AddChild(Tool("CloseGame", "stop-sign", "Quit", "Close the game.", App.I.Quit, Palette.WoundsRed));
         HudKit.Place(this, tools, LayoutPreset.BottomLeft, new Vector2(110, -64));
@@ -55,8 +66,143 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         var build = HudKit.Text($"Godot preview  -  {AppVersion.BuildLabel}", 15, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Right);
         build.Name = "Build";
         foot.AddChild(build);
+        _updateLine = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Right);
+        _updateLine.Name = "UpdateLine";
+        foot.AddChild(_updateLine);
         foot.AddChild(HudKit.Text("Fan-made. Not an official OnePageRules product. Game rules and army data (c) OnePageRules.", 13, HudKit.Dim with { A = 0.7f }, HudKit.Medium, HorizontalAlignment.Right));
         HudKit.Place(this, foot, LayoutPreset.BottomRight, new Vector2(-28, -16));
+
+        // Checks quietly on opening (Kai, 2026-11-12); the button lights up when there is something new.
+        if (!ScriptedRun.IsRequested || OS.GetCmdlineUserArgs().Contains("--check-update")) _ = CheckForUpdate();
+    }
+
+    // ================================================================== Update
+
+    private static string GameDir => AppAssets.Root;
+
+    private Button UpdateButton(bool available)
+    {
+        string tip = available
+            ? "A new version is on GitHub. Click to update."
+            : "Get the newest version from GitHub.";
+        var b = HudKit.ActionButton("Update", "clockwise-rotation", available ? "Update!" : "Update", "", available ? HudKit.Lime : HudKit.Teal, 96, selected: available);
+        b.CustomMinimumSize = new Vector2(118, 96);
+        b.TooltipText = tip;
+        b.Pressed += () => _ = OnUpdatePressed();
+        return b;
+    }
+
+    private void SetUpdateStatus(GameUpdater.Status s)
+    {
+        _updateStatus = s;
+        Line(s.Summary, s.Error != null ? Palette.WoundsRed : s.Available ? HudKit.Lime : HudKit.Dim);
+        if (s.Available == _shownAvailable) return;
+        _shownAvailable = s.Available;
+        int at = _update.GetIndex();
+        var fresh = UpdateButton(s.Available);
+        _tools.RemoveChild(_update);
+        _update.QueueFree();
+        _update = fresh;
+        _tools.AddChild(_update);
+        _tools.MoveChild(_update, at);
+    }
+
+    private void Line(string text, Color colour)
+    {
+        _updateLine.Text = text;
+        _updateLine.Modulate = colour;
+    }
+
+    private async Task<GameUpdater.Status> Check()
+    {
+        string? repo = GameUpdater.RepoRoot(GameDir);
+        try
+        {
+            return repo != null ? await GameUpdater.CheckGitAsync(repo) : await GameUpdater.CheckReleaseAsync(Http, GameDir);
+        }
+        catch (Exception e) { return GameUpdater.Status.Failed("Couldn't check for updates: " + e.Message); }
+    }
+
+    private async Task CheckForUpdate()
+    {
+        Line("Checking for updates...", HudKit.Dim);
+        var s = await Check();
+        if (IsInsideTree()) SetUpdateStatus(s);
+    }
+
+    private async Task OnUpdatePressed()
+    {
+        if (_updating) return;
+        _updating = true;
+        try
+        {
+            string? repo = GameUpdater.RepoRoot(GameDir);
+            if (repo != null)
+            {
+                // Kai's copy: git pull. The Godot editor rebuilds on the next Play.
+                Line("Updating from GitHub...", HudKit.Lime);
+                var r = await GameUpdater.PullAsync(repo);
+                if (!IsInsideTree()) return;
+                SetUpdateStatus(r);
+                if (r.Error == null) Line(r.Summary, HudKit.Lime);
+                return;
+            }
+            if (!OS.HasFeature("windows"))
+            {
+                OS.ShellOpen(GameUpdater.ReleasePage);
+                Line("Opened the download page - unzip the new build over this one.", HudKit.Dim);
+                return;
+            }
+            Line("Checking GitHub...", HudKit.Dim);
+            var s = await Check();
+            if (!IsInsideTree()) return;
+            SetUpdateStatus(s);
+            if (!s.Available) return;
+            ConfirmDownload(s);
+        }
+        finally { _updating = false; }
+    }
+
+    private void ConfirmDownload(GameUpdater.Status s)
+    {
+        var dlg = new ConfirmationDialog
+        {
+            Title = "Update the game?",
+            DialogText = s.Summary + "\n\nIt downloads the new build, then the game closes, updates itself and opens again.\n" +
+                         "Your saved armies, games, settings and downloaded models stay as they are.",
+            OkButtonText = "Update",
+        };
+        dlg.Confirmed += () => { dlg.QueueFree(); _ = DownloadAndApply(); };
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered();
+    }
+
+    /// <summary>A friend's copy: download the zip, unpack it beside the game, hand over to the script and close.</summary>
+    private async Task DownloadAndApply()
+    {
+        if (_updating) return;
+        _updating = true;
+        try
+        {
+            var release = await GameUpdater.LatestReleaseAsync(Http);
+            if (release?.WindowsZipUrl == null) { Line("The new build has no Windows download yet - try again in a few minutes.", Palette.WoundsRed); return; }
+            string staging = Path.Combine(GameDir, GameUpdater.StagingFolder);
+            string zip = Path.Combine(Path.GetTempPath(), GameUpdater.WindowsAsset);
+            var progress = new Progress<double>(p => Line($"Downloading the update... {p * 100:0}%", HudKit.Lime));
+            await GameUpdater.DownloadAsync(Http, release.WindowsZipUrl, zip, progress);
+            Line("Unpacking...", HudKit.Lime);
+            string source = await Task.Run(() => GameUpdater.Stage(zip, staging));
+            try { File.Delete(zip); } catch (IOException) { }
+            string exe = Path.GetFileName(OS.GetExecutablePath());
+            string bat = GameUpdater.WriteApplyScript(source, GameDir, staging, OS.GetProcessId(), exe);
+            GameUpdater.RunApplyScript(bat);
+            Line("Closing to finish the update - the game reopens by itself.", HudKit.Lime);
+            await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
+            App.I.Quit();
+        }
+        catch (Exception e) { if (IsInsideTree()) Line("The update failed: " + e.Message, Palette.WoundsRed); }
+        finally { _updating = false; }
     }
 
     private static TextureRect Shade(Color from, Color to, bool horizontal, float l, float t, float r, float b)

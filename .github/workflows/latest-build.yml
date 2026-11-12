@@ -84,6 +84,43 @@ jobs:
             exit 1
           fi
 
+      # The Godot game (Kai, 2026-11-12: "both, Godot first"). Exported for Windows into the same folder as the Raylib
+      # build, so both find the one Assets/ folder beside them. build-commit.txt is what the in-game Update button
+      # compares with this release's commit.
+      - name: Add the Godot game
+        run: |
+          echo "::notice title=step::godot export started"
+          set +e
+          GODOT_VER=4.7.2
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_linux_x86_64.zip" \
+            && unzip -q godot.zip -d "$HOME/godot" \
+            && curl -fsSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VER}-stable/Godot_v${GODOT_VER}-stable_mono_export_templates.tpz"
+          code=$?
+          if [ $code -ne 0 ]; then echo "::error title=Godot download failed::exit code $code"; exit 1; fi
+          TPL="$HOME/.local/share/godot/export_templates/${GODOT_VER}.stable.mono"
+          mkdir -p "$TPL"
+          unzip -q -o -j templates.tpz templates/version.txt templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe -d "$TPL"
+          rm -f templates.tpz godot.zip
+          GODOT="$(ls "$HOME"/godot/*/Godot_v*_mono_linux.x86_64)"
+          DIR="$(ls -d dist/FdgRaylib-win-x64)"
+          "$GODOT" --headless --path OprGodot --import > godot.log 2>&1
+          "$GODOT" --headless --path OprGodot --export-release "Windows Desktop" "$PWD/$DIR/OnePageRules.exe" >> godot.log 2>&1
+          code=$?
+          if [ $code -ne 0 ] || [ ! -f "$DIR/OnePageRules.exe" ] || [ ! -d "$DIR/data_OprGodot_windows_x86_64" ]; then
+            echo "::error title=Godot export failed::exit code $code"
+            grep -iE "error" godot.log | grep -v leaked | tail -12 | tr -cd 'A-Za-z0-9 .,:/_()=+\-\n' | cut -c1-300 | while IFS= read -r line; do
+              echo "::error title=godot::${line//::/ }"
+            done
+            exit 1
+          fi
+          echo "$GITHUB_SHA" > "$DIR/build-commit.txt"
+          { printf 'START HERE: run OnePageRules.exe - the new game.\r\n'
+            printf 'Update it from its main menu (the Update button) - no need to download the zip again.\r\n'
+            printf 'FdgRaylib.exe is the old version, kept as a backup while the new one is finished.\r\n\r\n'
+            cat "$DIR/README.txt"; } > "$DIR/README.new" && mv "$DIR/README.new" "$DIR/README.txt"
+          rm -rf dist/OnePageRules-TheGame && mv "$DIR" dist/OnePageRules-TheGame
+          ( cd dist && rm -f OnePageRules-TheGame-Windows.zip && zip -rq OnePageRules-TheGame-Windows.zip OnePageRules-TheGame )
+
       - name: Publish as the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -93,9 +130,8 @@ jobs:
           trap 'echo "::error title=Publish failed::step line $LINENO exited $?"' ERR
           SHORT_SHA="${GITHUB_SHA::7}"
           STAMP="$(date -u +'%Y-%m-%d %H:%M') UTC"
-          ZIP="$(ls dist/FdgRaylib-win-x64-*.zip)"
-          # Stable download name so a bookmarked link keeps working across builds.
-          cp "$ZIP" dist/OnePageRules-TheGame-Windows.zip
+          # Stable download name so a bookmarked link (and the in-game Update button) keeps working across builds.
+          test -f dist/OnePageRules-TheGame-Windows.zip
 
           gh release delete latest --cleanup-tag --yes 2>/dev/null || true
           git tag -f latest "$GITHUB_SHA"
@@ -103,7 +139,8 @@ jobs:
 
           NOTES="Newest playtest build (commit ${SHORT_SHA}, built ${STAMP}).
 
-          Windows: download OnePageRules-TheGame-Windows.zip, unzip it, run FdgRaylib.exe.
+          Windows: download OnePageRules-TheGame-Windows.zip, unzip it, run OnePageRules.exe (the new game).
+          Already have it? Press Update on its main menu instead. FdgRaylib.exe is the old version, kept as a backup.
           README.txt inside covers unit pictures and playing together over Tailscale.
           Everyone in a game must be on the same build - check the commit number above."
 
