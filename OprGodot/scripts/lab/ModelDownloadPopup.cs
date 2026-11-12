@@ -37,7 +37,9 @@ public partial class ModelDownloadPopup : Control
     private int _total, _done, _savedCount, _failed, _skipped;
     private volatile bool _fetchFinished;
 
-    private sealed record Job(ForceOrgCatalog.Model Model, Dictionary<string, string> Files, string Path, string Notes);
+    /// <summary>One file to save: put together from fetched parts, or (<see cref="LinkFrom"/>) the same model already saved for another unit.</summary>
+    private sealed record Job(ForceOrgCatalog.Model? Model, Dictionary<string, string> Files, string Path, string Notes, string? LinkFrom = null);
+    private Button _all = null!, _clearCache = null!;
 
     public static ModelDownloadPopup Open(Control parent, string? catalogue = null, string? map = null)
     {
@@ -97,10 +99,14 @@ public partial class ModelDownloadPopup : Control
 
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddThemeConstantOverride("separation", 10);
-        _start = Btn("StartDownload", "Download", "Fetch and save every model for the units of this army.", Start);
+        _start = Btn("StartDownload", "Download", "Fetch and save every model for the units of this army.", () => Start(false));
+        _all = Btn("DownloadAll", "Download all armies...", "Every army on the list, one after another. Models already downloaded are skipped; the same model in several armies is stored once.", ConfirmAll);
+        _clearCache = Btn("ClearCache", "Clear download cache", "Delete the raw downloaded parts (UnitModels/_cache). Your finished models are kept; a later download fetches parts again.", ConfirmClearCache);
         _stop = Btn("StopDownload", "Stop", "Stop after the models already on their way. What is saved stays; the next run carries on.", Stop);
         _close = Btn("CloseDownload", "Close", "Close this window.", () => { Stop(); QueueFree(); });
         _stop.Disabled = true;
+        buttons.AddChild(_clearCache);
+        buttons.AddChild(_all);
         buttons.AddChild(_start);
         buttons.AddChild(_stop);
         buttons.AddChild(_close);
@@ -190,42 +196,121 @@ public partial class ModelDownloadPopup : Control
     public void StartFor(string book)
     {
         if (_map == null) return;
+        if (book == "*") { Start(true); return; } // every army
         int i = _map.Books.ToList().FindIndex(b => b.Equals(book, StringComparison.OrdinalIgnoreCase));
         if (i < 0) { Log($"No units listed for {book}."); return; }
         _book.Select(i);
         ShowBook();
-        Start();
+        Start(false);
     }
 
-    private void Start()
+    /// <summary>The models still to save for these books: (book, unit, model, where it goes).</summary>
+    private List<(string Book, UnitModelMap.Entry Unit, UnitModelMap.ModelRef Ref, string Path)> JobsFor(IEnumerable<string> books)
     {
-        if (_catalogue == null || _map == null || SelectedBook is not { } book || _cts != null) return;
         string root = UnitModelPaths.Root;
-        var jobs = new List<(UnitModelMap.Entry Unit, UnitModelMap.ModelRef Ref, string Path)>();
-        foreach (var u in _map.ForBook(book))
-            foreach (var m in u.Models)
-            {
-                string path = UnitModelMap.FileFor(root, book, u.Unit, m);
-                if (_skip.ButtonPressed && File.Exists(path)) { _skipped++; continue; }
-                jobs.Add((u, m, path));
-            }
+        var jobs = new List<(string, UnitModelMap.Entry, UnitModelMap.ModelRef, string)>();
+        _skipped = 0;
+        foreach (string b in books)
+            foreach (var u in _map!.ForBook(b))
+                foreach (var m in u.Models)
+                {
+                    string path = UnitModelMap.FileFor(root, b, u.Unit, m);
+                    if (_skip.ButtonPressed && File.Exists(path)) { _skipped++; continue; }
+                    jobs.Add((b, u, m, path));
+                }
+        return jobs;
+    }
+
+    /// <summary>Every model already saved anywhere in UnitModels, by catalogue id (the "(id)" in its file name).</summary>
+    private static Dictionary<int, string> SavedById()
+    {
+        var found = new Dictionary<int, string>();
+        string root = UnitModelPaths.Root;
+        if (!Directory.Exists(root)) return found;
+        var rx = new System.Text.RegularExpressions.Regex(@"\((\d+)\)\.glb$");
+        foreach (string f in Directory.EnumerateFiles(root, "*.glb", SearchOption.AllDirectories))
+            if (rx.Match(f) is { Success: true } m && int.TryParse(m.Groups[1].Value, out int id)) found.TryAdd(id, f);
+        return found;
+    }
+
+    private void ConfirmAll()
+    {
+        if (_catalogue == null || _map == null || _cts != null) return;
+        var jobs = JobsFor(_map.Books);
+        var saved = SavedById();
+        int fresh = jobs.Select(j => j.Ref.Id).Distinct().Count(id => !saved.ContainsKey(id));
+        // Alien Hives came to ~21 MB per model file and ~4 MB of raw parts per model (Kai's download, 2026-11-12).
+        double gb = fresh * 25 / 1024.0;
+        string free = "";
+        try { free = $" You have {new DriveInfo(Path.GetPathRoot(Path.GetFullPath(UnitModelPaths.Root))!).AvailableFreeSpace / 1e9:0} GB free on that drive."; }
+        catch (Exception) { }
+        var dlg = new ConfirmationDialog
+        {
+            Title = "Download all armies?",
+            DialogText = $"{jobs.Count} model files for {_map.Books.Count()} armies ({_skipped} already there are skipped).\n" +
+                         $"{fresh} of them are new models to fetch - roughly {gb:0} GB.{free}\n" +
+                         "The same model in several armies is stored once. It can take hours; Stop keeps what is saved and the next run carries on.",
+            OkButtonText = "Download all",
+        };
+        dlg.Confirmed += () => { Start(true); dlg.QueueFree(); };
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered();
+    }
+
+    private void ConfirmClearCache()
+    {
+        string dir = Path.Combine(UnitModelPaths.Root, ModelDownloader.CacheFolderName);
+        long bytes = Directory.Exists(dir) ? Directory.EnumerateFiles(dir).Sum(f => new FileInfo(f).Length) : 0;
+        var dlg = new ConfirmationDialog
+        {
+            Title = "Clear the download cache?",
+            DialogText = $"Delete {bytes / 1e9:0.0} GB of raw downloaded parts? Your finished models stay. Downloading a model again fetches its parts again.",
+            OkButtonText = "Delete them",
+        };
+        dlg.Confirmed += () =>
+        {
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); Log($"Download cache cleared ({bytes / 1e9:0.0} GB)."); }
+            catch (Exception e) { Log("Could not clear the cache: " + e.Message); }
+            dlg.QueueFree();
+        };
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered();
+    }
+
+    private void Start(bool all)
+    {
+        if (_catalogue == null || _map == null || _cts != null) return;
+        if (!all && SelectedBook == null) return;
+        string[] books = all ? _map.Books.ToArray() : new[] { SelectedBook! };
+        var jobs = JobsFor(books);
         _total = jobs.Count; _done = 0; _savedCount = 0; _failed = 0;
         _log.Clear();
-        Log($"{book}: {jobs.Count} model(s) to fetch{(_skipped > 0 ? $", {_skipped} already there" : "")}.");
+        Log($"{(all ? $"All {books.Length} armies" : books[0])}: {jobs.Count} model file(s) to save{(_skipped > 0 ? $", {_skipped} already there" : "")}.");
         _skipped = 0;
         if (jobs.Count == 0) { _status.Text = "Nothing to fetch - every model is already downloaded."; return; }
 
         _cts = new CancellationTokenSource();
         _fetchFinished = false;
-        _start.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
+        _start.Disabled = true; _all.Disabled = true; _clearCache.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
         CancellationToken ct = _cts.Token;
         ForceOrgCatalog cat = _catalogue;
+        var seen = SavedById(); // a model already saved for another unit is linked, not fetched again
         _ = Task.Run(async () =>
         {
             using var dl = new ModelDownloader();
-            foreach (var (unit, mref, path) in jobs)
+            string lastBook = "";
+            foreach (var (book, unit, mref, path) in jobs)
             {
                 if (ct.IsCancellationRequested) break;
+                if (book != lastBook) { lastBook = book; string b = book; Later(() => Log($"-- {b}")); }
+                string notes = $"ForceOrg #{mref.Id} \"{mref.Name}\" for {book} - {unit.Unit} (wiki: {unit.Warhammer})";
+                if (seen.TryGetValue(mref.Id, out string? already))
+                {
+                    _ready.Enqueue(new Job(null, new(), path, notes, already));
+                    continue;
+                }
                 if (!cat.ById.TryGetValue(mref.Id, out var model))
                 {
                     Later(() => FailOne($"{unit.Unit} - {mref.Name}: not in this catalogue (id {mref.Id})"));
@@ -240,7 +325,8 @@ public partial class ModelDownloadPopup : Control
                         continue;
                     }
                     if (failed.Count > 0) Later(() => Log($"{unit.Unit} - {mref.Name}: some parts missing ({string.Join("; ", failed.Distinct())})"));
-                    _ready.Enqueue(new Job(model, files, path, $"ForceOrg #{model.Id} \"{model.Name}\" for {book} - {unit.Unit} (wiki: {unit.Warhammer})"));
+                    _ready.Enqueue(new Job(model, files, path, notes));
+                    seen[mref.Id] = path;
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception e) { Later(() => FailOne($"{unit.Unit} - {mref.Name}: {e.Message}")); }
@@ -270,20 +356,29 @@ public partial class ModelDownloadPopup : Control
     public override void _Process(double delta)
     {
         if (_cts == null) return;
-        // One model put together and saved per frame, so the window stays responsive.
-        if (_ready.TryDequeue(out Job? job))
+        // One model put together and saved per frame, so the window stays responsive. Links (a model already saved for
+        // another unit) are cheap, so several of those go in a frame.
+        for (int links = 0; links < 25 && _ready.TryPeek(out Job? peek); links++)
         {
-            ForceOrgAssembler.Result r = ForceOrgAssembler.Assemble(job.Model, job.Files);
-            string? err = r.Error ?? ForceOrgAssembler.Save(r, job.Path, job.Notes);
-            r.Root?.Free();
+            _ready.TryDequeue(out Job? job);
             _done++;
-            if (err != null) { _failed++; Log($"Failed: {Path.GetFileNameWithoutExtension(job.Path)}: {err}"); }
+            if (job!.LinkFrom != null)
+            {
+                string? err = LinkSaved(job);
+                if (err != null) { _failed++; Log($"Failed: {Path.GetFileNameWithoutExtension(job.Path)}: {err}"); }
+                else _savedCount++;
+                continue;
+            }
+            ForceOrgAssembler.Result r = ForceOrgAssembler.Assemble(job.Model!, job.Files);
+            string? e = r.Error ?? ForceOrgAssembler.Save(r, job.Path, job.Notes);
+            r.Root?.Free();
+            if (e != null) { _failed++; Log($"Failed: {Path.GetFileNameWithoutExtension(job.Path)}: {e}"); }
             else
             {
                 _savedCount++;
                 foreach (string w in r.Warnings.Distinct()) Log($"{Path.GetFileNameWithoutExtension(job.Path)}: {w}");
-                Saved?.Invoke();
             }
+            break; // one put-together model per frame
         }
         _bar.Value = _total == 0 ? 0 : (double)_done / _total;
         _status.Text = $"{_done} of {_total}  -  {_savedCount} saved, {_failed} failed";
@@ -294,10 +389,28 @@ public partial class ModelDownloadPopup : Control
             _cts = null;
             _status.Text = (stopped ? "Stopped. " : "Done. ") + $"{_savedCount} saved, {_failed} failed" + (stopped ? " - press Download to carry on." : ".");
             Log(_status.Text);
-            _start.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
+            _start.Disabled = false; _all.Disabled = false; _clearCache.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
             ShowBook();
             Saved?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// The same catalogue model, already saved for another unit: the file is linked (no extra space) and its settings
+    /// copied - so a facing fixed once holds for every army that uses the model.
+    /// </summary>
+    private static string? LinkSaved(Job job)
+    {
+        if (!File.Exists(job.LinkFrom)) return "the model it shares was not saved";
+        try
+        {
+            FileLinks.LinkOrCopy(job.LinkFrom!, job.Path);
+            var s = UnitModelSettings.Load(job.LinkFrom!) ?? new UnitModelSettings();
+            s.Notes = job.Notes;
+            s.Save(job.Path);
+            return null;
+        }
+        catch (Exception e) { return e.Message; }
     }
 
     public override void _ExitTree() => _cts?.Cancel();

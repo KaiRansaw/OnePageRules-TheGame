@@ -94,6 +94,19 @@ public class UnitModelDownloadTests
     }
 
     [Test]
+    public void LinkOrCopy_GivesTheSameFileUnderASecondName()
+    {
+        string a = Path.Combine(_dir, "Battle Brothers", "Destroyers", "Terminator (9).glb");
+        string b = Path.Combine(_dir, "Blood Brothers", "Blood Destroyers", "Terminator (9).glb");
+        Directory.CreateDirectory(Path.GetDirectoryName(a)!);
+        File.WriteAllText(a, "model");
+        FileLinks.LinkOrCopy(a, b);
+        Assert.That(File.ReadAllText(b), Is.EqualTo("model"));
+        File.Delete(a);
+        Assert.That(File.ReadAllText(b), Is.EqualTo("model"), "each name stands on its own");
+    }
+
+    [Test]
     public void Catalogue_LoadsPartsAndIds()
     {
         string path = Path.Combine(_dir, ForceOrgCatalog.FileName);
