@@ -12,9 +12,9 @@ namespace FdgRaylib.Update;
 /// <item><b>Kai's copy</b> is a git clone run from the Godot editor: Update is <c>git pull</c> plus the engine
 /// submodule, and the editor rebuilds on the next Play. Found by a <c>.git</c> above the game's folder.</item>
 /// <item><b>A friend's copy</b> is the "Latest build" zip from GitHub Releases (rebuilt on every push by
-/// <c>.github/workflows/latest-build.yml</c>): Update downloads the new zip, unpacks it beside the game, and a small
-/// script copies it over the game once the game has closed, then starts it again. Files the zip doesn't carry (saved
-/// armies, downloaded models and pictures) are left alone; nothing is deleted. The zip carries
+/// <c>.github/workflows/latest-build.yml</c>): Update downloads the new zip, unpacks it beside the game and copies it
+/// over the game from inside the game (<see cref="ApplyInPlace"/>); the player then opens the game again. Files the
+/// zip doesn't carry (saved armies, downloaded models and pictures) are left alone; nothing is deleted. The zip carries
 /// <see cref="CommitFile"/>, the commit it was built from, which is what "is there a newer one" compares.</item>
 /// </list></para>
 ///
@@ -210,37 +210,67 @@ public static class GameUpdater
         return dirs.Length == 1 && Directory.GetFiles(unpacked).Length == 0 ? dirs[0] : unpacked;
     }
 
+    /// <summary>Lists files moved aside during an update, so the next start can delete them.</summary>
+    public const string OldFilesList = "_update-old-files.txt";
+    private const string OldSuffix = ".old-update";
+
     /// <summary>
-    /// The Windows script that finishes the update after the game closes: waits for process <paramref name="pid"/> to
-    /// end, copies <paramref name="source"/> over <paramref name="gameDir"/> (adds and replaces, never deletes), clears
-    /// the staging folder and starts <paramref name="exe"/> again. Written to the temp folder so it can delete itself.
+    /// Copies the new build over the game while it is still running - no script, no helper program (Kai, 2026-11-12:
+    /// Windows' Smart App Control blocked the first version's script). Adds and replaces, never deletes. A file
+    /// Windows won't let us overwrite because the game is using it (its own .exe and .dlls) is renamed out of the way
+    /// first - Windows allows renaming a running program - and the new one put in its place; the next start deletes the
+    /// renamed ones (<see cref="CleanUpOldFiles"/>). Returns how many files were written.
     /// </summary>
-    public static string WriteApplyScript(string source, string gameDir, string staging, int pid, string exe, string? tempDir = null)
+    public static int ApplyInPlace(string source, string gameDir)
     {
-        string bat = Path.Combine(tempDir ?? Path.GetTempPath(), "OnePageRules-update.bat");
-        string text = string.Join("\r\n", new[]
+        int written = 0;
+        var moved = new List<string>();
+        try
         {
-            "@echo off",
-            "title Updating OnePageRules - The Game",
-            "echo Waiting for the game to close...",
-            ":wait",
-            $"tasklist /FI \"PID eq {pid}\" 2>nul | find \" {pid} \" >nul",
-            "if not errorlevel 1 ( timeout /t 1 /nobreak >nul & goto wait )",
-            "echo Copying the new version...",
-            $"robocopy \"{source}\" \"{gameDir}\" /E /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >nul",
-            "if %ERRORLEVEL% GEQ 8 ( echo The update could not copy every file. Close anything using the game folder and run Update again. & pause & exit /b 1 )",
-            $"rmdir /s /q \"{staging}\"",
-            $"start \"\" \"{Path.Combine(gameDir, exe)}\"",
-            "(goto) 2>nul & del \"%~f0\"",
-            "",
-        });
-        File.WriteAllText(bat, text);
-        return bat;
+            foreach (string from in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                string to = Path.Combine(gameDir, Path.GetRelativePath(source, from));
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                try { File.Copy(from, to, true); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    string aside = to + OldSuffix;
+                    if (File.Exists(aside)) { try { File.Delete(aside); } catch (Exception) { aside = $"{to}.{Guid.NewGuid():N}{OldSuffix}"; } }
+                    File.Move(to, aside);
+                    moved.Add(aside);
+                    File.Copy(from, to, true);
+                }
+                written++;
+            }
+        }
+        finally
+        {
+            if (moved.Count > 0) File.AppendAllLines(Path.Combine(gameDir, OldFilesList), moved);
+        }
+        return written;
     }
 
-    /// <summary>Starts the script in its own window; the caller then closes the game.</summary>
-    public static void RunApplyScript(string bat) =>
-        Process.Start(new ProcessStartInfo("cmd.exe", $"/c start \"Updating\" /min \"{bat}\"") { UseShellExecute = false, CreateNoWindow = true });
+    /// <summary>At start-up: deletes the files an update moved aside (they are free now) and the unpacked update.</summary>
+    public static void CleanUpOldFiles(string gameDir)
+    {
+        string list = Path.Combine(gameDir, OldFilesList);
+        try
+        {
+            if (File.Exists(list))
+            {
+                var left = new List<string>();
+                foreach (string f in File.ReadAllLines(list).Where(l => l.EndsWith(OldSuffix, StringComparison.Ordinal)))
+                {
+                    try { if (File.Exists(f)) File.Delete(f); }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException) { left.Add(f); }
+                }
+                if (left.Count == 0) File.Delete(list); else File.WriteAllLines(list, left);
+            }
+            string staging = Path.Combine(gameDir, StagingFolder);
+            if (Directory.Exists(staging)) Directory.Delete(staging, true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
 
     private static string FirstLine(string s)
     {

@@ -179,7 +179,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         var dlg = new ConfirmationDialog
         {
             Title = "Update the game?",
-            DialogText = s.Summary + "\n\nIt downloads the new build, then the game closes, updates itself and opens again.\n" +
+            DialogText = s.Summary + "\n\nIt downloads and installs the new build, then the game closes - open it again to play.\n" +
                          "Your saved armies, games, settings and downloaded models stay as they are.",
             OkButtonText = "Update",
         };
@@ -205,12 +205,21 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
             Line("Unpacking...", HudKit.Lime);
             string source = await Task.Run(() => GameUpdater.Stage(zip, staging));
             try { File.Delete(zip); } catch (IOException) { }
-            string exe = Path.GetFileName(OS.GetExecutablePath());
-            string bat = GameUpdater.WriteApplyScript(source, GameDir, staging, OS.GetProcessId(), exe);
-            GameUpdater.RunApplyScript(bat);
-            Line("Closing to finish the update - the game reopens by itself.", HudKit.Lime);
-            await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
-            App.I.Quit();
+            Line("Installing...", HudKit.Lime);
+            int files = await Task.Run(() => GameUpdater.ApplyInPlace(source, GameDir));
+            try { Directory.Delete(staging, true); } catch (Exception) { } // whatever is left goes on the next start
+            Line("Updated - open the game again.", HudKit.Lime);
+            // No automatic restart: Windows' Smart App Control can block a game starting itself. The player reopens it.
+            var done = new AcceptDialog
+            {
+                Title = "Updated",
+                DialogText = $"The new build is installed ({files} files). The game will close now - open it again to play the new version.",
+                OkButtonText = "Close the game",
+            };
+            done.Confirmed += App.I.Quit;
+            done.Canceled += App.I.Quit;
+            AddChild(done);
+            done.PopupCentered();
         }
         catch (Exception e) { if (IsInsideTree()) { Line("The update failed: " + e.Message, Palette.WoundsRed); Tell("Update failed", e.Message); } }
         finally { _updating = false; }

@@ -34,6 +34,8 @@ public partial class App : Node
 
         // Shared with the Raylib build: same file, same player name, same last host address.
         UserConfig.EnsureExists();
+        // An update moves the old .exe/.dlls aside while the game runs; they are free to delete now.
+        if (!OS.HasFeature("editor")) FdgRaylib.Update.GameUpdater.CleanUpOldFiles(AppAssets.Root);
         bool scripted = ScriptedRun.Requested(out ScriptedRun run);
         if (UserConfig.Current.StartFullscreen && !OS.HasFeature("editor") && !scripted)
             DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);

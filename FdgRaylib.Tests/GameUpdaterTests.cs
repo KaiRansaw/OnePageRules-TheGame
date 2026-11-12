@@ -64,7 +64,7 @@ public class GameUpdaterTests
     }
 
     [Test]
-    public void Stage_UnpacksTheZipsTopFolder_AndTheScriptCopiesItOverTheGame()
+    public void Stage_UnpacksTheZipsTopFolder_AndInstallCopiesItOverTheGame()
     {
         string src = Path.Combine(_dir, "src", "OnePageRules-TheGame");
         Directory.CreateDirectory(Path.Combine(src, "Assets"));
@@ -80,12 +80,24 @@ public class GameUpdaterTests
         Assert.That(File.ReadAllText(Path.Combine(from, "OnePageRules.exe")), Is.EqualTo("new"));
         Assert.That(GameUpdater.Stage(zip, staging), Is.EqualTo(from), "a second try starts clean");
 
-        string bat = File.ReadAllText(GameUpdater.WriteApplyScript(from, game, staging, 4242, "OnePageRules.exe", _dir));
-        Assert.That(bat, Does.Contain("PID eq 4242"), "waits for this game to close");
-        Assert.That(bat, Does.Contain($"robocopy \"{from}\" \"{game}\" /E"), "adds and replaces, never deletes (no /MIR, no /PURGE)");
-        Assert.That(bat, Does.Not.Contain("/MIR").And.Not.Contain("/PURGE"));
-        Assert.That(bat, Does.Contain(Path.Combine(game, "OnePageRules.exe")), "starts the game again");
-        Assert.That(bat, Does.Contain("\r\n"), "Windows line endings");
+        // The game's own files are replaced, new ones added, and files the zip doesn't have (a saved army) kept.
+        Directory.CreateDirectory(Path.Combine(game, "armies"));
+        File.WriteAllText(Path.Combine(game, "OnePageRules.exe"), "old");
+        File.WriteAllText(Path.Combine(game, "armies", "mine.fdgarmy"), "kai's army");
+        Assert.That(GameUpdater.ApplyInPlace(from, game), Is.EqualTo(2));
+        Assert.That(File.ReadAllText(Path.Combine(game, "OnePageRules.exe")), Is.EqualTo("new"));
+        Assert.That(File.Exists(Path.Combine(game, "Assets", "a.json")), Is.True);
+        Assert.That(File.ReadAllText(Path.Combine(game, "armies", "mine.fdgarmy")), Is.EqualTo("kai's army"));
+
+        // Files moved aside while the game ran are deleted on the next start, with the unpacked update.
+        string aside = Path.Combine(game, "OnePageRules.exe.old-update");
+        File.WriteAllText(aside, "locked old exe");
+        File.WriteAllLines(Path.Combine(game, GameUpdater.OldFilesList), new[] { aside });
+        GameUpdater.CleanUpOldFiles(game);
+        Assert.That(File.Exists(aside), Is.False);
+        Assert.That(File.Exists(Path.Combine(game, GameUpdater.OldFilesList)), Is.False);
+        Assert.That(Directory.Exists(staging), Is.False);
+        Assert.That(File.ReadAllText(Path.Combine(game, "OnePageRules.exe")), Is.EqualTo("new"));
     }
 
     [Test]
