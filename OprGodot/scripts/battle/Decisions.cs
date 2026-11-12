@@ -81,6 +81,8 @@ public abstract class Decision
     public virtual IReadOnlyList<string>? HoverOdds(IUnit enemy) => null;
     public virtual bool TableClick(BattleScreen s, Vector2 at) => false;
     public virtual void TableHover(BattleScreen s, Vector2 at) { }
+    /// <summary>Left button held and dragged after a click (Kai, 2026-11-12): turn what was just placed towards the pointer.</summary>
+    public virtual bool TableAim(BattleScreen s, Vector2 at) => false;
     public virtual void UnitPicked(BattleScreen s, IUnit unit) { }
     public virtual void Shown(BattleScreen s) { }
     public virtual void Closed(BattleScreen s) { }
@@ -487,8 +489,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     };
 
     public override string Hint => _pending != null
-        ? (_final ? "Space to confirm - right-click to take the last point back."
-                  : "Click again to add a turn, Space to confirm, right-click to take the last point back.")
+        ? (_final ? "Space to confirm - hold the left button and drag to turn it - right-click to take the last point back."
+                  : "Click again to add a turn, hold and drag to turn the unit, Space to confirm, right-click to take the last point back.")
         : _note.Length > 0 ? _note : _kind switch
         {
             MoveKind.Advance => $"Click where to go - up to {_r.MaxAdvanceDistance:0.#}\". Each click is a turn point. Right-click = back.",
@@ -573,6 +575,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         if (placed) c = c.Lightened(0.25f);
         var ghosts = plan.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), c with { A = placed ? 1.6f : 1f })).ToList();
         var lines = new List<BattleTable.GhostLine>();
+        var facingOf = plan.Moves.ToDictionary(m => m.Model.GetValue().ID, FacingAim.Shown);
+        foreach (var e in plan.Ends)
+            if (facingOf.TryGetValue(e.Id, out FDG.Float2 f)) FacingArrows.Add(lines, e.X, e.Z, Mathf.Max(0.4f, e.Radius), f, c with { A = 0.95f });
         var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
         if (models.Count > 0 && plan.Ends.Count > 0)
         {
@@ -612,6 +617,17 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         string next = _pending != null ? "add a turn there" : "place the move";
         _note = nothing ? "" : plan!.Valid ? $"{KindName(plan)}: {plan.Distance:0.0}\" - click to {next}." : $"Can't go there: {plan.Problem}.";
         Version++;
+    }
+
+    public override bool TableAim(BattleScreen s, Vector2 at)
+    {
+        if (_pending is not { Valid: true } plan || plan.Ends.Count == 0 || s.Table.TableAt(at) is not { } p) return false;
+        Vector2 mid = EndCentre(plan);
+        if (FacingAim.From(mid.X, mid.Y, p.X, p.Y) is not { } f) return true;
+        _pending = plan with { Moves = FacingAim.Turn(plan.Moves, f) };
+        Draw(s, _pending, placed: true, null);
+        Version++;
+        return true;
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
@@ -1111,6 +1127,23 @@ public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
 /// clear of other units, enemies and impassable ground), a click places it, Space confirms. Right-click clears,
 /// then goes back to the unit list when the stage allows it.
 /// </summary>
+/// <summary>The small arrow on a preview model showing which way it will look (Kai, 2026-11-12).</summary>
+public static class FacingArrows
+{
+    public static void Add(List<BattleTable.GhostLine> lines, float x, float z, float radius, FDG.Float2 facing, Color colour)
+    {
+        var f = new Vector2(facing.X, facing.Y);
+        if (f.LengthSquared() < 0.01f) return;
+        f = f.Normalized();
+        var c = new Vector2(x, z);
+        Vector2 tail = c + f * (radius * 0.15f), tip = c + f * (radius + 0.6f);
+        float head = Mathf.Clamp(radius * 0.45f, 0.25f, 0.5f);
+        lines.Add(new BattleTable.GhostLine(tail, tip, colour, 0.1f));
+        lines.Add(new BattleTable.GhostLine(tip, tip - f.Rotated(0.5f) * head, colour, 0.1f));
+        lines.Add(new BattleTable.GhostLine(tip, tip - f.Rotated(-0.5f) * head, colour, 0.1f));
+    }
+}
+
 public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObjectEntry<ModelData>>>>
 {
     private readonly PlaceObjectsRequest<ModelData> _r;
@@ -1127,7 +1160,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     public override string Prompt => string.IsNullOrWhiteSpace(_r.DisplayName) ? $"Place {UnitName}" : _r.DisplayName;
     public override string Hint => AimedPlacement.IsReposition(_r)
         ? "This one can only stay where it is for now."
-        : _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+        : _pending != null ? "Space to confirm - hold the left button and drag to turn it - click elsewhere to change it - right-click to clear."
         : _near.Length > 0 ? _near
         : "Click inside the outlined zone - the unit is set up there in formation.";
 
@@ -1204,9 +1237,21 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
             lines.Add(new BattleTable.GhostLine(a, mid, HudKit.Gold with { A = 0.9f }, 0.1f));
             _near = $"Can't stand right there - the nearest legal spot is {a.DistanceTo(mid):0}\" away (gold line).";
         }
+        foreach (var e in plan)
+            FacingArrows.Add(lines, e.Position.x, e.Position.z, Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), FacingAim.Shown(e), c with { A = 0.95f });
         s.Table.SetGhosts("move", plan.Select(e => new BattleTable.Ghost(e.Position.x, e.Position.z,
             Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), c with { A = placed ? 1.6f : 1f })), lines);
         Version++;
+    }
+
+    public override bool TableAim(BattleScreen s, Vector2 at)
+    {
+        if (_pending is not { Count: > 0 } plan || s.Table.TableAt(at) is not { } p) return false;
+        float cx = plan.Average(e => e.Position.x), cz = plan.Average(e => e.Position.z);
+        if (FacingAim.From(cx, cz, p.X, p.Y) is not { } f) return true;
+        _pending = FacingAim.Turn(plan, f);
+        Draw(s, _pending, placed: true, null);
+        return true;
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)

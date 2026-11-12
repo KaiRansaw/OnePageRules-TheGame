@@ -197,8 +197,16 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } mb:
                 _dragPan = mb.Pressed ? mb.Position : null; break;
-            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } mb:
-                OnLeftClick(mb.Position); break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
+                // Kai, 2026-11-12: click places as before; holding the button and dragging then turns what was placed
+                // towards the pointer (deployment and moves).
+                if (mb.Pressed) { OnLeftClick(mb.Position); _leftDown = mb.Position; _leftHeld = true; _aiming = false; }
+                else { _leftHeld = false; _aiming = false; }
+                break;
+            case InputEventMouseMotion mm when _leftHeld && (_aiming || mm.Position.DistanceTo(_leftDown) > 8f):
+                _aiming = Decisions.TableAim(mm.Position);
+                if (!_aiming) _leftHeld = false; // nothing to turn: an ordinary drag
+                break;
             case InputEventMouseMotion mm when _dragRotate is { } r:
                 _yaw -= (mm.Position.X - r.X) * 0.3f;
                 if (!_topView) _pitch = Mathf.Clamp(_pitch + (mm.Position.Y - r.Y) * 0.25f, 15f, 88f);
@@ -251,6 +259,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
     }
 
     private Vector2 _rightDown;
+    private Vector2 _leftDown;
+    private bool _leftHeld, _aiming;
 
     private void Pan(Vector2 screenDelta)
     {
@@ -292,7 +302,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         Vector2 mouse = GetViewport().GetMousePosition();
         bool overHud = GetViewport().GuiGetHoveredControl() is { } c && c != this && c != _hud;
         IUnit? under = TestHover ?? (overHud ? null : _table.UnitAt(mouse));
-        if (!overHud) Decisions.TableHover(mouse);
+        if (!overHud && !_aiming) Decisions.TableHover(mouse);
         _table.ShowCursor(overHud ? null : _table.TableAt(mouse));
         if (under != null && Session.IsMine(under.PlayerID)) under = null;
         _table.HoverUnit = under?.ID;

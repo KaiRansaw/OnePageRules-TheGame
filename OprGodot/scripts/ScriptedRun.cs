@@ -164,7 +164,9 @@ public partial class ScriptedRun : Node
             // Real mouse clicks through the whole input pipeline, on the battle table:
             // "clickmine" (your first ready unit), "clickenemy" (the enemy nearest it), "clickrel:dx;dz"
             // (the selected unit's middle + dx,dz inches), "hoverrel:dx;dz" (the same, pointer only).
-            if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }
+            // "autopick" lets the bot answer whatever the battle is asking right now (e.g. which unit to deploy next).
+            if (name == "autopick" && Find<Battle.BattleScreen>(GetTree().Root) is { Decisions.Current: { } now } ab) { now.AutoPlay(ab); return; }
+            if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }  // also "clickdrag:x;z|x2;z2"
             if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
             return;
@@ -287,6 +289,27 @@ public partial class ScriptedRun : Node
     private void TableMouse(string step)
     {
         if (Find<Battle.BattleScreen>(GetTree().Root) is not { } battle) { GD.PrintErr("ScriptedRun: no battle on screen."); return; }
+        // "clickdrag:x;z|x2;z2" (table inches): press at the first point, drag to the second, release - the hold-and-turn.
+        if (step.StartsWith("clickdrag:") && step[10..].Split('|') is [var a, var b])
+        {
+            Vector2 Screen(string xz)
+            {
+                string[] p = xz.Split(';');
+                var ci = System.Globalization.CultureInfo.InvariantCulture;
+                return battle.Table.Camera.UnprojectPosition(battle.Table.World(float.Parse(p[0], ci), float.Parse(p[1], ci)));
+            }
+            Vector2 from = Screen(a), to = Screen(b);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from });
+            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = from, GlobalPosition = from });
+            for (int i = 1; i <= 4; i++)
+            {
+                Vector2 step2 = from.Lerp(to, i / 4f);
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = step2, GlobalPosition = step2, ButtonMask = MouseButtonMask.Left });
+            }
+            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = to, GlobalPosition = to });
+            GD.Print($"ScriptedRun: {step}");
+            return;
+        }
         var mine = battle.Session.Table.Units.Objects.Where(u => battle.Session.IsMine(u.PlayerID) && battle.Table.UnitCentre(u) != null).ToList();
         FDG.IUnit? Pick() => battle.SelectedUnit ?? mine.FirstOrDefault();
         Vector3? world = null;
