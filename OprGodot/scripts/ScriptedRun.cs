@@ -135,17 +135,43 @@ public partial class ScriptedRun : Node
         _presses = new Queue<string>(_presses.Prepend("snapall"));
         _wait = 3;
         if (_examplesPending) Examples();
-        string? kind = battle?.Decisions.Current?.GetType().Name;
+        string? kind = battle?.Decisions.Current?.SnapName;
         if (kind == null || !Battle.BattleScreen.Hold.Contains(kind)) { _snapSettle = -1; return; }
         // Only photograph the action menu when it has extra actions beside the four (that is what is being reviewed).
         if (battle!.Decisions.Current is Battle.ActionDecision { Rows: null } plain) { plain.AutoPlay(battle); _snapSettle = -1; return; }
-        if (_snapSettle < 0) { _snapSettle = 25; return; }
+        if (_snapSettle < 0)
+        {
+            _snapSettle = 25;
+            // Set the screen up the way it is being reviewed: a unit picked, the pointer on a target, the popup open.
+            switch (battle.Decisions.Current)
+            {
+                case Battle.ActivateDecision act when act.Request.ValidOptions.Count > 0:
+                    battle.Decisions.UnitPicked(act.Request.ValidOptions[0].Option.GetValue());
+                    break;
+                case Battle.ShootDecision shoot when shoot.AnyTarget is { } target:
+                    battle.TestHover = target;
+                    _snapSettle = 40;
+                    break;
+                case Battle.MissionCardPickMany many when many.SnapName != "MissionCardDeck":
+                    many.PickForPhoto();
+                    break;
+                case Battle.MissionCardPickOne one:
+                    one.PickForPhoto();
+                    break;
+                case Battle.ConcedeDecision concede:
+                    concede.Rows[1].Pick?.Invoke();
+                    break;
+            }
+            return;
+        }
         if (--_snapSettle > 0) return;
         string dir = System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp";
         string file = System.IO.Path.Combine(dir, kind + ".png");
         GetViewport().GetTexture().GetImage().SavePng(file);
         GD.Print($"ScriptedRun: snapped {kind} - {file}");
         Battle.BattleScreen.Hold.Remove(kind);
+        foreach (var dialog in AllOf<ConfirmationDialog>(GetTree().Root).ToList()) dialog.QueueFree();
+        battle.TestHover = null;
         _snapSettle = -1;
     }
 

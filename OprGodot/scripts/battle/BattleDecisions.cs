@@ -149,7 +149,7 @@ public sealed class BattleDecisions
     {
         // The confirm box.
         string? confirm = d?.ConfirmText;
-        _confirm.Visible = confirm != null;
+        _confirm.Visible = confirm != null && d?.HideConfirmBox != true;
         if (confirm != null) { _confirmText.Text = confirm; _confirm.Size = Vector2.Zero; }
         foreach (Node c in _confirmChecks.GetChildren()) c.QueueFree();
         if (confirm != null && d!.ConfirmChecks is { } checks)
@@ -175,7 +175,7 @@ public sealed class BattleDecisions
             g.AddThemeConstantOverride("v_separation", 6);
             foreach (ActionSlot s in slots)
             {
-                var b = HudKit.ActionButton(s.Name, s.Icon, s.Label, s.Key, HudKit.Lime, 74, disabled: !s.Enabled, labelSize: 13);
+                var b = HudKit.ActionButton(s.Name, s.Icon, s.Label, s.Key, HudKit.Lime, 74, disabled: !s.Enabled, labelSize: 13, dim: s.Dim);
                 b.TooltipText = s.Tooltip;
                 b.Pressed += s.Choose;
                 g.AddChild(b);
@@ -276,7 +276,8 @@ public sealed class BattleDecisions
         g.AddThemeConstantOverride("v_separation", 6);
         // Numbered on from the four action buttons when they are showing (5, 6...), so every key is unique.
         int n = d.Actions?.Count ?? 0;
-        float size = d.Actions != null || many ? 74 : 96;
+        // Smaller squares when a companion button (Hold fire) sits under one, so two rows still fit the block.
+        float size = d.Actions != null || many || buttons.Any(b => b.Secondary != null) ? 74 : 96;
         foreach (ChoiceRow r in buttons)
         {
             Control c = square ? SquareChoice(r, d.RowIcon, ++n, size) : TileChoice(r, d.RowIcon, ++n);
@@ -330,6 +331,16 @@ public sealed class BattleDecisions
         lbl.CustomMinimumSize = new Vector2(size - 10, 0);
         lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(lbl);
+        if (r.Sub is { Length: > 0 } sub)
+        {
+            // A short second line under the name (the leader's weapons - Kai, 2026-11-11).
+            var sl = HudKit.Text(sub, 10, HudKit.Gold with { A = r.Enabled ? 0.9f : 0.5f }, HudKit.Medium, HorizontalAlignment.Center);
+            sl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            sl.MaxLinesVisible = 2;
+            sl.CustomMinimumSize = new Vector2(size - 8, 0);
+            sl.MouseFilter = Control.MouseFilterEnum.Ignore;
+            col.AddChild(sl);
+        }
         if (r.Pips is { Count: > 0 } pips)
         {
             // Wound pips: grey = taken already, red = taking now, lime outline = still there.

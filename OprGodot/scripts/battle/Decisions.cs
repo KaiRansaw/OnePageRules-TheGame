@@ -10,7 +10,8 @@ using static FDG.StageResolution.Requests.ChooseRangedAttackRequest;
 namespace OprGodot.Battle;
 
 /// <summary>One button of the 2x2 action grid.</summary>
-public sealed record ActionSlot(string Name, string Icon, string Label, string Key, bool Enabled, string Tooltip, Action Choose);
+/// <param name="Dim">Greyed out but still pickable (the tooltip says why it does little).</param>
+public sealed record ActionSlot(string Name, string Icon, string Label, string Key, bool Enabled, string Tooltip, Action Choose, bool Dim = false);
 
 /// <summary>
 /// One row of a choice list, docked in the actions area. <paramref name="Pick"/> null = an information row
@@ -18,7 +19,7 @@ public sealed record ActionSlot(string Name, string Icon, string Label, string K
 /// </summary>
 public sealed record ChoiceRow(string Label, string? Detail, bool Enabled, string? Reason, Action? Pick,
     string? SecondaryLabel = null, Action? Secondary = null, Action<bool>? Hover = null, string? Icon = null,
-    bool Selected = false, IUnit? Portrait = null, IReadOnlyList<int>? Pips = null);
+    bool Selected = false, IUnit? Portrait = null, IReadOnlyList<int>? Pips = null, string? Sub = null);
 
 /// <summary>A tick box in the confirm box.</summary>
 public sealed record ConfirmCheck(string Label, string Detail, bool On, Action<bool> Set);
@@ -56,6 +57,10 @@ public abstract class Decision
     public virtual string? ConfirmText => null;
     /// <summary>Tick boxes in the confirm box (which weapons fire at the target). Null = none.</summary>
     public virtual IReadOnlyList<ConfirmCheck>? ConfirmChecks => null;
+    /// <summary>Space still confirms, but the decision draws its own confirm button (the mission cards).</summary>
+    public virtual bool HideConfirmBox => false;
+    /// <summary>The test driver's name for this screen (<c>--hold=</c>, snapshot file name).</summary>
+    public virtual string SnapName => GetType().Name;
     public virtual void Confirm() { }
     public virtual void ClearPending() { }
 
@@ -72,6 +77,8 @@ public abstract class Decision
     /// <summary>True when the choices are the other side's units (the list switches to the ENEMY tab).</summary>
     public virtual bool WantsEnemyList => false;
 
+    /// <summary>Lines added to the top of an enemy's hover popup while this decision is open (the shooting odds), or null.</summary>
+    public virtual IReadOnlyList<string>? HoverOdds(IUnit enemy) => null;
     public virtual bool TableClick(BattleScreen s, Vector2 at) => false;
     public virtual void TableHover(BattleScreen s, Vector2 at) { }
     public virtual void UnitPicked(BattleScreen s, IUnit unit) { }
@@ -116,6 +123,28 @@ internal static class Book
     public static void ConfirmHold(BattleScreen s, IUnit? unit, Action go) =>
         s.Confirm("Hold?", $"{unit?.Name ?? "This unit"} stays where it is and shoots if it can. If it has nothing to shoot at, its activation ends.",
             "Hold", go);
+
+    /// <summary>
+    /// Why Hold would shoot nothing (no ranged weapon, or no enemy within any weapon's range), else null. Kai,
+    /// 2026-11-11: Hold stays pickable but greys out, with this on hover. Range only - line of sight is checked
+    /// by the engine when the shot is chosen.
+    /// </summary>
+    public static string? NothingToShoot(BattleScreen s, IUnit unit)
+    {
+        var shooters = unit.Models.Where(m => m.GetIsAlive() && m.Weapons.Any(w => w.RangeInches > 0)).ToList();
+        if (shooters.Count == 0) return "This unit has no shooting weapons - holding ends its activation.";
+        foreach (IUnit u in s.Session.Table.Units.Objects)
+        {
+            if (s.Session.IsMine(u.PlayerID) || !u.GetIsOnBattlefield()) continue;
+            foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
+                foreach (IModel m in shooters)
+                {
+                    float d = Mathf.Sqrt(Mathf.Pow(e.Position.x - m.Position.x, 2) + Mathf.Pow(e.Position.z - m.Position.z, 2)) - e.BaseRadiusInches - m.BaseRadiusInches;
+                    if (m.Weapons.Any(w => w.RangeInches > 0 && d <= w.RangeInches + 0.01f)) return null;
+                }
+        }
+        return "No enemy within range of its weapons - holding ends its activation.";
+    }
 }
 
 // ====================================================================== which unit to activate
@@ -148,9 +177,17 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
         return bad != null ? new UnitMark(false, bad.Reason) : null;
     }
 
-    public override IReadOnlyList<ActionSlot> Actions => Book.Grid.Select(g => new ActionSlot(
-        g.Action.ToString(), g.Icon, g.Action.ToString(), g.Key, _pick != null,
-        _pick != null ? Book.Tip(g.Action) : "Pick a unit first.", () => Act(g.Action))).ToList();
+    public override IReadOnlyList<ActionSlot> Actions
+    {
+        get
+        {
+            string? noShot = _pick != null && _screen != null ? Book.NothingToShoot(_screen, _pick) : null;
+            return Book.Grid.Select(g => new ActionSlot(
+                g.Action.ToString(), g.Icon, g.Action.ToString(), g.Key, _pick != null,
+                _pick == null ? "Pick a unit first." : g.Action == BookAction.Hold && noShot != null ? noShot : Book.Tip(g.Action),
+                () => Act(g.Action), Dim: g.Action == BookAction.Hold && noShot != null)).ToList();
+        }
+    }
 
     private void Act(BookAction action)
     {
@@ -256,8 +293,12 @@ public sealed class ActionDecision : Decision<string>
                     Slot("Charge", "sword-clash", "Charge", "2", Can(ChargeOpt), Can(ChargeOpt) ? "Fight the enemy in reach." : Why(ChargeOpt), () => Complete(ChargeOpt)),
                     Slot("End", "stop-sign", "End", "3", Can(PassOpt), Can(PassOpt) ? "This unit is done for the round." : Why(PassOpt), () => ConfirmEnd()),
                 };
+            // Hold with nothing to shoot still ends the activation, so it stays pickable but greyed (Kai, 2026-11-11).
+            bool holdDim = !Can(ShootOpt) && Can(PassOpt);
             return Book.Grid.Select(g => Slot(g.Action.ToString(), g.Icon, g.Action.ToString(), g.Key, Allowed(g.Action),
-                Allowed(g.Action) ? Book.Tip(g.Action) : NotAllowed(g.Action), () => Do(g.Action, confirm: true))).ToList();
+                !Allowed(g.Action) ? NotAllowed(g.Action)
+                : g.Action == BookAction.Hold && holdDim ? (Why(ShootOpt) ?? "Nothing to shoot at") + " - holding ends this unit's activation."
+                : Book.Tip(g.Action), () => Do(g.Action, confirm: true), g.Action == BookAction.Hold && holdDim)).ToList();
         }
     }
 
@@ -298,8 +339,8 @@ public sealed class ActionDecision : Decision<string>
         _ => Why(MoveOpt) ?? "Not available.",
     };
 
-    private static ActionSlot Slot(string name, string icon, string label, string key, bool ok, string? tip, Action go) =>
-        new(name, icon, label, key, ok, tip ?? "Not available.", go);
+    private static ActionSlot Slot(string name, string icon, string label, string key, bool ok, string? tip, Action go, bool dim = false) =>
+        new(name, icon, label, key, ok, tip ?? "Not available.", go, dim);
 
     /// <summary>Carries out a book action; false (with a note) when the engine won't allow it now.</summary>
     private bool Do(BookAction action, bool confirm)
@@ -584,6 +625,8 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
     public static string Key(IWeapon w) => $"{w.Name}|{w.RangeInches}|{w.Attacks}|{w.ArmorPenetration}";
 
     private IUnit Shooter => _r.AttackingUnit.GetValue();
+    /// <summary>Some enemy a weapon can fire at now (the test driver hovers it for the odds photo).</summary>
+    public IUnit? AnyTarget => _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats).FirstOrDefault(CanFire)?.TargetUnit.GetValue();
 
     public override string Prompt => _r.DeclareFirst ? $"{Shooter.Name} - declare shots" : $"{Shooter.Name} - shoot";
     public override string Hint => _target != null ? "Space to confirm - click another enemy to change - right-click to clear."
@@ -658,6 +701,38 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
             usable ? null : "Hold fire", usable ? null : () => Complete(new Selected<RangedAttackChoice>(RangedAttackChoice.HoldFire(w.Weapon))),
             Hover: on => { _hoverWeapon = on ? i : -1; DrawReach(); }, Selected: lit);
     }).ToList();
+
+    /// <summary>
+    /// Kai, 2026-11-11 ("where should the odds show? - on hover"): the average result of shooting this enemy, from the
+    /// engine's own to-hit and save numbers. Before a target is picked every weapon that reaches counts; for the picked
+    /// target only the lit ones. Average dice only - weapon rules that change the dice (Blast, Rending...) are not priced.
+    /// </summary>
+    public override IReadOnlyList<string>? HoverOdds(IUnit enemy)
+    {
+        var firing = At(enemy.ID).Where(x => _target?.ID.Equals(enemy.ID) != true || !_unticked.Contains(Key(x.W.Weapon))).ToList();
+        if (firing.Count == 0) return new[] { "Can't shoot this unit now." };
+        double hits = 0, wounds = 0;
+        foreach (var (w, t) in firing)
+        {
+            int dice = t.Forecast is { AttacksFiring: > 0 } f0 ? f0.AttacksFiring : w.Weapon.Attacks * Math.Max(1, t.modelsThatCanShoot.Count);
+            int hitOn = Math.Clamp(t.Forecast?.HitRollNeeded ?? 4, 2, 6), saveOn = Math.Clamp(t.Forecast?.SaveRollNeeded ?? 4, 2, 7);
+            double h = dice * (7 - hitOn) / 6.0;
+            hits += h;
+            wounds += h * (saveOn - 1) / 6.0;
+        }
+        var alive = enemy.Models.Where(m => m.GetIsAlive()).ToList();
+        double perModel = alive.Count == 0 ? 1 : Math.Max(1, alive.Average(m => (double)m.TotalWounds));
+        int dead = (int)Math.Min(alive.Count, Math.Floor(wounds / perModel + 0.25));
+        string weapons = string.Join(", ", firing.Select(x => x.W.Weapon.Name).Distinct());
+        return new[]
+        {
+            "IF YOU SHOOT (average dice)",
+            $"{weapons}",
+            $"About {hits:0.#} hits, {wounds:0.#} wounds after saves",
+            dead == 0 ? "Likely kills: none (maybe 1 on good dice)" : $"Likely kills: about {dead} of {alive.Count} model{(alive.Count == 1 ? "" : "s")}",
+            "Blast, Rending and similar rules not counted.",
+        };
+    }
 
     private void ToggleWeapon(WeaponOption w)
     {
@@ -840,8 +915,11 @@ public class UnitPickDecision<T> : Decision<T>, IUnitPick
     /// tab (targets on both sides - a spell that can hit friend or foe), or when the engine's labels say more
     /// than the unit's name ("Hive Lord (via Synaptic Relay, +1)"). A plain deploy / activate pick has no list.
     /// </summary>
-    private bool Listed => _s != null && _valid.Count > 0
-        && _valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1;   // Kai, 2026-11-11: else the left list only
+    private bool Listed => _s != null && _valid.Count > 0 && (AlwaysListed
+        || _valid.Select(o => _s.Session.IsMine(o.Unit.GetValue().PlayerID)).Distinct().Count() > 1);   // Kai, 2026-11-11: else the left list only
+
+    /// <summary>Show the units as buttons even when the left list could (Kai, 2026-11-11: Skip picks show them too).</summary>
+    protected virtual bool AlwaysListed => false;
 
     public override string? RowsTitle => "Choose";
     public override bool ButtonChoices => true;
@@ -897,6 +975,8 @@ public sealed class CancellableUnitPickDecision : UnitPickDecision<CancellableRe
         r.ValidOptions.Select(o => new Option(o.Option, o.Name)).ToList(),
         r.InvalidOptions.Select(o => new Option(o.Option, o.Name, o.Reason)).ToList(),
         u => new Selected<DataBinding<UnitData>>(u), "Skip", () => new Cancelled<DataBinding<UnitData>>()) { }
+
+    protected override bool AlwaysListed => true;
 }
 
 public sealed class ModelPickDecision : Decision<DataBinding<ModelData>>
@@ -1139,9 +1219,9 @@ public sealed class MeleeTargetDecision : Decision<CancellableResult<DataBinding
         return true;
     }
 
+    // Kai, 2026-11-11: only the enemies you can fight are buttons (the left list still says why the others can't be).
     public override IReadOnlyList<ChoiceRow> Rows =>
-        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(new Selected<DataBinding<UnitData>>(o.Option)), Portrait: o.Option.GetValue()))
-            .Concat(_r.InvalidOptions.Select(i => new ChoiceRow(i.Name, null, false, i.Reason, null, Portrait: i.Option.GetValue()))).ToList();
+        _r.ValidOptions.Select(o => new ChoiceRow(o.Name, null, true, null, () => Complete(new Selected<DataBinding<UnitData>>(o.Option)), Portrait: o.Option.GetValue())).ToList();
     public override string? RowsTitle => "Fight";
 }
 
@@ -1163,6 +1243,13 @@ public sealed class AbilityEffectDecision : Decision<int>
 /// <summary>The once-a-round "do you want to concede?" check.</summary>
 public sealed class ConcedeDecision : Decision<bool>
 {
+    /// <summary>Kai's own wording for the surrender popup (2026-11-11, review notes) - keep it word for word.</summary>
+    public const string SurrenderTitle = "Confirm your Surrender? Like a BITCH?";
+    public const string SurrenderYes = "Yes, i am a pussy bitch";
+    public const string SurrenderNo = "No, Ill take my punishment like a good boy";
+
+    private void Ask(BattleScreen s) => s.Confirm(SurrenderTitle, "The game ends now and counts as a loss.", SurrenderYes, () => Complete(true), SurrenderNo);
+
     public override bool ButtonChoices => true;
     public override string RowIcon => "stop-sign";
     private readonly ConcedeCheckRequest _r;
@@ -1176,7 +1263,7 @@ public sealed class ConcedeDecision : Decision<bool>
     {
         new ChoiceRow("Keep fighting", null, true, null, () => Complete(false), Icon: "crossed-swords"),
         new ChoiceRow("Concede the game", "Ends the game as a loss.", true, null,
-            () => { if (_s != null) _s.Confirm("Concede?", "End the game now as a loss?", "Concede", () => Complete(true)); else Complete(true); }),
+            () => { if (_s != null) Ask(_s); else Complete(true); }),
     };
 }
 

@@ -100,8 +100,10 @@ public static class HudKit
     /// A square action button: icon on top, name under it, hotkey in the top-left corner. The XCOM-style bar
     /// is a row of these.
     /// </summary>
-    public static Button ActionButton(string name, string icon, string label, string hotkey, Color iconTint, float size = 92, bool selected = false, bool disabled = false, int labelSize = 14)
+    public static Button ActionButton(string name, string icon, string label, string hotkey, Color iconTint, float size = 92, bool selected = false, bool disabled = false, int labelSize = 14, bool dim = false)
     {
+        // dim: drawn greyed out but still clickable (Hold with nothing to shoot - Kai, 2026-11-11).
+        bool grey = disabled || dim;
         var b = new Button { Name = name, CustomMinimumSize = new Vector2(size, size + 6), Disabled = disabled, FocusMode = Control.FocusModeEnum.None };
         var box = new ChamferBox { Fill = GlassLight, Border = Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 };
         if (selected) box = box.With(x => { x.Border = Lime; x.Glow = Lime with { A = 0.55f }; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
@@ -110,15 +112,15 @@ public static class HudKit
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 2);
-        var ic = Icon(icon, size * 0.46f, disabled ? Dim with { A = 0.4f } : selected ? Lime : iconTint);
+        var ic = Icon(icon, size * 0.46f, grey ? Dim with { A = 0.4f } : selected ? Lime : iconTint);
         ic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         col.AddChild(ic);
-        var lbl = Text(label.ToUpperInvariant(), labelSize, disabled ? Dim with { A = 0.5f } : selected ? Lime : Fg, Tracked(Bold, 1), HorizontalAlignment.Center);
+        var lbl = Text(label.ToUpperInvariant(), labelSize, grey ? Dim with { A = 0.5f } : selected ? Lime : Fg, Tracked(Bold, 1), HorizontalAlignment.Center);
         lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(lbl);
         b.AddChild(col);
 
-        var key = Text(hotkey, 13, disabled ? Dim with { A = 0.4f } : Dim, Bold);
+        var key = Text(hotkey, 13, grey ? Dim with { A = 0.4f } : Dim, Bold);
         key.Position = new Vector2(9, 4);
         key.MouseFilter = Control.MouseFilterEnum.Ignore;
         b.AddChild(key);

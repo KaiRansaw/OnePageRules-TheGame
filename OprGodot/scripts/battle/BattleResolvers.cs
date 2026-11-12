@@ -50,7 +50,8 @@ public static class BattleResolvers
         registry.RegisterResolver(unitPick);
         registry.RegisterResolver(new Ask<SelectionRequest<ModelData>, DataBinding<ModelData>>(r => new ModelPickDecision(r)));
         registry.RegisterResolver(new Ask<ChooseActionRequest, string>(r => new ActionDecision(r)));
-        registry.RegisterResolver(new Ask<StringSelectionRequest, string>(r => new StringListDecision(r)));
+        registry.RegisterResolver(new Ask<StringSelectionRequest, string>(r =>
+            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickOne(r, m) : new StringListDecision(r)));
         registry.RegisterResolver(new Ask<YesNoRequest, bool>(r => new YesNoDecision(r)));
         registry.RegisterResolver(new Ask<DefineMovementPathRequest, CancellableResult<List<ModelMoveEntry>>>(r => new MoveDecision(r)));
         registry.RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(
@@ -67,7 +68,8 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<ConsolidationMoveRequest, List<ModelMoveEntry>>(r => new ConsolidateDecision(r)));
         registry.RegisterResolver(new Ask<PickUnitLeadersRequest, CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(r => new LeadersDecision(r)));
         registry.RegisterResolver(new Ask<PickCommandGroupUnitsRequest, CancellableResult<List<DataBinding<UnitData>>>>(r => new CommandGroupDecision(r)));
-        registry.RegisterResolver(new Ask<PickStringsRequest, List<string>>(r => new PickStringsDecision(r)));
+        registry.RegisterResolver(new Ask<PickStringsRequest, List<string>>(r =>
+            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickMany(r, m) : new PickStringsDecision(r)));
         registry.RegisterResolver(new Ask<ChooseDeploymentZoneRequest, DataBinding<RectangularZone>>(r => new ZoneDecision(r)));
         registry.RegisterResolver(new Ask<AircraftAdvanceRequest, AircraftAdvanceResult>(r => new AircraftDecision(r)));
         registry.RegisterResolver(new Ask<PlaceObjectiveRequest, Position>(r => new ObjectiveDecision(r)));

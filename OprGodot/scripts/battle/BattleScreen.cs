@@ -94,7 +94,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public static readonly HashSet<string> Hold = OS.GetCmdlineUserArgs().FirstOrDefault(x => x.StartsWith("--hold="))
         ?["--hold=".Length..].Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet() ?? new HashSet<string>();
 
-    private static bool AutoPlays(Decision d) => !Hold.Contains(d.GetType().Name) && (AutoPlayOnly == null || AutoPlayOnly.Contains(d.GetType().Name));
+    private static bool AutoPlays(Decision d) => !Hold.Contains(d.SnapName) && !Hold.Contains(d.GetType().Name) && (AutoPlayOnly == null || AutoPlayOnly.Contains(d.GetType().Name));
     public Control Hud => _hud;
 
     // ================================================================== frame
@@ -263,11 +263,14 @@ public partial class BattleScreen : Control, IOwnBackdrop
         if (!Session.IsMine(unit.PlayerID)) Pin(unit);
     }
 
+    /// <summary>Test driver only: treat this unit as hovered (a virtual display ignores a scripted pointer).</summary>
+    public IUnit? TestHover { get; set; }
+
     private void UpdateHover(double delta)
     {
         Vector2 mouse = GetViewport().GetMousePosition();
         bool overHud = GetViewport().GuiGetHoveredControl() is { } c && c != this && c != _hud;
-        IUnit? under = overHud ? null : _table.UnitAt(mouse);
+        IUnit? under = TestHover ?? (overHud ? null : _table.UnitAt(mouse));
         if (!overHud) Decisions.TableHover(mouse);
         _table.ShowCursor(overHud ? null : _table.TableAt(mouse));
         if (under != null && Session.IsMine(under.PlayerID)) under = null;
@@ -286,8 +289,25 @@ public partial class BattleScreen : Control, IOwnBackdrop
         // Kai, 2026-11-10: the enemy's info comes up after the pointer rests on it for a third of a second.
         if (_hoverTip == null && _hoverTime >= 0.33)
         {
-            _hoverTip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = HudKit.Enemy with { A = 0.85f }; x.Glow = HudKit.Enemy with { A = 0.25f }; }),
-                UnitInfo(_hoverUnit, 300, "Left-click to pin"));
+            Control info = UnitInfo(_hoverUnit, 300, "Left-click to pin");
+            if (Decisions.Current?.HoverOdds(_hoverUnit) is { Count: > 0 } odds)
+            {
+                // The shooting odds on top (Kai, 2026-11-11).
+                var stack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                stack.AddThemeConstantOverride("separation", 2);
+                for (int i = 0; i < odds.Count; i++)
+                {
+                    var l = HudKit.Text(odds[i], i == 0 ? 12 : i == odds.Count - 1 ? 11 : 15, i == 0 ? HudKit.Gold : i == odds.Count - 1 ? HudKit.Dim : HudKit.Fg,
+                        i == 0 ? HudKit.Tracked(HudKit.Bold, 2) : HudKit.Semi);
+                    l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                    l.CustomMinimumSize = new Vector2(300, 0);
+                    stack.AddChild(l);
+                }
+                stack.AddChild(HudKit.Gap(0, 8));
+                stack.AddChild(info);
+                info = stack;
+            }
+            _hoverTip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = HudKit.Enemy with { A = 0.85f }; x.Glow = HudKit.Enemy with { A = 0.25f }; }), info);
             _hoverTip.MouseFilter = MouseFilterEnum.Ignore;
             _hud.AddChild(_hoverTip);
             CallDeferred(nameof(PlaceHoverTip), mouse);
@@ -347,9 +367,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
     }
 
     /// <summary>Asks before something that can't be taken back.</summary>
-    public void Confirm(string title, string text, string ok, Action yes)
+    public void Confirm(string title, string text, string ok, Action yes, string no = "Cancel")
     {
-        var d = new ConfirmationDialog { Title = title, DialogText = text, OkButtonText = ok, CancelButtonText = "Cancel" };
+        var d = new ConfirmationDialog { Title = title, DialogText = text, OkButtonText = ok, CancelButtonText = no };
         d.Confirmed += () => { yes(); d.QueueFree(); };
         d.Canceled += () => d.QueueFree();
         _hud.AddChild(d);

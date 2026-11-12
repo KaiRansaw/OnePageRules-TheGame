@@ -293,6 +293,7 @@ public sealed class LeadersDecision : Decision<CancellableResult<List<PickUnitLe
     public override void Cancel() { _open = null; Version++; }
 
     private static string ShortName(string description) => description.Contains(':') ? description[..description.IndexOf(':')].Trim() : description;
+    private static string Kit(string description) => description.Contains(':') ? description[(description.IndexOf(':') + 1)..].Trim() : "";
 
     public override IReadOnlyList<ChoiceRow> Rows
     {
@@ -302,7 +303,7 @@ public sealed class LeadersDecision : Decision<CancellableResult<List<PickUnitLe
             {
                 ModelID now = _leader[o.Unit.GetValue().ID];
                 return o.Models.Select(m => new ChoiceRow(ShortName(m.Description), m.Description, true, null,
-                    () => { _leader[o.Unit.GetValue().ID] = m.Model; _open = null; Draw(); Version++; }, Selected: m.Model.Equals(now))).ToList();
+                    () => { _leader[o.Unit.GetValue().ID] = m.Model; _open = null; Draw(); Version++; }, Selected: m.Model.Equals(now), Sub: Kit(m.Description))).ToList();
             }
             var rows = new List<ChoiceRow> { new("Fast-Play leaders", _r.Instructions, true, null, null) };
             foreach (var e in _r.Units)
@@ -311,7 +312,8 @@ public sealed class LeadersDecision : Decision<CancellableResult<List<PickUnitLe
                 string who = e.Models.FirstOrDefault(m => m.Model.Equals(id))?.Description ?? "?";
                 var entry = e;
                 rows.Add(new ChoiceRow(e.UnitName, $"Leader: {who}" + (e.Models.Count > 1 ? " - click to change." : ""), true, null,
-                    e.Models.Count > 1 ? () => { _open = entry; Version++; } : () => _s?.Toast($"{entry.UnitName} has one model - it leads."), Portrait: e.Unit.GetValue()));
+                    e.Models.Count > 1 ? () => { _open = entry; Version++; } : () => _s?.Toast($"{entry.UnitName} has one model - it leads."), Portrait: e.Unit.GetValue(),
+                    Sub: Kit(who)));
             }
             return rows;
         }
@@ -551,9 +553,10 @@ public sealed class ZoneDecision : Decision<DataBinding<RectangularZone>>
 // ====================================================================== aircraft
 
 /// <summary>
-/// An Aircraft's move: straight ahead along its heading, between the shortest and furthest the rule allows. Point
-/// along the line and click, Space confirms. A spot past the table edge flies it off (it comes back next round, its
-/// activation ends) - the confirm box says so.
+/// Fly an Aircraft (GF Core 3.6.0: "moving in a straight line ... can't move into the table edges to move less than
+/// 30""). Point anywhere: the line runs from the unit towards the pointer, and its end is how far (30-36"). A line
+/// that would hit a table edge before 30" shows red and can't be picked - the Aircraft never leaves the table (Kai,
+/// 2026-11-11). Click places it, Space confirms. Shortest / Furthest fly the line it faces now.
 /// </summary>
 public sealed class AircraftDecision : Decision<AircraftAdvanceResult>
 {
@@ -561,71 +564,104 @@ public sealed class AircraftDecision : Decision<AircraftAdvanceResult>
     private BattleScreen? _s;
     private float? _pending;
     private float _shown;
+    private Float2 _line;
+    private string _note = "";
 
-    public AircraftDecision(AircraftAdvanceRequest r) { _r = r; _shown = r.MinDistanceInches; }
+    public AircraftDecision(AircraftAdvanceRequest r)
+    {
+        _r = r;
+        _line = ForcedAircraftMove.LegalHeading(r.UnitDataBinding, r.HeadingNormal);
+        _shown = Math.Min(r.MinDistanceInches, Room(_line));
+    }
 
     private IUnit Unit => _r.UnitDataBinding.GetValue();
-    private bool Leaves(float d) => ForcedAircraftMove.WouldLeaveTable(ForcedAircraftMove.BuildPaths(_r.UnitDataBinding, _r.HeadingNormal, d));
+    private float Room(Float2 line) => ForcedAircraftMove.RoomAlong(_r.UnitDataBinding, line);
+    private bool Legal(Float2 line) => ForcedAircraftMove.IsLegalHeading(_r.UnitDataBinding, line);
 
-    public override string Prompt => $"{Unit.Name} flies {_r.MinDistanceInches:0}\"-{_r.MaxDistanceInches:0}\" straight ahead";
-    public override string Hint => _pending != null ? "Space to confirm - click elsewhere on the line to change it." : "Point along the line and click where it ends.";
-    public override void AutoPlay(BattleScreen s) => Complete(new AircraftAdvanceResult(_r.MinDistanceInches, Leaves(_r.MinDistanceInches)));
+    public override string Prompt => $"{Unit.Name} flies {_r.MinDistanceInches:0}\"-{_r.MaxDistanceInches:0}\" in a straight line";
+    public override string Hint => _pending != null ? "Space to confirm - click elsewhere to change it."
+        : _note.Length > 0 ? _note : "Point the way to fly and click where it ends. It can't run into a table edge before 30\".";
+    public override void AutoPlay(BattleScreen s) => Complete(new AircraftAdvanceResult(_shown, false, _line));
 
     public override IReadOnlyList<ActionSlot> Actions => new[]
     {
-        new ActionSlot("Shortest", "walk", $"{_r.MinDistanceInches:0}\"", "1", true, "The shortest move allowed.", () => Place(_r.MinDistanceInches)),
-        new ActionSlot("Furthest", "run", $"{_r.MaxDistanceInches:0}\"", "2", true, "The furthest move allowed.", () => Place(_r.MaxDistanceInches)),
+        new ActionSlot("Shortest", "walk", $"{_r.MinDistanceInches:0}\"", "1", true, "The shortest move allowed, the way it faces now.", () => Place(_r.MinDistanceInches)),
+        new ActionSlot("Furthest", "run", $"{Math.Min(_r.MaxDistanceInches, Room(_line)):0}\"", "2", true, "The furthest move allowed, the way it faces now.", () => Place(_r.MaxDistanceInches)),
     };
 
-    public override string? ConfirmText => _pending is { } d
-        ? Leaves(d) ? $"Fly {d:0.0}\" - off the table? Its activation ends; it comes back on next round." : $"Fly {d:0.0}\" to here?"
-        : null;
-    public override void Confirm() { if (_pending is { } d) { _s?.Table.ClearGhosts("move"); Complete(new AircraftAdvanceResult(d, Leaves(d))); } }
-    public override void ClearPending() { _pending = null; Draw(_shown, false); Version++; }
+    public override string? ConfirmText => _pending is { } d ? $"Fly {d:0.0}\" to here?" : null;
+    public override void Confirm() { if (_pending is { } d) { _s?.Table.ClearGhosts("move"); Complete(new AircraftAdvanceResult(d, false, _line)); } }
+    public override void ClearPending() { _pending = null; Draw(_shown, false, true); Version++; }
 
-    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); Draw(_shown, false); Version++; }
+    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); Draw(_shown, false, true); Version++; }
     public override void Closed(BattleScreen s) => s.Table.ClearGhosts("move");
 
-    private void Place(float d) { _pending = d; _shown = d; Draw(d, true); Version++; }
-
-    private float DistanceAt(Vector2 p)
+    private void Place(float d)
     {
-        var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
-        float cx = living.Average(m => m.Position.x), cz = living.Average(m => m.Position.z);
-        float t = (p.X - cx) * _r.HeadingNormal.X + (p.Y - cz) * _r.HeadingNormal.Y;
-        return Math.Clamp(t, _r.MinDistanceInches, _r.MaxDistanceInches);
+        d = Math.Min(Math.Clamp(d, _r.MinDistanceInches, _r.MaxDistanceInches), Room(_line));
+        _pending = d; _shown = d; Draw(d, true, true); Version++;
     }
 
-    private void Draw(float d, bool placed)
+    private Vector2 Centre()
+    {
+        var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        return new Vector2(living.Average(m => m.Position.x), living.Average(m => m.Position.z));
+    }
+
+    /// <summary>The line towards the pointer and the distance to it (clamped to 30-36").</summary>
+    private (Float2 Line, float Distance) Aim(Vector2 p)
+    {
+        Vector2 c = Centre(), to = p - c;
+        if (to.Length() < 0.5f) return (_line, _shown);
+        Vector2 n = to.Normalized();
+        return (new Float2(n.X, n.Y), Math.Clamp(to.Length(), _r.MinDistanceInches, _r.MaxDistanceInches));
+    }
+
+    private void Draw(float d, bool placed, bool legal, Float2? line = null)
     {
         if (_s == null) return;
         var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
         if (living.Count == 0) return;
-        float cx = living.Average(m => m.Position.x), cz = living.Average(m => m.Position.z);
-        Float2 h = _r.HeadingNormal;
+        Float2 h = line ?? _line;
+        Vector2 c = Centre();
+        float room = Room(h);
+        float end = legal ? Math.Min(_r.MaxDistanceInches, room) : Math.Max(room, 0.5f);
         var lines = new List<BattleTable.GhostLine>
         {
-            new(new Vector2(cx, cz), new Vector2(cx + h.X * _r.MinDistanceInches, cz + h.Y * _r.MinDistanceInches), HudKit.Dim, 0.08f),
-            new(new Vector2(cx + h.X * _r.MinDistanceInches, cz + h.Y * _r.MinDistanceInches), new Vector2(cx + h.X * _r.MaxDistanceInches, cz + h.Y * _r.MaxDistanceInches), HudKit.Gold, 0.2f),
+            new(c, new Vector2(c.X + h.X * Math.Min(_r.MinDistanceInches, end), c.Y + h.Y * Math.Min(_r.MinDistanceInches, end)), legal ? HudKit.Dim : Palette.WoundsRed, 0.08f),
         };
-        Color c = Leaves(d) ? Palette.WoundsRed : HudKit.Lime;
-        if (placed) c = c.Lightened(0.25f);
-        _s.Table.SetGhosts("move", living.Select(m => new BattleTable.Ghost(m.Position.x + h.X * d, m.Position.z + h.Y * d, Mathf.Max(0.4f, m.BaseRadiusInches), c)), lines);
+        if (legal && end > _r.MinDistanceInches)
+            lines.Add(new(new Vector2(c.X + h.X * _r.MinDistanceInches, c.Y + h.Y * _r.MinDistanceInches), new Vector2(c.X + h.X * end, c.Y + h.Y * end), HudKit.Gold, 0.2f));
+        if (!legal) { _s.Table.SetGhosts("move", Array.Empty<BattleTable.Ghost>(), lines); return; }
+        Color col = placed ? HudKit.Lime.Lightened(0.25f) : HudKit.Lime;
+        _s.Table.SetGhosts("move", living.Select(m => new BattleTable.Ghost(m.Position.x + h.X * d, m.Position.z + h.Y * d, Mathf.Max(0.4f, m.BaseRadiusInches), col)), lines);
     }
 
     public override void TableHover(BattleScreen s, Vector2 at)
     {
         if (_pending != null || s.Table.TableAt(at) is not { } p) return;
-        float d = DistanceAt(p);
-        if (Mathf.Abs(d - _shown) < 0.1f) return;
+        var (line, d) = Aim(p);
+        if (!Legal(line))
+        {
+            _note = $"That way it would hit the table edge after {Room(line):0}\" - it must fly at least {_r.MinDistanceInches:0}\".";
+            Draw(0, false, false, line);
+            Version++;
+            return;
+        }
+        d = Math.Min(d, Room(line));
+        if (_note.Length > 0) { _note = ""; Version++; }
+        _line = line;
         _shown = d;
-        Draw(d, false);
+        Draw(d, false, true);
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (s.Table.TableAt(at) is not { } p) return false;
-        Place(DistanceAt(p));
+        var (line, d) = Aim(p);
+        if (!Legal(line)) { s.Toast($"Can't fly that way: it hits the table edge before {_r.MinDistanceInches:0}\"."); return true; }
+        _line = line;
+        Place(d);
         return true;
     }
 }
