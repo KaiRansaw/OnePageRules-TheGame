@@ -158,4 +158,5 @@ public static class Scenes
     public const string ModelPicker = "res://scenes/screens/ModelPicker.tscn";
     public const string MatchModels = "res://scenes/screens/MatchModels.tscn";
     public const string ArmyForge = "res://scenes/screens/ArmyForge.tscn";
+    public const string HeroBuilder = "res://scenes/screens/HeroBuilder.tscn";
 }

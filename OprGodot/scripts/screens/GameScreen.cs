@@ -187,8 +187,7 @@ public partial class GameScreen : Control
                     "Campaign list with the scoreboard, the 4-tab New Campaign, the Camp and Mission Setup. Port step 5.");
                 break;
             case EMode.BuildHeroes:
-                App.I.OpenNotYet($"{game} - Hero Builder",
-                    "My Heroes cards, New Hero in 4 steps (Hero & Name / Class / Starter Skills / Gear), the Shop. Port step 5.");
+                App.I.Open<Quest.HeroBuilderScreen>(Scenes.HeroBuilder, s => s.System = system);
                 break;
             default:
                 OpenLobby(system, mode switch

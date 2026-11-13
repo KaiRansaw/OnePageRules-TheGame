@@ -158,6 +158,8 @@ public partial class BattleTable : Node3D
     private string? FileFor(IUnit unit, IModel model)
     {
         if (_library == null) return null;
+        if (FdgRaylib.Models3D.ModelLooks.Folder(model.Look) is { } own)
+            return FdgRaylib.Models3D.ModelLooks.Pick(_library.FilesFor(own.Faction, own.Unit), own.File);
         string faction = Session.SeatOf(unit.PlayerID)?.Faction ?? "";
         var files = _library.FilesFor(faction, unit.Name);
         return FdgRaylib.Models3D.ModelLooks.Pick(files, model.Look);

@@ -142,6 +142,7 @@ public partial class ScriptedRun : Node
                 return;
             }
             // "forge:<command>" drives the Army Forge (see ArmyForgeScreen.Drive): "forge:book:Alien Hives", "forge:add:Shooter Grunts"...
+            if (name.StartsWith("hero:") && Find<Quest.HeroBuilderScreen>(GetTree().Root) is { } heroes) { heroes.Drive(name[5..]); _wait = 20; return; }
             if (name.StartsWith("forge:") && Find<Forge.ArmyForgeScreen>(GetTree().Root) is { } forge)
             {
                 if (!forge.IsReady && ++_waitedFor < 2000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }

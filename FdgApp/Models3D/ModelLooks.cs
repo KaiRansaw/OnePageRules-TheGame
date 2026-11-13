@@ -18,6 +18,22 @@ public static class ModelLooks
         return files[0];
     }
 
+    /// <summary>
+    /// A look that names its own folder - "Faction/Unit/file.glb", or "Faction/Unit/" for that unit's first
+    /// version - for a model whose unit isn't named after its models (a Quest hero is named "Krrek", its models
+    /// are the base hero's). Null for a plain file-name look.
+    /// </summary>
+    public static (string Faction, string Unit, string? File)? Folder(string? look)
+    {
+        if (string.IsNullOrEmpty(look)) return null;
+        string[] parts = look.Split('/');
+        if (parts.Length < 2 || parts[0].Length == 0 || parts[1].Length == 0) return null;
+        return (parts[0], parts[1], parts.Length > 2 && parts[2].Length > 0 ? parts[2] : null);
+    }
+
+    /// <summary>"Faction/Unit/file.glb" for a picked file of a unit.</summary>
+    public static string FolderLook(string faction, string unit, string file) => $"{faction}/{unit}/{Path.GetFileName(file)}";
+
     /// <summary>The look name stored for a file.</summary>
     public static string NameOf(string file) => Path.GetFileName(file);
 
