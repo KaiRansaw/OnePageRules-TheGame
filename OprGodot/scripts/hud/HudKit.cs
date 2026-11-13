@@ -173,7 +173,8 @@ public static class HudKit
     private static readonly Dictionary<string, Texture2D?> Pictures = new();
 
     /// <summary>
-    /// A unit's Army Forge portrait from UnitImages/&lt;faction&gt;/Portraits (what the "Download Unit Pictures"
+    /// A unit's portrait: one made from its downloaded model (<see cref="FdgRaylib.Models3D.UnitPortraits"/>) first,
+    /// else its Army Forge portrait from UnitImages/&lt;faction&gt;/Portraits (what the "Download Unit Pictures"
     /// tool fetches; a loose UnitImages/Portraits picture works for every faction), or null. Looked for next to
     /// the repo / the game, like the Raylib build. Name matching ignores case, spaces and punctuation.
     /// </summary>
@@ -182,6 +183,9 @@ public static class HudKit
         string key = faction + "/" + unit;
         if (Pictures.TryGetValue(key, out var t)) return t;
         t = null;
+        // A portrait made from the unit's own downloaded model comes first: it matches what stands on the table.
+        if (FdgRaylib.Models3D.UnitPortraits.Find(faction, unit) is { } made && Image.LoadFromFile(made) is { } mi)
+            return Pictures[key] = ImageTexture.CreateFromImage(mi);
         static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
         string want = Norm(unit);
         foreach (string root in new[] { System.IO.Path.Combine(FdgRaylib.AppAssets.Root, ".."), FdgRaylib.AppAssets.Root, System.Environment.CurrentDirectory })
@@ -200,6 +204,9 @@ public static class HudKit
         }
         return Pictures[key] = t;
     }
+
+    /// <summary>Forgets the pictures already looked up, so newly made portraits show.</summary>
+    public static void ForgetPictures() { Pictures.Clear(); FdgRaylib.Models3D.UnitPortraits.Forget(); }
 
     /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
     public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f)

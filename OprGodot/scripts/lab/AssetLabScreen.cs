@@ -167,6 +167,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         left.AddChild(fileRow);
         var dl = Btn("DownloadModels", "Download models...", "Fetch Warhammer 40k models from the ForceOrg Tabletop Simulator mod for an army, saved under each OPR unit's name.", () => OpenDownloads());
         left.AddChild(dl);
+        left.AddChild(Btn("MakePortraits", "Make portraits...", "Take a picture of each unit's downloaded model and use it as the unit's portrait on the army lists and unit cards.", () => OpenPortraits()));
         left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",
             () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview, r => r.InitialFilter = _filter.Text)));
         left.AddChild(Btn("MatchModels", "Match models...", "Give the catalogue models no unit uses yet to an OPR unit by hand, and take wrong matches away.",
@@ -373,6 +374,9 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         p.Saved += () => { _list.Clear(); Rescan(); };
         return p;
     }
+
+    /// <summary>Opens the Make portraits window.</summary>
+    public PortraitMakerPopup OpenPortraits() => PortraitMakerPopup.Open(this);
 
     /// <summary>Opens a file (also used by the screenshot driver: <c>lab:&lt;path&gt;</c>).</summary>
     public void Open(string file)

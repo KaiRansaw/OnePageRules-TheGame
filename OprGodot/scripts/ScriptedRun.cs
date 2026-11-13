@@ -114,6 +114,12 @@ public partial class ScriptedRun : Node
                 else if (name.StartsWith("labview:") && int.TryParse(arg, out int v)) lab.View(v);
                 else if (name.StartsWith("labcopies:") && int.TryParse(arg, out int c)) lab.SetCopies(c);
                 else if (name.StartsWith("labset:") && arg.Split('=') is [var box, var val]) lab.SetBox(box, val);
+                // "labportraits:<army>" makes that army's portraits ("*" every army, "open" just opens the window).
+                else if (name.StartsWith("labportraits:"))
+                {
+                    var pp = lab.OpenPortraits();
+                    if (arg != "open") Callable.From(() => pp.StartFor(arg)).CallDeferred();
+                }
                 // "labdl:<catalogue>|<unit list>|<book>" runs Download models for that book (test files; "-" = the usual one).
                 else if (name.StartsWith("labdl:") && arg.Split('|') is [var catFile, var mapFile, var book])
                 {

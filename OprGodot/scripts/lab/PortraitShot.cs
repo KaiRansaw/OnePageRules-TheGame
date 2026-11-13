@@ -29,6 +29,9 @@ public static partial class PortraitShot
         new("E", "Hero, from below", 30, -12, 1f, 1f, 34f),
     };
 
+    /// <summary>The angle portraits are made at: A, Kai's pick on the Portrait Angle Review page (2026-11-12).</summary>
+    public static Angle Portrait => Angles[0];
+
     public static Angle? ById(string id) => Angles.FirstOrDefault(a => a.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
