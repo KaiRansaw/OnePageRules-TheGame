@@ -31,4 +31,13 @@ public class FriendListTests
         Assert.That(FriendList.Add(friends, "x", "   "), Is.Not.Null);
         Assert.That(FriendList.Add(friends, "x", "two words"), Is.Not.Null);
     }
+
+    [TestCase("100.101.102.103:7777")]
+    [TestCase("http://100.101.102.103/")]
+    [TestCase(" 100.101.102.103 ")]
+    public async Task Join_LooksUpAPastedAddress(string pasted)
+    {
+        var ip = await FdgRaylib.Lobby.LobbySession.ResolveAsync(pasted);
+        Assert.That(ip?.ToString(), Is.EqualTo("100.101.102.103"));
+    }
 }

@@ -35,6 +35,18 @@ internal sealed class ForgeSession
         MarkClean();
     }
 
+    /// <summary>A session over one book and a given list - the Horde Shop's cart and its on-table upgrade edits use
+    /// the Forge's editing (upgrades, looks) this way, without its game / faction pickers.</summary>
+    public ForgeSession(BookFile book, BuilderList list)
+    {
+        _library = new List<BookFile> { book };
+        Systems = new List<string> { book.GameSystem };
+        System = book.GameSystem;
+        UseBook(book);
+        List = list;
+        MarkClean();
+    }
+
     /// <summary>The bundled library (books load on a worker the first time).</summary>
     public static Task<List<BookFile>> LoadLibraryAsync() => BookLibrary.LoadAsync();
 

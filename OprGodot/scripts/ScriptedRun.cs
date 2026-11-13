@@ -84,6 +84,18 @@ public partial class ScriptedRun : Node
             // "examples" waits for your turn, then stages the rare screens over it (Command Group, aircraft, a pick with
             // Skip, concede, pick several) using your own units - for the UI review; each is answered after its photo.
             if (name == "examples") { _examplesPending = true; return; }
+            // "hordeshop" waits for your turn, then opens the Horde Shop over it with your units (an example wave).
+            if (name == "hordeshop") { if (!HordeShopExample() && ++_waitedFor < 20000) { _presses = new Queue<string>(_presses.Prepend(name)); return; } _waitedFor = 0; _wait = 30; return; }
+            // "shop:<command>" drives the open Horde Shop (see HordeShopView.Drive).
+            if (name.StartsWith("shop:"))
+            {
+                var view = (Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current as Battle.HordeShopDecision)?.View;
+                if ((view == null || !view.IsReady) && ++_waitedFor < 4000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                view?.Drive(name[5..]);
+                _wait = 20;
+                return;
+            }
             // "lab:<file>" opens that file in the Asset Lab; "labview:0-3" picks its camera (close / play / table / top);
             // "labcopies:0-4" its copies (1 / 5 / 10 / 20 / 100); "labset:Height=40" sets one of its boxes by node name.
             if (name.StartsWith("lab") && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lab)
@@ -191,6 +203,38 @@ public partial class ScriptedRun : Node
     }
 
     private bool _examplesPending;
+
+    /// <summary>Opens the Horde Shop over your turn with your own units: the first in reach, the last out of reach,
+    /// the second down to half and reinforceable - so every tab has something on it.</summary>
+    private static int Cost(FDG.IUnit u) => (u as FDG.UnitData)?.PointCost ?? 100;
+
+    private bool HordeShopExample()
+    {
+        var battle = Find<Battle.BattleScreen>(GetTree().Root);
+        if (battle?.Decisions.Current is not Battle.ActivateDecision act) return false;
+        var me = act.Request.TargetPlayerID;
+        var table = battle.Session.Table;
+        var objectives = table.Objectives.Objects.Take(2).Select((o, i) =>
+            new FDG.StageResolution.Requests.HordeShopObjective(i + 1, o.Position.x, o.Position.z, i == 0)).ToList();
+        if (objectives.Count == 0) objectives.Add(new FDG.StageResolution.Requests.HordeShopObjective(1, 36, 24, true));
+        var mine = table.Units.Objects.Where(u => u.PlayerID == me).ToList();
+        var units = mine.Select((u, i) => new FDG.StageResolution.Requests.HordeShopUnit(u.ID.ID, u.Name, u.Models.Count, Cost(u), null,
+            string.Join(", ", u.Models.SelectMany(m => m.Weapons).GroupBy(w => w.Name).Select(g => $"{g.Count()}x {g.Key}")))
+        {
+            NotEligibleReason = i == mine.Count - 1 && mine.Count > 1 ? "It is more than 9\" from every objective your side seized this wave." : null,
+            ReinforceCost = (Cost(u) + 1) / 2,
+            ReinforceRestores = i == 1 ? $"up to {Math.Max(1, u.Models.Count / 2)} models" : null,
+            NotReinforceableReason = i == 1 ? null : "It is not down to half strength.",
+        }).ToList();
+        var seat = battle.Session.SeatOf(me);
+        var request = new FDG.StageResolution.Requests.HordeShopRequest(me, 1, 120, seat?.Faction ?? "", seat?.Name ?? "", objectives)
+        {
+            Upgradable = units, GameSystemSlug = FDG.ArmyBuilding.GameSystems.GrimdarkFuture, PointsEarned = 100, PointsPerObjective = 40, PriorityBonus = 20,
+        };
+        Battle.BattleResolvers.Inbox.OfferFirst(new Battle.HordeShopDecision(request));
+        GD.Print("ScriptedRun: horde shop staged");
+        return true;
+    }
 
     /// <summary>Stages the example screens once it is your turn (checked from snapall each tick).</summary>
     private void Examples()

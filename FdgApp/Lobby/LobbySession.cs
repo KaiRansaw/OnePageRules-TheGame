@@ -501,7 +501,7 @@ public sealed class LobbySession : IDisposable
 
         status?.Invoke("Looking up the address...");
         System.Net.IPAddress? ip = await ResolveAsync(address).ConfigureAwait(false);
-        if (ip == null) return (null, "Could not find that address. Check the spelling, and that Tailscale is running on both computers.");
+        if (ip == null) return (null, "Could not find that address. Check the spelling and that Tailscale is running on both computers - or use the host's Tailscale number instead (it starts with 100.).");
 
         status?.Invoke("Connecting...");
         var client = new FDG.Network.Connection.FDGClient();
@@ -536,14 +536,19 @@ public sealed class LobbySession : IDisposable
     public const int JoinTimeoutSeconds = 15;
 
     /// <summary>An IP passes straight through; a name is looked up. The host listens on IPv4 only.</summary>
-    private static async Task<System.Net.IPAddress?> ResolveAsync(string text)
+    /// <summary>The address typed or pasted, looked up. Pasted extras are dropped first ("http://", ":7777", a
+    /// trailing "/" - Kai's friend, 2026-11-12, got "could not find that address"), then an IPv4 answer is preferred,
+    /// falling back to IPv6 (Tailscale gives every PC both).</summary>
+    internal static async Task<System.Net.IPAddress?> ResolveAsync(string text)
     {
-        string t = text.Trim();
+        string t = FdgRaylib.Config.FriendList.CleanAddress(text);
+        if (t.Length == 0) return null;
         if (System.Net.IPAddress.TryParse(t, out var literal)) return literal;
         try
         {
             var all = await System.Net.Dns.GetHostAddressesAsync(t).ConfigureAwait(false);
-            return all.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+            return all.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                ?? all.FirstOrDefault();
         }
         catch { return null; }
     }

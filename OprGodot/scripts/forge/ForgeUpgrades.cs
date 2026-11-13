@@ -71,12 +71,12 @@ public partial class ArmyForgeScreen
         head.AddChild(done);
         left.AddChild(head);
         if (s.PartnerOf(row) >= 0)
-            left.AddChild(Wrapped("Combined unit: groups marked LINKED change both halves.", 14, Palette.PointsBlue));
+            left.AddChild(ForgeWidgets.Wrapped("Combined unit: groups marked LINKED change both halves.", 14, Palette.PointsBlue));
 
         var groups = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         groups.AddThemeConstantOverride("separation", 10);
-        foreach (ForgeRules.SectionView view in s.Sections(row)) groups.AddChild(Group(row, view));
-        groups.AddChild(Wrapped("Hover a rule name to read the book's wording. Options a choice rules out go grey and say why.", 14, HudKit.Dim));
+        foreach (Node g in ForgeWidgets.Groups(s, row, Rebuild).GetChildren().ToList()) { g.GetParent().RemoveChild(g); groups.AddChild(g); }
+        groups.AddChild(ForgeWidgets.Wrapped("Hover a rule name to read the book's wording. Options a choice rules out go grey and say why.", 14, HudKit.Dim));
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         scroll.AddChild(groups);
         left.AddChild(scroll);
@@ -86,8 +86,8 @@ public partial class ArmyForgeScreen
         var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         right.AddThemeConstantOverride("separation", 10);
         right.AddChild(HudKit.Heading("The unit with these upgrades", 16));
-        Gear(right, unit, items, _upgradeBefore);
-        right.AddChild(Wrapped("Changes show green until you press Done.", 14, HudKit.Dim));
+        ForgeWidgets.Gear(_s!.Glossary, right, unit, items, _upgradeBefore);
+        right.AddChild(ForgeWidgets.Wrapped("Changes show green until you press Done.", 14, HudKit.Dim));
         var rs = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         right.SizeFlagsVertical = SizeFlags.ExpandFill;
         rs.AddChild(right);
@@ -95,100 +95,6 @@ public partial class ArmyForgeScreen
         return body;
     }
 
-    private Control Group(int row, ForgeRules.SectionView view)
-    {
-        var s = _s!;
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 4);
-        var head = new HBoxContainer();
-        head.AddThemeConstantOverride("separation", 10);
-        var label = HudKit.Text(view.Section.Label, 17, Palette.RuleGold, HudKit.Bold);
-        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        head.AddChild(label);
-        string kind = view.Control switch
-        {
-            ForgeRules.EControl.PickOne => "pick one",
-            ForgeRules.EControl.Stepper => view.Section.MaxApplications > 0 ? $"up to {view.Section.MaxApplications}" : "how many",
-            _ => view.Options.Count == 1 ? "take it or not" : "pick any",
-        };
-        head.AddChild(HudKit.Text(kind, 13, HudKit.Dim, HudKit.Semi));
-        if (view.Linked) head.AddChild(HudKit.Chip("LINKED", Palette.PointsBlue, size: 12));
-        col.AddChild(head);
-        if (view.NothingToReplace) col.AddChild(HudKit.Text("Nothing left to replace.", 13, HudKit.Dim, HudKit.Semi));
-
-        ButtonGroup? radio = view.Control == ForgeRules.EControl.PickOne ? new ButtonGroup { AllowUnpress = true } : null;
-        foreach (ForgeRules.OptionView o in view.Options) col.AddChild(OptionRow(row, view, o, radio));
-        return HudKit.Panel(HudKit.PanelBox(8), HudKit.Pad(col, 12, 8, 12, 8));
-    }
-
-    private Control OptionRow(int row, ForgeRules.SectionView view, ForgeRules.OptionView o, ButtonGroup? radio)
-    {
-        var s = _s!;
-        var wrap = new VBoxContainer();
-        wrap.AddThemeConstantOverride("separation", 0);
-        var line = new HBoxContainer();
-        line.AddThemeConstantOverride("separation", 8);
-        string tip = OptionTip(o.Option);
-        string name = SafeName($"Opt_{view.Section.Label}_{o.Option.Label}");
-
-        if (view.Control == ForgeRules.EControl.Stepper)
-        {
-            var minus = new Button { Text = "-", Disabled = o.Count <= 0, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None };
-            minus.Pressed += () => { s.Choose(row, view.Section, o.Option.Id, o.Count - 1); Rebuild(); };
-            line.AddChild(minus);
-            line.AddChild(HudKit.Text(o.Count.ToString(), 17, o.Count > 0 ? Palette.Lime : HudKit.Fg, HudKit.Bold).Also(l => { l.CustomMinimumSize = new Vector2(26, 0); l.HorizontalAlignment = HorizontalAlignment.Center; }));
-            var plus = new Button { Name = name, Text = "+", Disabled = o.Count >= o.Max, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None };
-            plus.Pressed += () => { s.Choose(row, view.Section, o.Option.Id, o.Count + 1); Rebuild(); };
-            line.AddChild(plus);
-            var text = HudKit.Text(o.Option.Label, 15, o.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }, HudKit.Semi);
-            text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            text.MouseFilter = MouseFilterEnum.Stop;
-            text.TooltipText = tip;
-            line.AddChild(text);
-        }
-        else
-        {
-            var box = new CheckBox
-            {
-                Name = name, Text = o.Option.Label, ButtonPressed = o.Chosen, Disabled = !o.Enabled, ButtonGroup = radio,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, TooltipText = tip,
-                AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            };
-            box.AddThemeFontSizeOverride("font_size", 15);
-            if (o.Chosen) box.AddThemeColorOverride("font_color", Palette.Lime);
-            // Clicking a picked round box again takes it back off (the "keep what it has" choice).
-            box.Pressed += () =>
-            {
-                bool on = !o.Chosen;
-                s.Choose(row, view.Section, on ? o.Option.Id : (view.Control == ForgeRules.EControl.PickOne ? string.Empty : o.Option.Id), on ? 1 : 0);
-                Rebuild();
-            };
-            line.AddChild(box);
-        }
-
-        int cost = o.Option.Cost;
-        var price = HudKit.Text(ForgeRules.CostText(cost), 15, cost == 0 ? HudKit.Dim : Palette.PointsBlue, HudKit.Bold);
-        price.CustomMinimumSize = new Vector2(44, 0);
-        price.HorizontalAlignment = HorizontalAlignment.Right;
-        line.AddChild(price);
-        wrap.AddChild(line);
-        if (!o.Enabled && o.WhyNot != null)
-            wrap.AddChild(HudKit.Text("   " + o.WhyNot, 13, HudKit.Dim with { A = 0.8f }, HudKit.Semi));
-        return wrap;
-    }
-
-    /// <summary>The option's own rules in the book's words, for its hover.</summary>
-    private string OptionTip(UpgradeOption option)
-    {
-        var rules = new List<SpecialRuleEntry>(option.RulesGained);
-        foreach (WeaponFileEntry w in option.WeaponsGained) rules.AddRange(w.SpecialRules);
-        foreach (ItemEntry i in option.ItemsGained) rules.AddRange(i.Rules);
-        var distinct = rules.GroupBy(r => r.PrintableName).Select(g => g.First()).ToList();
-        string head = ForgeRules.OptionSummary(option);
-        return distinct.Count == 0 ? head : head + "\n\n" + string.Join("\n\n", distinct.Select(r => _s!.Glossary.Tooltip(r)));
-    }
 }
 
 internal static class ControlExtensions

@@ -75,6 +75,7 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<PlaceObjectiveRequest, Position>(r => new ObjectiveDecision(r)));
         registry.RegisterResolver(new Ask<PlaceOneTerrainRequest, TerrainPlacementResult>(r => new TerrainDecision(r)));
         registry.RegisterResolver(new Ask<ChooseRangedAttackRequest, CancellableResult<ChooseRangedAttackRequest.RangedAttackChoice>>(r => new ShootDecision(r)));
+        registry.RegisterResolver(new Ask<HordeShopRequest, HordeShopReply>(r => new HordeShopDecision(r)));
     }
 
     /// <summary>One request type -> one kind of decision, posted to the inbox.</summary>

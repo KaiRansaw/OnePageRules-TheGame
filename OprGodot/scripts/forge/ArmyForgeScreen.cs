@@ -33,8 +33,6 @@ public partial class ArmyForgeScreen : Control, IBackGuard
 
     private ForgeSession? _s;
     private Task<List<BookFile>>? _loading;
-    private UnitModelLibrary? _models;
-    private bool _modelsScanned;
     private View _view = View.Main;
     private bool _showIssues;
 
@@ -86,8 +84,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             catch (Exception e) { Status("Could not read the army books: " + e.Message, Palette.WoundsRed); return; }
             Rebuild();
         }
-        _preview?.Spin(delta);
-    }
+            }
 
     /// <summary>Esc / Back inside Looks or Upgrades returns to the Forge; leaving with unsaved changes asks first.</summary>
     public bool AllowBack()
@@ -107,7 +104,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         if (_s == null) return;
         foreach (Node c in _top.GetChildren()) { _top.RemoveChild(c); c.QueueFree(); }
         foreach (Node c in _body.GetChildren()) { _body.RemoveChild(c); c.QueueFree(); }
-        _preview = null;
+        _looks = null;
         Control content = _view switch
         {
             View.Looks => BuildLooks(),
@@ -116,6 +113,20 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         };
         content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _body.AddChild(content);
+    }
+
+    private int _looksRow;
+    private LooksPanel? _looks;
+
+    private Control BuildLooks()
+    {
+        var s = _s!;
+        string armyName = string.IsNullOrWhiteSpace(s.List.Name) ? s.Book.Name : $"{s.Book.Name} - {s.List.Name}";
+        TopTitle(armyName);
+        _top.AddChild(Ui.Grow());
+        _top.AddChild(TopButton("Save", "Save", "Name the army and save it.", OpenSave));
+        _looks = new LooksPanel(s, _looksRow, () => { _view = View.Main; Rebuild(); }, (t, c) => Status(t, c));
+        return _looks;
     }
 
     private void TopTitle(string sub)
@@ -221,7 +232,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
 
         if (_showIssues && issues.Count > 0)
             foreach (ListIssue i in issues)
-                col.AddChild(Wrapped(i.Message, 15, i.Severity == ListIssueSeverity.Error ? Palette.WoundsRed : Palette.HitsYellow));
+                col.AddChild(ForgeWidgets.Wrapped(i.Message, 15, i.Severity == ListIssueSeverity.Error ? Palette.WoundsRed : Palette.HitsYellow));
 
         var flow = new HFlowContainer();
         flow.AddThemeConstantOverride("h_separation", 8);
@@ -232,7 +243,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             int partner = s.PartnerOf(i);
             string tag = partner >= 0 ? "Combined" : s.List.Units[i].JoinsUnitId != null ? "Joined" : "";
             if (issues.Any(x => x.UnitIndex == i && x.Severity == ListIssueSeverity.Error)) tag = "!";
-            flow.AddChild(Card($"Army{i}", rows[i].Name, rows[i].PointCost, tag, s.SelectedIndex == i, () => { s.SelectRow(idx); Rebuild(); }, null));
+            flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, $"Army{i}", rows[i].Name, rows[i].PointCost, tag, s.SelectedIndex == i, () => { s.SelectRow(idx); Rebuild(); }, null));
         }
         if (s.List.Units.Count == 0)
             flow.AddChild(HudKit.Text("Empty - click a unit in the roster below, then + ADD (or double-click it).", 15, HudKit.Dim, HudKit.Semi));
@@ -278,7 +289,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             {
                 string id = u.Id;
                 int pts = s.RosterCards.TryGetValue(u.Id, out var card) ? card.Unit.PointCost : u.BasePointCost;
-                flow.AddChild(Card("Roster_" + u.Name, u.Name, pts, "", s.SelectedRosterId == u.Id,
+                flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, "Roster_" + u.Name, u.Name, pts, "", s.SelectedRosterId == u.Id,
                     () => { s.SelectRoster(id); Rebuild(); }, () => { s.Add(id); Rebuild(); }));
             }
             box.AddChild(flow);
@@ -294,39 +305,6 @@ public partial class ArmyForgeScreen : Control, IBackGuard
     }
 
     /// <summary>A unit card: picture, name, points, an optional tag. Click selects; double-click adds.</summary>
-    private Control Card(string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick)
-    {
-        var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(150, 0), FocusMode = FocusModeEnum.None, ToggleMode = false, TooltipText = unit };
-        var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
-        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
-        HudKit.StyleButton(b, box, HudKit.Fg, 15);
-        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        row.AddThemeConstantOverride("separation", 6);
-        row.AddChild(HudKit.Portrait(_s!.Book.Faction, unit, "person", 34, HudKit.Friendly));
-        var txt = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        txt.AddThemeConstantOverride("separation", -4);
-        var n = HudKit.Text(unit, 14, selected ? HudKit.Lime : HudKit.Fg, HudKit.Bold);
-        n.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        n.CustomMinimumSize = new Vector2(96, 0);
-        n.MouseFilter = MouseFilterEnum.Ignore;
-        txt.AddChild(n);
-        var p = HudKit.Text(tag.Length > 0 ? $"{pts} pts - {tag}" : $"{pts} pts", 13, tag == "!" ? Palette.WoundsRed : HudKit.Dim, HudKit.Semi);
-        p.MouseFilter = MouseFilterEnum.Ignore;
-        txt.AddChild(p);
-        row.AddChild(txt);
-        var pad = HudKit.Pad(row, 0, 0, 0, 0);
-        pad.MouseFilter = MouseFilterEnum.Ignore;
-        pad.SetAnchorsPreset(LayoutPreset.FullRect);
-        b.AddChild(pad);
-        b.CustomMinimumSize = new Vector2(160, 50);
-        b.Pressed += click;
-        if (doubleClick != null)
-            b.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, DoubleClick: true }) doubleClick(); };
-        return b;
-    }
-
-    private static string SafeName(string s) => new string(s.Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_').ToArray());
-
     // ================================================================== the clicked unit
 
     private Control UnitPanel(List<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
@@ -346,37 +324,37 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             var (unit, items) = s.Detail(idx);
             RosterUnit? roster = s.Roster(bu.RosterUnitId);
             Title(col, "IN YOUR ARMY", unit, roster);
-            Gear(col, unit, items, null);
+            ForgeWidgets.Gear(_s!.Glossary, col, unit, items, null);
 
             foreach (ListIssue i in issues.Where(x => x.UnitIndex == idx))
-                col.AddChild(Wrapped(i.Message, 14, i.Severity == ListIssueSeverity.Error ? Palette.WoundsRed : Palette.HitsYellow));
+                col.AddChild(ForgeWidgets.Wrapped(i.Message, 14, i.Severity == ListIssueSeverity.Error ? Palette.WoundsRed : Palette.HitsYellow));
 
             if (roster is { Sections.Count: > 0 })
             {
                 col.AddChild(HudKit.Heading("Upgrades taken", 15));
                 var taken = TakenLines(roster, bu);
                 if (taken.Count == 0) col.AddChild(HudKit.Text("None yet.", 14, HudKit.Dim, HudKit.Semi));
-                foreach (string line in taken) col.AddChild(Wrapped(line, 14, HudKit.Fg));
+                foreach (string line in taken) col.AddChild(ForgeWidgets.Wrapped(line, 14, HudKit.Fg));
                 var edit = Ui.Button("Edit upgrades...", () => OpenUpgrades(idx), "Choose this unit's upgrades, with the unit sheet updating as you pick.");
                 edit.Name = "EditUpgrades";
                 col.AddChild(edit);
             }
 
             col.AddChild(HudKit.Heading("Models", 15));
-            col.AddChild(Wrapped(s.LooksSummary(idx), 14, HudKit.Dim));
-            int versions = s.Versions(Models(), unit.Name).Count;
-            var looks = Ui.Button("Choose looks...", () => { _view = View.Looks; _looksRow = idx; _selected.Clear(); Rebuild(); },
+            col.AddChild(ForgeWidgets.Wrapped(s.LooksSummary(idx), 14, HudKit.Dim));
+            int versions = s.Versions(ForgeWidgets.Models(), unit.Name).Count;
+            var looks = Ui.Button("Choose looks...", () => { _view = View.Looks; _looksRow = idx; Rebuild(); },
                 versions == 0 ? "No models downloaded for this unit yet - you can still open it to see." : $"Pick which of the {versions} downloaded versions each model uses on the table.");
             looks.Name = "ChooseLooks";
             col.AddChild(looks);
-            if (versions == 0) col.AddChild(Wrapped("No 3D models downloaded for this unit (Asset Lab > Download models).", 13, HudKit.Dim));
+            if (versions == 0) col.AddChild(ForgeWidgets.Wrapped("No 3D models downloaded for this unit (Asset Lab > Download models).", 13, HudKit.Dim));
 
             if (ForceOrgValidator.IsHero(unit))
             {
                 if (!s.HeroesMayJoin)
                 {
                     bu.JoinsUnitId = null;
-                    col.AddChild(Wrapped("Heroes can't join units in this game.", 14, Palette.HitsYellow));
+                    col.AddChild(ForgeWidgets.Wrapped("Heroes can't join units in this game.", 14, Palette.HitsYellow));
                 }
                 else
                 {
@@ -397,7 +375,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             else if (bu.Id != null)
             {
                 var joiners = s.List.Units.Select((h, i) => (h, i)).Where(p => p.i != idx && p.h.JoinsUnitId == bu.Id && p.i < rows.Count).Select(p => rows[p.i].Name).ToList();
-                if (joiners.Count > 0) col.AddChild(Wrapped("Joined by: " + string.Join(", ", joiners), 14, HudKit.Dim));
+                if (joiners.Count > 0) col.AddChild(ForgeWidgets.Wrapped("Joined by: " + string.Join(", ", joiners), 14, HudKit.Dim));
             }
 
             if (unit.ModelCount > 1 && !ForceOrgValidator.IsHero(unit) && (s.CanCombine(idx) || s.PartnerOf(idx) >= 0))
@@ -417,7 +395,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         {
             var (card, items) = s.RosterCards[rid];
             Title(col, "FROM THE ROSTER", card, roster);
-            Gear(col, card, items, null);
+            ForgeWidgets.Gear(_s!.Glossary, col, card, items, null);
             col.AddChild(HudKit.Text("Base: " + ForgeRules.BaseSummary(roster.Base), 14, HudKit.Dim, HudKit.Semi));
             if (ForgeRules.IsCaster(roster) && s.Book.Spells.Count > 0) Spells(col);
             if (roster.Sections.Count > 0)
@@ -427,7 +405,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 {
                     col.AddChild(HudKit.Text(sec.Label, 14, Palette.RuleGold, HudKit.Semi));
                     foreach (UpgradeOption o in sec.Options)
-                        col.AddChild(Wrapped("   " + ForgeRules.OptionSummary(o), 13, HudKit.Dim));
+                        col.AddChild(ForgeWidgets.Wrapped("   " + ForgeRules.OptionSummary(o), 13, HudKit.Dim));
                 }
             }
             var add = Ui.Button("+ ADD TO ARMY", () => { s.Add(rid); Rebuild(); }, "Put this unit in your army (or double-click its card).", "CommitButton");
@@ -437,7 +415,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         }
         else
         {
-            col.AddChild(Wrapped("Click a unit card to see it here.", 16, HudKit.Dim));
+            col.AddChild(ForgeWidgets.Wrapped("Click a unit card to see it here.", 16, HudKit.Dim));
         }
         return outer;
     }
@@ -451,7 +429,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text(where, 13, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
-        var n = Wrapped(unit.Name.ToUpperInvariant(), 22, HudKit.Fg);
+        var n = ForgeWidgets.Wrapped(unit.Name.ToUpperInvariant(), 22, HudKit.Fg);
         n.AddThemeFontOverride("font", HudKit.Bold);
         t.AddChild(n);
         string cat = roster == null ? "" : s.CategoryOf(roster) + " - ";
@@ -461,86 +439,11 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         col.AddChild(row);
     }
 
-    /// <summary>Stat chips, the weapon table, wargear and rules (hover = the book's wording). Weapons and rules not
-    /// in <paramref name="before"/> are drawn green with "(new)" - the upgrade editor's live sheet.</summary>
-    private void Gear(VBoxContainer col, UnitFileEntry unit, List<ItemEntry> items, UnitFileEntry? before)
-    {
-        var s = _s!;
-        var stats = new HFlowContainer();
-        stats.AddThemeConstantOverride("h_separation", 6);
-        stats.AddChild(StatChip("QUA", $"{unit.Quality}+", before != null && before.Quality != unit.Quality));
-        stats.AddChild(StatChip("DEF", $"{unit.Defense}+", before != null && before.Defense != unit.Defense));
-        if (ForgeRules.ToughValue(unit) is { } tough) stats.AddChild(StatChip("TOUGH", tough, before != null && ForgeRules.ToughValue(before) != tough));
-        stats.AddChild(StatChip("MODELS", unit.ModelCount.ToString(), before != null && before.ModelCount != unit.ModelCount));
-        if (before != null) stats.AddChild(StatChip("PTS", unit.PointCost.ToString(), before.PointCost != unit.PointCost));
-        col.AddChild(stats);
-
-        if (unit.Weapons.Count > 0)
-        {
-            var grid = new GridContainer { Columns = 5 };
-            grid.AddThemeConstantOverride("h_separation", 12);
-            grid.AddThemeConstantOverride("v_separation", 2);
-            foreach (string h in new[] { "WEAPON", "RNG", "ATK", "AP", "SPECIAL" })
-                grid.AddChild(HudKit.Text(h, 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 1)));
-            foreach (WeaponFileEntry w in unit.Weapons)
-            {
-                bool isNew = before != null && !before.Weapons.Any(o => o.Name == w.Name);
-                Color c = isNew ? Palette.Lime : HudKit.Fg;
-                var name = HudKit.Text(ForgeRules.CountedName(w.Quantity, w.Name) + (isNew ? " (new)" : ""), 14, c, HudKit.Semi);
-                name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-                name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-                name.CustomMinimumSize = new Vector2(120, 0);
-                grid.AddChild(name);
-                grid.AddChild(HudKit.Text(ForgeRules.RangeText(w.RangeInches), 14, c, HudKit.Semi));
-                grid.AddChild(HudKit.Text(ForgeRules.AttacksText(w.Attacks), 14, c, HudKit.Semi));
-                grid.AddChild(HudKit.Text(ForgeRules.ApText(w.ArmorPenetration), 14, c, HudKit.Semi));
-                var spe = HudKit.Text(w.SpecialRules.Count == 0 ? "-" : string.Join(", ", w.SpecialRules.Select(r => r.PrintableName)), 13, isNew ? Palette.Lime : Palette.RuleGold, HudKit.Semi);
-                spe.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-                spe.CustomMinimumSize = new Vector2(90, 0);
-                if (w.SpecialRules.Count > 0)
-                {
-                    spe.MouseFilter = MouseFilterEnum.Stop;
-                    spe.TooltipText = string.Join("\n\n", w.SpecialRules.Select(r => s.Glossary.Tooltip(r)));
-                }
-                grid.AddChild(spe);
-            }
-            col.AddChild(grid);
-        }
-
-        var chips = new HFlowContainer();
-        chips.AddThemeConstantOverride("h_separation", 6);
-        chips.AddThemeConstantOverride("v_separation", 6);
-        foreach (ItemEntry item in items)
-        {
-            var chip = HudKit.Chip(ForgeRules.ItemSummary(item), HudKit.Fg, size: 14);
-            chip.TooltipText = item.Rules.Count == 0 ? item.Name : string.Join("\n\n", item.Rules.Select(r => s.Glossary.Tooltip(r)));
-            chips.AddChild(chip);
-        }
-        foreach (SpecialRuleEntry r in unit.SpecialRules)
-        {
-            bool isNew = before != null && !before.SpecialRules.Any(o => o.PrintableName == r.PrintableName);
-            var chip = HudKit.Chip(r.PrintableName + (isNew ? " (new)" : ""), isNew ? Palette.Lime : Palette.RuleGold, size: 14);
-            chip.TooltipText = s.Glossary.Tooltip(r);
-            chips.AddChild(chip);
-        }
-        col.AddChild(chips);
-    }
-
-    private static Control StatChip(string label, string value, bool changed)
-    {
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 4);
-        row.AddChild(HudKit.Text(label, 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 1)));
-        row.AddChild(HudKit.Text(value, 17, changed ? Palette.Lime : HudKit.Fg, HudKit.Bold));
-        var box = new ChamferBox { Fill = new Color(0, 0, 0, 0.3f), Border = changed ? Palette.Lime : HudKit.Edge, Cut = 5, ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 2, ContentMarginBottom = 2 };
-        return HudKit.Panel(box, row);
-    }
-
     private void Spells(VBoxContainer col)
     {
         col.AddChild(HudKit.Heading("Spells", 15));
         foreach (var sp in _s!.Book.Spells)
-            col.AddChild(Wrapped($"{sp.Name} ({sp.Threshold}): {FDG.Stages.SpellText.Describe(sp)}", 13, HudKit.Dim));
+            col.AddChild(ForgeWidgets.Wrapped($"{sp.Name} ({sp.Threshold}): {FDG.Stages.SpellText.Describe(sp)}", 13, HudKit.Dim));
     }
 
     /// <summary>"Replace one Bio-Ravager: Bio-Plasma (+10)" for every choice, in the book's order.</summary>
@@ -556,32 +459,10 @@ public partial class ArmyForgeScreen : Control, IBackGuard
 
     // ================================================================== small things
 
-    private static Label Wrapped(string text, int size, Color colour)
-    {
-        var l = HudKit.Text(text, size, colour, HudKit.Semi);
-        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        l.CustomMinimumSize = new Vector2(10, 0);
-        return l;
-    }
-
     private void Status(string text, Color? colour = null)
     {
         _status.Text = text;
         _status.AddThemeColorOverride("font_color", colour ?? HudKit.Dim);
-    }
-
-    private UnitModelLibrary? Models()
-    {
-        if (_modelsScanned) return _models;
-        _modelsScanned = true;
-        try
-        {
-            UnitModelMap? map = null;
-            try { map = UnitModelMap.Load(); } catch (Exception) { }
-            _models = UnitModelLibrary.Scan(UnitModelPaths.Root, map);
-        }
-        catch (Exception e) { GD.PrintErr("Army Forge: model folder unreadable: " + e.Message); }
-        return _models;
     }
 
     /// <summary>Runs a change that throws the list away - after a yes when it has unsaved units.</summary>
@@ -727,11 +608,11 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 break;
             case "done": if (_view == View.Upgrades) { _view = View.Main; } else if (_view == View.Looks) _view = View.Main; break;
             case "cancel": if (_view == View.Upgrades) { CancelUpgrades(); return; } break;
-            case "looks": if (s.SelectedIndex is int li) { _view = View.Looks; _looksRow = li; _selected.Clear(); } break;
-            case "sel": _selected.Clear(); foreach (string p in arg.Split(';', ',')) if (int.TryParse(p, out int k)) _selected.Add(k); break;
-            case "selall": SelectAll(); break;
-            case "version" when int.TryParse(arg, out int v): Rebuild(); PickVersion(v); return;
-            case "reset": ResetLooks(); return;
+            case "looks": if (s.SelectedIndex is int li) { _view = View.Looks; _looksRow = li; } break;
+            case "sel": _looks?.Select(arg.Split(';', ',').Select(p => int.TryParse(p, out int k) ? k : -1).Where(k => k >= 0)); return;
+            case "selall": _looks?.SelectAll(); _looks?.Refresh(); return;
+            case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
+            case "reset": _looks?.Reset(); return;
             case "save":
                 try { Status("Saved " + Path.GetFileName(s.Save(arg)), Palette.Lime); } catch (Exception e) { Status("SAVE FAILED - " + e.Message, Palette.WoundsRed); }
                 break;

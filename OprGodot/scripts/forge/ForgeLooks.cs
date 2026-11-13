@@ -13,32 +13,67 @@ namespace OprGodot.Forge;
 /// Shift+click or drag across to select several, or Select all; then click a version to give it to every selected
 /// model. Only downloaded versions are listed. Models nobody picks use the unit's first version on the table.
 /// The turning preview on the right shows the version under the mouse / last picked, beside a 28mm person.
+/// Used by the Army Forge and by the Horde Shop's recruits.
 /// </summary>
-public partial class ArmyForgeScreen
+public partial class LooksPanel : HBoxContainer
 {
-    private int _looksRow;
+    private readonly ForgeSession _s;
+    private readonly int _row;
+    private readonly Action _done;
+    private readonly Action<string, Color> _status;
     private readonly SortedSet<int> _selected = new();
     private int _anchor = -1;
     private bool _dragSelecting;
-    private LookPreview? _preview;
+    private Control _leftHolder = null!;
+    private LookPreview _preview = null!;
+    private Label _previewLabel = null!;
     private string? _previewFile;
 
-    private Control BuildLooks()
+    public LooksPanel() : this(null!, 0, () => { }, (_, _) => { }) { }
+
+    internal LooksPanel(ForgeSession s, int row, Action done, Action<string, Color> status)
     {
-        var s = _s!;
-        int row = _looksRow;
-        var unit = s.Detail(row).Unit;
-        var slots = s.Slots(row);
-        IReadOnlyList<string> versions = s.Versions(Models(), unit.Name);
+        _s = s;
+        _row = row;
+        _done = done;
+        _status = status;
+    }
+
+    public override void _Ready()
+    {
+        AddThemeConstantOverride("separation", 16);
+        _leftHolder = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(620, 0) };
+        AddChild(_leftHolder);
+        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        right.AddThemeConstantOverride("separation", 6);
+        _preview = new LookPreview { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        right.AddChild(_preview);
+        _previewLabel = HudKit.Text("", 17, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center);
+        right.AddChild(_previewLabel);
+        right.AddChild(HudKit.Text("Turns slowly - drag to turn it - mouse wheel to zoom - 28mm person for scale", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(right, 8, 8, 8, 8)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+        Refresh();
+        var versions = Versions();
+        var slots = _s.Slots(_row);
+        string? show = slots.Count > 0 && versions.Count > 0 ? ModelLooks.Pick(versions, slots[0].Look) : null;
+        if (show != null) CallDeferred(nameof(ShowPreviewDeferred), show);
+    }
+
+    private IReadOnlyList<string> Versions() => _s.Versions(ForgeWidgets.Models(), _s.Detail(_row).Unit.Name);
+
+    public void Refresh()
+    {
+        foreach (Node c in _leftHolder.GetChildren()) { _leftHolder.RemoveChild(c); c.QueueFree(); }
+        _leftHolder.AddChild(BuildLeft());
+    }
+
+    private Control BuildLeft()
+    {
+        var s = _s;
+        var unit = s.Detail(_row).Unit;
+        var slots = s.Slots(_row);
+        IReadOnlyList<string> versions = Versions();
         _selected.RemoveWhere(i => i >= slots.Count);
-
-        string armyName = string.IsNullOrWhiteSpace(s.List.Name) ? s.Book.Name : $"{s.Book.Name} - {s.List.Name}";
-        TopTitle(armyName);
-        _top.AddChild(Ui.Grow());
-        _top.AddChild(TopButton("Save", "Save", "Name the army and save it.", OpenSave));
-
-        var body = new HBoxContainer();
-        body.AddThemeConstantOverride("separation", 16);
 
         var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         left.AddThemeConstantOverride("separation", 10);
@@ -49,14 +84,13 @@ public partial class ArmyForgeScreen
         title.AddChild(HudKit.Text(unit.Name.ToUpperInvariant() + (slots.Count > unit.ModelCount ? " (COMBINED)" : ""), 26, HudKit.Fg, HudKit.Bold));
         title.AddChild(HudKit.Text($"{slots.Count} models - {_selected.Count} selected", 16, HudKit.Dim, HudKit.Semi));
         head.AddChild(title);
-        head.AddChild(Ui.Button("Select all", () => { SelectAll(); Rebuild(); }, "Select every model.").Also(b => b.Name = "SelectAll"));
-        head.AddChild(Ui.Button("Clear", () => { _selected.Clear(); Rebuild(); }, "Select none.").Also(b => b.Name = "ClearSel"));
-        var done = Ui.Button("Done", () => { _view = View.Main; Rebuild(); }, "Back to the army (Esc).", "CommitButton");
+        head.AddChild(Ui.Button("Select all", () => { SelectAll(); Refresh(); }, "Select every model.").Also(b => b.Name = "SelectAll"));
+        head.AddChild(Ui.Button("Clear", () => { _selected.Clear(); Refresh(); }, "Select none.").Also(b => b.Name = "ClearSel"));
+        var done = Ui.Button("Done", _done, "Back (Esc).", "CommitButton");
         done.Name = "Done";
         done.CustomMinimumSize = new Vector2(120, 42);
         head.AddChild(done);
         left.AddChild(head);
-
         left.AddChild(HudKit.Heading("Models - click one, Shift+click or drag across for several", 15));
         var grid = new GridContainer { Columns = 5 };
         grid.AddThemeConstantOverride("h_separation", 8);
@@ -68,11 +102,11 @@ public partial class ArmyForgeScreen
 
         var special = _selected.Where(i => slots[i].Special.Count > 0).Select(i => $"Model {i + 1} carries the {string.Join(" and ", slots[i].Special)}.").ToList();
         if (special.Count == 0) special = slots.Select((sl, i) => (sl, i)).Where(p => p.sl.Special.Count > 0).Take(3).Select(p => $"Model {p.i + 1} carries the {string.Join(" and ", p.sl.Special)}.").ToList();
-        foreach (string line in special) left.AddChild(Wrapped(line, 14, Palette.RuleGold));
+        foreach (string line in special) left.AddChild(ForgeWidgets.Wrapped(line, 14, Palette.RuleGold));
 
         left.AddChild(HudKit.Heading($"Versions on your PC - {versions.Count}", 15));
         if (versions.Count == 0)
-            left.AddChild(Wrapped("No models are downloaded for this unit yet. Get them in the Asset Lab (Download models / Match models); they show up here.", 15, Palette.HitsYellow));
+            left.AddChild(ForgeWidgets.Wrapped("No models are downloaded for this unit yet. Get them in the Asset Lab (Download models / Match models); they show up here.", 15, Palette.HitsYellow));
         var vlist = new VBoxContainer();
         vlist.AddThemeConstantOverride("separation", 4);
         for (int v = 0; v < versions.Count; v++)
@@ -102,35 +136,19 @@ public partial class ArmyForgeScreen
         {
             if (_previewFile == null) return;
             s.SetLook(slots, ModelLooks.NameOf(_previewFile) == ModelLooks.NameOf(versions[0]) ? null : ModelLooks.NameOf(_previewFile));
-            Rebuild();
+            Refresh();
         }, "Give the version in the preview to every model of the unit.");
         all.Name = "UseForAll";
         all.Disabled = _previewFile == null;
         buttons.AddChild(all);
-        var reset = Ui.Button("Reset all to first version", ResetLooks, "Every model back to the unit's first version.", "BackButton");
+        var reset = Ui.Button("Reset all to first version", Reset, "Every model back to the unit's first version.", "BackButton");
         reset.Name = "ResetLooks";
         buttons.AddChild(reset);
         left.AddChild(buttons);
-        left.AddChild(Wrapped("Models you don't pick use the unit's first version. Looks are saved in the army file; a friend sees them if they have those models downloaded.", 13, HudKit.Dim));
-        body.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(left, 16, 12, 16, 12)).Also(p => { p.SizeFlagsHorizontal = SizeFlags.ExpandFill; p.CustomMinimumSize = new Vector2(620, 0); }));
-
-        // ---- right: the 3D preview
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        right.AddThemeConstantOverride("separation", 6);
-        _preview = new LookPreview { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        right.AddChild(_preview);
-        _previewLabel = HudKit.Text("", 17, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center);
-        right.AddChild(_previewLabel);
-        right.AddChild(HudKit.Text("Turns slowly - drag to turn it - mouse wheel to zoom - 28mm person for scale", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
-        body.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(right, 8, 8, 8, 8)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
-
-        string? show = _previewFile != null && versions.Contains(_previewFile) ? _previewFile
-            : _selected.Count > 0 ? ModelLooks.Pick(versions, slots[_selected.Min].Look) : versions.FirstOrDefault();
-        CallDeferred(nameof(ShowPreviewDeferred), show ?? "");
-        return body;
+        left.AddChild(ForgeWidgets.Wrapped("Models you don't pick use the unit's first version. Looks are saved in the army file; a friend sees them if they have those models downloaded.", 13, HudKit.Dim));
+        return HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(left, 16, 12, 16, 12));
     }
 
-    private Label? _previewLabel;
 
     private void ShowPreviewDeferred(string file) { if (file.Length > 0) ShowPreview(file); }
 
@@ -139,9 +157,8 @@ public partial class ArmyForgeScreen
         if (_preview == null || !IsInstanceValid(_preview)) return;
         _previewFile = file;
         string? line = _preview.Show(file);
-        var versions = _s!.Versions(Models(), _s.Detail(_looksRow).Unit.Name);
-        if (_previewLabel != null && IsInstanceValid(_previewLabel))
-            _previewLabel.Text = ModelLooks.Label(versions, file) + (line != null ? "  -  " + line : "");
+        var versions = Versions();
+        _previewLabel.Text = ModelLooks.Label(versions, file) + (line != null ? "  -  " + line : "");
     }
 
     private Control Slot(int i, ForgeSession.ModelSlot slot, IReadOnlyList<string> versions)
@@ -183,12 +200,12 @@ public partial class ArmyForgeScreen
                 _dragSelecting = true;
                 if (versions.Count > 0 && ModelLooks.Pick(versions, slot.Look) is { } f) _previewFile = f;
                 b.AcceptEvent();
-                CallDeferred(nameof(Rebuild));
+                CallDeferred(nameof(Refresh));
             }
         };
         b.MouseEntered += () =>
         {
-            if (_dragSelecting && Input.IsMouseButtonPressed(MouseButton.Left) && _selected.Add(i)) CallDeferred(nameof(Rebuild));
+            if (_dragSelecting && Input.IsMouseButtonPressed(MouseButton.Left) && _selected.Add(i)) CallDeferred(nameof(Refresh));
         };
         return b;
     }
@@ -198,37 +215,45 @@ public partial class ArmyForgeScreen
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false }) _dragSelecting = false;
     }
 
-    private void SelectAll()
+    /// <summary>Selects these models (0-based), for scripted runs.</summary>
+    public void Select(IEnumerable<int> models)
     {
         _selected.Clear();
-        int n = _s!.Slots(_looksRow).Count;
+        foreach (int m in models) _selected.Add(m);
+        Refresh();
+    }
+
+    public void SelectAll()
+    {
+        _selected.Clear();
+        int n = _s.Slots(_row).Count;
         for (int i = 0; i < n; i++) _selected.Add(i);
     }
 
     /// <summary>Gives version <paramref name="number"/> (1 = first) to the selected models.</summary>
-    private void PickVersion(int number)
+    public void PickVersion(int number)
     {
-        var s = _s!;
-        var slots = s.Slots(_looksRow);
-        var versions = s.Versions(Models(), s.Detail(_looksRow).Unit.Name);
+        var s = _s;
+        var slots = s.Slots(_row);
+        var versions = Versions();
         if (number < 1 || number > versions.Count) return;
         string file = versions[number - 1];
         _previewFile = file;
         if (_selected.Count == 0)
         {
-            Status("Select one or more models first (click a slot, Shift+click, or Select all), then pick a version.", Palette.HitsYellow);
-            Rebuild();
+            _status("Select one or more models first (click a slot, Shift+click, or Select all), then pick a version.", Palette.HitsYellow);
+            Refresh();
             return;
         }
         s.SetLook(_selected.Where(i => i < slots.Count).Select(i => slots[i]), number == 1 ? null : ModelLooks.NameOf(file));
-        Status($"{_selected.Count} model{(_selected.Count == 1 ? "" : "s")} now use {ModelLooks.Label(versions, file)}.", Palette.Lime);
-        Rebuild();
+        _status($"{_selected.Count} model{(_selected.Count == 1 ? "" : "s")} now use {ModelLooks.Label(versions, file)}.", Palette.Lime);
+        Refresh();
     }
 
-    private void ResetLooks()
+    public void Reset()
     {
-        _s!.SetLook(_s.Slots(_looksRow), null);
-        Rebuild();
+        _s.SetLook(_s.Slots(_row), null);
+        Refresh();
     }
 }
 
@@ -284,6 +309,8 @@ public partial class LookPreview : SubViewportContainer
         Aim();
         return $"{(s.BaseMm > 0 ? $"{s.BaseMm:0.#} mm base, " : "")}stands {box.Size.Y * UnitModelSettings.MmPerInch:0} mm tall";
     }
+
+    public override void _Process(double delta) => Spin(delta);
 
     public void Spin(double delta)
     {
