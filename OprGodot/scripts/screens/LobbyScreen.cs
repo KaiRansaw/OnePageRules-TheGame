@@ -132,7 +132,15 @@ public partial class LobbyScreen : Control
             FdgRaylib.Quest.QuestCampaignSession.Pending = null;
             Session.ApplyCampaign(launch);
         }
-        if (Session.Campaign != null) back.TooltipText = "Back to the campaign. Nothing is played or recorded.";
+        // An army campaign mission (Mission Setup's START MISSION): both campaign armies and the plan, then LAUNCH is
+        // pressed for you. If something stops it, the lobby stays up with the reason.
+        if (FdgRaylib.Quest.MissionSetupSession.Pending is { } army && Session.ArmyCampaign == null && Vm.HasHostPrivileges)
+        {
+            FdgRaylib.Quest.MissionSetupSession.Pending = null;
+            if (Session.ApplyArmyCampaign(army) is { } problem) ShowLaunchError(problem);
+            else _autoLaunch = 3.0;
+        }
+        if (Session.Campaign != null || Session.ArmyCampaign != null) back.TooltipText = "Back to the campaign. Nothing is played or recorded.";
         Refresh(force: true);
     }
 
@@ -143,10 +151,20 @@ public partial class LobbyScreen : Control
         Session.Dispose();
     }
 
+    /// <summary>Seconds left to try the army campaign's automatic LAUNCH (0 = not trying).</summary>
+    private double _autoLaunch;
+
     public override void _Process(double delta)
     {
         Session.Tick();
         TakeLaunch();
+        if (_autoLaunch > 0)
+        {
+            _autoLaunch -= delta;
+            // The #153 warnings gate is skipped: a campaign army was legal enough to start the campaign with. Hard
+            // problems still block - then the lobby stays up with them on screen once the time runs out.
+            if (!Session.LaunchStarted && Session.Blockers().Count == 0) { _autoLaunch = 0; StartGame(); }
+        }
         _poll += delta;
         if (_poll < 0.25) return;
         _poll = 0;
@@ -160,7 +178,12 @@ public partial class LobbyScreen : Control
         IReadOnlyList<LobbyPlayerInfoSummary> players = Vm.PlayerInfos;
         _selectedSeat = Math.Clamp(_selectedSeat, 0, Math.Max(0, players.Count - 1));
 
-        if (Session.Campaign is { } camp)
+        if (Session.ArmyCampaign is { } ac)
+        {
+            _title.Text = ac.Title.ToUpperInvariant();
+            _sub.Text = $"{GameSystemInfo.DisplayName(Vm.GameSystem)} - Campaign mission - {ac.Line}";
+        }
+        else if (Session.Campaign is { } camp)
         {
             _title.Text = camp.Title.ToUpperInvariant();
             _sub.Text = $"{GameSystemInfo.DisplayName(Vm.GameSystem)} - Campaign mission - {camp.Line}";

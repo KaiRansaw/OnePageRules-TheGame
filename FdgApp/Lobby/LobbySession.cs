@@ -341,6 +341,46 @@ public sealed class LobbySession : IDisposable
         }
     }
 
+    /// <summary>An army campaign mission this lobby was opened for (Mission Setup's START MISSION), or null.</summary>
+    public FdgRaylib.Quest.ArmyCampaignLaunch? ArmyCampaign { get; private set; }
+
+    /// <summary>
+    /// Sets the lobby up for an army campaign mission (ported from the Raylib lobby's ApplyPendingCampaignArmy): your
+    /// mission army on the host seat with the points limit lifted clear of it, the plan's map / deployment / mission
+    /// type / challenge bonuses, and the campaign's own enemy on a fresh official-bot seat. Null, or what went wrong.
+    /// </summary>
+    public string? ApplyArmyCampaign(FdgRaylib.Quest.ArmyCampaignLaunch launch)
+    {
+        ArmyCampaign = launch;
+        if (!Vm.HasHostPrivileges || Vm.PlayerInfos.Count == 0) return "Not hosting.";
+        if (LoadArmyFile(launch.ArmyFile) is not { } army) return "Couldn't read your campaign army.";
+        PlayerID host = Vm.PlayerInfos[0].PlayerID;
+        if (army.TotalPoints > Vm.ArmyPoints) Vm.SetArmyPoints(army.TotalPoints);
+        _served.Add(host.ID);
+        Vm.UpdateArmyListFile(host, army);
+
+        Vm.SetTerrainPlacementMode(launch.TerrainMode);
+        Vm.SetTerrainLayoutPath(launch.TerrainMode == ETerrainPlacementMode.LoadFromFile ? launch.MapPath : null);
+        Vm.SetDeploymentStyle(launch.Deployment);
+        Vm.SetMissionCardGame(launch.MissionCards);
+        // Always set (None included), so a campaign mission never inherits what the last ordinary lobby had ticked.
+        Vm.SetChallengeBonuses(launch.ChallengeBonuses);
+
+        // Every other seat goes: a campaign mission is you against the campaign's enemy.
+        foreach (var extra in Vm.PlayerInfos.Skip(1).Where(p => p.PlayerType == EPlayerType.AI).ToList())
+            if (Vm.CheckCanRemovePlayer(extra.PlayerID)) Vm.RemovePlayer(extra.PlayerID);
+        if (launch.EnemyArmyFile is not { } file) return null;
+        if (LoadArmyFile(file) is not { } enemy) return "Couldn't read the enemy's campaign army.";
+        Vm.AddAiPlayer(EAiProfile.SoloCoOp);
+        // The bot just added: the AI row nothing has been given yet (a seat that could not be removed was served below).
+        if (Vm.PlayerInfos.LastOrDefault(p => p.PlayerID.ID != host.ID && p.PlayerType == EPlayerType.AI) is not { } bot)
+            return "Couldn't seat the enemy.";
+        _served.Add(bot.PlayerID.ID);
+        if (enemy.TotalPoints > Vm.ArmyPoints) Vm.SetArmyPoints(enemy.TotalPoints);
+        Vm.UpdateArmyListFile(bot.PlayerID, enemy);
+        return null;
+    }
+
     /// <summary>The key of the army a seat holds, for marking it in a picker.</summary>
     public static string ArmyKey(ArmyListSummary s) =>
         s.IsAssigned ? ArmyCatalogEntry.KeyFor(s.ArmyName, s.FactionName, s.PointCost) : "";

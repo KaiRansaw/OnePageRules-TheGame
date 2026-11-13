@@ -30,6 +30,9 @@ public sealed class GameSession
     /// <summary>"Player 2 (AI) wins!" once the engine says the game is over; null while it runs.</summary>
     public string? EndedText { get; private set; }
 
+    /// <summary>An army campaign mission's write-back summary (both armies' results), once the game is recorded.</summary>
+    public string? CampaignNote { get; private set; }
+
     public PlayerID? LocalPlayer => Game.LocalPlayerIDs.Count > 0 ? Game.LocalPlayerIDs[0] : null;
 
     private GameSession(IFDGGame game, LobbySession lobby, HybridResolverRegistry registry, IReadOnlyList<Seat> seats)
@@ -61,6 +64,14 @@ public sealed class GameSession
         registerFrontEnd(registry);
 
         var session = new GameSession(game, lobby, registry, seats);
+        // Army campaigns: every campaign army that played is recorded (casualty rolls, XP, treasury, journal) the moment
+        // the host's server reports the result - before OnGameEnded, so the end card can read the files.
+        if (vm.HasHostPrivileges)
+            vm.OnGameCompleted += result =>
+            {
+                try { session.CampaignNote = FdgRaylib.Quest.StrikeTeamFiles.WriteBack(game.TableState, result); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            };
         vm.OnGameEnded += text =>
         {
             // Quest: every hero keeps what it earned (XP, level, items, injuries), and a campaign mission is recorded
@@ -90,4 +101,7 @@ public sealed class GameSession
 
     /// <summary>The Quest campaign mission this game is, or null.</summary>
     public FdgRaylib.Quest.QuestCampaignLaunch? Campaign => Lobby.Campaign;
+
+    /// <summary>The army campaign mission this game is, or null.</summary>
+    public FdgRaylib.Quest.ArmyCampaignLaunch? ArmyCampaign => Lobby.ArmyCampaign;
 }

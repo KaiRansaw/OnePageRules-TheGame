@@ -169,4 +169,6 @@ public static class Scenes
     public const string ArmyForge = "res://scenes/screens/ArmyForge.tscn";
     public const string HeroBuilder = "res://scenes/screens/HeroBuilder.tscn";
     public const string QuestCampaigns = "res://scenes/screens/QuestCampaigns.tscn";
+    public const string ArmyCampaigns = "res://scenes/screens/ArmyCampaigns.tscn";
+    public const string MissionSetup = "res://scenes/screens/MissionSetup.tscn";
 }

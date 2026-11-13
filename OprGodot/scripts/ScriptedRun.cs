@@ -160,6 +160,9 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("hero:") && Find<Quest.HeroBuilderScreen>(GetTree().Root) is { } heroes) { heroes.Drive(name[5..]); _wait = 20; return; }
             // "qc:<command>" drives Quest Campaigns (see QuestCampaignsScreen.Drive); "partypick:N" picks N heroes in an open Choose heroes popup.
             if (name.StartsWith("qc:") && Find<Quest.QuestCampaignsScreen>(GetTree().Root) is { } qc && qc.Visible) { qc.Drive(name[3..]); _wait = 20; return; }
+            // "ac:<command>" drives the army campaign screen; "ms:<command>" Mission Setup (see their Drive methods).
+            if (name.StartsWith("ac:") && Find<Campaign.ArmyCampaignsScreen>(GetTree().Root) is { } ac && ac.Visible) { ac.Drive(name[3..]); _wait = 20; return; }
+            if (name.StartsWith("ms:") && Find<Campaign.MissionSetupScreen>(GetTree().Root) is { } ms && ms.Visible) { ms.Drive(name[3..]); _wait = 20; return; }
             if (name.StartsWith("partypick:") && int.TryParse(name[10..], out int pn) && Find<Quest.HeroPartyPopup>(GetTree().Root) is { } party) { party.PickFirst(pn); _wait = 20; return; }
             if (name.StartsWith("forge:") && Find<Forge.ArmyForgeScreen>(GetTree().Root) is { } forge)
             {

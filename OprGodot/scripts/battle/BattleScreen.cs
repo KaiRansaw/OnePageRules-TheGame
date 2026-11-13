@@ -3,6 +3,7 @@ using FdgRaylib.Game;
 using FdgRaylib.Rendering;
 using Godot;
 using OprGodot.Hud;
+using OprGodot.Forge;
 
 namespace OprGodot.Battle;
 
@@ -1477,7 +1478,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         Big("Load game", () => Leave("Load another game?", () => App.I.Later(() => App.I.Open<LoadGameScreen>(Scenes.LoadGame))),
             "Pick a saved game to carry on. This game ends - save it first if you want to come back to it.");
         Big("Settings", () => { CloseMenu(); App.I.Open<SettingsScreen>(Scenes.Settings); }, "Your name, display, camera and sound settings.");
-        if (Session.Campaign != null)
+        if (Session.Campaign != null || Session.ArmyCampaign != null)
             Big("Return to campaign", () => Leave("Leave this mission?", () => { }, toCampaign: true),
                 "Leave the mission and go back to the campaign. A mission left unfinished is not recorded - it is played again next time.");
         else
@@ -1508,7 +1509,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         bool saved = _lastSaveRound == Session.Table.Progress.RoundCount && Session.Table.Progress.RoundCount != null;
         Confirm(question, Session.EndedText != null || saved ? "This game ends." : "This game ends - anything since your last save is lost.",
-            "Leave", () => { if (toCampaign) App.I.BackTo<Quest.QuestCampaignsScreen>(); else App.I.ToMainMenu(); then(); }, "Stay");
+            "Leave", () => { if (toCampaign) ToCampaign(); else App.I.ToMainMenu(); then(); }, "Stay");
     }
 
     private int? _lastSaveRound;
@@ -1574,6 +1575,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         GD.Print($"Game over: {Session.EndedText}");
         if (Session.Campaign is { } campaign) { ShowCampaignOver(campaign); return; }
+        if (Session.ArmyCampaign is { } armyCampaign) { ShowArmyCampaignOver(armyCampaign); return; }
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 12);
         v.AddChild(HudKit.Text("GAME OVER", 48, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
@@ -1667,6 +1669,59 @@ public partial class BattleScreen : Control, IOwnBackdrop
         row.AddChild(cont);
         v.AddChild(row);
         _gameOver = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.96f }, Border = record == null || won ? HudKit.Lime : Palette.WoundsRed, Cut = 16, ContentMarginLeft = 36, ContentMarginRight = 36, ContentMarginTop = 24, ContentMarginBottom = 24 }, v);
+        HudKit.Place(_hud, _gameOver, LayoutPreset.Center);
+    }
+
+    /// <summary>Back to whichever campaign screen this mission came from.</summary>
+    private void ToCampaign()
+    {
+        if (Session.ArmyCampaign != null) App.I.BackTo<Campaign.ArmyCampaignsScreen>();
+        else App.I.BackTo<Quest.QuestCampaignsScreen>();
+    }
+
+    /// <summary>
+    /// The end of an army campaign mission (Army Campaign mockup F, approved 2026-11-12): the result, the campaign score,
+    /// what the game wrote into the journal (casualty rolls, XP, treasury), the choices now waiting, and CONTINUE TO CAMP.
+    /// Read from the campaign files, written by the host the moment the game was decided.
+    /// </summary>
+    private void ShowArmyCampaignOver(FdgRaylib.Quest.ArmyCampaignLaunch launch)
+    {
+        var r = FdgRaylib.Quest.MissionSetupSession.AfterMission(launch.CampaignPath);
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(680, 0) };
+        v.AddThemeConstantOverride("separation", 10);
+        v.AddChild(HudKit.Text(r == null ? "GAME OVER" : (r.Won ? "VICTORY" : "DEFEAT") + $" - MISSION {r.Info.Matches}", 44, r == null || r.Won ? HudKit.Lime : Palette.WoundsRed, HudKit.Exo(800), HorizontalAlignment.Center));
+        if (r == null)
+            v.AddChild(Forge.ForgeWidgets.Wrapped((Session.EndedText ?? "") + "\nThe result could not be recorded on this computer.", 16, HudKit.Fg));
+        else
+        {
+            string score = r.Standing.HasTarget ? $"you are now {r.Standing.YourVp} VP of {r.Standing.VpTarget}, the rival {r.Standing.RivalVp}" : $"you {r.Standing.YourVp} VP, the rival {r.Standing.RivalVp}";
+            v.AddChild(HudKit.Text($"{r.Info.Name} vs {r.Rival?.Name ?? "a one-off opponent"} - {score}", 18, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+            if (r.Standing.IsOver)
+                v.AddChild(HudKit.Text(r.Standing.Outcome switch { FDG.Campaign.ECampaignOutcome.YouWon => "YOU WON THE CAMPAIGN!", FDG.Campaign.ECampaignOutcome.RivalWon => "THE RIVAL WON THE CAMPAIGN", _ => "THE CAMPAIGN IS A DRAW" },
+                    24, r.Standing.Outcome == FDG.Campaign.ECampaignOutcome.YouWon ? Palette.HeroGold : Palette.WoundsRed, HudKit.Bold, HorizontalAlignment.Center));
+            var box = new VBoxContainer();
+            box.AddThemeConstantOverride("separation", 3);
+            foreach (string line in r.Record) box.AddChild(Forge.ForgeWidgets.Wrapped(line, 15, HudKit.Fg));
+            if (Session.CampaignNote is { Length: > 0 } note)
+                foreach (string line in note.Split('\n')) box.AddChild(Forge.ForgeWidgets.Wrapped(line, 14, HudKit.Dim));
+            var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 260), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            box.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            scroll.AddChild(box);
+            v.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(scroll, 14, 10, 14, 10)));
+            int waiting = r.Waiting + r.RivalWaiting;
+            if (waiting > 0)
+                v.AddChild(Forge.ForgeWidgets.Wrapped($"{waiting} choice{(waiting == 1 ? " is" : "s are")} waiting in the Camp" + (r.RivalWaiting > 0 ? $" ({r.RivalWaiting} in the rival's army - you do its books)." : "."), 16, Palette.HeroGold));
+        }
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 12);
+        row.AddChild(Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table."));
+        row.AddChild(Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.").Also(x => x.Name = "SaveReport"));
+        var cont = Ui.Button("CONTINUE TO CAMP", App.I.BackTo<Campaign.ArmyCampaignsScreen>, "Back to the Camp, with this mission recorded.", "CommitButton");
+        cont.Name = "ContinueCampaign";
+        cont.CustomMinimumSize = new Vector2(260, 52);
+        row.AddChild(cont);
+        v.AddChild(row);
+        _gameOver = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.96f }, Border = r == null || r.Won ? HudKit.Lime : Palette.WoundsRed, Cut = 16, ContentMarginLeft = 36, ContentMarginRight = 36, ContentMarginTop = 24, ContentMarginBottom = 24 }, v);
         HudKit.Place(_hud, _gameOver, LayoutPreset.Center);
     }
 }

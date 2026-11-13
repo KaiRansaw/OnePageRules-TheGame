@@ -182,8 +182,7 @@ public partial class GameScreen : Control
                 App.I.Open<Quest.QuestCampaignsScreen>(Scenes.QuestCampaigns, s => s.System = system);
                 break;
             case EMode.Campaign:
-                App.I.OpenNotYet($"{game} - Campaign",
-                    "Campaign list with the scoreboard, the 4-tab New Campaign, the Camp and Mission Setup. Port step 5.");
+                App.I.Open<Campaign.ArmyCampaignsScreen>(Scenes.ArmyCampaigns, s => s.System = system);
                 break;
             case EMode.BuildHeroes:
                 App.I.Open<Quest.HeroBuilderScreen>(Scenes.HeroBuilder, s => s.System = system);

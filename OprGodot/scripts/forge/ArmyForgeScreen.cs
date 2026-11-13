@@ -47,6 +47,16 @@ public partial class ArmyForgeScreen : Control, IBackGuard
     /// <summary>Opens straight on this army file (the lobby's "Edit in Army Forge", the scripted runs).</summary>
     public string? OpenPath { get; set; }
 
+    /// <summary>
+    /// A campaign army being built (New Campaign, tabs 2 and 3; Army Campaign mockup B): the game is fixed, the points
+    /// limit is the campaign treasury, the faction locks once a unit is in, and Save / Load / New give way to one
+    /// USE THIS ARMY button gated by the campaign's own start rule (CampaignRules.CannotStart) - the same check the
+    /// "use an army you have" path makes, so the two can never disagree.
+    /// </summary>
+    public sealed record CampaignBuild(FDG.EGameSystem System, string Title, FDG.Campaign.CampaignNumbers Numbers, Action<BuiltArmyFile> OnContinue);
+
+    public CampaignBuild? Campaign { get; set; }
+
     public override void _Ready()
     {
         var margin = new MarginContainer();
@@ -80,6 +90,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             {
                 _s = new ForgeSession(new List<BookFile>(t.Result));
                 if (OpenPath != null) OpenFile(OpenPath);
+                if (Campaign is { } build && !BeginCampaign(build)) return;
             }
             catch (Exception e) { Status("Could not read the army books: " + e.Message, Palette.WoundsRed); return; }
             Rebuild();
@@ -92,6 +103,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         if (_s == null) return true;
         if (_view == View.Upgrades) { CancelUpgrades(); return false; }
         if (_view == View.Looks) { _view = View.Main; Rebuild(); return false; }
+        if (Campaign != null) return true;
         if (!_s.Dirty || _s.List.Units.Count == 0) return true;
         Confirm("Leave the Army Forge?", "This list has changes that are not saved. Leave anyway and lose them?", "Leave", () => { _s.NewList(); App.I.Back(); });
         return false;
@@ -142,9 +154,87 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         _top.AddChild(t);
     }
 
+    /// <summary>Locks the Forge to the campaign's game. False (with a message) when that game has no books - never another game's.</summary>
+    private bool BeginCampaign(CampaignBuild build)
+    {
+        string? slug = GameSystems.CampaignBookSlug(build.System);
+        string? match = slug == null ? null : _s!.Systems.FirstOrDefault(x => GameSystems.SameSystem(x, slug));
+        if (match == null)
+        {
+            Status($"No {FDG.GameSystemInfo.DisplayName(build.System)} army books are installed, so a campaign army can't be built here.", Palette.WoundsRed);
+            Campaign = null;
+            return false;
+        }
+        _s!.ChooseSystem(match);
+        _s.NewList();
+        _s.List.PointsLimit = build.Numbers.Treasury;
+        return true;
+    }
+
+    /// <summary>"640 / 750 pts spent - minimum 600 - Heroes 1/1". Game text, so ASCII only.</summary>
+    public static string CampaignHeader(CampaignBuild build, BuiltArmyFile compiled) =>
+        $"{FDG.GameSystemInfo.DisplayName(build.System)}  -  {compiled.TotalPoints} / {build.Numbers.Treasury} pts spent  -  "
+        + $"minimum {build.Numbers.MinimumSpend}  -  Heroes {compiled.Units.Count(FDG.Campaign.CampaignRules.IsHero)}/1";
+
+    private void CampaignTop(CampaignBuild build, BuiltArmyFile compiled)
+    {
+        var s = _s!;
+        TopTitle(build.Title + "  -  " + CampaignHeader(build, compiled));
+        var books = s.BooksInSystem;
+        if (s.List.Units.Count == 0)
+        {
+            var faction = new OptionButton { Name = "Faction", FocusMode = FocusModeEnum.None, TooltipText = "The army book to build from. Locked once a unit is in." };
+            foreach (BookFile b in books) faction.AddItem(b.Name);
+            faction.Selected = Math.Max(0, books.FindIndex(b => b.Name == s.Book.Name));
+            faction.ItemSelected += i => { s.ChooseBook(books[(int)i]); s.List.PointsLimit = build.Numbers.Treasury; Status(""); Rebuild(); };
+            _top.AddChild(faction);
+        }
+        else _top.AddChild(HudKit.Text(s.Book.Name, 17, HudKit.Fg, HudKit.Bold).Also(l => l.TooltipText = "Locked while the army has units - remove them to pick another faction."));
+        var name = new LineEdit { Name = "ArmyName", PlaceholderText = "army name", Text = s.List.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
+        name.TextChanged += txt => s.List.Name = txt;
+        _top.AddChild(name);
+        _top.AddChild(Ui.Grow());
+        string? why = FDG.Campaign.CampaignRules.CannotStart(compiled, build.Numbers);
+        var use = TopButton("UseArmy", "USE THIS ARMY", why ?? "Take this army into the campaign.", () =>
+        {
+            BuiltArmyFile army = s.Compile();
+            if (FDG.Campaign.CampaignRules.CannotStart(army, build.Numbers) is { } no) { Status(no, Palette.WoundsRed); return; }
+            if (!string.IsNullOrWhiteSpace(s.List.Name)) army.Name = s.List.Name.Trim();
+            App.I.Back();      // Campaign is still set, so leaving never asks about unsaved changes
+            build.OnContinue(army);
+        }, "CommitButton");
+        use.Disabled = why != null;
+        _top.AddChild(use);
+        if (why != null) Status(why, Palette.HitsYellow);
+    }
+
     private Control BuildMain()
     {
         var s = _s!;
+        BuiltArmyFile compiled = s.Compile();
+        if (Campaign is { } build) CampaignTop(build, compiled);
+        else MainTop(s);
+        IReadOnlyList<ListIssue> issues = s.Issues(compiled);
+        List<UnitFileEntry> rows = s.Rows();
+
+        var body = new HBoxContainer();
+        body.AddThemeConstantOverride("separation", 16);
+
+        var left = HudKit.Panel(HudKit.PanelBox(12));
+        left.CustomMinimumSize = new Vector2(460, 0);
+        left.AddChild(HudKit.Pad(UnitPanel(rows, issues), 14, 12, 14, 12));
+        body.AddChild(left);
+
+        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        right.AddThemeConstantOverride("separation", 12);
+        right.AddChild(ArmyBox(compiled, rows, issues));
+        right.AddChild(RosterBox());
+        body.AddChild(right);
+        return body;
+    }
+
+    private void MainTop(ForgeSession s)
+    {
         TopTitle(ForgeSession.SystemName(s.System));
 
         var game = new OptionButton { Name = "Game", FocusMode = FocusModeEnum.None, TooltipText = "Which game. Each game has its own army books and unit stats." };
@@ -174,25 +264,6 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         _top.AddChild(TopButton("Load", "Load", "Open one of your saved armies for this game.", OpenLoad));
         _top.AddChild(TopButton("ImportLink", "Import Link", "Paste a share link from the Army Forge website.", OpenImport));
         _top.AddChild(TopButton("Save", "Save", "Name the army and save it into this game's armies folder.", OpenSave, "CommitButton"));
-
-        BuiltArmyFile compiled = s.Compile();
-        IReadOnlyList<ListIssue> issues = s.Issues(compiled);
-        List<UnitFileEntry> rows = s.Rows();
-
-        var body = new HBoxContainer();
-        body.AddThemeConstantOverride("separation", 16);
-
-        var left = HudKit.Panel(HudKit.PanelBox(12));
-        left.CustomMinimumSize = new Vector2(460, 0);
-        left.AddChild(HudKit.Pad(UnitPanel(rows, issues), 14, 12, 14, 12));
-        body.AddChild(left);
-
-        var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        right.AddThemeConstantOverride("separation", 12);
-        right.AddChild(ArmyBox(compiled, rows, issues));
-        right.AddChild(RosterBox());
-        body.AddChild(right);
-        return body;
     }
 
     private static Button TopButton(string name, string text, string tip, Action a, string? variation = null)
