@@ -5,9 +5,9 @@ using OprGodot.Hud;
 namespace OprGodot.Lab;
 
 /// <summary>
-/// The Asset Lab's "Make portraits" window (Kai, 2026-11-12: an in-game way for players to get unit pictures). Each
-/// unit's first downloaded model is photographed at portrait angle A (full body, three-quarter - Kai's pick) and saved
-/// as that unit's portrait (<see cref="UnitPortraits"/>). The army lists, unit cards, Army Forge and Horde Shop then
+/// The Asset Lab's "Make portraits" window (Kai, 2026-11-12: an in-game way for players to get unit pictures). Every
+/// downloaded model version is photographed at portrait angle A (full body, three-quarter - Kai's pick), so a unit's
+/// portrait can show the look picked for it in the army builder (<see cref="UnitPortraits"/>). The army lists, unit cards, Army Forge and Horde Shop then
 /// show it in place of the plain icon. Nothing is fetched: it only uses models already downloaded.
 /// </summary>
 public partial class PortraitMakerPopup : Control
@@ -17,7 +17,7 @@ public partial class PortraitMakerPopup : Control
 
     private const string AllArmies = "All armies";
     private OptionButton _book = null!;
-    private CheckBox _redo = null!;
+    private CheckBox _redo = null!, _firstOnly = null!;
     private Button _start = null!, _stop = null!, _close = null!;
     private ProgressBar _bar = null!;
     private Label _status = null!, _info = null!;
@@ -45,7 +45,7 @@ public partial class PortraitMakerPopup : Control
         col.AddThemeConstantOverride("separation", 10);
         col.AddChild(HudKit.Text("MAKE PORTRAITS", 30, HudKit.Fg, HudKit.Exo(800)));
         var intro = HudKit.Text("Takes a picture of each unit's downloaded model and uses it as the unit's portrait - on the army lists, " +
-                                "unit cards, Army Forge and Horde Shop. Uses the first model of each unit, so everyone with that model gets the same picture. " +
+                                "unit cards, Army Forge and Horde Shop. Every version is photographed, so a unit shows the look you picked for it in the Army Forge. " +
                                 "Only units with a downloaded model get one.", 15, HudKit.Dim, HudKit.Semi);
         intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         col.AddChild(intro);
@@ -58,6 +58,9 @@ public partial class PortraitMakerPopup : Control
         _redo = new CheckBox { Name = "RedoPortraits", Text = "Redo ones already made", TooltipText = "Take the picture again even when the unit already has one (after turning a model in the facing review, say)." };
         _redo.Toggled += _ => ShowInfo();
         row.AddChild(_redo);
+        _firstOnly = new CheckBox { Name = "FirstOnly", Text = "First version only", TooltipText = "One picture per unit (its first version) - quicker. Units with another look picked then show the first version's picture." };
+        _firstOnly.Toggled += _ => { Reload(); ShowInfo(); };
+        row.AddChild(_firstOnly);
         col.AddChild(row);
         _info = HudKit.Text("", 14, HudKit.Dim, HudKit.Semi);
         _info.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -96,12 +99,17 @@ public partial class PortraitMakerPopup : Control
 
         HudKit.Place(this, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
 
-        _units = UnitPortraits.Units();
-        _book.AddItem($"{AllArmies}  ({_units.Count} units)");
-        foreach (var g in _units.GroupBy(u => u.Book))
-            _book.AddItem($"{g.Key}  ({g.Count()} units)");
+        _units = UnitPortraits.Models();
+        _books = _units.Select(u => u.Book).Distinct().ToList();
+        _book.AddItem(AllArmies);
+        foreach (string b in _books) _book.AddItem(b);
+        Reload();
         ShowInfo();
     }
+
+    private List<string> _books = new();
+
+    private void Reload() => _units = UnitPortraits.Models(_firstOnly.ButtonPressed);
 
     private static Button Btn(string name, string text, string tip, Action onPressed)
     {
@@ -110,7 +118,7 @@ public partial class PortraitMakerPopup : Control
         return b;
     }
 
-    private string? SelectedBook => _book.Selected <= 0 ? null : _units.Select(u => u.Book).Distinct().ElementAt(_book.Selected - 1);
+    private string? SelectedBook => _book.Selected <= 0 ? null : _books[_book.Selected - 1];
 
     /// <summary>The units this run would photograph.</summary>
     private List<(string Book, string Unit, string Model)> Todo() =>
@@ -126,9 +134,11 @@ public partial class PortraitMakerPopup : Control
             _start.Disabled = true;
             return;
         }
-        int all = _units.Count(u => SelectedBook == null || u.Book == SelectedBook);
+        var mine = _units.Where(u => SelectedBook == null || u.Book == SelectedBook).ToList();
+        int units = mine.Select(u => (u.Book, u.Unit)).Distinct().Count();
         int todo = Todo().Count;
-        _info.Text = $"{all} unit{(all == 1 ? "" : "s")} with a model, {all - (_redo.ButtonPressed ? 0 : todo)} already have a portrait. {todo} to take.";
+        _info.Text = $"{units} unit{(units == 1 ? "" : "s")}, {mine.Count} model version{(mine.Count == 1 ? "" : "s")}; {mine.Count - (_redo.ButtonPressed ? 0 : todo)} already photographed. " +
+                     $"{todo} to take (about {Math.Max(1, (int)Math.Ceiling(todo / 60.0))} minute{(todo > 60 ? "s" : "")}).";
         _start.Disabled = _running || todo == 0;
     }
 
@@ -137,7 +147,7 @@ public partial class PortraitMakerPopup : Control
     {
         if (book != "*")
         {
-            int i = _units.Select(u => u.Book).Distinct().ToList().FindIndex(b => b.Equals(book, StringComparison.OrdinalIgnoreCase));
+            int i = _books.FindIndex(b => b.Equals(book, StringComparison.OrdinalIgnoreCase));
             if (i < 0) { _status.Text = $"No models for {book}."; return; }
             _book.Select(i + 1);
         }
@@ -151,7 +161,7 @@ public partial class PortraitMakerPopup : Control
         var todo = Todo();
         if (todo.Count == 0) return;
         _running = true; _stopAsked = false;
-        _start.Disabled = true; _book.Disabled = true; _redo.Disabled = true; _stop.Disabled = false;
+        _start.Disabled = true; _book.Disabled = true; _redo.Disabled = true; _firstOnly.Disabled = true; _stop.Disabled = false;
         var studio = new PortraitShot.Studio();
         AddChild(studio);
         PortraitShot.Angle angle = PortraitShot.Portrait;
@@ -175,7 +185,7 @@ public partial class PortraitMakerPopup : Control
                     if (e != Error.Ok) throw new IOException(e.ToString());
                     saved++;
                     _last.Texture = ImageTexture.CreateFromImage(img);
-                    _lastName.Text = unit;
+                    _lastName.Text = $"{unit}\n{Path.GetFileNameWithoutExtension(model)}";
                 }
                 catch (Exception ex) { failed++; GD.PrintErr($"Portrait: {unit}: {ex.Message}"); }
             }
@@ -186,7 +196,7 @@ public partial class PortraitMakerPopup : Control
         if (!IsInsideTree()) return;
         _running = false;
         _status.Text = (_stopAsked ? "Stopped. " : "Done. ") + $"{saved} portrait{(saved == 1 ? "" : "s")} saved" + (failed > 0 ? $", {failed} could not be taken (the model would not load)." : ".");
-        _book.Disabled = false; _redo.Disabled = false; _stop.Disabled = true;
+        _book.Disabled = false; _redo.Disabled = false; _firstOnly.Disabled = false; _stop.Disabled = true;
         HudKit.ForgetPictures();
         ShowInfo();
         if (saved > 0) Saved?.Invoke();

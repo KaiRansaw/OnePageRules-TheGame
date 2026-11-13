@@ -33,7 +33,7 @@ internal static class ForgeWidgets
         return _models;
     }
 
-    public static Control Card(string faction, string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick)
+    public static Control Card(string faction, string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick, string? look = null)
     {
         var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(150, 0), FocusMode = FocusModeEnum.None, ToggleMode = false, TooltipText = unit };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
@@ -41,7 +41,7 @@ internal static class ForgeWidgets
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         row.AddThemeConstantOverride("separation", 6);
-        row.AddChild(HudKit.Portrait(faction, unit, "person", 34, HudKit.Friendly));
+        row.AddChild(HudKit.Portrait(faction, unit, "person", 34, HudKit.Friendly, look: look));
         var txt = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         txt.AddThemeConstantOverride("separation", -4);
         var n = HudKit.Text(unit, 14, selected ? HudKit.Lime : HudKit.Fg, HudKit.Bold);

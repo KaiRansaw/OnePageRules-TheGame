@@ -178,13 +178,13 @@ public static class HudKit
     /// tool fetches; a loose UnitImages/Portraits picture works for every faction), or null. Looked for next to
     /// the repo / the game, like the Raylib build. Name matching ignores case, spaces and punctuation.
     /// </summary>
-    public static Texture2D? UnitPicture(string faction, string unit)
+    public static Texture2D? UnitPicture(string faction, string unit, string? look = null)
     {
-        string key = faction + "/" + unit;
+        string key = faction + "/" + unit + "|" + look;
         if (Pictures.TryGetValue(key, out var t)) return t;
         t = null;
         // A portrait made from the unit's own downloaded model comes first: it matches what stands on the table.
-        if (FdgRaylib.Models3D.UnitPortraits.Find(faction, unit) is { } made && Image.LoadFromFile(made) is { } mi)
+        if (FdgRaylib.Models3D.UnitPortraits.Find(faction, unit, look) is { } made && Image.LoadFromFile(made) is { } mi)
             return Pictures[key] = ImageTexture.CreateFromImage(mi);
         static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
         string want = Norm(unit);
@@ -209,8 +209,13 @@ public static class HudKit
     public static void ForgetPictures() { Pictures.Clear(); FdgRaylib.Models3D.UnitPortraits.Forget(); }
 
     /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
-    public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f)
-        => Portrait(UnitPicture(faction, unit), fallbackIcon, size, team, alpha);
+    /// <remarks><paramref name="look"/> is the look picked for the unit in the army builder (its first picked model's), so
+    /// the portrait shows the same version that stands on the table.</remarks>
+    public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f, string? look = null)
+        => Portrait(UnitPicture(faction, unit, look), fallbackIcon, size, team, alpha);
+
+    /// <summary>The look a battle unit's portrait shows: the first one picked for any of its models.</summary>
+    public static string? LookOf(FDG.IUnit u) => FdgRaylib.Models3D.UnitPortraits.LookOf(u.Models.Select(m => m.Look));
 
     /// <summary>A framed picture (any texture - the Asset Lab previews a new portrait with this), else the icon.</summary>
     public static Control Portrait(Texture2D? picture, string fallbackIcon, float size, Color team, float alpha = 1f)

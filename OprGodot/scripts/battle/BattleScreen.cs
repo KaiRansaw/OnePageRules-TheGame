@@ -747,7 +747,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         h.AddThemeConstantOverride("separation", 7);
         bool hero = u.RuleDefinitions.Any(r => r.RequestedName == "Hero");
         bool shoots = u.Models.FirstOrDefault()?.Weapons.Any(w => w.RangeInches > 0) == true;
-        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 36, selected || active ? HudKit.Lime : _table.SeatColour(u.PlayerID), a));
+        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 36, selected || active ? HudKit.Lime : _table.SeatColour(u.PlayerID), a, HudKit.LookOf(u)));
         var v = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
         v.AddThemeConstantOverride("separation", 3);
         var top = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -824,7 +824,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 8);
-        top.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 46, team));
+        top.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 46, team, look: HudKit.LookOf(u)));
         var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         names.AddThemeConstantOverride("separation", -3);
         var nm = HudKit.Text(u.Name.ToUpperInvariant(), 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1));
@@ -1083,7 +1083,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
             if (unit != null)
             {
                 bool hero = unit.RuleDefinitions.Any(r => r.RequestedName == "Hero");
-                top.AddChild(HudKit.Portrait(Session.SeatOf(unit.PlayerID)?.Faction ?? "", unit.Name, HudKit.KindIcon(unit.Name, hero, true, 1), 26, _table.SeatColour(unit.PlayerID)));
+                top.AddChild(HudKit.Portrait(Session.SeatOf(unit.PlayerID)?.Faction ?? "", unit.Name, HudKit.KindIcon(unit.Name, hero, true, 1), 26, _table.SeatColour(unit.PlayerID), look: HudKit.LookOf(unit)));
             }
             var name = HudKit.Text(NameOf(uid, "?").ToUpperInvariant(), 15, side, HudKit.Tracked(HudKit.Bold, 1));
             name.SizeFlagsHorizontal = SizeFlags.ExpandFill;

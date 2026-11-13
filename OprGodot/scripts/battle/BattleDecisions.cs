@@ -323,7 +323,7 @@ public sealed class BattleDecisions
         col.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 2);
         Control ic = r.Portrait is { } pu
-            ? HudKit.Portrait(PortraitFaction?.Invoke(pu) ?? "", pu.Name, r.Icon ?? icon, size * 0.42f, r.Enabled ? HudKit.Lime : HudKit.Dim, r.Enabled ? 1f : 0.45f)
+            ? HudKit.Portrait(PortraitFaction?.Invoke(pu) ?? "", pu.Name, r.Icon ?? icon, size * 0.42f, r.Enabled ? HudKit.Lime : HudKit.Dim, r.Enabled ? 1f : 0.45f, HudKit.LookOf(pu))
             : HudKit.Icon(r.Icon ?? icon, 38, !r.Enabled ? HudKit.Dim with { A = 0.4f } : r.Selected ? HudKit.Lime : HudKit.Lime with { A = 0.8f });
         ic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
         col.AddChild(ic);

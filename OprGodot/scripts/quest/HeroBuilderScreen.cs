@@ -206,7 +206,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard
         }
         var head = new HBoxContainer();
         head.AddThemeConstantOverride("separation", 10);
-        head.AddChild(HudKit.Portrait(hero.Faction, hero.BaseHeroName, "person", 72, HudKit.Friendly));
+        head.AddChild(HudKit.Portrait(hero.Faction, hero.BaseHeroName, "person", 72, HudKit.Friendly, look: hero.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(hero)));
         var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text(hero.Name.Length > 0 ? hero.Name.ToUpperInvariant() : "(NO NAME YET)", 21, HudKit.Fg, HudKit.Bold));
@@ -379,7 +379,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.AddThemeConstantOverride("separation", 2);
         col.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var pic = HudKit.Portrait(h.Faction, h.BaseHeroName, "person", 80, HudKit.Friendly);
+        var pic = HudKit.Portrait(h.Faction, h.BaseHeroName, "person", 80, HudKit.Friendly, look: h.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(h));
         pic.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         col.AddChild(pic);
         foreach (var (text, size, c) in new[] { (h.Name, 17, selected ? HudKit.Lime : HudKit.Fg), ($"Lv {h.Level} {h.Class}", 14, HudKit.Fg), ($"{h.Faction} - {h.BaseHeroName}", 12, HudKit.Dim) })

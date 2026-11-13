@@ -689,7 +689,7 @@ public partial class LobbyScreen : Control
         int toughN = tough != null && int.TryParse(tough[6..^1], out int t) ? t : 1;
         var h = new HBoxContainer();
         h.AddThemeConstantOverride("separation", 10);
-        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), 44, team));
+        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), 44, team, look: FdgRaylib.Models3D.UnitPortraits.LookOf(u.ModelLooks)));
         var v = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         v.AddThemeConstantOverride("separation", 0);
         var top = new HBoxContainer();

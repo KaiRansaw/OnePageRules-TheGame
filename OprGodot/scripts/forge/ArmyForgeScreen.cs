@@ -243,7 +243,8 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             int partner = s.PartnerOf(i);
             string tag = partner >= 0 ? "Combined" : s.List.Units[i].JoinsUnitId != null ? "Joined" : "";
             if (issues.Any(x => x.UnitIndex == i && x.Severity == ListIssueSeverity.Error)) tag = "!";
-            flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, $"Army{i}", rows[i].Name, rows[i].PointCost, tag, s.SelectedIndex == i, () => { s.SelectRow(idx); Rebuild(); }, null));
+            flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, $"Army{i}", rows[i].Name, rows[i].PointCost, tag, s.SelectedIndex == i, () => { s.SelectRow(idx); Rebuild(); }, null,
+                FdgRaylib.Models3D.UnitPortraits.LookOf(s.List.Units[i].ModelLooks)));
         }
         if (s.List.Units.Count == 0)
             flow.AddChild(HudKit.Text("Empty - click a unit in the roster below, then + ADD (or double-click it).", 15, HudKit.Dim, HudKit.Semi));
@@ -425,7 +426,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var s = _s!;
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
-        row.AddChild(HudKit.Portrait(s.Book.Faction, unit.Name, "person", 76, HudKit.Friendly));
+        row.AddChild(HudKit.Portrait(s.Book.Faction, unit.Name, "person", 76, HudKit.Friendly, look: FdgRaylib.Models3D.UnitPortraits.LookOf(unit.ModelLooks)));
         var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text(where, 13, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
