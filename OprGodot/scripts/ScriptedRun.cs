@@ -46,6 +46,15 @@ public partial class ScriptedRun : Node
         {
             // "wait:N" waits N more frames (a lobby filling its seats, a scan finishing).
             if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
+            // "portraits:<model folder>|<out folder>" photographs every model there at every portrait angle, then quits.
+            if (name.StartsWith("portraits:") && name[10..].Split('|') is [var pin, var pout])
+            {
+                var batch = new Lab.PortraitShot.Batch(pin, pout);
+                batch.Done += () => GetTree().Quit();
+                AddChild(batch);
+                _wait = int.MaxValue;
+                return;
+            }
             // "tab:Name" opens the tab called Name in whatever TabContainer has one.
             if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
             // "army:<file>" gives the first (host) seat that army in the lobby; "confirm" presses OK on an open dialog.
