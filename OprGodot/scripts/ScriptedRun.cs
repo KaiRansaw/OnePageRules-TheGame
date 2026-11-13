@@ -129,6 +129,15 @@ public partial class ScriptedRun : Node
                 _wait = 30;
                 return;
             }
+            // "forge:<command>" drives the Army Forge (see ArmyForgeScreen.Drive): "forge:book:Alien Hives", "forge:add:Shooter Grunts"...
+            if (name.StartsWith("forge:") && Find<Forge.ArmyForgeScreen>(GetTree().Root) is { } forge)
+            {
+                if (!forge.IsReady && ++_waitedFor < 2000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                forge.Drive(name[6..]);
+                _wait = 20;
+                return;
+            }
             if (name == "confirm")
             {
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);

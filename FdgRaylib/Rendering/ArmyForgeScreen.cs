@@ -1648,33 +1648,15 @@ public class ArmyForgeScreen : IAppScreen
     /// per-model budget a <see cref="UpgradeSection.PerModelBudget"/> section spends (#383). Ignored
     /// for every other section.</param>
     internal static int StepperMax(UpgradeSection section, RosterUnit roster, UnitFileEntry compiledUnit,
-        int available, int current, int sectionOthersCount = 0)
-    {
-        int hardBound = section.MaxApplications > 0 ? section.MaxApplications : int.MaxValue;
-        int poolBound = section.Variant switch
-        {
-            UpgradeVariant.AddModels => Math.Max(0, roster.MaxModels - roster.BaseModelCount),
-            UpgradeVariant.Replace => available + current,
-            _ => compiledUnit.ModelCount,
-        };
-        int max = Math.Min(hardBound, poolBound);
-
-        // #383: one application per model, section-wide - what the other options hold comes off this one's cap.
-        if (section.PerModelBudget)
-            max = Math.Min(max, Math.Max(0, compiledUnit.ModelCount - sectionOthersCount));
-
-        return max;
-    }
+        int available, int current, int sectionOthersCount = 0) =>
+        Forge.ForgeRules.StepperMax(section, roster, compiledUnit, available, current, sectionOthersCount);
 
 
 
     /// <summary>Replace-target availability computed WITHOUT this section's own choices — the pool an
     /// option could draw on if the section's current pick were released (radio switching, header text).</summary>
-    internal static int AvailableExcludingSection(BookFile book, BuilderUnit bu, UpgradeSection section)
-    {
-        RosterUnit? roster = book.Units.FirstOrDefault(u => u.Id == bu.RosterUnitId);
-        return roster is null ? 0 : ReplacePool(book, bu, roster, section, excludeOwn: true);
-    }
+    internal static int AvailableExcludingSection(BookFile book, BuilderUnit bu, UpgradeSection section) =>
+        Forge.ForgeRules.AvailableExcludingSection(book, bu, section);
 
 
 
@@ -1684,18 +1666,10 @@ public class ArmyForgeScreen : IAppScreen
     /// currently selected — the only case where availability has to be re-measured against the reservation
     /// rather than read off the already-compiled unit.</summary>
     internal static bool YieldingAllSwapChosen(BuilderUnit bu, RosterUnit roster, UpgradeSection section) =>
-        bu.Choices.Any(c => YieldsTo(roster, c.SectionId, section));
+        Forge.ForgeRules.YieldingAllSwapChosen(bu, roster, section);
 
-    // The all-swap at `sectionId` leaves copies for `claimant` when it is a single-target all-swap authored
-    // ABOVE the claimant and they compete for the same weapon — mirroring ListCompiler's reservation rule.
-    internal static bool YieldsTo(RosterUnit roster, string sectionId, UpgradeSection claimant)
-    {
-        int index = roster.Sections.FindIndex(s => s.Id == sectionId);
-        if (index < 0 || index >= roster.Sections.FindIndex(s => s.Id == claimant.Id)) return false;
-
-        string? target = ListCompiler.SingleAllSwapTarget(roster.Sections[index]);
-        return target is not null && ListCompiler.CompetesForTarget(claimant, target);
-    }
+    internal static bool YieldsTo(RosterUnit roster, string sectionId, UpgradeSection claimant) =>
+        Forge.ForgeRules.YieldsTo(roster, sectionId, claimant);
 
     /// <summary>
     /// The pool a Replace section may draw on, measured on a compile where every all-swap that yields to it
@@ -1704,19 +1678,7 @@ public class ArmyForgeScreen : IAppScreen
     /// this section's own picks (the radio-switching pool).
     /// </summary>
     internal static int ReplacePool(BookFile book, BuilderUnit bu, RosterUnit roster, UpgradeSection section,
-        bool excludeOwn)
-    {
-        var view = new BuilderUnit
-        {
-            RosterUnitId = bu.RosterUnitId,
-            ModelCount = bu.ModelCount,
-            Choices = bu.Choices
-                .Where(c => !(excludeOwn && c.SectionId == section.Id) && !YieldsTo(roster, c.SectionId, section))
-                .ToList(),
-        };
-        (UnitFileEntry unit, List<ItemEntry> items) = ListCompiler.CompileUnitDetailed(book, view);
-        return ListCompiler.AvailableApplications(unit.Weapons, items, section.Targets);
-    }
+        bool excludeOwn) => Forge.ForgeRules.ReplacePool(book, bu, roster, section, excludeOwn);
 
     // Read-only profile of a roster unit, as the real Army Forge shows it when you pick a unit: portrait,
     // stats, weapons table, wargear and rules (hover = book wording), base, the caster spell list for a

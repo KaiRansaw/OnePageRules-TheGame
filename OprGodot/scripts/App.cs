@@ -94,6 +94,7 @@ public partial class App : Node
     public void Back()
     {
         if (_screens.Count <= 1) return; // the main menu has no Back
+        if (_screens.Peek() is IBackGuard guard && !guard.AllowBack()) return;
         _screens.Pop().QueueFree();
         _screens.Peek().Visible = true;
     }
@@ -134,6 +135,13 @@ public partial class App : Node
 /// <summary>A screen that draws its own shading over the 3D backdrop (the main menu).</summary>
 public interface IOwnBackdrop { }
 
+/// <summary>A screen that may hold Back (Esc) - to close an inner view first, or ask before losing changes. When it
+/// says no it handles the moment itself (and calls <see cref="App.Back"/> again once the player agrees).</summary>
+public interface IBackGuard
+{
+    bool AllowBack();
+}
+
 /// <summary>Scene paths in one place, so a moved file breaks here and nowhere else.</summary>
 public static class Scenes
 {
@@ -149,4 +157,5 @@ public static class Scenes
     public const string FacingReview = "res://scenes/screens/FacingReview.tscn";
     public const string ModelPicker = "res://scenes/screens/ModelPicker.tscn";
     public const string MatchModels = "res://scenes/screens/MatchModels.tscn";
+    public const string ArmyForge = "res://scenes/screens/ArmyForge.tscn";
 }

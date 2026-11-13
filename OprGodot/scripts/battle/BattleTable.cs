@@ -148,18 +148,19 @@ public partial class BattleTable : Node3D
         {
             foreach (IUnit unit in Session.Table.Units.Objects)
                 for (int i = 0; i < unit.Models.Count; i++)
-                    if (FileFor(unit, i) is { } f) Asset(f);
+                    if (FileFor(unit, unit.Models[i]) is { } f) Asset(f);
         }
         catch (InvalidOperationException) { } // the engine thread changed the list; the rest load as they appear
     }
 
-    /// <summary>The model file for a unit's i-th model: its versions in turn, so a squad mixes them.</summary>
-    private string? FileFor(IUnit unit, int index)
+    /// <summary>The model file for one model: the look picked for it in the army builder, else the unit's first
+    /// version (Kai, 2026-11-12: unpicked models all look the same).</summary>
+    private string? FileFor(IUnit unit, IModel model)
     {
         if (_library == null) return null;
         string faction = Session.SeatOf(unit.PlayerID)?.Faction ?? "";
         var files = _library.FilesFor(faction, unit.Name);
-        return files.Count == 0 ? null : files[index % files.Count];
+        return FdgRaylib.Models3D.ModelLooks.Pick(files, model.Look);
     }
 
     private Lab.LoadedAsset? Asset(string file)
@@ -176,8 +177,7 @@ public partial class BattleTable : Node3D
     private bool AddUnitModel(Node3D root, IModel m, IUnit unit, out float height)
     {
         height = 0;
-        int index = unit.Models.IndexOf(m);
-        if (FileFor(unit, Math.Max(0, index)) is not { } file || Asset(file) is not { Model: { } source }) return false;
+        if (FileFor(unit, m) is not { } file || Asset(file) is not { Model: { } source }) return false;
         UnitModelSettings s = _modelSettings[file].Copy();
         if (s.BaseMm <= 0) s.BaseMm = 1; // feet on the game's base, whatever base the model was saved with
         var pivot = new Node3D { Name = "UnitModel" };
