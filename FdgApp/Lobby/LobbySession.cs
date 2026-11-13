@@ -100,7 +100,7 @@ public sealed class LobbySession : IDisposable
 
     /// <summary>"Age of Fantasy - Army vs Army - 2000 pts".</summary>
     public string HeaderTitle =>
-        $"{GameSystemInfo.DisplayName(Vm.GameSystem)}  -  {ModeLabel(Vm.GameMode)}  -  {Vm.ArmyPoints} pts";
+        $"{GameSystemInfo.DisplayName(Vm.GameSystem)}  -  {ModeLabel(Vm.GameMode)}" + (GameSystemInfo.IsQuest(Vm.GameSystem) ? "" : $"  -  {Vm.ArmyPoints} pts");
 
     public static string ModeLabel(EGameMode mode) => mode switch
     {
@@ -293,6 +293,52 @@ public sealed class LobbySession : IDisposable
         if (LoadArmyFile(entry.Path) is not { } army) return;
         _served.Add(playerID.ID);
         Vm.UpdateArmyListFile(playerID, army);
+    }
+
+    // ------------------------------------------------------------------ Quest parties
+
+    private readonly Dictionary<Guid, List<string>> _parties = new();
+
+    /// <summary>A Quest campaign mission this lobby was opened for (party fixed, settings from the campaign), or null.</summary>
+    public FdgRaylib.Quest.QuestCampaignLaunch? Campaign { get; private set; }
+
+    /// <summary>The hero files a Quest seat has picked (empty = none yet).</summary>
+    public IReadOnlyList<string> PartyOf(PlayerID seat) =>
+        _parties.TryGetValue(seat.ID, out List<string>? p) ? p : Array.Empty<string>();
+
+    /// <summary>
+    /// Gives a Quest seat its party: 2-4 saved heroes, played as one army (each hero a unit). Returns why not, or null.
+    /// </summary>
+    public string? SetParty(PlayerID seat, IEnumerable<string> heroFiles)
+    {
+        var files = heroFiles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (files.Count > 4) return "A party is 2 to 4 heroes.";
+        _parties[seat.ID] = files;
+        _served.Add(seat.ID);
+        if (files.Count == 0) return null;
+        if (FdgRaylib.Quest.QuestCampaignSession.PartyArmy(Vm.GameSystem, files) is not { } army) return "Couldn't read the heroes' files.";
+        Vm.UpdateArmyListFile(seat, army);
+        return null;
+    }
+
+    /// <summary>
+    /// Sets the lobby up for a Quest campaign mission: the party on the host's seat, the chapter's enemy army on the
+    /// first bot seat (one is added if there is none). Settings the campaign decides are read from the heroes' sheets
+    /// by the engine; the lobby only shows them.
+    /// </summary>
+    public void ApplyCampaign(FdgRaylib.Quest.QuestCampaignLaunch launch)
+    {
+        Campaign = launch;
+        if (!Vm.HasHostPrivileges || Vm.PlayerInfos.Count == 0) return;
+        if (Vm.GameMode != EGameMode.StarQuestMission) ApplyGameMode(Vm, EGameMode.StarQuestMission);
+        SetParty(Vm.PlayerInfos[0].PlayerID, launch.Party);
+        if (!Vm.PlayerInfos.Any(p => p.PlayerType == EPlayerType.AI)) Vm.AddAiPlayer(BotProfile, seatFiller: true);
+        if (launch.EnemyArmyFile is { } file && LoadArmyFile(file) is { } enemy
+            && Vm.PlayerInfos.FirstOrDefault(p => p.PlayerType == EPlayerType.AI) is { } bot)
+        {
+            _served.Add(bot.PlayerID.ID);
+            Vm.UpdateArmyListFile(bot.PlayerID, enemy);
+        }
     }
 
     /// <summary>The key of the army a seat holds, for marking it in a picker.</summary>

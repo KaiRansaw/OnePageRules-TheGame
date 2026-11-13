@@ -34,10 +34,25 @@ public sealed class HeroEditor
 
     public HeroEditor(EGameSystem system) { System = system; Reload(); }
 
+    /// <summary>When set, only these hero files are listed (a Quest campaign's shop: its party only).</summary>
+    public IReadOnlyCollection<string>? OnlyHeroes { get; set; }
+
     public void Reload()
     {
         Saved = HeroPaths.LoadAll(GameType);
+        if (OnlyHeroes is { } only)
+        {
+            var keep = only.Select(KeyOf).ToHashSet();
+            Saved = Saved.Where(s => keep.Contains(KeyOf(s.Path)))
+                .OrderBy(s => only.Select(KeyOf).ToList().IndexOf(KeyOf(s.Path))).ToList();
+        }
         _campaigns = CampaignPaths.LoadAll(GameType).Select(e => e.Campaign).ToList();
+    }
+
+    private static string KeyOf(string path)
+    {
+        try { return IOPath.GetFullPath(path).ToUpperInvariant(); }
+        catch (Exception) { return path.ToUpperInvariant(); }
     }
 
     public QuestCampaign? CampaignOf(string heroPath) => CampaignPaths.CampaignOf(GameType, heroPath, _campaigns);

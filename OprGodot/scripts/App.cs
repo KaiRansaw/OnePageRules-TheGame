@@ -113,6 +113,15 @@ public partial class App : Node
         d.PopupCentered();
     }
 
+    /// <summary>Closes screens down to the nearest <typeparamref name="T"/> and shows it (Continue to campaign from a
+    /// finished game closes the game and its lobby). Falls back to the main menu when there is none.</summary>
+    public void BackTo<T>() where T : Control
+    {
+        if (!_screens.Any(s => s is T)) { ToMainMenu(); return; }
+        while (_screens.Count > 1 && _screens.Peek() is not T) _screens.Pop().QueueFree();
+        _screens.Peek().Visible = true;
+    }
+
     public void ToMainMenu()
     {
         while (_screens.Count > 1) _screens.Pop().QueueFree();
@@ -159,4 +168,5 @@ public static class Scenes
     public const string MatchModels = "res://scenes/screens/MatchModels.tscn";
     public const string ArmyForge = "res://scenes/screens/ArmyForge.tscn";
     public const string HeroBuilder = "res://scenes/screens/HeroBuilder.tscn";
+    public const string QuestCampaigns = "res://scenes/screens/QuestCampaigns.tscn";
 }

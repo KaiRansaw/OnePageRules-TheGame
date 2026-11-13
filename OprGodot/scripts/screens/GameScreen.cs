@@ -179,8 +179,7 @@ public partial class GameScreen : Control
         switch (mode)
         {
             case EMode.Campaign when GameSystemInfo.IsQuest(system):
-                App.I.OpenNotYet($"{game} - Quest Campaigns",
-                    "Campaign list, party cards, chapters and history; Structure and Journal. Port step 5.");
+                App.I.Open<Quest.QuestCampaignsScreen>(Scenes.QuestCampaigns, s => s.System = system);
                 break;
             case EMode.Campaign:
                 App.I.OpenNotYet($"{game} - Campaign",

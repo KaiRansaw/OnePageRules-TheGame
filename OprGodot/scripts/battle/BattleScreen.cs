@@ -1477,7 +1477,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
         Big("Load game", () => Leave("Load another game?", () => App.I.Later(() => App.I.Open<LoadGameScreen>(Scenes.LoadGame))),
             "Pick a saved game to carry on. This game ends - save it first if you want to come back to it.");
         Big("Settings", () => { CloseMenu(); App.I.Open<SettingsScreen>(Scenes.Settings); }, "Your name, display, camera and sound settings.");
-        Big("Main menu", () => Leave("Leave this game?", () => { }), "Leave this game and go back to the main menu.");
+        if (Session.Campaign != null)
+            Big("Return to campaign", () => Leave("Leave this mission?", () => { }, toCampaign: true),
+                "Leave the mission and go back to the campaign. A mission left unfinished is not recorded - it is played again next time.");
+        else
+            Big("Main menu", () => Leave("Leave this game?", () => { }), "Leave this game and go back to the main menu.");
         Big("Quit game", () => Leave("Quit the game?", App.I.Quit), "Close the game.").AddThemeColorOverride("font_color", Palette.WoundsRed);
 
         var panel = HudKit.Panel(new ChamferBox
@@ -1500,11 +1504,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
     }
 
     /// <summary>Leaving the game: asks first (unsaved progress is lost), then goes to the main menu and does <paramref name="then"/>.</summary>
-    private void Leave(string question, Action then)
+    private void Leave(string question, Action then, bool toCampaign = false)
     {
         bool saved = _lastSaveRound == Session.Table.Progress.RoundCount && Session.Table.Progress.RoundCount != null;
         Confirm(question, Session.EndedText != null || saved ? "This game ends." : "This game ends - anything since your last save is lost.",
-            "Leave", () => { App.I.ToMainMenu(); then(); }, "Stay");
+            "Leave", () => { if (toCampaign) App.I.BackTo<Quest.QuestCampaignsScreen>(); else App.I.ToMainMenu(); then(); }, "Stay");
     }
 
     private int? _lastSaveRound;
@@ -1569,6 +1573,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private void ShowGameOver()
     {
         GD.Print($"Game over: {Session.EndedText}");
+        if (Session.Campaign is { } campaign) { ShowCampaignOver(campaign); return; }
         var v = new VBoxContainer();
         v.AddThemeConstantOverride("separation", 12);
         v.AddChild(HudKit.Text("GAME OVER", 48, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
@@ -1606,6 +1611,62 @@ public partial class BattleScreen : Control, IOwnBackdrop
         row.AddChild(menu);
         v.AddChild(row);
         _gameOver = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.96f }, Border = HudKit.Lime, Cut = 16, Glow = HudKit.Lime with { A = 0.35f }, ContentMarginLeft = 40, ContentMarginRight = 40, ContentMarginTop = 28, ContentMarginBottom = 28 }, v);
+        HudKit.Place(_hud, _gameOver, LayoutPreset.Center);
+    }
+
+    /// <summary>
+    /// The end of a Quest campaign mission (Quest Campaigns mockup F, approved 2026-11-12): complete or failed, the
+    /// objectives, the rewards, what happened to each hero (knock-outs and the injury rolled; the book's 3 wounds and
+    /// 3 power back), new skills waiting to be picked, and Continue to campaign. Read from the campaign's own record,
+    /// written when the game ended.
+    /// </summary>
+    private void ShowCampaignOver(FdgRaylib.Quest.QuestCampaignLaunch launch)
+    {
+        FDG.EGameSystem system = launch.System;
+        var found = FdgRaylib.Quest.CampaignPaths.Find(FdgRaylib.Quest.QuestGameTypes.For(system), launch.CampaignName);
+        var last = found is { } f ? FdgRaylib.Quest.QuestCampaignSession.LastRecord(f.Campaign) : null;
+        FDG.Quest.CampaignMissionRecord? record = last?.Record;
+        bool won = record?.Outcome == "success";
+
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(640, 0) };
+        v.AddThemeConstantOverride("separation", 10);
+        v.AddChild(HudKit.Text(record == null ? "GAME OVER" : won ? "MISSION COMPLETE" : "MISSION FAILED", 44, record == null || won ? HudKit.Lime : Palette.WoundsRed, HudKit.Exo(800), HorizontalAlignment.Center));
+        v.AddChild(HudKit.Text($"{launch.Title} - {FdgRaylib.Quest.QuestJournal.DifficultyName(launch.Difficulty)}" + (record != null ? $" - {record.Rounds} rounds" : ""), 18, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        if (record == null)
+        {
+            v.AddChild(Forge.ForgeWidgets.Wrapped((Session.EndedText ?? "") + "\nThe result could not be recorded on this computer (the heroes' files are on the host's).", 16, HudKit.Fg));
+        }
+        else
+        {
+            var lines = FdgRaylib.Quest.QuestJournal.RecordLines(record, system);
+            var box = new VBoxContainer();
+            box.AddThemeConstantOverride("separation", 3);
+            foreach (string line in lines) box.AddChild(Forge.ForgeWidgets.Wrapped(line, 16, HudKit.Fg));
+            v.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(box, 14, 10, 14, 10)));
+            v.AddChild(Forge.ForgeWidgets.Wrapped(won
+                ? "Book: after a mission the heroes restore 3 wounds and 3 power; status conditions and injuries stay."
+                : "Book: every hero fell, so they all count as killed and suffer injuries, and the chapter starts again from its first mission.", 14, HudKit.Dim));
+            if (found is { } fc)
+            {
+                var waiting = FdgRaylib.Quest.QuestCampaignSession.Party(fc.Campaign)
+                    .Where(p => p.Hero != null && p.Hero.SkillSlots > p.Hero.Skills.Count).Select(p => p.Hero!.Name).ToList();
+                if (waiting.Count > 0)
+                    v.AddChild(Forge.ForgeWidgets.Wrapped($"{string.Join(", ", waiting)} {(waiting.Count == 1 ? "has" : "have")} a new skill to pick - in the Hero Builder (Edit).", 16, Palette.HeroGold));
+            }
+        }
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 12);
+        var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table.");
+        var report = Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.");
+        report.Name = "SaveReport";
+        var cont = Ui.Button("CONTINUE TO CAMPAIGN", App.I.BackTo<Quest.QuestCampaignsScreen>, "Back to the campaign, with this mission recorded.", "CommitButton");
+        cont.Name = "ContinueCampaign";
+        cont.CustomMinimumSize = new Vector2(260, 52);
+        row.AddChild(look);
+        row.AddChild(report);
+        row.AddChild(cont);
+        v.AddChild(row);
+        _gameOver = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.96f }, Border = record == null || won ? HudKit.Lime : Palette.WoundsRed, Cut = 16, ContentMarginLeft = 36, ContentMarginRight = 36, ContentMarginTop = 24, ContentMarginBottom = 24 }, v);
         HudKit.Place(_hud, _gameOver, LayoutPreset.Center);
     }
 }

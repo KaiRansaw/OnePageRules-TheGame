@@ -61,7 +61,17 @@ public sealed class GameSession
         registerFrontEnd(registry);
 
         var session = new GameSession(game, lobby, registry, seats);
-        vm.OnGameEnded += text => session.EndedText = text;
+        vm.OnGameEnded += text =>
+        {
+            // Quest: every hero keeps what it earned (XP, level, items, injuries), and a campaign mission is recorded
+            // in its campaign - before the Game Over card reads it. Only heroes whose files are on this computer.
+            if (GameSystemInfo.IsQuest(vm.GameSystem))
+            {
+                try { FdgRaylib.Quest.QuestHeroSync.WriteBack(game.TableState); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
+            session.EndedText = text;
+        };
         session.Report = new BattleReport(game.TableState) { PlayerName = id => session.SeatOf(id)?.Name ?? "" };
         game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
         return session;
@@ -77,4 +87,7 @@ public sealed class GameSession
     public Seat? SeatOf(PlayerID id) => Seats.FirstOrDefault(s => s.Id == id);
 
     public bool IsMine(PlayerID id) => Game.LocalPlayerIDs.Contains(id);
+
+    /// <summary>The Quest campaign mission this game is, or null.</summary>
+    public FdgRaylib.Quest.QuestCampaignLaunch? Campaign => Lobby.Campaign;
 }

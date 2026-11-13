@@ -12,6 +12,7 @@ using FdgRaylib.Rendering;
 using FdgRaylib.SaveLoad;
 using Godot;
 using OprGodot.Hud;
+using OprGodot.Forge;
 
 namespace OprGodot;
 
@@ -125,6 +126,13 @@ public partial class LobbyScreen : Control
         right.AddChild(_launch);
         body.AddChild(right);
 
+        // A Quest campaign mission (PLAY NEXT MISSION): the party, the chapter's enemy, the locked facts.
+        if (FdgRaylib.Quest.QuestCampaignSession.Pending is { } launch && Session.Campaign == null && Vm.HasHostPrivileges)
+        {
+            FdgRaylib.Quest.QuestCampaignSession.Pending = null;
+            Session.ApplyCampaign(launch);
+        }
+        if (Session.Campaign != null) back.TooltipText = "Back to the campaign. Nothing is played or recorded.";
         Refresh(force: true);
     }
 
@@ -152,12 +160,21 @@ public partial class LobbyScreen : Control
         IReadOnlyList<LobbyPlayerInfoSummary> players = Vm.PlayerInfos;
         _selectedSeat = Math.Clamp(_selectedSeat, 0, Math.Max(0, players.Count - 1));
 
-        _title.Text = Session.HeaderTitle.ToUpperInvariant();
-        _sub.Text = Vm.HasHostPrivileges ? HostStarter.TableName(UserConfig.Current.PlayerName) : "at " + Vm.ServerName;
+        if (Session.Campaign is { } camp)
+        {
+            _title.Text = camp.Title.ToUpperInvariant();
+            _sub.Text = $"{GameSystemInfo.DisplayName(Vm.GameSystem)} - Campaign mission - {camp.Line}";
+        }
+        else
+        {
+            _title.Text = Session.HeaderTitle.ToUpperInvariant();
+            _sub.Text = Vm.HasHostPrivileges ? HostStarter.TableName(UserConfig.Current.PlayerName) : "at " + Vm.ServerName;
+        }
 
         string seatSig = string.Join("|", players.Select(p =>
             $"{p.PlayerID.ID}:{p.PlayerName}:{p.PlayerType}:{p.TeamNumber}:{p.ColorIndex}:{p.ArmyListSummary.ArmyName}:{p.ArmyListSummary.FactionName}:{p.ArmyListSummary.PointCost}:{p.ArmyListSummary.IsAssigned}"))
-            + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}";
+            + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#"
+            + string.Join(",", players.Select(p => Session.PartyOf(p.PlayerID).Count));
         string settingsJson = JsonSerializer.Serialize(HostGameSettings.CaptureFrom(Vm));
         string settingsSig = $"{Vm.GameSystem}|{Vm.GameMode}|{Session.CanEdit}|{players.Count}|{_fastPlayOn}|{_extraActionsOn}|{Vm.TerrainPlacementMode}|{Vm.TerrainLayoutPath}|"
             + (Session.CanEdit ? "" : settingsJson);
@@ -270,6 +287,11 @@ public partial class LobbyScreen : Control
 
     private void GameTab(VBoxContainer rows, bool locked)
     {
+        if (GameSystemInfo.IsQuest(Vm.GameSystem))
+        {
+            QuestGameRows(rows);
+            return;
+        }
         bool skirmish = GameSystemInfo.IsSkirmish(Vm.GameSystem);
         _points = new SpinBox { MinValue = 0, MaxValue = 100000, Step = skirmish ? 25 : 250, Value = Vm.ArmyPoints, Editable = !locked, AllowGreater = true, Suffix = "pts" };
         _points.ValueChanged += v => { if ((int)v != Vm.ArmyPoints) Vm.SetArmyPoints((int)v); };
@@ -299,6 +321,34 @@ public partial class LobbyScreen : Control
                     Vm.SetChallengeBonuses(on ? now | flag : now & ~flag);
                 }, 16);
         }
+    }
+
+    /// <summary>
+    /// A Quest game's Game tab. The party has no points limit - the book sizes the enemy waves from the heroes' points
+    /// and the difficulty. A campaign mission shows what its campaign has set, locked.
+    /// </summary>
+    private void QuestGameRows(VBoxContainer rows)
+    {
+        if (Session.Campaign is { } c)
+        {
+            rows.AddChild(HudKit.Heading("Set by the campaign", 14));
+            void Fact(string name, string value, string tip)
+            {
+                var h = new HBoxContainer { TooltipText = tip, MouseFilter = MouseFilterEnum.Stop };
+                h.AddChild(HudKit.Text(name, 16, HudKit.Dim, HudKit.Semi).Also(l => { l.SizeFlagsHorizontal = SizeFlags.ExpandFill; l.MouseFilter = MouseFilterEnum.Ignore; }));
+                h.AddChild(HudKit.Text(value, 17, HudKit.Fg, HudKit.Bold).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
+                rows.AddChild(HudKit.Panel(HudKit.PanelBox(6), HudKit.Pad(h, 10, 6, 10, 6)).Also(p => { p.TooltipText = tip; p.MouseFilter = MouseFilterEnum.Pass; }));
+            }
+            Fact("Campaign", c.CampaignName, "The campaign this mission belongs to. Its result is recorded there.");
+            Fact("Chapter", $"{c.ChapterNumber} - mission {c.MissionNumber} of {c.MissionsInChapter}", "Once a chapter has started, all its missions are played before the next (book).");
+            Fact("Difficulty", FdgRaylib.Quest.QuestJournal.DifficultyName(c.Difficulty), "Picked when the chapter started; it is the same for every mission of the chapter (book). It sets the enemy wave size, the hazard pay and the XP.");
+            Fact("Primary", c.Primary > 0 ? FdgRaylib.Quest.QuestJournal.PrimaryName(c.Primary) : "Rolled at the start", "The mission's primary objective, from the book's table. The heroes complete it, then all reach one table corner to end the mission.");
+            Fact("Secondary", c.Secondary > 0 ? FdgRaylib.Quest.QuestJournal.SecondaryName(c.Secondary) : "Rolled when the primary is done", "Book: the secondary objective is set up after the primary is completed.");
+            Fact("Enemy", c.EnemyName, "The chapter's enemy force, on the enemy seat.");
+            rows.AddChild(Note("These come from the campaign and can't be changed here. The map, the battlefield look and the rules are still yours."));
+            return;
+        }
+        rows.AddChild(Note("A party has no points limit. The book sizes each enemy wave from the heroes' total points and the difficulty, which you pick when the mission starts."));
     }
 
     private void SyncQuickSize()
@@ -555,7 +605,7 @@ public partial class LobbyScreen : Control
         bool canModify = !Vm.IsResumeMode && Vm.CheckCanModifyPlayerIDInfo(info.PlayerID);
         bool heroSeat = GameSystemInfo.IsQuest(Vm.GameSystem) && info.PlayerType != EPlayerType.AI;
         if (heroSeat)
-            col.AddChild(Note("Hero party: the party picker comes with the Quest lobby (next part of port step 2). Use the Raylib build for Quest games until then."));
+            col.AddChild(HeroSeat(info, canModify));
         else
         {
             var armyRow = new HBoxContainer();
@@ -582,9 +632,11 @@ public partial class LobbyScreen : Control
             facts.AddThemeConstantOverride("separation", 8);
             facts.AddChild(HudKit.Text(s.IsAssigned ? s.FactionName : "-", 16, HudKit.Dim, HudKit.Semi));
             ELobbyPointsStatus status = LobbyPointsStatus.Classify(s.IsAssigned, s.PointCost, Vm.ArmyPoints);
-            var pts = HudKit.Text($"{s.PointCost} / {Vm.ArmyPoints} pts", 16,
-                !s.IsAssigned ? HudKit.Dim : status == ELobbyPointsStatus.Over ? Palette.WoundsRed : status == ELobbyPointsStatus.Under ? Palette.HitsYellow : HudKit.Lime, HudKit.Bold);
-            pts.TooltipText = LobbyPointsStatus.Tooltip(status, s.PointCost, Vm.ArmyPoints) ?? "Within the points limit.";
+            bool quest = GameSystemInfo.IsQuest(Vm.GameSystem);
+            var pts = HudKit.Text(quest ? $"{s.PointCost} pts" : $"{s.PointCost} / {Vm.ArmyPoints} pts", 16,
+                !s.IsAssigned || quest ? HudKit.Dim : status == ELobbyPointsStatus.Over ? Palette.WoundsRed : status == ELobbyPointsStatus.Under ? Palette.HitsYellow : HudKit.Lime, HudKit.Bold);
+            pts.TooltipText = quest ? "The enemy collection: the waves are drawn from it to each wave's points, by the mission's rules."
+                : LobbyPointsStatus.Tooltip(status, s.PointCost, Vm.ArmyPoints) ?? "Within the points limit.";
             pts.MouseFilter = MouseFilterEnum.Stop;
             facts.AddChild(HudKit.Grow());
             facts.AddChild(pts);
@@ -607,6 +659,54 @@ public partial class LobbyScreen : Control
         side.AddChild(ColourChoice(seat, info, colours));
         col.AddChild(side);
         return card;
+    }
+
+    /// <summary>
+    /// A Quest seat played by a person: its party. One-off missions pick 2-4 saved heroes (Choose heroes...); a campaign
+    /// mission's party is the campaign's, fixed.
+    /// </summary>
+    private Control HeroSeat(LobbyPlayerInfoSummary info, bool canModify)
+    {
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 4);
+        IReadOnlyList<string> party = Session.PartyOf(info.PlayerID);
+        var heroes = party.Select(f => (File: f, Hero: FdgRaylib.Quest.CampaignPaths.LoadHero(f))).ToList();
+        foreach (var (file, hero) in heroes)
+        {
+            var h = new HBoxContainer();
+            h.AddThemeConstantOverride("separation", 6);
+            if (hero == null) { h.AddChild(HudKit.Text("Missing: " + System.IO.Path.GetFileName(file), 13, Palette.WoundsRed, HudKit.Semi)); col.AddChild(h); continue; }
+            h.TooltipText = Quest.QuestWidgets.SheetText(hero);
+            h.MouseFilter = MouseFilterEnum.Stop;
+            h.AddChild(Quest.QuestWidgets.Portrait(hero, 30));
+            h.AddChild(Quest.QuestWidgets.Line(hero.Name, 15, HudKit.Fg, 90, HudKit.Bold));
+            h.AddChild(Quest.QuestWidgets.Line($"Lv {hero.Level} {hero.Class}" + (hero.Injuries.Count > 0 ? " - " + string.Join(", ", hero.Injuries) : ""), 13,
+                hero.Injuries.Count > 0 ? Palette.WoundsRed : HudKit.Dim, 150));
+            col.AddChild(h);
+        }
+        if (Session.Campaign != null)
+        {
+            col.AddChild(Note("The campaign's party - fixed for its missions."));
+            return col;
+        }
+        if (heroes.Count == 0) col.AddChild(Note("No party yet."));
+        var pick = Ui.Button(heroes.Count == 0 ? "Choose heroes..." : "Change heroes...", () => OpenPartyPicker(info),
+            canModify ? $"Pick 2 to 4 heroes made with Build Heroes ({GameSystemInfo.DisplayName(Vm.GameSystem)})." : $"{info.PlayerName} picks their own heroes.");
+        pick.Name = "ChooseHeroes";
+        pick.Disabled = !canModify;
+        col.AddChild(pick);
+        return col;
+    }
+
+    private void OpenPartyPicker(LobbyPlayerInfoSummary info)
+    {
+        var popup = new Quest.HeroPartyPopup { System = Vm.GameSystem, Picked = Session.PartyOf(info.PlayerID).ToList(), Name = "HeroPartyPopup" };
+        popup.Done += picks =>
+        {
+            if (Session.SetParty(info.PlayerID, picks) is { } why) App.I.Message("Party", why);
+            Refresh(force: true);
+        };
+        AddChild(popup);
     }
 
     private Control ColourChoice(int seat, LobbyPlayerInfoSummary info, int[] colours)

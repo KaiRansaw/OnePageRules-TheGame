@@ -22,6 +22,15 @@ public partial class HeroBuilderScreen : Control, IBackGuard
 
     public EGameSystem System { get; set; } = EGameSystem.GFStarQuest;
 
+    /// <summary>
+    /// Set by Quest Campaigns: open straight in the shop for this campaign's party only (Campaign Builder: heroes buy
+    /// and sell before and after a chapter). Back leaves. The campaign's shop hands no money between heroes - the
+    /// book's hand-over happens between missions, in the game.
+    /// </summary>
+    public IReadOnlyList<string>? CampaignParty { get; set; }
+    public string CampaignName { get; set; } = "";
+    private bool CampaignShop => CampaignParty != null;
+
     private HeroEditor _e = null!;
     private View _view = View.List;
     private int _step;
@@ -38,7 +47,8 @@ public partial class HeroBuilderScreen : Control, IBackGuard
 
     public override void _Ready()
     {
-        _e = new HeroEditor(System);
+        _e = new HeroEditor(System) { OnlyHeroes = CampaignParty };
+        if (CampaignShop) { _e.Reload(); _view = View.Shop; }
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         foreach (string side in new[] { "left", "right" }) margin.AddThemeConstantOverride("margin_" + side, 24);
@@ -65,7 +75,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard
     /// <summary>Back / Esc inside the editor or the shop returns to My Heroes; from My Heroes it leaves.</summary>
     public bool AllowBack()
     {
-        if (_view == View.List) return true;
+        if (_view == View.List || CampaignShop) return true;
         _view = View.List;
         _e.Reload();
         Rebuild();
@@ -112,9 +122,10 @@ public partial class HeroBuilderScreen : Control, IBackGuard
         _top.AddChild(b);
         var t = new VBoxContainer();
         t.AddThemeConstantOverride("separation", -6);
-        string title = _view switch { View.Edit => _e.EditingPath == null ? "NEW HERO" : "EDIT HERO", View.Shop => "HERO SHOP", _ => "HERO BUILDER" };
+        string title = _view switch { View.Edit => _e.EditingPath == null ? "NEW HERO" : "EDIT HERO", View.Shop => CampaignShop ? "CAMPAIGN SHOP" : "HERO SHOP", _ => "HERO BUILDER" };
         t.AddChild(HudKit.Text(title, 30, HudKit.Fg, HudKit.Exo(800)));
-        t.AddChild(HudKit.Text($"{GameSystemInfo.DisplayName(System)} - {_e.Saved.Count} hero{(_e.Saved.Count == 1 ? "" : "es")}", 14, HudKit.Dim, HudKit.Semi));
+        t.AddChild(HudKit.Text(CampaignShop ? $"{CampaignName} - the party, between chapters"
+            : $"{GameSystemInfo.DisplayName(System)} - {_e.Saved.Count} hero{(_e.Saved.Count == 1 ? "" : "es")}", 14, HudKit.Dim, HudKit.Semi));
         _top.AddChild(t);
 
         if (_view == View.Edit)
@@ -737,7 +748,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard
         money.AddThemeConstantOverride("separation", 8);
         money.AddChild(HudKit.Text($"{hero.Credits}{_e.Money}", 26, HudKit.Fg, HudKit.Exo(800)));
         col.AddChild(money);
-        foreach (var (otherPath, other) in others)
+        foreach (var (otherPath, other) in CampaignShop ? new() : others)
         {
             var row = new HBoxContainer();
             row.AddThemeConstantOverride("separation", 6);
