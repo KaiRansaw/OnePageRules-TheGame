@@ -39,7 +39,7 @@ public partial class ModelDownloadPopup : Control
 
     /// <summary>One file to save: put together from fetched parts, or (<see cref="LinkFrom"/>) the same model already saved for another unit.</summary>
     private sealed record Job(ForceOrgCatalog.Model? Model, Dictionary<string, string> Files, string Path, string Notes, string? LinkFrom = null);
-    private Button _all = null!, _clearCache = null!, _pick = null!;
+    private Button _all = null!, _allFirst = null!, _clearCache = null!, _pick = null!;
     private CheckBox _onePerUnit = null!;
 
     /// <summary>The versions of a unit this run takes: the first only, or all.</summary>
@@ -108,7 +108,10 @@ public partial class ModelDownloadPopup : Control
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddThemeConstantOverride("separation", 10);
         _start = Btn("StartDownload", "Download", "Fetch and save every model for the units of this army.", () => Start(false));
-        _all = Btn("DownloadAll", "Download all armies...", "Every army on the list, one after another. Models already downloaded are skipped; the same model in several armies is stored once.", ConfirmAll);
+        _all = Btn("DownloadAll", "Download all armies...", "Every army on the list, one after another. Models already downloaded are skipped; the same model in several armies is stored once.", () => ConfirmAll(false));
+        // Kai, 2026-11-12: "Auto download 1 model of each model for all the units at once" - the first version of every
+        // unit in every army, so everyone has something to see on the table instead of the stand-in token.
+        _allFirst = Btn("DownloadAllFirst", "Download 1 of each...", "Every army on the list, but only the first model of each unit - about a fifth of the space of Download all. Every unit then shows a real model instead of the stand-in.", () => ConfirmAll(true));
         _clearCache = Btn("ClearCache", "Clear download cache", "Delete the raw downloaded parts (UnitModels/_cache). Your finished models are kept; a later download fetches parts again.", ConfirmClearCache);
         _stop = Btn("StopDownload", "Stop", "Stop after the models already on their way. What is saved stays; the next run carries on.", Stop);
         _close = Btn("CloseDownload", "Close", "Close this window.", () => { Stop(); QueueFree(); });
@@ -116,6 +119,7 @@ public partial class ModelDownloadPopup : Control
         _pick = Btn("ChooseModels", "Choose models...", "Look through each unit's versions - each one you click is fetched and shown in 3D - and tick the ones to download.", OpenPicker);
         buttons.AddChild(_clearCache);
         buttons.AddChild(_pick);
+        buttons.AddChild(_allFirst);
         buttons.AddChild(_all);
         buttons.AddChild(_start);
         buttons.AddChild(_stop);
@@ -246,9 +250,10 @@ public partial class ModelDownloadPopup : Control
         return found;
     }
 
-    private void ConfirmAll()
+    private void ConfirmAll(bool firstOnly)
     {
         if (_catalogue == null || _map == null || _cts != null) return;
+        _onePerUnit.ButtonPressed = firstOnly;
         var jobs = JobsFor(_map.Books);
         var saved = SavedById();
         int fresh = jobs.Select(j => j.Ref.Id).Distinct().Count(id => !saved.ContainsKey(id));
@@ -259,11 +264,11 @@ public partial class ModelDownloadPopup : Control
         catch (Exception) { }
         var dlg = new ConfirmationDialog
         {
-            Title = "Download all armies?",
-            DialogText = $"{jobs.Count} model files for {_map.Books.Count()} armies ({_skipped} already there are skipped).\n" +
+            Title = firstOnly ? "Download 1 model of each unit?" : "Download all armies?",
+            DialogText = (firstOnly ? "The first model of every unit, in every army.\n" : "") + $"{jobs.Count} model files for {_map.Books.Count()} armies ({_skipped} already there are skipped).\n" +
                          $"{fresh} of them are new models to fetch - roughly {gb:0} GB.{free}\n" +
                          "The same model in several armies is stored once. It can take hours; Stop keeps what is saved and the next run carries on.",
-            OkButtonText = "Download all",
+            OkButtonText = firstOnly ? "Download 1 of each" : "Download all",
         };
         dlg.Confirmed += () => { Start(true); dlg.QueueFree(); };
         dlg.Canceled += () => dlg.QueueFree();
@@ -322,7 +327,7 @@ public partial class ModelDownloadPopup : Control
 
         _cts = new CancellationTokenSource();
         _fetchFinished = false;
-        _start.Disabled = true; _all.Disabled = true; _clearCache.Disabled = true; _pick.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
+        _start.Disabled = true; _all.Disabled = true; _allFirst.Disabled = true; _clearCache.Disabled = true; _pick.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
         CancellationToken ct = _cts.Token;
         ForceOrgCatalog cat = _catalogue;
         var seen = SavedById(); // a model already saved for another unit is linked, not fetched again
@@ -418,7 +423,7 @@ public partial class ModelDownloadPopup : Control
             _cts = null;
             _status.Text = (stopped ? "Stopped. " : "Done. ") + $"{_savedCount} saved, {_failed} failed" + (stopped ? " - press Download to carry on." : ".");
             Log(_status.Text);
-            _start.Disabled = false; _all.Disabled = false; _clearCache.Disabled = false; _pick.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
+            _start.Disabled = false; _all.Disabled = false; _allFirst.Disabled = false; _clearCache.Disabled = false; _pick.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
             ShowBook();
             Saved?.Invoke();
         }
