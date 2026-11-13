@@ -129,4 +129,47 @@ public class GameUpdaterTests
         Assert.That(pulled.Error, Is.Null, pulled.Summary);
         Assert.That((await GameUpdater.CheckGitAsync(kai)).Available, Is.False);
     }
+
+    /// <summary>Kai, 2026-11-12: "files changed on this computer are in the way" - his Godot editor had made its own
+    /// .uid file for a new script, and the update brought the same file. The updater now clears Godot's bookkeeping
+    /// files and pulls; anything else in the way still stops it, naming the files.</summary>
+    [Test]
+    public async Task GitCopy_GodotsOwnUidFilesDontBlockAnUpdate()
+    {
+        string origin = Path.Combine(_dir, "origin.git"), work = Path.Combine(_dir, "author"), kai = Path.Combine(_dir, "kai");
+        async Task Git(string dir, string args)
+        {
+            var r = await GameUpdater.GitAsync(dir, args);
+            Assume.That(r.ExitCode, Is.EqualTo(0), $"git {args}: {r.Output}");
+        }
+        Directory.CreateDirectory(origin);
+        Directory.CreateDirectory(work);
+        await Git(origin, "init --bare -q -b campaign-360");
+        await Git(work, "init -q -b campaign-360");
+        await Git(work, "-c user.name=t -c user.email=t@t commit -q --allow-empty -m first");
+        await Git(work, $"remote add origin \"{origin}\"");
+        await Git(work, "push -q origin campaign-360");
+        await Git(_dir, $"clone -q \"{origin}\" kai");
+
+        File.WriteAllText(Path.Combine(work, "Shop.cs.uid"), "uid://author");
+        File.WriteAllText(Path.Combine(work, "notes.txt"), "author");
+        await Git(work, "add -A");
+        await Git(work, "-c user.name=t -c user.email=t@t commit -q -m shop");
+        await Git(work, "push -q origin campaign-360");
+
+        File.WriteAllText(Path.Combine(kai, "Shop.cs.uid"), "uid://kai");
+        var pulled = await GameUpdater.PullAsync(kai);
+        Assert.That(pulled.Error, Is.Null, pulled.Summary);
+        Assert.That(File.ReadAllText(Path.Combine(kai, "Shop.cs.uid")), Is.EqualTo("uid://author"));
+
+        File.WriteAllText(Path.Combine(work, "rules.txt"), "author");
+        await Git(work, "add -A");
+        await Git(work, "-c user.name=t -c user.email=t@t commit -q -m rules");
+        await Git(work, "push -q origin campaign-360");
+        File.WriteAllText(Path.Combine(kai, "rules.txt"), "kai's own");
+        var blocked = await GameUpdater.PullAsync(kai);
+        Assert.That(blocked.Error, Is.Not.Null);
+        Assert.That(blocked.Summary + blocked.Error, Does.Contain("rules.txt"));
+        Assert.That(File.ReadAllText(Path.Combine(kai, "rules.txt")), Is.EqualTo("kai's own"), "never throws away real work");
+    }
 }

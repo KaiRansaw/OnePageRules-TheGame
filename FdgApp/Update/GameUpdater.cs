@@ -126,14 +126,50 @@ public static class GameUpdater
         string up = await UpstreamAsync(repo, ct);
         string remoteBranch = up.Contains('/') ? up[(up.IndexOf('/') + 1)..] : Branch;
         var pull = await GitAsync(repo, $"pull --ff-only origin {remoteBranch}", ct);
+        // Godot's editor writes its own .uid / .import files for new scripts; when the same file then arrives in an
+        // update, git refuses to overwrite it (Kai, 2026-11-12). Those are Godot's bookkeeping, not anyone's work:
+        // clear them and try once more.
+        if (pull.ExitCode != 0 && InTheWay(pull.Output) is { Count: > 0 } blocking && blocking.All(IsGodotBookkeeping))
+        {
+            foreach (string file in blocking)
+            {
+                var tracked = await GitAsync(repo, $"ls-files --error-unmatch -- \"{file}\"", ct);
+                if (tracked.ExitCode == 0) await GitAsync(repo, $"checkout -- \"{file}\"", ct);
+                else { try { File.Delete(Path.Combine(repo, file)); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
+            }
+            pull = await GitAsync(repo, $"pull --ff-only origin {remoteBranch}", ct);
+        }
         if (pull.ExitCode != 0)
-            return Status.Failed(pull.Output.Contains("would be overwritten", StringComparison.OrdinalIgnoreCase)
-                ? "Couldn't update: files changed on this computer are in the way. Tell Claude what it says: " + FirstLine(pull.Output)
+        {
+            var inTheWay = InTheWay(pull.Output);
+            return Status.Failed(inTheWay.Count > 0
+                ? "Couldn't update: files changed on this computer are in the way. Tell Claude these names: " + string.Join(", ", inTheWay.Take(6))
                 : "Couldn't update: " + FirstLine(pull.Output));
+        }
         var sub = await GitAsync(repo, "submodule update --init --recursive", ct);
         if (sub.ExitCode != 0) return Status.Failed("Updated the game, but not the rules engine: " + FirstLine(sub.Output));
         return new Status(false, "Updated. Close the game and press Play in Godot again - it rebuilds with the new code.");
     }
+
+    /// <summary>The files git lists under "...would be overwritten by merge:" (tab-indented lines).</summary>
+    public static List<string> InTheWay(string gitOutput)
+    {
+        var files = new List<string>();
+        bool listing = false;
+        foreach (string raw in gitOutput.Split('\n'))
+        {
+            string line = raw.TrimEnd('\r');
+            if (line.Contains("would be overwritten", StringComparison.OrdinalIgnoreCase)) { listing = true; continue; }
+            if (!listing) continue;
+            if (line.StartsWith('\t') || line.StartsWith("        ")) files.Add(line.Trim());
+            else if (files.Count > 0) listing = false;
+        }
+        return files;
+    }
+
+    /// <summary>Files Godot's editor makes by itself next to scripts and assets.</summary>
+    public static bool IsGodotBookkeeping(string path) =>
+        path.EndsWith(".uid", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".import", StringComparison.OrdinalIgnoreCase);
 
     // ================================================================== a friend's copy: the release zip
 
