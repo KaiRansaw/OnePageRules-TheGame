@@ -1343,7 +1343,8 @@
             "onFailure": {
               "kind": "triggeredMove",
               "maxInches": 6,
-              "isOptional": true
+              "isOptional": true,
+              "oncePerRound": true
             }
           },
           "availableWhen": {
@@ -1679,7 +1680,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
@@ -1689,7 +1690,8 @@
         "onFailure": {
           "kind": "triggeredMove",
           "maxInches": 6,
-          "isOptional": true
+          "isOptional": true,
+          "oncePerRound": true
         }
       }
     },
@@ -1701,7 +1703,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": true,
+        "requireLineOfSight": false,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
@@ -1742,7 +1744,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": true,
+        "requireLineOfSight": false,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null

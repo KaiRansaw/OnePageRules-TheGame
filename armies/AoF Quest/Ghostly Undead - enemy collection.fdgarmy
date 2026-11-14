@@ -962,7 +962,7 @@
           ]
         }
       ],
-      "pointCost": 460
+      "pointCost": 465
     }
   ],
   "ruleDefinitions": [
@@ -1006,7 +1006,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -1021,7 +1021,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",
@@ -1646,7 +1646,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": true,
+        "requireLineOfSight": false,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
@@ -1668,7 +1668,7 @@
         "minCount": 1,
         "maxCount": 2,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null

@@ -561,7 +561,7 @@
           ]
         }
       ],
-      "pointCost": 165
+      "pointCost": 170
     },
     {
       "name": "Moonmire",
@@ -629,7 +629,7 @@
           ]
         }
       ],
-      "pointCost": 220
+      "pointCost": 230
     },
     {
       "name": "Lust Fiend",
@@ -937,7 +937,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 1035
+      "pointCost": 1055
     },
     {
       "name": "Soul Daemon of Lust",
@@ -993,7 +993,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 1565
+      "pointCost": 1580
     },
     {
       "name": "Avatar of Lust",
@@ -1064,13 +1064,30 @@
       "name": "Lustbound",
       "passive": [
         {
-          "hookID": "Shooting_OnRangeCheck",
+          "hookID": "Movement_OnMoveActionDeclared",
           "condition": {
-            "kind": "always"
+            "kind": "actionTypeIs",
+            "actionType": "Advance"
           },
           "effect": {
-            "kind": "rangeModifier",
-            "delta": 4,
+            "kind": "movementBonus",
+            "actionType": "Advance",
+            "distanceInches": 1,
+            "minResultInches": 0
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Movement_OnMoveActionDeclared",
+          "condition": {
+            "kind": "actionTypeIs",
+            "actionType": "Rush"
+          },
+          "effect": {
+            "kind": "movementBonus",
+            "actionType": "Rush",
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -1096,7 +1113,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Gets \u002B4 inches range when shooting, and moves \u002B2 inches on Charge actions."
+      "description": "Moves \u002B1 inch on Advance, and \u002B2 inches on Rush/Charge."
     },
     {
       "name": "Strider Aura",
@@ -1126,7 +1143,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -1141,7 +1158,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",
@@ -1316,7 +1333,8 @@
             "onFailure": {
               "kind": "triggeredMove",
               "maxInches": 6,
-              "isOptional": true
+              "isOptional": true,
+              "oncePerRound": true
             }
           },
           "availableWhen": {
@@ -1683,7 +1701,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Rush",
-            "distanceInches": 1,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -1705,7 +1723,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Charge",
-            "distanceInches": 1,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -1843,7 +1861,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null

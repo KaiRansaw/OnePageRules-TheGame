@@ -975,6 +975,52 @@
       "pointCost": 285
     },
     {
+      "name": "Swarm-Bringer Beast",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 4,
+      "specialRules": [
+        {
+          "kind": "coreNumeric",
+          "name": "Fear",
+          "numericValue": 3
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Hive Bond"
+        },
+        {
+          "kind": "core",
+          "name": "Flying"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Dual Razor Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 24,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 305
+    },
+    {
       "name": "Druzhak",
       "id": null,
       "joinsUnitId": null,
@@ -1031,53 +1077,7 @@
           ]
         }
       ],
-      "pointCost": 305
-    },
-    {
-      "name": "Swarm-Bringer Beast",
-      "id": null,
-      "joinsUnitId": null,
-      "modelCount": 1,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 2.3622048,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "quality": 4,
-      "defense": 4,
-      "specialRules": [
-        {
-          "kind": "coreNumeric",
-          "name": "Fear",
-          "numericValue": 3
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 18
-        },
-        {
-          "kind": "core",
-          "name": "Hive Bond"
-        },
-        {
-          "kind": "core",
-          "name": "Flying"
-        }
-      ],
-      "weapons": [
-        {
-          "name": "Dual Razor Claws",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 24,
-          "armorPenetration": 0,
-          "effectSet": "claw-rend",
-          "specialRules": []
-        }
-      ],
-      "pointCost": 305
+      "pointCost": 315
     },
     {
       "name": "Vradhez",
@@ -1152,7 +1152,7 @@
           ]
         }
       ],
-      "pointCost": 320
+      "pointCost": 335
     },
     {
       "name": "Trosei",
@@ -1355,7 +1355,7 @@
           ]
         }
       ],
-      "pointCost": 405
+      "pointCost": 410
     },
     {
       "name": "Flamer Beast",
@@ -1555,7 +1555,7 @@
           ]
         }
       ],
-      "pointCost": 510
+      "pointCost": 515
     },
     {
       "name": "Ksi\u0027adoz Smokeborn",
@@ -1959,7 +1959,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 1300
+      "pointCost": 1310
     },
     {
       "name": "Hive Burrower",
@@ -2194,7 +2194,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 1440
+      "pointCost": 1445
     },
     {
       "name": "Artillery Great Beast",
@@ -2369,6 +2369,10 @@
           "numericValue": 18
         },
         {
+          "kind": "core",
+          "name": "Slow"
+        },
+        {
           "kind": "coreText",
           "name": "Spawn",
           "textValue": "Spores [5]"
@@ -2413,7 +2417,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 95405
+      "pointCost": 95370
     },
     {
       "name": "Spawning Great Beast",
@@ -2558,7 +2562,22 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "or",
+              "left": {
+                "kind": "moraleAttackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
+              },
+              "right": {
+                "kind": "unitHasRuleOrGrant",
+                "ruleName": "Enhanced Hive Bond"
+              }
+            }
           },
           "effect": {
             "kind": "rollModifier",
@@ -2573,7 +2592,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Units where all models have this rule get \u002B1 to morale test rolls."
+      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9 inches/6 inches away."
     },
     {
       "name": "Infiltrate",
@@ -3193,22 +3212,7 @@
     },
     {
       "name": "Enhanced Hive Bond",
-      "passive": [
-        {
-          "hookID": "Morale_OnPreMoraleTest",
-          "condition": {
-            "kind": "unitHasRule",
-            "ruleName": "Hive Bond"
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Morale",
-            "delta": 1
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        }
-      ],
+      "passive": [],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
@@ -3428,7 +3432,7 @@
         "minCount": 1,
         "maxCount": 3,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null

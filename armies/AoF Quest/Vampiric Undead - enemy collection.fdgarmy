@@ -182,57 +182,7 @@
           ]
         }
       ],
-      "pointCost": 40
-    },
-    {
-      "name": "Ghoul",
-      "id": null,
-      "joinsUnitId": null,
-      "modelCount": 1,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 0.984252,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "quality": 4,
-      "defense": 6,
-      "specialRules": [
-        {
-          "kind": "core",
-          "name": "Regeneration"
-        },
-        {
-          "kind": "core",
-          "name": "Strider"
-        },
-        {
-          "kind": "core",
-          "name": "Cursed Undead"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 3
-        }
-      ],
-      "weapons": [
-        {
-          "name": "Cursed Blade",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 0,
-          "effectSet": "daemon-arcane-melee",
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Fragment"
-            }
-          ]
-        }
-      ],
-      "pointCost": 50
+      "pointCost": 45
     },
     {
       "name": "Zombie Wolf",
@@ -278,6 +228,56 @@
         }
       ],
       "pointCost": 50
+    },
+    {
+      "name": "Ghoul",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 55
     },
     {
       "name": "Skeleton Watch",
@@ -336,7 +336,7 @@
       "modelCount": 1,
       "base": {
         "shape": "Circle",
-        "diameterInches": 1.2598425,
+        "diameterInches": 0.984252,
         "widthInches": 0.984252,
         "heightInches": 1.968504
       },
@@ -424,7 +424,7 @@
           ]
         }
       ],
-      "pointCost": 60
+      "pointCost": 65
     },
     {
       "name": "Vampire Knight",
@@ -479,7 +479,7 @@
           ]
         }
       ],
-      "pointCost": 80
+      "pointCost": 85
     },
     {
       "name": "Drained Leader",
@@ -661,56 +661,6 @@
       "pointCost": 155
     },
     {
-      "name": "Ghoul Horror",
-      "id": null,
-      "joinsUnitId": null,
-      "modelCount": 1,
-      "base": {
-        "shape": "Circle",
-        "diameterInches": 1.5748031,
-        "widthInches": 0.984252,
-        "heightInches": 1.968504
-      },
-      "quality": 4,
-      "defense": 5,
-      "specialRules": [
-        {
-          "kind": "core",
-          "name": "Regeneration"
-        },
-        {
-          "kind": "core",
-          "name": "Strider"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 9
-        },
-        {
-          "kind": "core",
-          "name": "Cursed Undead"
-        }
-      ],
-      "weapons": [
-        {
-          "name": "Cursed Blade",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 9,
-          "armorPenetration": 0,
-          "effectSet": "daemon-arcane-melee",
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Fragment"
-            }
-          ]
-        }
-      ],
-      "pointCost": 160
-    },
-    {
       "name": "Ghoul Champion",
       "id": null,
       "joinsUnitId": null,
@@ -807,6 +757,56 @@
         }
       ],
       "pointCost": 165
+    },
+    {
+      "name": "Ghoul Horror",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.5748031,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 4,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Regeneration"
+        },
+        {
+          "kind": "core",
+          "name": "Strider"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Toxin Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Bane"
+            }
+          ]
+        }
+      ],
+      "pointCost": 170
     },
     {
       "name": "Latmyir The Mad",
@@ -1134,7 +1134,7 @@
           ]
         }
       ],
-      "pointCost": 285
+      "pointCost": 290
     },
     {
       "name": "Vampiric Artillery",
@@ -1412,69 +1412,6 @@
       "pointCost": 445
     },
     {
-      "name": "Funeral Coach",
-      "id": null,
-      "joinsUnitId": null,
-      "modelCount": 1,
-      "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
-        "widthInches": 3.6220472,
-        "heightInches": 4.7244096
-      },
-      "quality": 3,
-      "defense": 3,
-      "specialRules": [
-        {
-          "kind": "core",
-          "name": "Cursed Undead"
-        },
-        {
-          "kind": "core",
-          "name": "Fast"
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Impact",
-          "numericValue": 12
-        },
-        {
-          "kind": "coreNumeric",
-          "name": "Tough",
-          "numericValue": 18
-        },
-        {
-          "kind": "core",
-          "name": "Morale Debuff"
-        }
-      ],
-      "weapons": [
-        {
-          "name": "Cursed Blade Crew",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 9,
-          "armorPenetration": 0,
-          "effectSet": "daemon-arcane-melee",
-          "specialRules": [
-            {
-              "kind": "core",
-              "name": "Fragment"
-            }
-          ]
-        },
-        {
-          "name": "Hooves",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 6,
-          "armorPenetration": 1,
-          "specialRules": []
-        }
-      ],
-      "pointCost": 460
-    },
-    {
       "name": "Deathly Chariot",
       "id": null,
       "joinsUnitId": null,
@@ -1534,6 +1471,69 @@
               "name": "Thrust"
             }
           ]
+        }
+      ],
+      "pointCost": 470
+    },
+    {
+      "name": "Funeral Coach",
+      "id": null,
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Rectangle",
+        "diameterInches": 1.1023622,
+        "widthInches": 3.6220472,
+        "heightInches": 4.7244096
+      },
+      "quality": 3,
+      "defense": 3,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "core",
+          "name": "Fast"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Impact",
+          "numericValue": 12
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 18
+        },
+        {
+          "kind": "core",
+          "name": "Morale Debuff"
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Cursed Blade Crew",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "effectSet": "daemon-arcane-melee",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Fragment"
+            }
+          ]
+        },
+        {
+          "name": "Hooves",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": []
         }
       ],
       "pointCost": 470
@@ -1904,7 +1904,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -1919,7 +1919,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",
@@ -2174,7 +2174,8 @@
             "onFailure": {
               "kind": "triggeredMove",
               "maxInches": 6,
-              "isOptional": true
+              "isOptional": true,
+              "oncePerRound": true
             }
           },
           "availableWhen": {
@@ -2701,7 +2702,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
@@ -2711,7 +2712,8 @@
         "onFailure": {
           "kind": "triggeredMove",
           "maxInches": 6,
-          "isOptional": true
+          "isOptional": true,
+          "oncePerRound": true
         }
       }
     },
@@ -2723,7 +2725,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": true,
+        "requireLineOfSight": false,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
@@ -2764,7 +2766,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": true,
+        "requireLineOfSight": false,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null

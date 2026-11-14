@@ -123,21 +123,33 @@
       ],
       "weapons": [
         {
-          "name": "Rough Claws",
+          "name": "Throw Rocks",
           "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 9,
+          "rangeInches": 12,
+          "attacks": 3,
           "armorPenetration": 0,
-          "effectSet": "claw-rend",
           "specialRules": [
             {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
               "kind": "core",
-              "name": "Fragment"
+              "name": "Indirect"
             }
           ]
+        },
+        {
+          "name": "Strike",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "specialRules": []
         }
       ],
-      "pointCost": 140
+      "pointCost": 145
     },
     {
       "name": "Shooter",
@@ -265,7 +277,7 @@
       ],
       "weapons": [
         {
-          "name": "Rough Claws",
+          "name": "Sabre-Bites",
           "quantity": 1,
           "rangeInches": 0,
           "attacks": 9,
@@ -274,12 +286,12 @@
           "specialRules": [
             {
               "kind": "core",
-              "name": "Fragment"
+              "name": "Bane"
             }
           ]
         }
       ],
-      "pointCost": 160
+      "pointCost": 165
     },
     {
       "name": "Hunter",
@@ -529,7 +541,7 @@
           ]
         }
       ],
-      "pointCost": 355
+      "pointCost": 360
     },
     {
       "name": "Tribe Master",
@@ -619,16 +631,20 @@
       ],
       "weapons": [
         {
-          "name": "Rough Claws",
+          "name": "Throw Rocks",
           "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 12,
+          "rangeInches": 12,
+          "attacks": 6,
           "armorPenetration": 0,
-          "effectSet": "claw-rend",
           "specialRules": [
             {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
               "kind": "core",
-              "name": "Fragment"
+              "name": "Indirect"
             }
           ]
         },
@@ -761,7 +777,7 @@
           "specialRules": []
         }
       ],
-      "pointCost": 1175
+      "pointCost": 1205
     }
   ],
   "ruleDefinitions": [
@@ -801,7 +817,7 @@
         {
           "hookID": "Morale_OnPreMoraleTest",
           "condition": {
-            "kind": "always"
+            "kind": "moraleTriggeredByCombat"
           },
           "effect": {
             "kind": "rollModifier",
@@ -816,7 +832,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls."
+      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
     },
     {
       "name": "Musician",
@@ -1566,7 +1582,7 @@
         "minCount": 1,
         "maxCount": 1,
         "targetAffinity": "Foe",
-        "requireLineOfSight": false,
+        "requireLineOfSight": true,
         "requiredToken": null,
         "singleModel": false,
         "requiredRule": null
