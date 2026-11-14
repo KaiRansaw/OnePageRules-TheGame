@@ -26,7 +26,9 @@ public static class ForceOrgAssembler
         public string? Error;
     }
 
-    public static Result Assemble(ForceOrgCatalog.Model model, IReadOnlyDictionary<string, string> files)
+    /// <param name="findBase">Units only: a flat unpainted root part is the model's base and is left out (its size is
+    /// read instead). Terrain says no - a crater or a ruin's floor looks exactly like that and is the piece itself.</param>
+    public static Result Assemble(ForceOrgCatalog.Model model, IReadOnlyDictionary<string, string> files, bool findBase = true)
     {
         var r = new Result();
         var root = new Node3D { Name = UnitModelMap.SafeName(model.Name) };
@@ -55,7 +57,7 @@ public static class ForceOrgAssembler
 
             // The plain base the model stands on: a root part with no skin, flat and round-ish.
             Aabb box = mesh.GetAabb();
-            bool isBase = p.Parent < 0 && string.IsNullOrEmpty(p.Texture) && box.Size.Y < 0.35f
+            bool isBase = findBase && p.Parent < 0 && string.IsNullOrEmpty(p.Texture) && box.Size.Y < 0.35f
                           && box.Size.X > 0.6f && Mathf.Abs(box.Size.X - box.Size.Z) < box.Size.X * 0.45f;
             if (isBase && r.BaseMm == null)
             {

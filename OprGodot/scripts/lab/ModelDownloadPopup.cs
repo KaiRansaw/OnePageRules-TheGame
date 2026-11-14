@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FdgRaylib.Models3D;
+using FdgRaylib.Terrain;
 using Godot;
 using OprGodot.Hud;
 
@@ -28,7 +29,7 @@ public partial class ModelDownloadPopup : Control
     private Label _catLabel = null!, _status = null!, _bookInfo = null!;
     private OptionButton _book = null!;
     private CheckBox _skip = null!;
-    private Button _start = null!, _stop = null!, _close = null!, _choose = null!, _getAof = null!;
+    private Button _start = null!, _stop = null!, _close = null!, _choose = null!, _getAof = null!, _getTerrain = null!;
     private ProgressBar _bar = null!;
     private RichTextLabel _log = null!;
 
@@ -38,7 +39,8 @@ public partial class ModelDownloadPopup : Control
     private volatile bool _fetchFinished;
 
     /// <summary>One file to save: put together from fetched parts, or (<see cref="LinkFrom"/>) the same model already saved for another unit.</summary>
-    private sealed record Job(ForceOrgCatalog.Model? Model, Dictionary<string, string> Files, string Path, string Notes, string? LinkFrom = null);
+    private sealed record Job(ForceOrgCatalog.Model? Model, Dictionary<string, string> Files, string Path, string Notes, string? LinkFrom = null,
+        bool Terrain = false);
     private Button _all = null!, _allFirst = null!, _clearCache = null!, _pick = null!;
     private CheckBox _onePerUnit = null!;
 
@@ -82,6 +84,19 @@ public partial class ModelDownloadPopup : Control
         _getAof = Btn("GetAofCatalogue", "Get Age of Fantasy models", "Fetch Stormvault (the Age of Sigmar Tabletop Simulator collection, about 40 MB) from GitHub and build its model list in the UnitModels folder. Do it again to pick up models Stormvault has added.", GetAofCatalogue);
         catRow.AddChild(_getAof);
         col.AddChild(catRow);
+
+        // Kai, 2026-11-14: the optional Warhammer terrain for Grimdark Future - the Warhammer Map Builder mod's pieces.
+        col.AddChild(HudKit.Heading("Terrain (optional, Grimdark Future)", 15));
+        var terrainRow = new HBoxContainer();
+        terrainRow.AddThemeConstantOverride("separation", 10);
+        var terrainInfo = HudKit.Text("Warhammer Map Builder (Tabletop Simulator) - about 370 terrain pieces in five sets. Saved in UnitModels/"
+            + WarhammerTerrain.ModelsFolderName + ", where the Asset Lab can show them.", 14, HudKit.Dim, HudKit.Semi);
+        terrainInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        terrainInfo.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        terrainRow.AddChild(terrainInfo);
+        _getTerrain = Btn("GetWarhammerTerrain", "Get Warhammer terrain", "Read the Warhammer Map Builder mod (from your Tabletop Simulator folder, or from Steam), then fetch every terrain piece and save it as a model. Pieces already saved are skipped, so pressing it again carries on.", GetTerrain);
+        terrainRow.AddChild(_getTerrain);
+        col.AddChild(terrainRow);
 
         col.AddChild(HudKit.Heading("Army", 15));
         var bookRow = new HBoxContainer();
@@ -212,6 +227,73 @@ public partial class ModelDownloadPopup : Control
     }
 
     private void LogDeferred(string line) => Log(line);
+
+    /// <summary>Builds the terrain list (if there isn't one yet, or it can't be read) and downloads every piece not saved yet.</summary>
+    private async void GetTerrain()
+    {
+        if (_cts != null) return;
+        _getTerrain.Disabled = true;
+        _log.Clear();
+        try
+        {
+            if (WarhammerTerrain.Load() == null)
+                await WarhammerTerrain.BuildAsync(line => CallDeferred(nameof(LogDeferred), line), CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            Log($"Could not read the Warhammer Map Builder mod: {e.Message}");
+            _getTerrain.Disabled = false;
+            return;
+        }
+        _getTerrain.Disabled = false;
+        if (WarhammerTerrain.Load() is not { } t) { Log("The terrain list could not be read."); return; }
+
+        var todo = t.Pieces.Where(p => !File.Exists(WarhammerTerrain.ModelPathFor(t.Catalogue, p))).ToList();
+        int already = t.Pieces.Count - todo.Count;
+        // Deferred like the build's own progress lines, so it lands after them.
+        string summary = $"Warhammer terrain: {t.Pieces.Count} pieces, {already} already saved, {todo.Count} to fetch.";
+        Later(() => Log(summary));
+        if (todo.Count == 0) { _status.Text = "Every terrain piece is already saved."; return; }
+
+        _total = todo.Count; _done = 0; _savedCount = 0; _failed = 0;
+        _cts = new CancellationTokenSource();
+        _fetchFinished = false;
+        SetBusy(true);
+        CancellationToken ct = _cts.Token;
+        ForceOrgCatalog cat = t.Catalogue;
+        _ = Task.Run(async () =>
+        {
+            using var dl = new ModelDownloader();
+            foreach (WarhammerTerrain.Piece piece in todo)
+            {
+                if (ct.IsCancellationRequested) break;
+                if (!cat.ById.TryGetValue(piece.Id, out var model)) { Later(() => FailOne($"{piece.Name}: not in the list")); continue; }
+                string label = $"{(cat.Groups.TryGetValue(piece.Set, out var g) ? g : "")} - {piece.Name}";
+                try
+                {
+                    var (files, failed) = await dl.FetchModelAsync(model, ct);
+                    if (!model.Parts.Any(p => files.ContainsKey(p.Mesh)))
+                    {
+                        Later(() => FailOne($"{label}: {string.Join("; ", failed.Distinct())}"));
+                        continue;
+                    }
+                    if (failed.Count > 0) Later(() => Log($"{label}: some parts missing ({string.Join("; ", failed.Distinct())})"));
+                    string notes = $"Warhammer Map Builder terrain - {label}" + (piece.Keywords.Length > 0 ? $" ({piece.Keywords})" : "");
+                    _ready.Enqueue(new Job(model, files, WarhammerTerrain.ModelPathFor(cat, piece), notes, Terrain: true));
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception e) { Later(() => FailOne($"{label}: {e.Message}")); }
+            }
+            _fetchFinished = true;
+        }, ct);
+    }
+
+    private void SetBusy(bool busy)
+    {
+        _start.Disabled = busy; _all.Disabled = busy; _allFirst.Disabled = busy; _clearCache.Disabled = busy; _pick.Disabled = busy;
+        _choose.Disabled = busy; _book.Disabled = busy; _getTerrain.Disabled = busy; _getAof.Disabled = busy;
+        _stop.Disabled = !busy;
+    }
 
     private string? SelectedBook => _map == null || _book.Selected < 0 ? null : _map.Books.ElementAt(_book.Selected);
 
@@ -345,7 +427,7 @@ public partial class ModelDownloadPopup : Control
 
         _cts = new CancellationTokenSource();
         _fetchFinished = false;
-        _start.Disabled = true; _all.Disabled = true; _allFirst.Disabled = true; _clearCache.Disabled = true; _pick.Disabled = true; _stop.Disabled = false; _choose.Disabled = true; _book.Disabled = true;
+        SetBusy(true);
         CancellationToken ct = _cts.Token;
         ForceOrgCatalog cat = _catalogue;
         var seen = SavedById(); // a model already saved for another unit is linked, not fetched again
@@ -421,7 +503,7 @@ public partial class ModelDownloadPopup : Control
                 else _savedCount++;
                 continue;
             }
-            ForceOrgAssembler.Result r = ForceOrgAssembler.Assemble(job.Model!, job.Files);
+            ForceOrgAssembler.Result r = ForceOrgAssembler.Assemble(job.Model!, job.Files, findBase: !job.Terrain);
             string? e = r.Error ?? ForceOrgAssembler.Save(r, job.Path, job.Notes);
             r.Root?.Free();
             if (e != null) { _failed++; Log($"Failed: {Path.GetFileNameWithoutExtension(job.Path)}: {e}"); }
@@ -441,7 +523,7 @@ public partial class ModelDownloadPopup : Control
             _cts = null;
             _status.Text = (stopped ? "Stopped. " : "Done. ") + $"{_savedCount} saved, {_failed} failed" + (stopped ? " - press Download to carry on." : ".");
             Log(_status.Text);
-            _start.Disabled = false; _all.Disabled = false; _allFirst.Disabled = false; _clearCache.Disabled = false; _pick.Disabled = false; _stop.Disabled = true; _choose.Disabled = false; _book.Disabled = false;
+            SetBusy(false);
             ShowBook();
             Saved?.Invoke();
         }
