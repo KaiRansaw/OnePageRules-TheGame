@@ -42,3 +42,6 @@ Blast, Fear, Scout, Caster (Quest), Hero aura, Transport caps - all in `CoreRule
   could substantiate; unchanged.
 - **Hero joining units** in GFF/AoFS/Quest: open question with Kai (fdg-todo).
 - **Elite** still only re-rolls a morale test, not "one roll of any kind" (existing scope, all systems).
+
+### 2026-11-14 (build 2.00)
+- Flying + Difficult terrain it starts in: `MovementRuleQueries.IgnoresDifficultTerrain(ctx, unit)` at the six engine sites; `FlyingStartsInDifficultTests`. Tactician goal-scoring keeps the plain check (no game system there); moves are planned from the request flag.

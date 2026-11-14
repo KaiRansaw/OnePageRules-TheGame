@@ -14,8 +14,9 @@ using NUnit.Framework;
 
 namespace FdgRaylib.Tests;
 
-// #197 Sergeant - OPR 8HWdOwMYcI0p: "When this model attacks, unmodified results of 6 to hit deal 1 extra
-// hit (only the original hit counts as a 6 for special rules)." Dead no-definition (12 refs, the champion
+// #197 Sergeant. Build 2.00: the 3.6.0 books and Army Forge print "This model gets AP(+1) when attacking." -
+// the old wording ("unmodified results of 6 to hit deal 1 extra hit") is out of date and the body is now a
+// weapon-scoped AP(+1) (Save -1, like Shatter). The routing notes below are unchanged. Originally dead no-definition (12 refs, the champion
 // option of every Wormhole Daemons troop squad) until 2026-07-29: authored as a WEAPON-scoped Surge body,
 // which is what routes it through ListCompiler's champion-marking - a weapon-scoped rule gained from a
 // targets-less per-model section attaches to ONE copy of each weapon profile (after all Replaces) instead
@@ -47,7 +48,7 @@ public class SergeantShippedDataTests
     // ---- The authored definition ----------------------------------------------------------------------
 
     [Test]
-    public void Sergeant_IsAWeaponScopedSurgeBody()
+    public void Sergeant_IsAWeaponScopedAPPlusOne()
     {
         SpecialRuleDefinition rule = Sergeant();
         HookEntry entry = rule.Passive.Single();
@@ -59,9 +60,10 @@ public class SergeantShippedDataTests
 
         Assert.That(entry.HookID, Is.EqualTo(EHookID.Shooting_OnHitRollComplete),
             "the shared hit-complete hook - fires for shooting AND melee, as 'when this model attacks' asks");
-        Assert.That(entry.Condition, Is.InstanceOf<Condition.UnmodifiedRollEquals>());
-        Assert.That(entry.Effect, Is.InstanceOf<Effect.AddExtraHit>());
-        Assert.That(((Effect.AddExtraHit)entry.Effect).OnRollValue, Is.EqualTo(6));
+        // 3.6.0 / Army Forge: "This model gets AP(+1) when attacking." (build 2.00 - it was the old
+        // "unmodified 6 = extra hit" body). Same shape as the weapon rules Shatter / Tear.
+        Assert.That(entry.Condition, Is.InstanceOf<Condition.Always>());
+        Assert.That(entry.Effect, Is.EqualTo(new Effect.RollModifier(ERollKind.Save, -1)));
         Assert.That(rule.EngineArgumentCount, Is.EqualTo(0));
     }
 
@@ -121,8 +123,8 @@ public class SergeantShippedDataTests
                 .Single(d => d.Name == RuleName);
 
             Assert.That(embedded.Scope, Is.EqualTo(ERuleScope.Weapon), bookName);
-            Assert.That(embedded.Passive.Single().Effect, Is.InstanceOf<Effect.AddExtraHit>(),
-                $"{bookName}: the embedded copy carries the extra-hit body - re-run --apply-rules");
+            Assert.That(embedded.Passive.Single().Effect, Is.EqualTo(new Effect.RollModifier(ERollKind.Save, -1)),
+                $"{bookName}: the embedded copy carries the AP(+1) body - re-run --rebuild-books");
         }
     }
 
