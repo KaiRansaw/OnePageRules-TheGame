@@ -889,6 +889,36 @@ if (b2aIdx >= 0 && b2aIdx + 2 < args.Length)
     return;
 }
 
+// --random-army <book.fdgbook> <points> <seed> <out.fdgarmy>  (2026-11-14, the playtest sweep): a random army from a
+// book - base-size units picked at random until the points are nearly spent, at most 2 of any one unit and heroes
+// kept to about a third of the points - so the bots can play every faction of every system headless. A dev tool.
+int randArmyIdx = Array.IndexOf(args, "--random-army");
+if (randArmyIdx >= 0 && randArmyIdx + 4 < args.Length)
+{
+    BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(args[randArmyIdx + 1]), RuleJson.Options)!;
+    int target = int.Parse(args[randArmyIdx + 2]);
+    var rng = new Random(int.Parse(args[randArmyIdx + 3]));
+    static bool IsHero(RosterUnit u) => u.Rules.Any(r => r.PrintableName.StartsWith("Hero", StringComparison.OrdinalIgnoreCase));
+    var list = new BuilderList { Name = $"{book.Name} (random)", BookName = book.Name, PointsLimit = target };
+    var counts = new Dictionary<string, int>();
+    int spent = 0, heroPts = 0;
+    for (int tries = 0; tries < 400 && spent < target * 0.9; tries++)
+    {
+        RosterUnit u = book.Units[rng.Next(book.Units.Count)];
+        if (u.BasePointCost <= 0 || spent + u.BasePointCost > target) continue;
+        if (counts.GetValueOrDefault(u.Id) >= 2) continue;
+        if (IsHero(u) && heroPts + u.BasePointCost > target / 3 && heroPts > 0) continue;
+        list.Units.Add(new BuilderUnit { RosterUnitId = u.Id, ModelCount = u.BaseModelCount });
+        counts[u.Id] = counts.GetValueOrDefault(u.Id) + 1;
+        spent += u.BasePointCost;
+        if (IsHero(u)) heroPts += u.BasePointCost;
+    }
+    BuiltArmyFile army = ListCompiler.Compile(book, list);
+    File.WriteAllText(args[randArmyIdx + 4], JsonSerializer.Serialize(army, RuleJson.Options));
+    Console.WriteLine($"'{book.Name}': {army.Units.Count} units, {army.TotalPoints} pts -> {args[randArmyIdx + 4]}");
+    return;
+}
+
 // --make-collections <booksDir> <outDir>  (#414): write one Star Quest ENEMY COLLECTION .fdgarmy per book.
 //
 // Star Quest's enemy side is not an army in the ordinary sense. StarQuestHorde.DeployWave treats it as a
