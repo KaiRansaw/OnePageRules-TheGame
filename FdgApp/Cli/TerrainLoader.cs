@@ -41,6 +41,13 @@ public static class TerrainLoader
         }
     }
 
+    /// <summary>Reads a layout back from <see cref="SerializeToJson"/> text (the Map Maker's undo history), or null.</summary>
+    public static TerrainLayoutFile? TryLoadFromJson(string json)
+    {
+        try { return JsonConvert.DeserializeObject<TerrainLayoutFile>(json, _settings); }
+        catch (JsonException) { return null; }
+    }
+
     public static string SerializeToJson(TerrainLayoutFile layout)
         => JsonConvert.SerializeObject(layout, Formatting.Indented, _settings);
 

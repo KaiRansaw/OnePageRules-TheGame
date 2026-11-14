@@ -49,8 +49,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         tools.AddChild(Tool("JoinGame", "radar-sweep", "Join a Game", "Join a friend's game over Tailscale.", OpenJoin));
         tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Build an army from the army books, pick each model's look, or import a list from the Army Forge website.",
             () => App.I.Open<Forge.ArmyForgeScreen>(Scenes.ArmyForge)));
-        tools.AddChild(Tool("MapMaker", "position-marker", "Map Maker", "Make and edit your own maps.", () => App.I.OpenNotYet("Map Maker",
-            "Maps grouped by table size, preview, Edit / Copy / Delete; the 3D editor with heights comes with the terrain work. Port step 6.")));
+        tools.AddChild(Tool("MapMaker", "position-marker", "Map Maker", "Make and edit your own maps.", () => App.I.Open<Maps.MapMakerScreen>(Scenes.MapMaker)));
         tools.AddChild(Tool("AssetLab", "stack", "Asset Lab", "Look at 3D models and pictures on the real table, at true scale, and set how each one stands.",
             () => App.I.Open<Lab.AssetLabScreen>(Scenes.AssetLab)));
         _tools = tools;
