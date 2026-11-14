@@ -35,7 +35,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private bool _rulesView, _snap = true, _topView;
     private EGameSystem _checkFor;
 
-    private Node3D _world = null!, _board = null!, _pieces = null!, _marks = null!;
+    private Node3D _world = null!, _board = null!, _pieces = null!, _marks = null!, _dressed = null!;
+    // A piece's 3D look, kept while the piece (and the look style) is unchanged - building a forest's trees on every
+    // click would make the editor crawl. Keyed by the piece; the signature says when it is stale.
+    private readonly Dictionary<MapPiece, (string Sig, Node3D Node)> _looks = new();
     private Camera3D _camera = null!;
     private MeshInstance3D _ghost = null!;
     private Vector3 _focus;
@@ -66,8 +69,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _board = new Node3D();
         _pieces = new Node3D();
         _marks = new Node3D();
+        _dressed = new Node3D { Name = "Looks" };
         _world.AddChild(_board);
         _world.AddChild(_pieces);
+        _world.AddChild(_dressed);
         _world.AddChild(_marks);
         _camera = new Camera3D { Fov = 44, Current = true, Far = 2000 };
         _world.AddChild(_camera);
@@ -292,11 +297,21 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             };
             _right.AddChild(Row("Kind", kind));
 
-            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D model it shows as. The rules don't change." };
-            look.AddItem("Plain block");
-            look.Disabled = true;
+            var looks = TerrainLooks.For(KindOf(p), Theme);
+            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Cosmetic - the rules don't change. Auto lets the game pick." };
+            look.AddItem("Auto");
+            foreach (var l in looks) look.AddItem(l.Name);
+            int li = looks.ToList().FindIndex(l => l.Id == p.Look);
+            look.Selected = li < 0 ? 0 : li + 1;
+            look.ItemSelected += i =>
+            {
+                Draft.Remember();
+                p.Look = i <= 0 ? "" : looks[(int)i - 1].Id;
+                Sync3D();
+            };
+            look.Disabled = looks.Count == 0;
             _right.AddChild(Row("Look", look));
-            _right.AddChild(ForgeWidgets.Wrapped("No terrain models downloaded yet - every piece shows as a block. Models come later from the Asset Lab.", 11, HudKit.Dim));
+            _right.AddChild(ForgeWidgets.Wrapped($"Shown in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} style (the Book check game). In the other games' style the piece picks its own look.", 11, HudKit.Dim));
 
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
@@ -423,6 +438,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     {
         foreach (Node n in _pieces.GetChildren()) { _pieces.RemoveChild(n); n.QueueFree(); }
         foreach (Node n in _marks.GetChildren()) { _marks.RemoveChild(n); n.QueueFree(); }
+        foreach (MapPiece gone in _looks.Keys.Where(k => !Draft.Pieces.Contains(k) || _rulesView).ToList())
+        {
+            _looks[gone].Node.QueueFree();
+            _looks.Remove(gone);
+        }
         foreach (MapPiece p in Draft.Pieces) DrawPiece(p);
         for (int i = 0; i < Draft.Objectives.Count; i++)
         {
@@ -442,6 +462,35 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         UpdateGhost(GetViewport().GetMousePosition());
     }
 
+    /// <summary>The look style the editor shows: the Book check game's (Grimdark Future games sci-fi, Age of Fantasy
+    /// games fantasy) - the same piece dresses itself in each game's style on the table.</summary>
+    private TerrainLooks.ETheme Theme => TerrainLooks.ThemeFor(_checkFor);
+
+    private string KindOf(MapPiece p) => TerrainLooks.GuessKind(p.Kind, p.Name, p.Rules, p.Height, p.Area);
+
+    /// <summary>The piece's 3D look (<see cref="TerrainDresser"/>), reused while nothing about it changed. False when
+    /// the style has no look for it - the plain block is drawn.</summary>
+    private bool Dress(MapPiece p)
+    {
+        string sig = $"{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.#}|{p.Round}|{p.Height:0.##}|{p.Kind}|{p.Look}|{p.Name}|{Theme}";
+        if (_looks.TryGetValue(p, out var have))
+        {
+            if (have.Sig == sig) return true;
+            have.Node.QueueFree();
+            _looks.Remove(p);
+        }
+        var polys = FdgRaylib.Rendering.ZoneOutlines.Polygons(p.ToZone()).Select(poly => poly.Select(q => new Vector2(q.X - W / 2, D / 2 - q.Z)).ToArray()).ToList();
+        var node = new Node3D();
+        _dressed.AddChild(node);
+        if (!TerrainDresser.Dress(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), p.Look, Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name))
+        {
+            node.QueueFree();
+            return false;
+        }
+        _looks[p] = (sig, node);
+        return true;
+    }
+
     private void DrawPiece(MapPiece p)
     {
         bool sel = p == _sel;
@@ -454,6 +503,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             Mesh flat = p.Round ? new CylinderMesh { TopRadius = p.W / 2, BottomRadius = p.W / 2, Height = 0.12f } : new BoxMesh { Size = new Vector3(p.W, 0.12f, p.D) };
             TableLook.Mesh(root, flat, TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(0, 0.07f, 0));
             root.AddChild(new Label3D { Text = TableLook.RulesShort(p.Rules), FontSize = 48, PixelSize = 0.011f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, 1.2f, 0), NoDepthTest = true, Modulate = rc.Lightened(0.5f) });
+        }
+        else if (Dress(p))
+        {
+            if (sel) root.AddChild(new Label3D { Text = p.Name, FontSize = 40, PixelSize = 0.01f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, Mathf.Max(0.15f, p.Height) + 1.2f, 0), Modulate = new Color(1, 1, 1, 0.85f) });
         }
         else
         {

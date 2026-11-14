@@ -42,6 +42,11 @@ public static class CreditsText
             new Entry("Mono.Nat", "Alan McGovern, Ben Motmans, Nicholas Terry", "MIT License"),
             new Entry("Raylib-cs, raylib, rlImGui-cs, Dear ImGui, TinyDialogsNet (the older build)", "Their authors", "zlib / MIT"),
         }, "Full licence texts: THIRD-PARTY-NOTICES.txt beside the game."),
+        new Section("Terrain models (shipped with the game)", new[]
+        {
+            new Entry("Nature, Castle, Fantasy Town, City (Industrial), Space and Survival kits", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl"),
+            new Entry("Medieval Village MegaKit", "Quaternius", "CC0 1.0 (public domain)", "https://quaternius.com"),
+        }, "Free to use without credit - credited anyway. The Nature Kit's colours are toned down in the game."),
         new Section("3D models (downloaded by you, never shipped)", new[]
         {
             new Entry("ForceOrg - Warhammer 40k models for Tabletop Simulator", "The ForceOrg mod's makers and contributors", "Community uploads, personal use"),

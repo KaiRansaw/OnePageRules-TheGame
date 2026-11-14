@@ -488,6 +488,7 @@ public partial class BattleTable : Node3D
             var nodes = new List<Node>();
             _terrainBuilt[t] = nodes;
             if (_rulesView) { BuildRulesPiece(t, nodes); continue; }
+            if (DressPiece(t, nodes)) continue;
             Color c = TerrainColour(t.TerrainType);
             float h = t.HeightInches > 0.05f ? t.HeightInches : t.TerrainType.HasFlag(ETerrainType.Blocking) ? 3f : 0.25f;
             foreach (var poly in ZoneOutlines.Polygons(t.Shape))
@@ -506,6 +507,38 @@ public partial class BattleTable : Node3D
                 foreach (Node n in _terrainBuilt[gone]) n.QueueFree();
                 _terrainBuilt.Remove(gone);
             }
+    }
+
+    /// <summary>The piece's 3D look (<see cref="TerrainDresser"/>, 2026-11-14) in the game's theme; false when it has
+    /// none, and the plain block is drawn instead. Its kind is the map's, or guessed from its name and rules.</summary>
+    private bool DressPiece(ITerrain t, List<Node> nodes)
+    {
+        var polys = ZoneOutlines.Polygons(t.Shape).Select(poly => poly.Select(p => new Vector2(p.X - W / 2, D / 2 - p.Z)).ToArray()).ToList();
+        if (polys.Count == 0) return false;
+        float area = ZoneOutlines.Polygons(t.Shape).Sum(poly => Mathf.Abs(ShoelaceArea(poly.Select(p => new Vector2(p.X, p.Z)).ToArray())));
+        string kind = FdgRaylib.Terrain.TerrainLooks.GuessKind(t.Kind, t.Name, t.TerrainType, t.HeightInches, area);
+        // The lobby's game, not the table's progress record: terrain is placed (and drawn) before that record knows
+        // which game this is.
+        var theme = FdgRaylib.Terrain.TerrainLooks.ThemeFor(Session.Lobby.Vm.GameSystem);
+        var first = ZoneOutlines.Polygons(t.Shape).First();
+        int seed = FdgRaylib.Terrain.TerrainLooks.SeedFor(first.Average(p => p.X), first.Average(p => p.Z), t.Name);
+        var holder = new Node3D();
+        _terrainRoot.AddChild(holder);
+        float h = t.HeightInches > 0.05f ? t.HeightInches : 1f;
+        if (!TerrainDresser.Dress(holder, polys, h, kind, t.Look, theme, seed, t.Name))
+        {
+            holder.QueueFree();
+            return false;
+        }
+        nodes.Add(holder);
+        return true;
+    }
+
+    private static float ShoelaceArea(Vector2[] poly)
+    {
+        float a = 0;
+        for (int i = 0; i < poly.Length; i++) a += poly[i].Cross(poly[(i + 1) % poly.Length]);
+        return a / 2;
     }
 
     private void BuildRulesPiece(ITerrain t, List<Node> nodes)
@@ -534,7 +567,7 @@ public partial class BattleTable : Node3D
     }
 
     /// <summary>An outline extruded to <paramref name="height"/>: the terrain piece as a block.</summary>
-    private static ArrayMesh? Prism(Vector2[] outline, float height)
+    internal static ArrayMesh? Prism(Vector2[] outline, float height)
     {
         if (outline.Length < 3) return null;
         int[] tris = Geometry2D.TriangulatePolygon(outline);
