@@ -208,8 +208,21 @@ public partial class BattleScreen : Control, IOwnBackdrop
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
                 // Kai, 2026-11-12: click places as before; holding the button and dragging then turns what was placed
                 // towards the pointer (deployment and moves).
+                // Kai, 2026-11-13: Shift + drag draws a box round your models (moves pick the models inside).
+                if (mb.Pressed && mb.ShiftPressed && Decisions.WantsBox) { _boxFrom = mb.Position; ShowBox(mb.Position, mb.Position); break; }
+                if (!mb.Pressed && _boxFrom is { } bf)
+                {
+                    _boxFrom = null;
+                    _box?.Hide();
+                    if (bf.DistanceTo(mb.Position) > 6f) Decisions.TableBox(bf, mb.Position);
+                    else OnLeftClick(mb.Position);
+                    break;
+                }
                 if (mb.Pressed) { OnLeftClick(mb.Position); _leftDown = mb.Position; _leftHeld = true; _aiming = false; }
                 else { _leftHeld = false; _aiming = false; }
+                break;
+            case InputEventMouseMotion mm when _boxFrom is { } from:
+                ShowBox(from, mm.Position);
                 break;
             case InputEventMouseMotion mm when _leftHeld && (_aiming || mm.Position.DistanceTo(_leftDown) > 8f):
                 _aiming = Decisions.TableAim(mm.Position);
@@ -271,6 +284,23 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private Vector2 _rightDown;
     private Vector2 _leftDown;
     private bool _leftHeld, _aiming;
+    private Vector2? _boxFrom;
+    private Panel? _box;
+
+    /// <summary>The selection box on screen while Shift + dragging.</summary>
+    private void ShowBox(Vector2 a, Vector2 b)
+    {
+        if (_box == null)
+        {
+            var style = new StyleBoxFlat { BgColor = HudKit.Lime with { A = 0.12f }, BorderColor = HudKit.Lime, BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2 };
+            _box = new Panel { MouseFilter = MouseFilterEnum.Ignore };
+            _box.AddThemeStyleboxOverride("panel", style);
+            _hud.AddChild(_box);
+        }
+        _box.Position = new Vector2(Mathf.Min(a.X, b.X), Mathf.Min(a.Y, b.Y));
+        _box.Size = new Vector2(Mathf.Abs(a.X - b.X), Mathf.Abs(a.Y - b.Y));
+        _box.Show();
+    }
 
     private void Pan(Vector2 screenDelta)
     {

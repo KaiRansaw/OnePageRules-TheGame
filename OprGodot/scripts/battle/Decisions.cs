@@ -83,6 +83,9 @@ public abstract class Decision
     public virtual void TableHover(BattleScreen s, Vector2 at) { }
     /// <summary>Left button held and dragged after a click (Kai, 2026-11-12): turn what was just placed towards the pointer.</summary>
     public virtual bool TableAim(BattleScreen s, Vector2 at) => false;
+    /// <summary>Shift + drag on the table draws a selection box (Kai, 2026-11-13: box-select models to move).</summary>
+    public virtual bool WantsBox => false;
+    public virtual void TableBox(BattleScreen s, Vector2 from, Vector2 to) { }
     public virtual void UnitPicked(BattleScreen s, IUnit unit) { }
     public virtual void Shown(BattleScreen s) { }
     public virtual void Closed(BattleScreen s) { }
@@ -462,6 +465,12 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private readonly MoveKind? _kind;
     private BattleScreen? _s;
 
+    // Kai, 2026-11-13: single-model moves. Click one of the unit's own models (Ctrl+click to add more, Shift+drag a
+    // box) and the clicks move only those; each model then goes straight to where it ends. Empty = the whole unit.
+    private readonly HashSet<ModelID> _picked = new();
+    private Dictionary<ModelID, (float X, float Z)>? _arranged;
+    private bool Individual => _arranged != null;
+
     public MoveDecision(DefineMovementPathRequest r)
     {
         _r = r;
@@ -488,7 +497,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _ => $"Move {Unit.Name}",
     };
 
-    public override string Hint => _pending != null
+    public override string Hint => _picked.Count > 0
+        ? $"{_picked.Count} model{(_picked.Count == 1 ? "" : "s")} picked - click the table to move {(_picked.Count == 1 ? "it" : "them")}. Click another of your models (Ctrl+click adds) to move it instead. Space to confirm, right-click to drop the pick."
+        : _pending != null
         ? (_final ? "Space to confirm - hold the left button and drag to turn it - right-click to take the last point back."
                   : "Click again to add a turn, hold and drag to turn the unit, Space to confirm, right-click to take the last point back.")
         : _note.Length > 0 ? _note : _kind switch
@@ -503,10 +514,70 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override string? CancelLabel => _r.AllowCancel ? "Back" : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(new Cancelled<List<ModelMoveEntry>>()); }
 
-    public override IReadOnlyList<ActionSlot>? Actions => _kind != null ? null : new[]
+    public override IReadOnlyList<ActionSlot>? Actions
     {
-        new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Don't move this unit.", () => Complete(new Selected<List<ModelMoveEntry>>(MovePlanner.StayInPlace(_r)))),
-    };
+        get
+        {
+            var slots = new List<ActionSlot>();
+            if (_kind == null)
+                slots.Add(new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Don't move this unit.", () => Complete(new Selected<List<ModelMoveEntry>>(MovePlanner.StayInPlace(_r)))));
+            if (Individual || _picked.Count > 0)
+                slots.Add(new ActionSlot("WholeUnit", "rally-the-troops", "Whole unit", "2", true, "Start again, moving the whole unit together.", ResetIndividual));
+            return slots.Count == 0 ? null : slots;
+        }
+    }
+
+    private void ResetIndividual()
+    {
+        _picked.Clear();
+        _arranged = null;
+        _pending = null;
+        _via.Clear();
+        _final = false;
+        _s?.Table.ClearGhosts("move");
+        _s?.Table.ClearGhosts("moverange");
+        _s?.Table.ClearGhosts("picked");
+        Version++;
+    }
+
+    public override bool WantsBox => !_final;
+
+    public override void TableBox(BattleScreen s, Vector2 from, Vector2 to)
+    {
+        var rect = new Rect2(new Vector2(Mathf.Min(from.X, to.X), Mathf.Min(from.Y, to.Y)), (from - to).Abs());
+        var inside = Unit.Models.Where(m => m.GetIsAlive())
+            .Where(m => rect.HasPoint(s.Table.Camera.UnprojectPosition(s.Table.World(EndOf(m).X, EndOf(m).Z, 0.3f)))).ToList();
+        if (inside.Count == 0) { s.Toast("No models of this unit inside the box."); return; }
+        _picked.Clear();
+        foreach (var m in inside) _picked.Add(m.ID);
+        StartIndividual();
+        DrawPicked(s);
+        Version++;
+    }
+
+    /// <summary>Where a model is in the move so far (its planned end), or where it stands.</summary>
+    private (float X, float Z) EndOf(IModel m)
+    {
+        if (_arranged != null && _arranged.TryGetValue(m.ID, out var a)) return a;
+        if (_pending != null) foreach (var e in _pending.Ends) if (e.Id.Equals(m.ID)) return (e.X, e.Z);
+        return (m.Position.x, m.Position.z);
+    }
+
+    /// <summary>Switch to one-model-at-a-time, keeping where a whole-unit move already put everyone.</summary>
+    private void StartIndividual()
+    {
+        if (_arranged != null) return;
+        _arranged = Unit.Models.Where(m => m.GetIsAlive()).ToDictionary(m => m.ID, EndOf);
+        _via.Clear();
+        _final = false;
+    }
+
+    private void DrawPicked(BattleScreen s)
+    {
+        var rings = Unit.Models.Where(m => m.GetIsAlive() && _picked.Contains(m.ID))
+            .Select(m => { var (x, z) = EndOf(m); return new BattleTable.Ghost(x, z, Mathf.Max(0.5f, m.BaseRadiusInches) + 0.25f, HudKit.Lime, Ring: true); }).ToList();
+        s.Table.SetGhosts("picked", rings);
+    }
 
     private string KindName(MovePlanner.Plan p) => _kind?.ToString()
         ?? (p.Distance <= _r.MaxAdvanceDistance + 0.01f ? "Advance" : p.Distance <= _r.MaxRushDistance + 0.01f ? "Rush" : "Charge");
@@ -526,6 +597,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     /// <summary>Right-click: takes the last turn point back (the move then ends at the one before).</summary>
     public override void ClearPending()
     {
+        if (_picked.Count > 0) { _picked.Clear(); _s?.Table.ClearGhosts("picked"); Version++; return; }
+        if (Individual) { ResetIndividual(); return; }
         if (_final) _final = false;
         else if (_via.Count > 0) _via.RemoveAt(_via.Count - 1);
         _pending = _s != null && _via.Count > 0 ? MovePlanner.Towards(_r, _s.Session.Table, _via.Take(_via.Count - 1).ToList(), _via[^1].X, _via[^1].Z, Cap) : null;
@@ -537,8 +610,14 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         Version++;
     }
 
+    public override bool RightClick(BattleScreen s)
+    {
+        if (_picked.Count > 0 || Individual) { ClearPending(); return true; }
+        return base.RightClick(s);
+    }
+
     public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); s.Table.HideSelectedRanges = true; }
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.HideSelectedRanges = false; }
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.ClearGhosts("picked"); s.Table.HideSelectedRanges = false; }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -579,7 +658,18 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         foreach (var e in plan.Ends)
             if (facingOf.TryGetValue(e.Id, out FDG.Float2 f)) FacingArrows.Add(lines, e.X, e.Z, Mathf.Max(0.4f, e.Radius), f, c with { A = 0.95f });
         var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
-        if (models.Count > 0 && plan.Ends.Count > 0)
+        if (Individual)
+        {
+            // One model at a time: each moved model's own straight line.
+            var endOf = plan.Ends.ToDictionary(e => e.Id, e => new Vector2(e.X, e.Z));
+            foreach (var m in models)
+                if (endOf.TryGetValue(m.ID, out Vector2 to) && to.DistanceTo(new Vector2(m.Position.x, m.Position.z)) > 0.05f)
+                    lines.Add(new BattleTable.GhostLine(new Vector2(m.Position.x, m.Position.z), to, c with { A = 0.85f }));
+            if (preview != null)
+                ghosts.AddRange(preview.Ends.Where(e => _picked.Contains(e.Id))
+                    .Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), Of(preview) with { A = 0.35f })));
+        }
+        else if (models.Count > 0 && plan.Ends.Count > 0)
         {
             // The path through each turn point, with a small ring on each.
             var from = new Vector2(models.Average(m => m.Position.x), models.Average(m => m.Position.z));
@@ -607,6 +697,16 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override void TableHover(BattleScreen s, Vector2 at)
     {
         if (Done || _final) return;   // a path ending in contact takes no more points
+        if (_picked.Count > 0 || Individual)
+        {
+            if (_picked.Count == 0 || at.DistanceTo(_lastHover) < 2 || s.Table.TableAt(at) is not { } hp) return;
+            _lastHover = at;
+            var (preview, _) = MovePlanner.PickedTowards(_r, s.Session.Table, _arranged!, _picked, hp.X, hp.Y, Cap);
+            if (_pending != null) Draw(s, _pending, placed: true, preview); else Draw(s, preview, placed: false, null);
+            _note = preview.Valid ? $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." : $"Can't go there: {preview.Problem}.";
+            Version++;
+            return;
+        }
         if (at.DistanceTo(_lastHover) < 2) return;
         _lastHover = at;
         var (plan, _) = PlanFor(s, at);
@@ -632,6 +732,29 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
+        // One of this unit's own models: pick it (Ctrl adds or removes), to move it on its own.
+        if (!_final && s.Table.ModelAt(at) is { } own && Unit.Models.Any(m => m.ID.Equals(own.ID)) && own.GetIsAlive())
+        {
+            if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear();
+            if (!_picked.Add(own.ID)) _picked.Remove(own.ID);
+            StartIndividual();
+            DrawPicked(s);
+            Version++;
+            return true;
+        }
+        if (_picked.Count > 0 || Individual)
+        {
+            if (_picked.Count == 0) { s.Toast("Click one of this unit's models to move it, or Space to confirm."); return true; }
+            if (s.Table.TableAt(at) is not { } tp) return true;
+            var (picked, ends) = MovePlanner.PickedTowards(_r, s.Session.Table, _arranged!, _picked, tp.X, tp.Y, Cap);
+            if (!picked.Valid) { s.Toast($"Can't move there: {picked.Problem}."); return true; }
+            _arranged = ends;
+            _pending = picked;
+            Draw(s, picked, placed: true, null);
+            DrawPicked(s);
+            Version++;
+            return true;
+        }
         if (_final) { s.Toast("The move ends in contact - Space to confirm, or right-click to change it."); return true; }
         var (plan, contact) = PlanFor(s, at);
         if (plan == null)

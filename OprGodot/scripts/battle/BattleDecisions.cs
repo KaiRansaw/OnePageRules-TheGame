@@ -67,6 +67,8 @@ public sealed class BattleDecisions
     public bool TableClick(Vector2 at) => Current?.TableClick(_screen, at) ?? false;
     public void TableHover(Vector2 at) => Current?.TableHover(_screen, at);
     public bool TableAim(Vector2 at) => Current?.TableAim(_screen, at) ?? false;
+    public bool WantsBox => Current?.WantsBox ?? false;
+    public void TableBox(Vector2 from, Vector2 to) => Current?.TableBox(_screen, from, to);
     public void UnitPicked(IUnit unit) => Current?.UnitPicked(_screen, unit);
     public UnitMark? ListMark(IUnit unit) => Current?.ListMark(unit);
 

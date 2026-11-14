@@ -50,6 +50,7 @@ public class MoraleTestThenShippedDataTests
         Assert.That(move!.MaxInches, Is.EqualTo(6f).Within(0.001f));
         Assert.That(move.IsOptional, Is.True,
             "'you may' - a mandatory move would force the controller to shove the victim every time");
+        Assert.That(move.OncePerRound, Is.True, "#444 'Units may only be moved once per round in this way.'");
     }
 
     [Test]

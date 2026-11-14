@@ -56,6 +56,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         _update = UpdateButton(false);
         tools.AddChild(_update);
         tools.AddChild(Tool("Settings", "cog", "Settings", "Your name, display, gameplay, camera and sound settings.", () => App.I.Open<SettingsScreen>(Scenes.Settings)));
+        tools.AddChild(Tool("Credits", "scroll-unfurled", "Credits", "Who made the rules, icons, fonts and tools this game uses.", () => App.I.Open<CreditsScreen>(Scenes.Credits)));
         tools.AddChild(Tool("CloseGame", "stop-sign", "Quit", "Close the game.", App.I.Quit, Palette.WoundsRed));
         HudKit.Place(this, tools, LayoutPreset.BottomLeft, new Vector2(110, -64));
 

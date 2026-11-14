@@ -168,6 +168,88 @@ public static class MovePlanner
         return new Plan(moves, prefix.Length + MathF.Sqrt(dx * dx + dz * dz), problem == null, problem, ends);
     }
 
+    /// <summary>
+    /// Models moved one at a time (Kai, 2026-11-13: single-model moves and box-select): every model in
+    /// <paramref name="ends"/> goes straight from where it stands to its end; the rest stay. The distance is the longest
+    /// single model's. Checked with the same validation as a whole-unit move.
+    /// </summary>
+    public static Plan Arranged(DefineMovementPathRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends)
+    {
+        Mover mover = For(request, table);
+        var moves = new List<ModelMoveEntry>();
+        var shown = new List<(ModelID, float, float, float)>();
+        float longest = 0;
+        foreach (var b in mover.Unit.GetValue().ModelBindings)
+        {
+            ModelData m = b.GetValue();
+            if (!m.GetIsAlive()) { moves.Add(new ModelMoveEntry(b, new List<Position>())); continue; }
+            var path = new List<Position>();
+            float ex = m.Position.x, ez = m.Position.z;
+            if (ends.TryGetValue(m.ID, out var e) && Dist(m.Position.x, m.Position.z, e.X, e.Z) > 0.01f)
+            {
+                path.Add(new Position(e.X, e.Z));
+                (ex, ez) = e;
+                longest = Math.Max(longest, Dist(m.Position.x, m.Position.z, e.X, e.Z));
+            }
+            moves.Add(new ModelMoveEntry(b, path));
+            shown.Add((m.ID, ex, ez, m.BaseRadiusInches));
+        }
+        string? problem = mover.Problem(moves);
+        return new Plan(moves, longest, problem == null, problem, shown);
+    }
+
+    /// <summary>
+    /// The picked models slide together (their spacing kept) so their middle heads for (x, z); every other model keeps
+    /// the place <paramref name="ends"/> gives it (or where it stands). Cut short, like a whole-unit move, to the
+    /// furthest point the engine accepts and to <paramref name="cap"/> per model. Returns the new arrangement too.
+    /// </summary>
+    public static (Plan Plan, Dictionary<ModelID, (float X, float Z)> Ends) PickedTowards(DefineMovementPathRequest request, ITableState table,
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float x, float z, float? cap = null)
+    {
+        var living = request.UnitDataBinding.GetValue().ModelBindings.Select(b => b.GetValue()).Where(m => m.GetIsAlive()).ToList();
+        (float X, float Z) At(ModelData m) => ends.TryGetValue(m.ID, out var e) ? e : (m.Position.x, m.Position.z);
+        var moving = living.Where(m => picked.Contains(m.ID)).ToList();
+        var baseEnds = living.ToDictionary(m => m.ID, At);
+        if (moving.Count == 0) return (Arranged(request, table, baseEnds), baseEnds);
+        float cx = moving.Average(m => At(m).X), cz = moving.Average(m => At(m).Z);
+        float dx = x - cx, dz = z - cz;
+        float limit = Math.Min(cap ?? float.MaxValue, request.MaxDistanceInches) - 0.01f;
+
+        Dictionary<ModelID, (float X, float Z)> Shifted(float f)
+        {
+            var d = new Dictionary<ModelID, (float X, float Z)>(baseEnds);
+            foreach (ModelData m in moving)
+            {
+                var (sx, sz) = At(m);
+                float tx = sx + dx * f, tz = sz + dz * f;
+                // Each model's own straight line from where it started may not pass the cap.
+                float len = Dist(m.Position.x, m.Position.z, tx, tz);
+                if (len > limit && len > 0.0001f)
+                {
+                    float k = limit / len;
+                    tx = m.Position.x + (tx - m.Position.x) * k;
+                    tz = m.Position.z + (tz - m.Position.z) * k;
+                }
+                d[m.ID] = (tx, tz);
+            }
+            return d;
+        }
+
+        var full = Shifted(1f);
+        Plan fullPlan = Arranged(request, table, full);
+        if (fullPlan.Valid) return (fullPlan, full);
+        float lo = 0f, hi = 1f;
+        (Plan, Dictionary<ModelID, (float X, float Z)>)? good = null;
+        for (int i = 0; i < 14; i++)
+        {
+            float mid = (lo + hi) / 2;
+            var d = Shifted(mid);
+            Plan p = Arranged(request, table, d);
+            if (p.Valid) { lo = mid; good = (p, d); } else hi = mid;
+        }
+        return good is { } g && lo > 0.02f ? g : (fullPlan, full);
+    }
+
     /// <summary>Null when the stage will accept the move; otherwise the reason, in plain words.</summary>
     public static string? Problem(DefineMovementPathRequest request, ITableState table, List<ModelMoveEntry> moves)
     {
