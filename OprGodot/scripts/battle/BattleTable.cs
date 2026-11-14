@@ -525,11 +525,8 @@ public partial class BattleTable : Node3D
         var holder = new Node3D();
         _terrainRoot.AddChild(holder);
         float h = t.HeightInches > 0.05f ? t.HeightInches : 1f;
-        if (!TerrainDresser.Dress(holder, polys, h, kind, t.Look, theme, seed, t.Name))
-        {
-            holder.QueueFree();
-            return false;
-        }
+        // Plain stand-ins for now (Kai, 2026-11-14); the pack looks (TerrainDresser.Dress) wait for the Terrain Lab pieces.
+        TerrainDresser.DressBasic(holder, polys, h, kind, theme, seed, t.Name);
         nodes.Add(holder);
         return true;
     }

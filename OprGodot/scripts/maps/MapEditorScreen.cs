@@ -297,7 +297,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             };
             _right.AddChild(Row("Kind", kind));
 
-            var looks = TerrainLooks.For(KindOf(p), Theme);
+            var looks = new List<TerrainLooks.Look>(); // stand-ins only for now - real looks come from the Terrain Lab
             var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Cosmetic - the rules don't change. Auto lets the game pick." };
             look.AddItem("Auto");
             foreach (var l in looks) look.AddItem(l.Name);
@@ -311,7 +311,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             };
             look.Disabled = looks.Count == 0;
             _right.AddChild(Row("Look", look));
-            _right.AddChild(ForgeWidgets.Wrapped($"Shown in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} style (the Book check game). In the other games' style the piece picks its own look.", 11, HudKit.Dim));
+            _right.AddChild(ForgeWidgets.Wrapped($"Plain stand-in models for now, in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} colours (the Book check game). Real looks come from the Terrain Lab.", 11, HudKit.Dim));
 
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
@@ -482,11 +482,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         var polys = FdgRaylib.Rendering.ZoneOutlines.Polygons(p.ToZone()).Select(poly => poly.Select(q => new Vector2(q.X - W / 2, D / 2 - q.Z)).ToArray()).ToList();
         var node = new Node3D();
         _dressed.AddChild(node);
-        if (!TerrainDresser.Dress(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), p.Look, Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name))
-        {
-            node.QueueFree();
-            return false;
-        }
+        TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
         _looks[p] = (sig, node);
         return true;
     }

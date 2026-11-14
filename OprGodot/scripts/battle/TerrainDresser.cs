@@ -17,7 +17,7 @@ namespace OprGodot.Battle;
 /// rules use is always visible; the models stand on it. Randomness is seeded per piece
 /// (<see cref="TerrainLooks.SeedFor"/>), so every machine draws the same trees in the same places.</para>
 /// </summary>
-public static class TerrainDresser
+public static partial class TerrainDresser
 {
     private const float BaseHeight = 0.06f;
 
