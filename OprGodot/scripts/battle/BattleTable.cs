@@ -25,7 +25,24 @@ public partial class BattleTable : Node3D
     private readonly Dictionary<UnitID, Label3D> _labels = new();
     private readonly Dictionary<UnitID, Sprite3D[]> _marks = new();
     private readonly List<(IObjective Objective, MeshInstance3D Disc, MeshInstance3D Ring, StandardMaterial3D Mat)> _objectives = new();
-    private readonly HashSet<ITerrain> _terrainBuilt = new();
+    private readonly Dictionary<ITerrain, List<Node>> _terrainBuilt = new();
+    private bool _rulesView;
+
+    /// <summary>
+    /// The Map Maker's Rules view in battle (V): scenery flattened, every piece coloured by what it does and
+    /// labelled with its rules. Rebuilds the terrain on the next frame.
+    /// </summary>
+    public bool RulesView
+    {
+        get => _rulesView;
+        set
+        {
+            if (_rulesView == value) return;
+            _rulesView = value;
+            foreach (var nodes in _terrainBuilt.Values) foreach (Node n in nodes) n.QueueFree();
+            _terrainBuilt.Clear();
+        }
+    }
     private Node3D _terrainRoot = null!, _modelRoot = null!;
 
     /// <summary>Enemy units whose name shows over them (hovered or pinned).</summary>
@@ -464,9 +481,13 @@ public partial class BattleTable : Node3D
     // ------------------------------------------------------------------ terrain
     private void SyncTerrain()
     {
-        foreach (ITerrain t in Session.Table.Terrain.Objects)
+        var present = Session.Table.Terrain.Objects.ToList();
+        foreach (ITerrain t in present)
         {
-            if (!_terrainBuilt.Add(t)) continue;
+            if (_terrainBuilt.ContainsKey(t)) continue;
+            var nodes = new List<Node>();
+            _terrainBuilt[t] = nodes;
+            if (_rulesView) { BuildRulesPiece(t, nodes); continue; }
             Color c = TerrainColour(t.TerrainType);
             float h = t.HeightInches > 0.05f ? t.HeightInches : t.TerrainType.HasFlag(ETerrainType.Blocking) ? 3f : 0.25f;
             foreach (var poly in ZoneOutlines.Polygons(t.Shape))
@@ -474,8 +495,42 @@ public partial class BattleTable : Node3D
                 {
                     var mi = Mesh(_terrainRoot, mesh, Mat(c, 0.9f), Vector3.Zero);
                     mi.SetMeta("terrain", t.Name);
+                    nodes.Add(mi);
                 }
         }
+        // Pieces leave the table too: a round's event terrain ends, and a Dangerous pick swaps a piece for its
+        // Dangerous copy.
+        if (_terrainBuilt.Count > present.Count || _terrainBuilt.Keys.Any(k => !present.Contains(k)))
+            foreach (ITerrain gone in _terrainBuilt.Keys.Where(k => !present.Contains(k)).ToList())
+            {
+                foreach (Node n in _terrainBuilt[gone]) n.QueueFree();
+                _terrainBuilt.Remove(gone);
+            }
+    }
+
+    private void BuildRulesPiece(ITerrain t, List<Node> nodes)
+    {
+        Color rc = TableLook.RulesColour(t.TerrainType);
+        float sx = 0, sz = 0; int n = 0;
+        foreach (var poly in ZoneOutlines.Polygons(t.Shape))
+        {
+            if (Prism(poly.Select(p => new Vector2(p.X - W / 2, D / 2 - p.Z)).ToArray(), 0.12f) is { } mesh)
+            {
+                var mi = Mesh(_terrainRoot, mesh, TableLook.Mat(rc with { A = 0.6f }, 0.6f, rc, 0.5f), Vector3.Zero);
+                mi.SetMeta("terrain", t.Name);
+                nodes.Add(mi);
+            }
+            foreach (var p in poly) { sx += p.X; sz += p.Z; n++; }
+        }
+        if (n == 0) return;
+        var label = new Label3D
+        {
+            Text = (string.IsNullOrWhiteSpace(t.Name) ? "" : t.Name + "\n") + TableLook.RulesShort(t.TerrainType),
+            FontSize = 44, PixelSize = 0.018f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true,
+            Modulate = rc.Lightened(0.5f), Position = World(sx / n, sz / n, 1.2f),
+        };
+        _terrainRoot.AddChild(label);
+        nodes.Add(label);
     }
 
     /// <summary>An outline extruded to <paramref name="height"/>: the terrain piece as a block.</summary>
@@ -487,9 +542,15 @@ public partial class BattleTable : Node3D
         var st = new SurfaceTool();
         st.Begin(Godot.Mesh.PrimitiveType.Triangles);
         st.SetNormal(Vector3.Up);
+        // The top, drawn both ways round: the outline's winding depends on how the table's Z is flipped, and a
+        // top facing down is culled - the pieces drew as hollow walls.
         for (int i = 0; i < tris.Length; i += 3)
+        {
             foreach (int k in new[] { tris[i], tris[i + 2], tris[i + 1] })
                 st.AddVertex(new Vector3(outline[k].X, height, outline[k].Y));
+            foreach (int k in new[] { tris[i], tris[i + 1], tris[i + 2] })
+                st.AddVertex(new Vector3(outline[k].X, height, outline[k].Y));
+        }
         for (int i = 0; i < outline.Length; i++)
         {
             Vector2 a = outline[i], b = outline[(i + 1) % outline.Length];

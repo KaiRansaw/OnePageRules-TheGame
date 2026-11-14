@@ -86,6 +86,13 @@ public partial class ScriptedRun : Node
             // "import:<share link>" pastes a link into the open Import from Army Forge box and imports it.
             if (name.StartsWith("import:") && Find<ImportArmyPopup>(GetTree().Root) is { } import) { import.ImportLink(name[7..]); _wait = 240; return; }
             // "vm:SetFastPlay=true;true;true" calls that lobby setter (test runs of settings with no button press path).
+            // "map:<name>" picks the saved map with that name in the lobby (as the Map drop-down does).
+            if (name.StartsWith("map:") && Find<LobbyScreen>(GetTree().Root) is { } mapLobby)
+            {
+                string? path = FdgRaylib.SaveLoad.MapPaths.List().FirstOrDefault(p => System.IO.Path.GetFileNameWithoutExtension(p) == name[4..]);
+                if (path == null) GD.PrintErr($"ScriptedRun: no map {name[4..]}"); else mapLobby.Session.SetMap(path);
+                return;
+            }
             if (name.StartsWith("vm:") && Find<LobbyScreen>(GetTree().Root) is { } vmLobby) { CallVm(vmLobby.Session.Vm, name[3..]); return; }
             // "snapall" photographs the first of each --hold decision kind (to <shot dir>/<Kind>.png) and lets the
             // test driver answer it, until every held kind is done or the game ends.

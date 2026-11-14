@@ -374,6 +374,8 @@ public class UserConfigTests
         public void SetFastPlaySimplifiedTerrain(bool enabled) => FastPlaySimplifiedTerrain = enabled;
         public bool KingOfTheHill { get; private set; }
         public void SetKingOfTheHill(bool enabled) => KingOfTheHill = enabled;
+        public bool PickDangerousTerrain { get; private set; }
+        public void SetPickDangerousTerrain(bool enabled) => PickDangerousTerrain = enabled;
         public EExtraActions ExtraActions { get; private set; }
         public void SetExtraActions(EExtraActions actions) => ExtraActions = actions;
         public EChallengeBonuses ChallengeBonuses { get; private set; }

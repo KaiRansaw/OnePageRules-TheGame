@@ -48,6 +48,7 @@ public static class ResolverRegistryFactory
             .RegisterResolver(new ConcedeCheckResolver())      // #466
             .RegisterResolver(new PlaceObjectsResolver<ModelData>(tableState))
             .RegisterResolver(new PlaceOneTerrainResolver(tableState))
+            .RegisterResolver(new PickDangerousTerrainResolver())
             // The text interface has no shop: a CLI defender keeps its points.
             .RegisterResolver(new FDG.Ai.Resolvers.AiHordeShopResolver());
     }
@@ -164,6 +165,9 @@ public static class ResolverRegistryFactory
             .RegisterResolver(placeObjects)                                  // GUI
             .RegisterResolver(placeObjective)                                // GUI
             .RegisterResolver(placeTerrain)                                  // GUI
+            // The Generic generator's Dangerous terrain picks: the Raylib front end is frozen (Godot port),
+            // so it picks the way the bot does rather than getting a panel of its own.
+            .RegisterResolver(new FDG.Ai.Resolvers.AiPickDangerousTerrainResolver())
             .RegisterResolver(hordeShop);                                    // GUI (Horde Mode shop)
 
         return (registry, overlay);

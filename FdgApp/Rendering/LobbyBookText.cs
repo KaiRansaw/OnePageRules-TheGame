@@ -205,6 +205,11 @@ internal static class LobbyBookText
         (GameSystemInfo.IsSkirmish(system) ? "1'x1'" : "2'x1'") + " area, starting with the player that got the " +
         "highest score, and then alternating in descending order.";
 
+    /// <summary>The Generic terrain generator's last step (Advanced Rulebooks 3.6.0), word for word.</summary>
+    internal const string DangerousTerrainPicks =
+        "After terrain has been placed, roll-off to see who goes first, and then players alternate in picking D3 " +
+        "pieces of terrain each, which count as Dangerous Terrain.";
+
     internal const string KingOfTheHill =
         "An alternative version of playing with 3-4 players is to play king of the hill, which works just like a " +
         "free-for-all, but players get a bonus for attacking the most powerful opponent, as they all compete for the " +

@@ -450,10 +450,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _pieces.AddChild(root);
         if (_rulesView)
         {
-            Color rc = RulesColour(p.Rules);
+            Color rc = TableLook.RulesColour(p.Rules);
             Mesh flat = p.Round ? new CylinderMesh { TopRadius = p.W / 2, BottomRadius = p.W / 2, Height = 0.12f } : new BoxMesh { Size = new Vector3(p.W, 0.12f, p.D) };
             TableLook.Mesh(root, flat, TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(0, 0.07f, 0));
-            root.AddChild(new Label3D { Text = RulesShort(p.Rules), FontSize = 48, PixelSize = 0.011f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, 1.2f, 0), NoDepthTest = true, Modulate = rc.Lightened(0.5f) });
+            root.AddChild(new Label3D { Text = TableLook.RulesShort(p.Rules), FontSize = 48, PixelSize = 0.011f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, 1.2f, 0), NoDepthTest = true, Modulate = rc.Lightened(0.5f) });
         }
         else
         {
@@ -479,21 +479,6 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             foreach (var (x, z) in p.Corners())
                 TableLook.Mesh(_marks, new SphereMesh { Radius = 0.45f, Height = 0.9f }, TableLook.Mat(HudKit.Lime, 0.3f, HudKit.Lime, 1.5f), World(x, z, 0.4f));
     }
-
-    private static Color RulesColour(ETerrainType t) =>
-        t.HasFlag(ETerrainType.Impassible) || t.HasFlag(ETerrainType.Blocking) ? new Color(0.86f, 0.27f, 0.24f)
-        : t.HasFlag(ETerrainType.Dangerous) ? new Color(0.95f, 0.45f, 0.15f)
-        : t.HasFlag(ETerrainType.Difficult) && t.HasFlag(ETerrainType.Cover) ? new Color(0.47f, 0.78f, 0.35f)
-        : t.HasFlag(ETerrainType.Cover) ? new Color(0.35f, 0.78f, 0.86f)
-        : t.HasFlag(ETerrainType.Difficult) ? new Color(0.94f, 0.75f, 0.27f)
-        : new Color(0.55f, 0.55f, 0.6f);
-
-    private static string RulesShort(ETerrainType t) => t == ETerrainType.None ? "Scenery"
-        : string.Join("+", TerrainBook.RuleFlags.Where(f => t.HasFlag(f)).Select(f => f switch
-        {
-            ETerrainType.Impassible => "Imp", ETerrainType.Blocking => "Blocks", ETerrainType.Difficult => "Diff",
-            ETerrainType.Dangerous => "Dang", ETerrainType.Unstable => "Unst", ETerrainType.Climbable => "Climb", _ => f.ToString(),
-        }));
 
     private void UpdateGhost(Vector2 screen)
     {

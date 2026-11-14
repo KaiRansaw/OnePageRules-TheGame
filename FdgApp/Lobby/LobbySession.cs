@@ -361,6 +361,7 @@ public sealed class LobbySession : IDisposable
 
         Vm.SetTerrainPlacementMode(launch.TerrainMode);
         Vm.SetTerrainLayoutPath(launch.TerrainMode == ETerrainPlacementMode.LoadFromFile ? launch.MapPath : null);
+        Vm.SetPickDangerousTerrain(launch.TerrainMode == ETerrainPlacementMode.LoadFromFile && RolledOnGenericTable(launch.MapPath));
         Vm.SetDeploymentStyle(launch.Deployment);
         Vm.SetMissionCardGame(launch.MissionCards);
         // Always set (None included), so a campaign mission never inherits what the last ordinary lobby had ticked.
@@ -413,7 +414,15 @@ public sealed class LobbySession : IDisposable
             Vm.SetTerrainPlacementMode(ETerrainPlacementMode.LoadFromFile);
             Vm.SetTerrainLayoutPath(path);
         }
+        // The Generic generator's last step comes with a map rolled on that table; anything else starts without it
+        // (the tick box can still turn it on).
+        Vm.SetPickDangerousTerrain(RolledOnGenericTable(path));
     }
+
+    /// <summary>Whether a map file was last rolled on the Advanced Rulebooks' Generic terrain table.</summary>
+    public static bool RolledOnGenericTable(string? path) =>
+        !string.IsNullOrEmpty(path)
+        && TerrainLayoutLoader.TryLoadFromFile(path, out _)?.GeneratedFrom == nameof(TerrainBook.ETheme.Generic);
 
     public bool HasMap => Vm.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile && !string.IsNullOrEmpty(Vm.TerrainLayoutPath);
 

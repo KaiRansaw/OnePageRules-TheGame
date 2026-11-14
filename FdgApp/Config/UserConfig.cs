@@ -231,6 +231,7 @@ public sealed class HostGameSettings
     public bool FastPlaySimplifiedTerrain { get; set; }
     public int? NumberOfRounds { get; set; }
     public bool KingOfTheHill { get; set; }
+    public bool PickDangerousTerrain { get; set; }
     public EExtraActions ExtraActions { get; set; }
     public EChallengeBonuses ChallengeBonuses { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
@@ -266,6 +267,7 @@ public sealed class HostGameSettings
         FastPlaySimplifiedTerrain = settings.FastPlaySimplifiedTerrain,
         NumberOfRounds         = settings.NumberOfRounds,
         KingOfTheHill          = settings.KingOfTheHill,
+        PickDangerousTerrain   = settings.PickDangerousTerrain,
         ExtraActions           = settings.ExtraActions,
         ChallengeBonuses       = settings.ChallengeBonuses,
         DeploymentStyle        = settings.DeploymentStyle,
@@ -299,6 +301,7 @@ public sealed class HostGameSettings
         FastPlaySimplifiedTerrain = viewModel.FastPlaySimplifiedTerrain,
         NumberOfRounds         = viewModel.NumberOfRounds,
         KingOfTheHill          = viewModel.KingOfTheHill,
+        PickDangerousTerrain   = viewModel.PickDangerousTerrain,
         ExtraActions           = viewModel.ExtraActions,
         ChallengeBonuses       = viewModel.ChallengeBonuses,
         DeploymentStyle        = viewModel.DeploymentStyle,
@@ -337,6 +340,7 @@ public sealed class HostGameSettings
         viewModel.SetFastPlaySimplifiedTerrain(FastPlaySimplifiedTerrain);
         viewModel.SetNumberOfRounds(NumberOfRounds);
         viewModel.SetKingOfTheHill(KingOfTheHill);
+        viewModel.SetPickDangerousTerrain(PickDangerousTerrain);
         viewModel.SetExtraActions(ExtraActions);
         viewModel.SetChallengeBonuses(ChallengeBonuses);
         viewModel.SetDeploymentStyle(DeploymentStyle);

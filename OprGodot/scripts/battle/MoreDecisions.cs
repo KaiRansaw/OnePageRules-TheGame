@@ -872,3 +872,79 @@ public sealed class TerrainDecision : Decision<TerrainPlacementResult>
         return true;
     }
 }
+
+/// <summary>
+/// The Generic terrain table's last step (Advanced Rulebooks 3.6.0): "players alternate in picking D3 pieces of
+/// terrain each, which count as Dangerous Terrain". Click a piece on the table (or its row), then Space to confirm.
+/// Every piece that can be picked is outlined gold; the one under the pointer or waiting to be confirmed is red.
+/// </summary>
+public sealed class DangerousPickDecision : Decision<int>
+{
+    private readonly PickDangerousTerrainRequest _r;
+    private BattleScreen? _s;
+    private int _pending = -1, _hover = -1;
+
+    public DangerousPickDecision(PickDangerousTerrainRequest r) => _r = r;
+
+    public override string Prompt => $"Pick terrain to make Dangerous ({_r.PickNumber} of {_r.PicksEach})";
+    public override string Hint => _pending >= 0 ? "Space to confirm - right-click to pick another."
+        : "Click a gold-outlined piece. Players take turns; each picks " + _r.PicksEach + ".";
+    public override string? RowsTitle => "Pieces you can pick";
+
+    private string NameOf(int i) => string.IsNullOrWhiteSpace(_r.Options[i].Name) ? "Terrain" : _r.Options[i].Name;
+
+    public override IReadOnlyList<ChoiceRow> Rows => _r.Options.Select((o, i) => new ChoiceRow(NameOf(i),
+        TerrainBook.Describe(o.Rules) + " - point at it to see it on the table", true, null, () => Pick(i),
+        Hover: on => { _hover = on ? i : -1; Redraw(); }, Selected: i == _pending, Icon: "skull-crack")).ToList();
+
+    private void Pick(int i) { _pending = i; Redraw(); Version++; }
+
+    public override string? ConfirmText => _pending >= 0 ? $"Make this {NameOf(_pending)} (outlined red) Dangerous?" : null;
+    public override void Confirm() { if (_pending >= 0) { _s?.Table.ClearGhosts("zone"); Complete(_pending); } }
+    public override void ClearPending() { _pending = -1; Redraw(); Version++; }
+    public override void AutoPlay(BattleScreen s) => Complete(AiPickDangerousTerrainResolver.Pick(_r));
+    public override void Shown(BattleScreen s) { _s = s; Redraw(); Version++; }
+    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("zone");
+
+    private int OptionAt(BattleScreen s, Vector2 at) => s.Table.TerrainAt(at) is { } t ? _r.IndexOf(t) : -1;
+
+    public override void TableHover(BattleScreen s, Vector2 at)
+    {
+        int i = OptionAt(s, at);
+        if (i == _hover) return;
+        _hover = i;
+        Redraw();
+    }
+
+    public override bool TableClick(BattleScreen s, Vector2 at)
+    {
+        int i = OptionAt(s, at);
+        if (i < 0)
+        {
+            if (s.Table.TerrainAt(at) != null) s.Toast("That piece can't be picked (it is already Dangerous, or Impassable).");
+            return s.Table.TerrainAt(at) != null;
+        }
+        Pick(i);
+        return true;
+    }
+
+    private void Redraw()
+    {
+        if (_s == null) return;
+        var lines = new List<BattleTable.GhostLine>();
+        foreach (ITerrain t in _s.Session.Table.Terrain.Objects)
+        {
+            int i = _r.IndexOf(t);
+            if (i < 0) continue;
+            bool hot = i == _pending || (_pending < 0 && i == _hover);
+            Color col = hot ? Palette.WoundsRed : HudKit.Gold;
+            foreach (var poly in ZoneOutlines.Polygons(t.Shape))
+                for (int k = 0; k < poly.Length; k++)
+                {
+                    var a = poly[k]; var b = poly[(k + 1) % poly.Length];
+                    lines.Add(new BattleTable.GhostLine(new Vector2(a.X, a.Z), new Vector2(b.X, b.Z), col, hot ? 0.3f : 0.16f));
+                }
+        }
+        _s.Table.SetGhosts("zone", Array.Empty<BattleTable.Ghost>(), lines);
+    }
+}

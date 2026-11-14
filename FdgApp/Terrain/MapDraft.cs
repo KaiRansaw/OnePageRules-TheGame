@@ -66,6 +66,8 @@ public sealed class MapDraft
 {
     public string? Path { get; private set; }
     public string Name = "New Map";
+    /// <summary>The generator table last rolled (TerrainBook.ETheme name), or "" for a hand-built map.</summary>
+    public string GeneratedFrom = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -102,6 +104,7 @@ public sealed class MapDraft
         Name = f.Name.Length > 0 ? f.Name : System.IO.Path.GetFileNameWithoutExtension(Path ?? "Map");
         TableW = f.TableWidthInches;
         TableH = f.TableHeightInches;
+        GeneratedFrom = f.GeneratedFrom ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -148,6 +151,7 @@ public sealed class MapDraft
     public TerrainLayoutFile ToLayout() => new()
     {
         Name = Name.Trim(),
+        GeneratedFrom = GeneratedFrom,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry
@@ -240,6 +244,7 @@ public sealed class MapDraft
         var rolled = TerrainBook.GrowToCover(TerrainBook.Generate(system, theme, () => rng.Next(1, 7)), TableW, TableH, system);
         var placed = TerrainBook.Spread(rolled, TableW, TableH, rng.NextDouble, out int left);
         Pieces.Clear();
+        GeneratedFrom = theme.ToString();
         foreach (var pp in placed)
         {
             TerrainBook.PieceKind k = TerrainBook.Kind(pp.Piece.KindId)!;

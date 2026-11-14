@@ -400,6 +400,12 @@ public partial class LobbyScreen : Control
         string MapName(string? p) => p == null ? "Random" : maps.FirstOrDefault(m => m.Path == p).Layout is { Name.Length: > 0 } l ? l.Name : Path.GetFileNameWithoutExtension(p);
         Row(rows, "Map", "The table you will fight on.\nRandom: the game lays out terrain when the game starts.\nA map: its terrain and objective markers, exactly as drawn. Only maps made for this game's table size are offered. Make maps in Map Maker.",
             Choice(options, currentMap, MapName, p => p == null ? "The game lays out terrain at the start." : "Its terrain and objectives, as drawn.", locked, p => Session.SetMap(p)));
+        if (TerrainBook.HasGenerator(system))
+            Check(rows, "Dangerous terrain picks (D3 each)", Vm.PickDangerousTerrain,
+                "The last step of the Advanced Rulebook's Generic terrain table:\n\n\"" + LobbyBookText.DangerousTerrainPicks + "\"\n\n"
+                + "Ticked by itself when the map was rolled on the Generic table in Map Maker. Can be ticked for any table. "
+                + "House rules: one D3 for everyone, and Impassable pieces or pieces that are already Dangerous can't be picked.",
+                locked, v => Vm.SetPickDangerousTerrain(v), 24);
 
         if (TableSizing.CanGrow(system, mode))
         {

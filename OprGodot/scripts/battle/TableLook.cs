@@ -1,3 +1,5 @@
+using FDG;
+using System.Linq;
 using Godot;
 
 namespace OprGodot.Battle;
@@ -9,6 +11,24 @@ namespace OprGodot.Battle;
 /// </summary>
 public static class TableLook
 {
+    /// <summary>The Rules view's colour for a piece (Map Maker and battle): red blocks, orange Dangerous, green difficult + cover, blue cover, yellow difficult.</summary>
+    public static Color RulesColour(ETerrainType t) =>
+        t.HasFlag(ETerrainType.Impassible) || t.HasFlag(ETerrainType.Blocking) ? new Color(0.86f, 0.27f, 0.24f)
+        : t.HasFlag(ETerrainType.Dangerous) ? new Color(0.95f, 0.45f, 0.15f)
+        : t.HasFlag(ETerrainType.Difficult) && t.HasFlag(ETerrainType.Cover) ? new Color(0.47f, 0.78f, 0.35f)
+        : t.HasFlag(ETerrainType.Cover) ? new Color(0.35f, 0.78f, 0.86f)
+        : t.HasFlag(ETerrainType.Difficult) ? new Color(0.94f, 0.75f, 0.27f)
+        : new Color(0.55f, 0.55f, 0.6f);
+
+    /// <summary>The Rules view's short label ("Diff+Cover").</summary>
+    public static string RulesShort(ETerrainType t) => t == ETerrainType.None ? "Scenery"
+        : string.Join("+", TerrainBook.RuleFlags.Where(f => t.HasFlag(f)).Select(f => f switch
+        {
+            ETerrainType.Impassible => "Imp", ETerrainType.Blocking => "Blocks", ETerrainType.Difficult => "Diff",
+            ETerrainType.Dangerous => "Dang", ETerrainType.Unstable => "Unst", ETerrainType.Climbable => "Climb", _ => f.ToString(),
+        }));
+
+
     /// <summary>The background, ambient light, sun and rim light the battle is played under.</summary>
     public static void AddLighting(Node parent)
     {

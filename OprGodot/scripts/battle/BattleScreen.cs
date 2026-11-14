@@ -137,6 +137,13 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _table.Camera.LookAt(_focus, _topView ? Vector3.Forward.Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) : Vector3.Up);
     }
 
+    /// <summary>The terrain drawn by what it does (the Map Maker's Rules view).</summary>
+    public void ToggleRulesView()
+    {
+        _table.RulesView = !_table.RulesView;
+        Toast(_table.RulesView ? "Rules view: terrain coloured by its rules. V to go back." : "Rules view off.");
+    }
+
     public void ToggleTopView()
     {
         _topView = !_topView;
@@ -233,6 +240,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 _yaw -= 5; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.V }:
+                ToggleRulesView(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.L }:
                 OpenArmies(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space or Key.Enter or Key.KpEnter }:
@@ -507,6 +516,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         foreach (var (name, icon, label, key, act) in new (string, string, string, string, Action)[]
         {
             ("TopView", "binoculars", "Top view", "T", ToggleTopView),
+            ("RulesView", "radar-sweep", "Rules view", "V", ToggleRulesView),
             ("Report", "scroll-unfurled", "Report", "R", OpenFullReport),
             ("Armies", "stack", "Armies", "L", OpenArmies),
             ("Menu", "hamburger-menu", "Menu", "Esc", OpenMenu),

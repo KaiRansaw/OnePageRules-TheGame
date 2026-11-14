@@ -114,6 +114,21 @@ public class MapDraftTests
     }
 
     [Test]
+    public void AGenericTable_RemembersItsTable_AndTheLobbyTicksTheDangerousPicks()
+    {
+        var d = MapDraft.New(72, 48);
+        d.Generate(EGameSystem.GrimdarkFuture, TerrainBook.ETheme.Generic, new Random(5));
+        string generic = Write(d);
+        Assert.That(MapDraft.Load(generic, out _)!.GeneratedFrom, Is.EqualTo("Generic"));
+        Assert.That(FdgRaylib.Lobby.LobbySession.RolledOnGenericTable(generic), Is.True);
+
+        d.Generate(EGameSystem.GrimdarkFuture, TerrainBook.ETheme.Wasteland, new Random(5));
+        File.WriteAllText(generic, TerrainLoader.SerializeToJson(d.ToLayout()));
+        Assert.That(FdgRaylib.Lobby.LobbySession.RolledOnGenericTable(generic), Is.False, "only the Generic table has the step");
+        Assert.That(FdgRaylib.Lobby.LobbySession.RolledOnGenericTable(null), Is.False);
+    }
+
+    [Test]
     public void SizeGames_SaysWhoseBookTableItIs()
     {
         Assert.That(MapDraft.SizeGames(72, 48), Does.StartWith("The book table for Grimdark Future, Age of Fantasy"));
