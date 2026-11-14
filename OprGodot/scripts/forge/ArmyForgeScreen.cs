@@ -642,6 +642,8 @@ public partial class ArmyForgeScreen : Control, IBackGuard
     {
         ImportArmyPopup.Open(this, p =>
         {
+            p.Detailed = true;
+            p.SaveLabel = "Save and open in the Forge";
             p.Saved = (path, _) => { p.QueueFree(); Guarded(() => { OpenFile(path); Rebuild(); }, null); };
         });
     }

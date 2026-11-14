@@ -27,6 +27,9 @@ public partial class ImportArmyPopup : Control
     /// <summary>The save button's words when opened from the lobby ("Save and use for Kai").</summary>
     public string SaveLabel { get; set; } = "Save to my armies";
 
+    /// <summary>The Army Forge screen's full report (Raylib's Forge import modal): every unit with its gear, under the notes.</summary>
+    public bool Detailed { get; set; }
+
     private LineEdit _link = null!;
     private Button _import = null!, _save = null!;
     private Label _status = null!, _summary = null!;
@@ -168,8 +171,30 @@ public partial class ImportArmyPopup : Control
         {
             foreach ((string name, int pts) in s.ExcludedUnits) Note($"Not in our copy of the book: {name} ({pts} pts) - still in the list as Army Forge sent it.", HudKit.Dim);
             foreach ((string name, int ours, int theirs) in s.UnitPointsDeltas) Note($"{name}: Army Forge says {theirs} pts, our book copy says {ours} pts. Army Forge's number is used.", HudKit.Dim);
+            foreach (string w in s.Warnings) Note(w, HudKit.Gold);
         }
         if (_notes.GetChildCount() == 0) Note("Everything came in cleanly.", HudKit.Lime);
+        // The points check: our Forge prices the same picks against our copy of the book.
+        if (o.ForgeSession is { } check)
+        {
+            if (check.OurTotalPoints == check.TheirTotalPoints && check.ExcludedUnits.Count == 0)
+                Note($"Points check: our Army Forge comes to the same {check.OurTotalPoints} pts.", HudKit.Lime);
+            else if (check.UnpricedUpgradeCount > 0)
+                Note($"Points check: ours comes to {check.OurTotalPoints} pts, Army Forge's to {check.TheirTotalPoints}. {check.UnpricedUpgradeCount} picked upgrade(s) have no price on Army Forge, so ours counts them as free.", HudKit.Gold);
+            else if (check.OurTotalPoints != check.TheirTotalPoints)
+                Note($"Points check: ours comes to {check.OurTotalPoints} pts, Army Forge's to {check.TheirTotalPoints}. The list keeps Army Forge's numbers; editing it here uses ours.", Palette.WoundsRed);
+        }
+        else Note("No army book here matches this faction, so the list can be played but not edited in the Forge.", HudKit.Dim);
+        if (Detailed)
+        {
+            Note("UNITS", HudKit.Dim);
+            foreach (UnitFileEntry u in army.Units)
+            {
+                Note($"{u.Name} [{u.ModelCount}] - Qua {u.Quality}+ Def {u.Defense}+ - {u.PointCost} pts", HudKit.Fg);
+                string gear = string.Join(", ", u.Weapons.Select(w => $"{w.Quantity}x {w.Name}"));
+                if (gear.Length > 0) Note("    " + gear, HudKit.Dim);
+            }
+        }
 
         _result.Visible = true;
         _save.Text = otherGame ? "Save to my armies" : SaveLabel;

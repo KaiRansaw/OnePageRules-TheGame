@@ -387,19 +387,15 @@ public partial class LobbyScreen : Control
         EGameSystem system = Vm.GameSystem;
         EGameMode mode = Vm.GameMode;
 
-        // Map: Random, or a map drawn for this table size (Select Map's full picker comes later).
-        (float tw, float th) = Session.TableWithoutMap();
-        var maps = MapPaths.List()
-            .Select(p => (Path: p, Layout: TerrainLayoutLoader.TryLoadFromFile(p, out _)))
-            .Where(m => m.Layout != null && MathF.Abs(m.Layout.TableWidthInches - tw) < 0.01f && MathF.Abs(m.Layout.TableHeightInches - th) < 0.01f)
-            .ToList();
-        var options = new List<string?> { null };
-        options.AddRange(maps.Select(m => (string?)m.Path));
+        // Map: Random, or a map drawn for this table size - picked on the full-screen Select Map.
         string? currentMap = Session.HasMap ? Vm.TerrainLayoutPath : null;
-        if (currentMap != null && !options.Contains(currentMap)) options.Add(currentMap);
-        string MapName(string? p) => p == null ? "Random" : maps.FirstOrDefault(m => m.Path == p).Layout is { Name.Length: > 0 } l ? l.Name : Path.GetFileNameWithoutExtension(p);
+        string mapName = currentMap == null ? "Random"
+            : TerrainLayoutLoader.TryLoadFromFile(currentMap, out _) is { Name.Length: > 0 } l ? l.Name : Path.GetFileNameWithoutExtension(currentMap);
+        var mapButton = Ui.Button(mapName + "  ...", () => OpenMapPicker(locked), "Pick the table: Random, or a map made in Map Maker for this table size.");
+        mapButton.Name = "PickMap";
+        mapButton.Alignment = HorizontalAlignment.Left;
         Row(rows, "Map", "The table you will fight on.\nRandom: the game lays out terrain when the game starts.\nA map: its terrain and objective markers, exactly as drawn. Only maps made for this game's table size are offered. Make maps in Map Maker.",
-            Choice(options, currentMap, MapName, p => p == null ? "The game lays out terrain at the start." : "Its terrain and objectives, as drawn.", locked, p => Session.SetMap(p)));
+            mapButton);
         if (TerrainBook.HasGenerator(system))
             Check(rows, "Dangerous terrain picks (D3 each)", Vm.PickDangerousTerrain,
                 "The last step of the Advanced Rulebook's Generic terrain table:\n\n\"" + LobbyBookText.DangerousTerrainPicks + "\"\n\n"
@@ -738,28 +734,97 @@ public partial class LobbyScreen : Control
         AddChild(popup);
     }
 
+    private const int ChooseColourId = -2;
+
     private Control ColourChoice(int seat, LobbyPlayerInfoSummary info, int[] colours)
     {
-        var ob = new OptionButton { Disabled = !Vm.CheckCanModifyPlayerIDInfo(info.PlayerID), CustomMinimumSize = new Vector2(150, 0),
-            TooltipText = "This seat's army colour. A colour another seat has is greyed out." };
+        var ob = new OptionButton { Disabled = !Vm.CheckCanModifyPlayerIDInfo(info.PlayerID), CustomMinimumSize = new Vector2(150, 0), Name = "SeatColour",
+            TooltipText = "This seat's army colour. A colour too close to another seat's is greyed out.\nChoose colour... opens a colour wheel." };
         int current = colours[seat];
-        for (int i = 0; i < PlayerColorCodes.Count; i++)
+        ImageTexture Swatch(Color c)
         {
             var img = Image.CreateEmpty(18, 18, false, Image.Format.Rgba8);
-            img.Fill(SeatColour(i));
-            ob.AddIconItem(ImageTexture.CreateFromImage(img), PlayerColorCodes.Options[i].Name, i);
-            if (PlayerColorCodes.IsTakenByAnother(colours, seat, i)) ob.SetItemDisabled(i, true);
+            img.Fill(c);
+            return ImageTexture.CreateFromImage(img);
+        }
+        for (int i = 0; i < PlayerColorCodes.Count; i++)
+        {
+            ob.AddIconItem(Swatch(SeatColour(i)), PlayerColorCodes.Options[i].Name, i);
+            if (i != current && PlayerColorCodes.ClashingRow(colours, seat, PlayerColorCodes.Options[i].Color) >= 0) ob.SetItemDisabled(i, true);
             if (i == current) ob.Selected = i;
         }
         if (current >= PlayerColorCodes.Count)
         {
-            var img = Image.CreateEmpty(18, 18, false, Image.Format.Rgba8);
-            img.Fill(SeatColour(current));
-            ob.AddIconItem(ImageTexture.CreateFromImage(img), "Custom", current);
+            ob.AddIconItem(Swatch(SeatColour(current)), "Custom", current);
             ob.Selected = ob.ItemCount - 1;
         }
-        ob.ItemSelected += i => Vm.SetPlayerColor(info.PlayerID, ob.GetItemId((int)i));
+        ob.AddItem("Choose colour...", ChooseColourId);
+        ob.ItemSelected += i =>
+        {
+            int id = ob.GetItemId((int)i);
+            if (id == ChooseColourId)
+            {
+                ob.Selected = Math.Max(0, ob.GetItemIndex(current));
+                OpenColourWheel(seat, info, colours);
+            }
+            else Vm.SetPlayerColor(info.PlayerID, id);
+        };
         return ob;
+    }
+
+    /// <summary>The colour wheel (Kai, 2026-11-05): any colour, but not one too close to another seat's - the
+    /// same rule the host enforces (PlayerColorCodes.ClashingRow), so the button only lights when the pick is legal.</summary>
+    internal void OpenColourWheelFor(int seat) => OpenColourWheel(seat, Vm.PlayerInfos[seat], Session.EffectiveColours());
+
+    private void OpenColourWheel(int seat, LobbyPlayerInfoSummary info, int[] colours)
+    {
+        var popup = new PopupPanel { Name = "ColourWheel" };
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 10);
+        popup.AddChild(HudKit.Pad(col, 14, 12, 14, 12));
+        col.AddChild(HudKit.Text($"ARMY COLOUR - {info.PlayerName.ToUpperInvariant()}", 20, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        var picker = new ColorPicker
+        {
+            PickerShape = ColorPicker.PickerShapeType.HsvWheel, EditAlpha = false, SamplerVisible = false, PresetsVisible = false,
+            ColorModesVisible = false, SlidersVisible = false, HexVisible = true, Color = SeatColour(colours[seat]),
+        };
+        col.AddChild(picker);
+        var others = new HBoxContainer();
+        others.AddThemeConstantOverride("separation", 8);
+        others.AddChild(HudKit.Text("Taken:", 14, HudKit.Dim, HudKit.Semi));
+        for (int k = 0; k < colours.Length && k < Vm.PlayerInfos.Count; k++)
+            if (k != seat) others.AddChild(HudKit.Chip(Vm.PlayerInfos[k].PlayerName, SeatColour(colours[k]), true, 13));
+        col.AddChild(others);
+        var why = HudKit.Text("", 14, Palette.WoundsRed, HudKit.Semi);
+        why.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        why.CustomMinimumSize = new Vector2(320, 0);
+        col.AddChild(why);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        buttons.AddThemeConstantOverride("separation", 10);
+        buttons.AddChild(Ui.Button("Cancel", () => popup.QueueFree(), variation: "BackButton"));
+        var use = Ui.Button("Use this colour", () => { }, variation: "CommitButton");
+        use.Name = "UseColour";
+        buttons.AddChild(use);
+        col.AddChild(buttons);
+
+        Rgb Pick() => new((byte)picker.Color.R8, (byte)picker.Color.G8, (byte)picker.Color.B8);
+        void Check()
+        {
+            int clash = PlayerColorCodes.ClashingRow(colours, seat, Pick());
+            use.Disabled = clash >= 0;
+            why.Text = clash < 0 ? "" : $"Too close to {(clash < Vm.PlayerInfos.Count ? Vm.PlayerInfos[clash].PlayerName : $"seat {clash + 1}")}'s colour - the armies would look alike.";
+        }
+        picker.ColorChanged += _ => Check();
+        use.Pressed += () =>
+        {
+            Rgb c = Pick();
+            Vm.SetPlayerColor(info.PlayerID, PlayerColorCodes.EncodeCustom(c.R, c.G, c.B));
+            popup.QueueFree();
+        };
+        popup.PopupHide += () => popup.QueueFree();
+        Check();
+        AddChild(popup);
+        popup.PopupCentered();
     }
 
     private Control EmptySeat(int seat)
@@ -852,78 +917,6 @@ public partial class LobbyScreen : Control
         if (w.ArmorPenetration != 0) stats.Add($"AP({w.ArmorPenetration})");
         stats.AddRange(w.SpecialRules.Select(r => r.PrintableName));
         return $"{(w.Quantity > 1 ? w.Quantity + "x " : "")}{w.Name} ({string.Join(", ", stats)})";
-    }
-
-    // ================================================================== army picker
-
-    private void OpenArmyPicker(LobbyPlayerInfoSummary info)
-    {
-        IReadOnlyList<ArmyCatalogEntry> armies = Session.Armies();
-        string currentKey = LobbySession.ArmyKey(info.ArmyListSummary);
-
-        var popup = new PopupPanel { Size = new Vector2I(760, 640) };
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 8);
-        popup.AddChild(col);
-        col.AddChild(HudKit.Text($"CHOOSE AN ARMY - {info.PlayerName.ToUpperInvariant()}", 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
-        col.AddChild(Note($"From armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}. Red = over the {Vm.ArmyPoints} pts limit. Got a list on the Army Forge website? Import it."));
-        var search = new LineEdit { PlaceholderText = "Search name or faction..." };
-        col.AddChild(search);
-        var list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 460) };
-        col.AddChild(list);
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        buttons.AddThemeConstantOverride("separation", 10);
-        var import = Ui.Button("Import from Army Forge...", () => { popup.QueueFree(); ImportArmyPopup.Open(this, p =>
-        {
-            p.LobbySystem = Vm.GameSystem;
-            p.SaveLabel = $"Save and use for {info.PlayerName}";
-            p.Saved = (path, system) =>
-            {
-                Session.RefreshArmies();
-                if (system != Vm.GameSystem || ArmyCatalog.ReadEntry(path) is not { } entry) return;
-                Session.PickArmy(info.PlayerID, entry);
-                p.QueueFree();
-            };
-        }); }, "Paste a share link from the Army Forge website.");
-        import.Name = "ImportArmy";
-        buttons.AddChild(import);
-        buttons.AddChild(HudKit.Grow());
-        var cancel = Ui.Button("Cancel", () => popup.QueueFree(), variation: "BackButton");
-        var take = Ui.Button("Take this army", () => { }, variation: "CommitButton");
-        buttons.AddChild(cancel);
-        buttons.AddChild(take);
-        col.AddChild(buttons);
-
-        var shown = new List<ArmyCatalogEntry>();
-        void Fill(string filter)
-        {
-            list.Clear();
-            shown.Clear();
-            foreach (ArmyCatalogEntry e in armies)
-            {
-                if (filter.Length > 0 && !e.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) && !e.Faction.Contains(filter, StringComparison.OrdinalIgnoreCase)) continue;
-                int i = list.AddItem($"{e.Name}   -   {e.Faction}   -   {e.Points} pts");
-                if (e.Points > Vm.ArmyPoints) list.SetItemCustomFgColor(i, Palette.WoundsRed);
-                if (e.Key == currentKey) list.Select(i);
-                shown.Add(e);
-            }
-            if (shown.Count == 0) list.AddItem(LobbySession.ArmyCatalogReady ? "No armies match." : "Reading the armies folder...", selectable: false);
-        }
-        Fill("");
-        search.TextChanged += Fill;
-        void Take()
-        {
-            int[] sel = list.GetSelectedItems();
-            if (sel.Length == 0 || sel[0] >= shown.Count) return;
-            Session.PickArmy(info.PlayerID, shown[sel[0]]);
-            popup.QueueFree();
-        }
-        take.Pressed += Take;
-        list.ItemActivated += _ => Take();
-        popup.PopupHide += () => popup.QueueFree();
-        AddChild(popup);
-        popup.PopupCentered();
-        search.GrabFocus();
     }
 
     // ================================================================== launch

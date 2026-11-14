@@ -66,7 +66,11 @@ public sealed class GameSession
         EAiProfile profile = GameSystemInfo.IsQuest(vm.GameSystem) ? EAiProfile.StarQuest : EAiProfile.SoloCoOp;
         IStageResolverRegistry autopilot = AiProfileFactory.BuildRegistry(profile, game.TableState, autopilotFor,
             seeThroughFriendlyUnits: vm.SeeThroughFriendlyUnits);
-        var registry = new HybridResolverRegistry(autopilot);
+        // Hot-seat: every other local player gets a bot of their own for the decisions the screen doesn't take yet.
+        var perPlayer = new Dictionary<PlayerID, IStageResolverRegistry> { [autopilotFor] = autopilot };
+        foreach (PlayerID other in game.LocalPlayerIDs.Where(id => !id.Equals(autopilotFor)))
+            perPlayer[other] = AiProfileFactory.BuildRegistry(profile, game.TableState, other, seeThroughFriendlyUnits: vm.SeeThroughFriendlyUnits);
+        var registry = new HybridResolverRegistry(autopilot, perPlayer);
         registerFrontEnd(registry);
 
         var session = new GameSession(game, lobby, registry, seats);

@@ -93,6 +93,9 @@ public partial class ScriptedRun : Node
                 if (path == null) GD.PrintErr($"ScriptedRun: no map {name[4..]}"); else mapLobby.Session.SetMap(path);
                 return;
             }
+            // "wheel:<seat>" opens that seat's colour wheel (the "Choose colour..." item); "wheelset:RRGGBB" dials a colour into it.
+            if (name.StartsWith("wheel:") && int.TryParse(name[6..], out int wheelSeat) && Find<LobbyScreen>(GetTree().Root) is { } wheelLobby) { wheelLobby.OpenColourWheelFor(wheelSeat); _wait = 10; return; }
+            if (name.StartsWith("wheelset:") && Find<ColorPicker>(GetTree().Root) is { } wheel) { wheel.Color = Color.FromHtml(name[9..]); wheel.EmitSignal(ColorPicker.SignalName.ColorChanged, wheel.Color); return; }
             if (name.StartsWith("vm:") && Find<LobbyScreen>(GetTree().Root) is { } vmLobby) { CallVm(vmLobby.Session.Vm, name[3..]); return; }
             // "snapall" photographs the first of each --hold decision kind (to <shot dir>/<Kind>.png) and lets the
             // test driver answer it, until every held kind is done or the game ends.

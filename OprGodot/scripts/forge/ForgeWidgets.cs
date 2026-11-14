@@ -202,31 +202,31 @@ internal static class ForgeWidgets
             var plus = new Button { Name = name, Text = "+", Disabled = o.Count >= o.Max, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None };
             plus.Pressed += () => { s.Choose(row, view.Section, o.Option.Id, o.Count + 1); changed(); };
             line.AddChild(plus);
-            var text = HudKit.Text(o.Option.Label, 15, o.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }, HudKit.Semi);
-            text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            text.MouseFilter = MouseFilterEnum.Stop;
-            text.TooltipText = tip;
-            line.AddChild(text);
+            line.AddChild(OptionText.For(s, o.Option, tip, o.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }));
         }
         else
         {
+            // The box, then the option's words beside it: each rule name in the words hovers to that rule alone
+            // (the rest of the line hovers to the whole option). Clicking the words ticks the box too.
             var box = new CheckBox
             {
-                Name = name, Text = o.Option.Label, ButtonPressed = o.Chosen, Disabled = !o.Enabled, ButtonGroup = radio,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, TooltipText = tip,
-                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                Name = name, ButtonPressed = o.Chosen, Disabled = !o.Enabled, ButtonGroup = radio,
+                FocusMode = FocusModeEnum.None, TooltipText = tip,
             };
-            box.AddThemeFontSizeOverride("font_size", 15);
-            if (o.Chosen) box.AddThemeColorOverride("font_color", Palette.Lime);
-            // Clicking a picked round box again takes it back off (the "keep what it has" choice).
-            box.Pressed += () =>
+            void Toggle()
             {
                 bool on = !o.Chosen;
                 s.Choose(row, view.Section, on ? o.Option.Id : (view.Control == ForgeRules.EControl.PickOne ? string.Empty : o.Option.Id), on ? 1 : 0);
                 changed();
-            };
+            }
+            box.AddThemeStyleboxOverride("disabled", new StyleBoxEmpty());
+            // Clicking a picked round box again takes it back off (the "keep what it has" choice).
+            box.Pressed += Toggle;
             line.AddChild(box);
+            var words = OptionText.For(s, o.Option, tip, !o.Enabled ? HudKit.Dim with { A = 0.6f } : o.Chosen ? Palette.Lime : HudKit.Fg);
+            words.Name = name + "_Text";
+            if (o.Enabled) words.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) Toggle(); };
+            line.AddChild(words);
         }
 
         int cost = o.Option.Cost;
@@ -250,4 +250,60 @@ internal static class ForgeWidgets
         string head = ForgeRules.OptionSummary(option);
         return distinct.Count == 0 ? head : head + "\n\n" + string.Join("\n\n", distinct.Select(r => s.Glossary.Tooltip(r)));
     }
+}
+
+/// <summary>
+/// An upgrade option's words with every rule name in them hoverable on its own (Raylib's Forge did this; Kai's
+/// Army Forge spec): "Replace one Rifle with Plasma Rifle (Blast(3), AP(1))" - pointing at "Blast(3)" shows Blast's
+/// text alone, anywhere else shows the whole option. Rule names are matched as the option prints them.
+/// </summary>
+public partial class OptionText : RichTextLabel
+{
+    private string _whole = "";
+    private string? _hovered;
+    private readonly List<string> _tips = new();
+
+    internal static OptionText For(ForgeSession s, UpgradeOption option, string whole, Color colour)
+    {
+        var t = new OptionText
+        {
+            BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Stop, MetaUnderlined = false, _whole = whole,
+        };
+        t.AddThemeFontSizeOverride("normal_font_size", 15);
+        t.AddThemeFontOverride("normal_font", HudKit.Semi);
+        t.AddThemeColorOverride("default_color", colour);
+
+        var rules = new List<SpecialRuleEntry>(option.RulesGained);
+        foreach (WeaponFileEntry w in option.WeaponsGained) rules.AddRange(w.SpecialRules);
+        foreach (ItemEntry i in option.ItemsGained) rules.AddRange(i.Rules);
+        string label = option.Label;
+        // Longest names first, so "Blast(3)" wins over a bare "Blast" in the same words.
+        var spans = new List<(int At, int Len, string Tip)>();
+        foreach (SpecialRuleEntry r in rules.GroupBy(r => r.PrintableName).Select(g => g.First()).OrderByDescending(r => r.PrintableName.Length))
+        {
+            string n = r.PrintableName;
+            if (n.Length == 0) continue;
+            for (int at = label.IndexOf(n, StringComparison.Ordinal); at >= 0; at = label.IndexOf(n, at + n.Length, StringComparison.Ordinal))
+                if (!spans.Any(sp => at < sp.At + sp.Len && sp.At < at + n.Length)) spans.Add((at, n.Length, s.Glossary.Tooltip(r)));
+        }
+        var b = new System.Text.StringBuilder();
+        int pos = 0;
+        foreach (var sp in spans.OrderBy(sp => sp.At))
+        {
+            b.Append(Escape(label[pos..sp.At]));
+            t._tips.Add(sp.Tip);
+            b.Append($"[url={t._tips.Count - 1}][color=#{HudKit.Gold.ToHtml(false)}]").Append(Escape(label.Substring(sp.At, sp.Len))).Append("[/color][/url]");
+            pos = sp.At + sp.Len;
+        }
+        b.Append(Escape(label[pos..]));
+        t.Text = b.ToString();
+        t.MetaHoverStarted += m => t._hovered = int.TryParse(m.AsString(), out int i) && i < t._tips.Count ? t._tips[i] : null;
+        t.MetaHoverEnded += _ => t._hovered = null;
+        return t;
+    }
+
+    public override string _GetTooltip(Vector2 atPosition) => _hovered ?? _whole;
+
+    private static string Escape(string s) => s.Replace("[", "[lb]");
 }
