@@ -9,6 +9,7 @@ using FdgRaylib.Game;
 using FdgRaylib.Rendering;
 using Godot;
 using OprGodot.Hud;
+using OprGodot.Forge;
 
 namespace OprGodot.Battle;
 
@@ -946,5 +947,154 @@ public sealed class DangerousPickDecision : Decision<int>
                 }
         }
         _s.Table.SetGhosts("zone", Array.Empty<BattleTable.Ghost>(), lines);
+    }
+}
+
+// ====================================================================== aura picks, one screen
+
+/// <summary>
+/// Before deployment in Firefight, Skirmish and the Quest games (Kai, 2026-11-13: "one screen, all at once"): every
+/// Banner, Musician and aura in your army that can also cover up to 2 other friendly units, one row each. Click a unit's
+/// square to tick it for that row (up to 2), point at the rule to read it, then Done. Skip all gives nothing out.
+/// </summary>
+public sealed class AuraPicksDecision : Decision<List<List<DataBinding<UnitData>>>>
+{
+    private readonly PickAuraUnitsRequest _r;
+    private readonly List<List<DataBinding<UnitData>>> _picked;
+    private BattleScreen? _s;
+    private Control? _screen;
+
+    public AuraPicksDecision(PickAuraUnitsRequest r)
+    {
+        _r = r;
+        _picked = r.Rows.Select(_ => new List<DataBinding<UnitData>>()).ToList();
+    }
+
+    public override string Prompt => _r.Instructions;
+    public override string Hint => $"{_r.Rows.Count} to hand out - tick up to 2 units in each row, then Done.";
+    public override string? CancelLabel => "Skip all";
+    public override void Cancel() => Finish(skip: true);
+    public override string? ConfirmText => "Use these picks?";
+    public override bool HideConfirmBox => true;
+    public override void Confirm() => Finish(skip: false);
+    public override void AutoPlay(BattleScreen s) =>
+        Complete(new AiPickAuraUnitsResolver().Resolve(_r).Result);
+
+    private void Finish(bool skip)
+    {
+        Complete(skip ? _r.Rows.Select(_ => new List<DataBinding<UnitData>>()).ToList() : _picked.Select(p => p.ToList()).ToList());
+        Close();
+    }
+
+    public override void Shown(BattleScreen s) { _s = s; Build(); }
+    public override void Closed(BattleScreen s) => Close();
+
+    private void Close()
+    {
+        if (_screen != null && GodotObject.IsInstanceValid(_screen)) _screen.QueueFree();
+        _screen = null;
+    }
+
+    private void Build()
+    {
+        if (_s == null) return;
+        Close();
+        var veil = new PanelContainer { Name = "AuraPicks", MouseFilter = Control.MouseFilterEnum.Stop };
+        veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.94f) });
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 12);
+        veil.AddChild(HudKit.Pad(col, 48, 36, 48, 28));
+
+        col.AddChild(HudKit.Text("BEFORE THE GAME - SHARE YOUR AURAS", 26, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        col.AddChild(HudKit.Text("Each of these covers its own unit and up to 2 friendly units you pick now. If the carrier is killed, "
+            + "the picked units lose it. Point at a rule to read it.", 15, HudKit.Dim, HudKit.Medium).Also(l => l.AutowrapMode = TextServer.AutowrapMode.WordSmart));
+
+        var rows = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        rows.AddThemeConstantOverride("separation", 10);
+        var scroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        scroll.AddChild(rows);
+        col.AddChild(scroll);
+
+        for (int i = 0; i < _r.Rows.Count; i++) rows.AddChild(Row(i));
+
+        var foot = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        foot.AddThemeConstantOverride("separation", 12);
+        var skip = Ui.Button("Skip all", () => Finish(skip: true), "Give nobody anything - each still covers its own unit.", "BackButton");
+        skip.Name = "AuraSkip";
+        foot.AddChild(skip);
+        var done = Ui.Button("DONE", () => Finish(skip: false), "Hand out the ticked picks and go on to deployment.", "CommitButton");
+        done.Name = "AuraDone";
+        done.CustomMinimumSize = new Vector2(220, 52);
+        foot.AddChild(done);
+        col.AddChild(foot);
+
+        _s.AddChild(veil);
+        _screen = veil;
+    }
+
+    private Control Row(int i)
+    {
+        PickAuraUnitsRequest.Row row = _r.Rows[i];
+        var line = new HBoxContainer();
+        line.AddThemeConstantOverride("separation", 14);
+
+        var who = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
+        var rule = HudKit.Text(row.Source, 19, HudKit.Gold, HudKit.Bold);
+        rule.MouseFilter = Control.MouseFilterEnum.Stop;
+        rule.TooltipText = _s?.RuleText(row.Source) ?? _s?.RuleText(row.Granted) ?? row.Source;
+        who.AddChild(rule);
+        who.AddChild(HudKit.Text("on " + row.BearerName, 15, HudKit.Fg, HudKit.Semi));
+        var count = HudKit.Text("", 13, HudKit.Dim, HudKit.Medium);
+        who.AddChild(count);
+        line.AddChild(who);
+
+        var units = new HFlowContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        units.AddThemeConstantOverride("h_separation", 8);
+        units.AddThemeConstantOverride("v_separation", 8);
+        line.AddChild(units);
+
+        var buttons = new List<(Button B, DataBinding<UnitData> U)>();
+        void Refresh()
+        {
+            count.Text = $"{_picked[i].Count} of {row.MaxPicks} picked";
+            foreach (var (b, u) in buttons)
+            {
+                bool on = _picked[i].Any(p => p.GetValue().ID.Equals(u.GetValue().ID));
+                b.SetPressedNoSignal(on);
+                b.Modulate = on || _picked[i].Count < row.MaxPicks ? Colors.White : new Color(1, 1, 1, 0.45f);
+            }
+            Version++;
+        }
+
+        foreach (var opt in row.Options)
+        {
+            UnitData u = opt.Option.GetValue();
+            var b = new Button { ToggleMode = true, CustomMinimumSize = new Vector2(150, 96), FocusMode = Control.FocusModeEnum.None,
+                Name = $"Aura{i}_{u.Name.Replace(' ', '_')}", TooltipText = $"Give {row.Granted} to {u.Name} too." };
+            var v = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+            v.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            var pic = HudKit.Portrait(_s?.Session.SeatOf(u.PlayerID)?.Faction ?? "", u.Name, "person", 48, HudKit.Friendly, look: HudKit.LookOf(u));
+            pic.MouseFilter = Control.MouseFilterEnum.Ignore;
+            pic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+            v.AddChild(pic);
+            var name = HudKit.Text(opt.Name, 13, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center);
+            name.ClipText = true;
+            v.AddChild(name);
+            b.AddChild(v);
+            var binding = opt.Option;
+            b.Toggled += on =>
+            {
+                var id = binding.GetValue().ID;
+                if (!on) _picked[i].RemoveAll(p => p.GetValue().ID.Equals(id));
+                else if (_picked[i].Count < row.MaxPicks) _picked[i].Add(binding);
+                else _s?.Toast($"Up to {row.MaxPicks} for {row.Source} - untick one first.");
+                Refresh();
+            };
+            buttons.Add((b, binding));
+            units.AddChild(b);
+        }
+        Refresh();
+        return HudKit.Panel(HudKit.PanelBox(8), HudKit.Pad(line, 14, 10, 14, 10));
     }
 }

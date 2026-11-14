@@ -43,6 +43,8 @@ public static class ResolverRegistryFactory
             // #439: the Command Group picks are a multi-select with a confirm, which no existing
             // request is, so they get their own stdin resolver.
             .RegisterResolver(new PickCommandGroupUnitsResolver())
+            // 2026-11-13: every aura and Command Group in one request; stdin asks it one carrier at a time.
+            .RegisterResolver(new PickAuraUnitsRequest.PerRowAdapter(new PickCommandGroupUnitsResolver()))
             .RegisterResolver(new PickUnitLeadersResolver())   // #456
             .RegisterResolver(new PickStringsResolver())       // #462
             .RegisterResolver(new ConcedeCheckResolver())      // #466
@@ -139,6 +141,8 @@ public static class ResolverRegistryFactory
             // get their own GUI resolver rather than riding the single-unit canvas picker.
             .RegisterResolver<PickCommandGroupUnitsRequest,
                 CancellableResult<List<FDG.Data.DataBinding<UnitData>>>>(commandGroupPicks)
+            // The frozen Raylib build shows the one-screen aura request as its old panel, one carrier at a time.
+            .RegisterResolver(new PickAuraUnitsRequest.PerRowAdapter(commandGroupPicks))
             // #456: Fast-Play unit leaders - one panel, a drop-down per unit, Confirm.
             .RegisterResolver<PickUnitLeadersRequest,
                 CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(unitLeaders)

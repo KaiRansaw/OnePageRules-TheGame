@@ -68,6 +68,13 @@ public partial class ScriptedRun : Node
                 else GD.PrintErr($"ScriptedRun: no army at {name[5..]}");
                 return;
             }
+            // "army2:<file>" gives the SECOND seat that army (a bot opponent for a scripted game).
+            if (name.StartsWith("army2:") && Find<LobbyScreen>(GetTree().Root) is { } lobby2 && lobby2.Session.Vm.PlayerInfos.Count > 1)
+            {
+                if (FdgRaylib.Lobby.LobbySession.LoadArmyFile(name[6..]) is { } army2) lobby2.Session.Vm.UpdateArmyListFile(lobby2.Session.Vm.PlayerInfos[1].PlayerID, army2);
+                else GD.PrintErr($"ScriptedRun: no army at {name[6..]}");
+                return;
+            }
             // "join:127.0.0.1" types that address into the open Join a Game popup and joins.
             // "friend:Marcus|marcus-pc.tail1.ts.net|fav" adds a friend in the open Join a Game popup ("fav" stars them).
             if (name.StartsWith("friend:") && Find<JoinPopup>(GetTree().Root) is { } fp && name[7..].Split('|') is { Length: >= 2 } fa)
