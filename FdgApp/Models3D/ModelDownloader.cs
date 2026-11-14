@@ -26,6 +26,30 @@ public sealed class ModelDownloader : IDisposable
     }
 
     /// <summary>The cache file for a link (it may not exist yet).</summary>
+    /// <summary>
+    /// The address to actually fetch a link from. Steam retired its old Workshop file server: links saved as
+    /// <c>http://cloud-3.steamusercontent.com/ugc/...</c> (every Stormvault model, and older mods generally) now answer
+    /// 403, while the same files are served at <c>https://steamusercontent-a.akamaihd.net/ugc/...</c> - the address the
+    /// ForceOrg catalogue already uses (Kai, 2026-11-14: every Eternal Wardens download failed "Mesh: server said 403").
+    /// Only the fetch is redirected; the catalogue keeps its links, so model ids and the download cache don't change.
+    /// </summary>
+    public static string FetchAddress(string url)
+    {
+        string u = url.Trim();
+        foreach (string old in OldSteamHosts)
+            if (u.StartsWith(old, StringComparison.OrdinalIgnoreCase))
+                return "https://steamusercontent-a.akamaihd.net/ugc/" + u[old.Length..];
+        return u;
+    }
+
+    private static readonly string[] OldSteamHosts =
+    {
+        "http://cloud-3.steamusercontent.com/ugc/", "https://cloud-3.steamusercontent.com/ugc/",
+        "http://cloud-2.steamusercontent.com/ugc/", "https://cloud-2.steamusercontent.com/ugc/",
+        "http://cloud-1.steamusercontent.com/ugc/", "https://cloud-1.steamusercontent.com/ugc/",
+        "http://steamusercontent-a.akamaihd.net/ugc/",
+    };
+
     public string CachePathFor(string url)
     {
         byte[] h = SHA1.HashData(Encoding.UTF8.GetBytes(url.Trim()));
@@ -56,7 +80,7 @@ public sealed class ModelDownloader : IDisposable
                     }
                     else
                     {
-                        using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                        using var resp = await _http.GetAsync(FetchAddress(url), HttpCompletionOption.ResponseHeadersRead, ct);
                         if (!resp.IsSuccessStatusCode) { last = $"server said {(int)resp.StatusCode}"; continue; }
                         await using (var fs = File.Create(tmp))
                             await resp.Content.CopyToAsync(fs, ct);

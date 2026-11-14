@@ -29,6 +29,18 @@ public class UnitModelDownloadTests
     private static string ShippedMap =>
         Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "FdgRaylib", "Assets", UnitModelMap.RelativePath);
 
+    /// <summary>Kai, 2026-11-14: every Stormvault (Age of Fantasy) download failed with 403 - its links use Steam's
+    /// retired cloud-3 server. The fetch goes to the current one; the link itself (ids, cache) is untouched.</summary>
+    [TestCase("http://cloud-3.steamusercontent.com/ugc/1861688073981353330/27883B7913E0E69143C3AA03493B7E7C4E8C29C0/",
+        "https://steamusercontent-a.akamaihd.net/ugc/1861688073981353330/27883B7913E0E69143C3AA03493B7E7C4E8C29C0/")]
+    [TestCase("https://cloud-3.steamusercontent.com/ugc/1/AB/", "https://steamusercontent-a.akamaihd.net/ugc/1/AB/")]
+    [TestCase("https://steamusercontent-a.akamaihd.net/ugc/1/AB/", "https://steamusercontent-a.akamaihd.net/ugc/1/AB/")]
+    [TestCase("https://i.imgur.com/abc.png", "https://i.imgur.com/abc.png")]
+    public void OldSteamLinks_AreFetchedFromSteamsCurrentServer(string link, string fetched)
+    {
+        Assert.That(ModelDownloader.FetchAddress(link), Is.EqualTo(fetched));
+    }
+
     [Test]
     public void ShippedMap_LoadsAndNamesRealGfUnits()
     {
