@@ -584,7 +584,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 
     public override string? ConfirmText => _pending is { } p
         ? $"{KindName(p)} {p.Distance:0.0}\" to here?" + (_via.Count > (_final ? 0 : 1) ? $" ({_via.Count - (_final ? 0 : 1)} turn{(_via.Count - (_final ? 0 : 1) == 1 ? "" : "s")})" : "")
+          + Danger(p)
         : null;
+
+    /// <summary>The Dangerous-terrain warning for a planned move (Build 2.07) - empty when it does not test.</summary>
+    private string Danger(MovePlanner.Plan p) => _s != null ? MovePlanner.DangerousNote(_r, _s.Session.Table, p) : "";
 
     public override void Confirm()
     {
@@ -703,7 +707,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             _lastHover = at;
             var (preview, _) = MovePlanner.PickedTowards(_r, s.Session.Table, _arranged!, _picked, hp.X, hp.Y, Cap);
             if (_pending != null) Draw(s, _pending, placed: true, preview); else Draw(s, preview, placed: false, null);
-            _note = preview.Valid ? $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." : $"Can't go there: {preview.Problem}.";
+            _note = preview.Valid ? $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." + Danger(preview) : $"Can't go there: {preview.Problem}.";
             Version++;
             return;
         }
@@ -715,7 +719,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         else if (nothing) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); _note = ""; Version++; return; }
         else Draw(s, plan!, placed: false, null);
         string next = _pending != null ? "add a turn there" : "place the move";
-        _note = nothing ? "" : plan!.Valid ? $"{KindName(plan)}: {plan.Distance:0.0}\" - click to {next}." : $"Can't go there: {plan.Problem}.";
+        _note = nothing ? "" : plan!.Valid ? $"{KindName(plan)}: {plan.Distance:0.0}\" - click to {next}." + Danger(plan) : $"Can't go there: {plan.Problem}.";
         Version++;
     }
 

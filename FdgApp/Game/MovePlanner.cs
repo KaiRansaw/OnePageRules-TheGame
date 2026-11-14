@@ -250,6 +250,19 @@ public static class MovePlanner
         return good is { } g && lo > 0.02f ? g : (fullPlan, full);
     }
 
+    /// <summary>
+    /// How many Dangerous-terrain dice this move will make the unit roll - 0 when it does not test (Build 2.07). The
+    /// same rule the roll uses (<see cref="DangerousTerrainOdds"/>), with the flags the engine put on the request.
+    /// </summary>
+    public static int DangerousDice(DefineMovementPathRequest request, ITableState table, Plan plan) =>
+        plan.Valid ? request.DangerousTerrain.Dice(plan.Moves, table.Terrain.Objects.ToList(), request.UnitDataBinding.GetValue()) : 0;
+
+    /// <summary>The warning a move screen adds to its preview: empty, or " Dangerous terrain: roll N dice, a wound on each 1."</summary>
+    public static string DangerousNote(DefineMovementPathRequest request, ITableState table, Plan plan) =>
+        DangerousDice(request, table, plan) is var n and > 0
+            ? $" Dangerous terrain: roll {n} {(n == 1 ? "die" : "dice")}, a wound on each 1."
+            : "";
+
     /// <summary>Null when the stage will accept the move; otherwise the reason, in plain words.</summary>
     public static string? Problem(DefineMovementPathRequest request, ITableState table, List<ModelMoveEntry> moves)
     {
