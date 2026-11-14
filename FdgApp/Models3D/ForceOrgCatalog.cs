@@ -56,4 +56,34 @@ public sealed class ForceOrgCatalog
 
     /// <summary>Where the catalogue is kept: the UnitModels folder.</summary>
     public static string DefaultPath => Path.Combine(UnitModelPaths.Root, FileName);
+
+    /// <summary>
+    /// Every catalogue on this computer as one: ForceOrg (Warhammer 40k, for Grimdark Future) and Stormvault (Age of
+    /// Sigmar, for Age of Fantasy, see <see cref="StormvaultCatalog"/>). Their ids and folder numbers never overlap.
+    /// Null when there is neither. A file that can't be read is left out.
+    /// </summary>
+    public static ForceOrgCatalog? LoadAll(string? forceOrgPath = null, string? stormvaultPath = null)
+    {
+        var found = new List<ForceOrgCatalog>();
+        foreach (string p in new[] { forceOrgPath ?? DefaultPath, stormvaultPath ?? StormvaultCatalog.DefaultPath })
+        {
+            if (!File.Exists(p)) continue;
+            try { found.Add(Load(p)); } catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { }
+        }
+        return found.Count == 0 ? null : Merge(found);
+    }
+
+    /// <summary>Several catalogues as one (the first one's model wins if an id were ever in two).</summary>
+    public static ForceOrgCatalog Merge(IReadOnlyList<ForceOrgCatalog> cats)
+    {
+        if (cats.Count == 1) return cats[0];
+        var groups = new Dictionary<int, string>();
+        var byId = new Dictionary<int, Model>();
+        foreach (var c in cats)
+        {
+            foreach (var kv in c.Groups) groups.TryAdd(kv.Key, kv.Value);
+            foreach (var kv in c.ById) byId.TryAdd(kv.Key, kv.Value);
+        }
+        return new ForceOrgCatalog { Source = string.Join(" + ", cats.Select(c => c.Source)), Groups = groups, ById = byId };
+    }
 }

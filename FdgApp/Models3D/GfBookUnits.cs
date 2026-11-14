@@ -22,12 +22,44 @@ public static class GfBookUnits
 
     public static string DefaultFolder => Path.Combine(AppAssets.AssetsFolder, "Books", "Grimdark Future");
 
-    /// <summary>The other GF games whose units use GF's models, by the system name the unit list uses.</summary>
+    /// <summary>
+    /// The other games whose units use a main game's models, by the system name the unit list uses: Firefight and Star
+    /// Quest use Grimdark Future's, AoF: Skirmish and AoF: Quest use Age of Fantasy's (Kai, 2026-11-13). A book is
+    /// found by its name, and the two families name their books differently (bar the daemon books, which share).
+    /// </summary>
     public static readonly (string System, string Folder)[] OtherGames =
     {
         ("GF Firefight", "GF Firefight"),
         ("GF Star Quest", "GF Star Quest"),
+        ("AoF Skirmish", "AoF Skirmish"),
+        ("AoF Quest", "AoF Quest"),
     };
+
+    /// <summary>The Age of Fantasy books' folder: the AoF models (Stormvault) are matched against these.</summary>
+    public static string AofFolder => Path.Combine(AppAssets.AssetsFolder, "Books", "Age of Fantasy");
+
+    /// <summary>Every Grimdark Future and Age of Fantasy book (book -> units), for the Match models screen.</summary>
+    public static SortedDictionary<string, List<string>> LoadAll(string? gfFolder = null, string? aofFolder = null)
+    {
+        var all = Load(gfFolder);
+        foreach (var (book, units) in Load(aofFolder ?? AofFolder))
+            all[book] = all.TryGetValue(book, out var had)
+                ? had.Concat(units).Distinct().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList()
+                : units;
+        return all;
+    }
+
+    /// <summary>Whether a book is an Age of Fantasy one (its units take Age of Sigmar models).</summary>
+    public static bool IsAof(string book, string? aofFolder = null) => AofBooks(aofFolder).Contains(book);
+
+    private static HashSet<string>? _aofBooks;
+    private static HashSet<string> AofBooks(string? folder)
+    {
+        if (folder == null && _aofBooks != null) return _aofBooks;
+        var set = new HashSet<string>(Load(folder ?? AofFolder).Keys, StringComparer.OrdinalIgnoreCase);
+        if (folder == null) _aofBooks = set;
+        return set;
+    }
 
     /// <summary>Firefight's and Star Quest's books (system -> book -> units), for <see cref="AliasesFor"/>.</summary>
     public static Dictionary<string, SortedDictionary<string, List<string>>> LoadOtherGames(string? booksFolder = null)

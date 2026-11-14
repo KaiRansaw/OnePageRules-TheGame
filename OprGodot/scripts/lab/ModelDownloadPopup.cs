@@ -28,7 +28,7 @@ public partial class ModelDownloadPopup : Control
     private Label _catLabel = null!, _status = null!, _bookInfo = null!;
     private OptionButton _book = null!;
     private CheckBox _skip = null!;
-    private Button _start = null!, _stop = null!, _close = null!, _choose = null!;
+    private Button _start = null!, _stop = null!, _close = null!, _choose = null!, _getAof = null!;
     private ProgressBar _bar = null!;
     private RichTextLabel _log = null!;
 
@@ -64,8 +64,8 @@ public partial class ModelDownloadPopup : Control
         var col = new VBoxContainer { CustomMinimumSize = new Vector2(760, 0) };
         col.AddThemeConstantOverride("separation", 10);
         col.AddChild(HudKit.Text("DOWNLOAD MODELS", 30, HudKit.Fg, HudKit.Exo(800)));
-        var intro = HudKit.Text("Warhammer 40k models from the ForceOrg Tabletop Simulator mod, saved under each OPR unit's name, " +
-                                "following onepagefan.wiki's Unit Equivalences. Every version of a model is fetched.", 15, HudKit.Dim, HudKit.Semi);
+        var intro = HudKit.Text("Warhammer 40k models (ForceOrg) for Grimdark Future and Age of Sigmar models (Stormvault) for Age of Fantasy, " +
+                                "from Tabletop Simulator, saved under each OPR unit's name, following onepagefan.wiki's Unit Equivalences. Every version of a model is fetched.", 15, HudKit.Dim, HudKit.Semi);
         intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         col.AddChild(intro);
 
@@ -78,12 +78,15 @@ public partial class ModelDownloadPopup : Control
         catRow.AddChild(_catLabel);
         _choose = Btn("ChooseCatalogue", "Choose file...", "Pick forceorg-models.json. It is copied into the UnitModels folder, so this only happens once.", ChooseCatalogue);
         catRow.AddChild(_choose);
+        // Kai, 2026-11-13: Age of Fantasy's models. Stormvault is on GitHub, so the game fetches it and builds its list here.
+        _getAof = Btn("GetAofCatalogue", "Get Age of Fantasy models", "Fetch Stormvault (the Age of Sigmar Tabletop Simulator collection, about 40 MB) from GitHub and build its model list in the UnitModels folder. Do it again to pick up models Stormvault has added.", GetAofCatalogue);
+        catRow.AddChild(_getAof);
         col.AddChild(catRow);
 
         col.AddChild(HudKit.Heading("Army", 15));
         var bookRow = new HBoxContainer();
         bookRow.AddThemeConstantOverride("separation", 10);
-        _book = new OptionButton { Name = "Book", CustomMinimumSize = new Vector2(380, 0), TooltipText = "The Grimdark Future army book to fetch models for. Sub-factions (Blood Brothers, Change Disciples...) are their own books." };
+        _book = new OptionButton { Name = "Book", CustomMinimumSize = new Vector2(380, 0), TooltipText = "The army book to fetch models for - Grimdark Future (40k models) or Age of Fantasy (Age of Sigmar models). Sub-factions (Blood Brothers, Change Disciples...) are their own books." };
         _book.ItemSelected += _ => ShowBook();
         bookRow.AddChild(_book);
         _skip = new CheckBox { Name = "SkipExisting", Text = "Skip models already downloaded", ButtonPressed = true, TooltipText = "Leave models that are already in the folder alone (your saved settings for them are kept)." };
@@ -158,14 +161,12 @@ public partial class ModelDownloadPopup : Control
     private void LoadCatalogue()
     {
         _catalogue = null;
-        if (File.Exists(_catPath))
-        {
-            try { _catalogue = ForceOrgCatalog.Load(_catPath); }
-            catch (Exception e) { Log($"The catalogue could not be read: {e.Message}"); }
-        }
+        try { _catalogue = ForceOrgCatalog.LoadAll(_catPath); }
+        catch (Exception e) { Log($"The catalogue could not be read: {e.Message}"); }
+        bool gf = File.Exists(_catPath), aof = File.Exists(StormvaultCatalog.DefaultPath);
         _catLabel.Text = _catalogue != null
-            ? $"{_catPath}  -  {_catalogue.ById.Count:N0} models"
-            : "Not found yet. Choose forceorg-models.json (on your PC it is in C:\\OPR DEV\\3d-models).";
+            ? $"{_catalogue.ById.Count:N0} models - Grimdark Future (ForceOrg): {(gf ? "yes" : "not yet")}, Age of Fantasy (Stormvault): {(aof ? "yes" : "not yet - press Get Age of Fantasy models")}"
+            : "Not found yet. Choose forceorg-models.json for Grimdark Future (on your PC it is in C:\\OPR DEV\\3d-models), or press Get Age of Fantasy models.";
         _catLabel.Modulate = _catalogue != null ? Colors.White : Palette.WoundsRed;
         _start.Disabled = _catalogue == null || _map == null || _cts != null;
     }
@@ -194,6 +195,23 @@ public partial class ModelDownloadPopup : Control
         AddChild(dlg);
         dlg.PopupCentered(new Vector2I(900, 600));
     }
+
+    private async void GetAofCatalogue()
+    {
+        if (_cts != null) return;
+        _getAof.Disabled = true;
+        try
+        {
+            int n = await StormvaultCatalog.DownloadAndBuildAsync(line => CallDeferred(nameof(LogDeferred), line), CancellationToken.None);
+            Log($"Age of Fantasy models ready: {n:N0} in the list.");
+        }
+        catch (Exception e) { Log($"Could not get the Age of Fantasy models: {e.Message}"); }
+        _getAof.Disabled = false;
+        LoadCatalogue();
+        ShowBook();
+    }
+
+    private void LogDeferred(string line) => Log(line);
 
     private string? SelectedBook => _map == null || _book.Selected < 0 ? null : _map.Books.ElementAt(_book.Selected);
 

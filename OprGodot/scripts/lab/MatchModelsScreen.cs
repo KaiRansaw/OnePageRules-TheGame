@@ -66,14 +66,12 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         _matchesPath = ModelMatches.LocalPath(_root);
         _matches = ModelMatches.Load(_matchesPath);
         _map = UnitModelMap.Load(matchesRoot: _root);
-        _books = GfBookUnits.Load();
+        _books = GfBookUnits.LoadAll();
         _otherGames = GfBookUnits.LoadOtherGames();
         if (_books.Count == 0) foreach (string b in _map.Books) _books[b] = new();
-        if (File.Exists(ForceOrgCatalog.DefaultPath))
-        {
-            try { _cat = ForceOrgCatalog.Load(ForceOrgCatalog.DefaultPath); _factions = CatalogueFactions.ByFaction(_cat); }
-            catch (Exception e) { GD.PrintErr("Match models: catalogue unreadable: " + e.Message); }
-        }
+        // Both catalogues as one: ForceOrg's 40k models for Grimdark Future, Stormvault's Age of Sigmar ones for AoF.
+        _cat = ForceOrgCatalog.LoadAll();
+        if (_cat != null) _factions = CatalogueFactions.ByFaction(_cat);
         _dl = new ModelDownloader();
 
         _world = new Node3D { Name = "MatchWorld" };
@@ -116,7 +114,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         head.AddChild(t);
         left.AddChild(head);
 
-        _faction = new OptionButton { Name = "Faction", FocusMode = FocusModeEnum.None, TooltipText = "The Warhammer 40k faction whose models to list." };
+        _faction = new OptionButton { Name = "Faction", FocusMode = FocusModeEnum.None, TooltipText = "The Warhammer faction whose models to list: 40k factions for Grimdark Future, Age of Sigmar ones for Age of Fantasy." };
         foreach (var (f, list) in _factions) _faction.AddItem($"{f}   ({list.Count})");
         _faction.ItemSelected += _ => FillModels();
         left.AddChild(_faction);
@@ -133,7 +131,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         left.AddChild(_count);
         if (_cat == null)
         {
-            var none = HudKit.Text("No catalogue yet: open Download models in the Asset Lab and choose forceorg-models.json first.", 15, HudKit.Gold, HudKit.Semi);
+            var none = HudKit.Text("No catalogue yet: open Download models in the Asset Lab - choose forceorg-models.json (Grimdark Future) or press Get Age of Fantasy models (Stormvault) first.", 15, HudKit.Gold, HudKit.Semi);
             none.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             left.AddChild(none);
         }
@@ -143,9 +141,9 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         var right = new VBoxContainer();
         right.AddThemeConstantOverride("separation", 8);
         right.AddChild(HudKit.Heading("Army", 15));
-        _book = new OptionButton { Name = "Book", FocusMode = FocusModeEnum.None, TooltipText = "The Grimdark Future army whose units to match. Firefight and Star Quest use the same models." };
+        _book = new OptionButton { Name = "Book", FocusMode = FocusModeEnum.None, TooltipText = "The army whose units to match. Firefight and Star Quest use Grimdark Future's models; AoF: Skirmish and AoF: Quest use Age of Fantasy's." };
         foreach (string b in _books.Keys) _book.AddItem(b);
-        _book.ItemSelected += _ => { _unit = null; FillUnits(); };
+        _book.ItemSelected += _ => { _unit = null; FillUnits(); OpenPairedFaction(); };
         right.AddChild(_book);
         var key = HudKit.Text("Gold = no model yet", 14, HudKit.Gold, HudKit.Semi);
         right.AddChild(key);
@@ -606,6 +604,16 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         _stage.Rotation = new Vector3(0, _spin, 0);
     }
 
+    /// <summary>An Age of Fantasy army opens the models list on the Age of Sigmar faction it stands in for.</summary>
+    private void OpenPairedFaction()
+    {
+        if (_book.Selected < 0 || _book.Selected >= _books.Count) return;
+        string book = _books.Keys.ElementAt(_book.Selected);
+        if (!_map.AosFactions.TryGetValue(book, out var aos) || aos.Count == 0) return;
+        int fi = _factions.Keys.ToList().FindIndex(f => f.Equals(aos[0], StringComparison.OrdinalIgnoreCase));
+        if (fi >= 0 && fi != _faction.Selected) { _faction.Select(fi); FillModels(); }
+    }
+
     // ================================================================== screenshot driver
 
     /// <summary>"fac:Tyranids", "find:Hormagaunt", "used:1", "model:3" (nth in the list), "army:Alien Hives", "unit:Assault Grunts", "use", "remove:45", "share".</summary>
@@ -624,7 +632,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
             case "model" when int.TryParse(arg, out int n) && n < _shown.Count: _models.Select(n); Select(_shown[n]); break;
             case "army":
                 int bi = _books.Keys.ToList().FindIndex(b => b.Equals(arg, StringComparison.OrdinalIgnoreCase));
-                if (bi >= 0) { _book.Select(bi); _unit = null; FillUnits(); UpdateTarget(); }
+                if (bi >= 0) { _book.Select(bi); _unit = null; FillUnits(); OpenPairedFaction(); UpdateTarget(); }
                 break;
             case "unit" when _unitRows.Contains(arg): _unit = arg; FillUnits(); UpdateTarget(); break;
             case "use": _ = UseSelected(); break;

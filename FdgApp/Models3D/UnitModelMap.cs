@@ -11,6 +11,8 @@ namespace FdgRaylib.Models3D;
 public sealed class UnitModelMap
 {
     public const string RelativePath = "Models3D/gf-unit-models.json";
+    /// <summary>The Age of Fantasy twin (Stormvault's Age of Sigmar models), built by <c>tools/unit-models/build_aof_map.py</c>.</summary>
+    public const string AofRelativePath = "Models3D/aof-unit-models.json";
 
     public sealed class ModelRef
     {
@@ -38,6 +40,12 @@ public sealed class UnitModelMap
 
     [JsonProperty("units")] public List<Entry> Units { get; set; } = new();
 
+    /// <summary>
+    /// Which Age of Sigmar factions (Stormvault's folders) each Age of Fantasy book stands in for - a judgement call
+    /// recorded in the house rules; the Match models screen opens a book on its first one.
+    /// </summary>
+    [JsonProperty("aosFactions")] public Dictionary<string, List<string>> AosFactions { get; set; } = new();
+
     /// <summary>Every book that has at least one unit with models, A-Z.</summary>
     public IEnumerable<string> Books => Units.Select(u => u.Book).Distinct().OrderBy(b => b, StringComparer.OrdinalIgnoreCase);
 
@@ -55,6 +63,13 @@ public sealed class UnitModelMap
         var map = JsonConvert.DeserializeObject<UnitModelMap>(File.ReadAllText(path)) ?? new UnitModelMap();
         if (own)
         {
+            // Age of Fantasy's list rides along: its books are named apart from Grimdark Future's.
+            string aof = Path.Combine(AppAssets.AssetsFolder, AofRelativePath);
+            if (File.Exists(aof) && JsonConvert.DeserializeObject<UnitModelMap>(File.ReadAllText(aof)) is { } a)
+            {
+                map.Units.AddRange(a.Units);
+                foreach (var kv in a.AosFactions) map.AosFactions[kv.Key] = kv.Value;
+            }
             ModelMatches.Load(ModelMatches.ShippedPath).ApplyTo(map);
             ModelMatches.Load(ModelMatches.LocalPath(matchesRoot)).ApplyTo(map);
         }

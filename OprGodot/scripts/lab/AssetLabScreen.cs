@@ -165,7 +165,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         fileRow.AddChild(Btn("OpenFolder", "Open folder", "Open the UnitModels folder in Windows, to add or rename files.", () => OS.ShellOpen(_root)));
         fileRow.AddChild(Btn("Rescan", "Refresh", "Look for new files now (it also checks by itself every couple of seconds).", Rescan));
         left.AddChild(fileRow);
-        var dl = Btn("DownloadModels", "Download models...", "Fetch Warhammer 40k models from the ForceOrg Tabletop Simulator mod for an army, saved under each OPR unit's name.", () => OpenDownloads());
+        var dl = Btn("DownloadModels", "Download models...", "Fetch models for an army from Tabletop Simulator - 40k (ForceOrg) for Grimdark Future, Age of Sigmar (Stormvault) for Age of Fantasy - saved under each OPR unit's name.", () => OpenDownloads());
         left.AddChild(dl);
         left.AddChild(Btn("MakePortraits", "Make portraits...", "Take a picture of each unit's downloaded model and use it as the unit's portrait on the army lists and unit cards.", () => OpenPortraits()));
         left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",

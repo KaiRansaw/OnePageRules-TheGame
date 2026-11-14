@@ -30,6 +30,8 @@ public static class CatalogueFactions
     /// <summary>The faction a catalogue folder holds.</summary>
     public static string For(ForceOrgCatalog cat, int group)
     {
+        // Stormvault's folders are named for their Age of Sigmar faction already.
+        if (group >= StormvaultCatalog.GroupBase && cat.Groups.TryGetValue(group, out string? aos)) return aos;
         if (cat.Source.Contains("3753014527") && ForceOrg.TryGetValue(group, out string? name)) return name;
         return cat.Groups.TryGetValue(group, out string? words) ? $"Other: {words}" : $"Other: folder {group}";
     }
