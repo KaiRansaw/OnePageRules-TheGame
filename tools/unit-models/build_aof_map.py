@@ -42,6 +42,7 @@ AOS_FACTIONS = {
     'Chivalrous Kingdoms': ['Bretonnia - HOMEBREW'],
     'Dark Elves': ['Druchii - HOMEBREW', 'Daughters of Khaine'],
     'Deep-Sea Elves': ['Idoneth Deepkin'],
+    'Dwarves': ['Cities of Sigmar'],
     'Eternal Wardens': ['Stormcast Eternals'],
     'Ghostly Undead': ['Nighthaunt'],
     'Giant Tribes': ['Sons of Behemat'],
@@ -206,6 +207,47 @@ def main(stormvault):
             continue
         result[(book, unit)] = {'warhammer': gw, 'models': ms, 'tooBroad': capped}
 
+    # Hand matches (2026-11-14, Kai: "make all the other folders for AoF armies"): the wiki sits behind a bot check
+    # this tool can't pass, so every other army is matched by hand to Stormvault's own model names in
+    # aof-hand-matches.tsv. A name is looked up exactly (case and apostrophe style ignored), in the book's AoS factions
+    # first and then anywhere. The Giant Tribes rows also stand for its four Disciples books ("<God> <unit>").
+    def nkey(s):
+        return re.sub(r'\s+', ' ', s.replace('\u2019', "'").strip().lower())
+
+    hand_rows = list(csv.reader(open(os.path.join(HERE, 'aof-hand-matches.tsv'), encoding='utf-8'), delimiter='\t'))[1:]
+    for r in list(hand_rows):
+        if r and r[0] == 'Giant Tribes':
+            for god in ('Change', 'Lust', 'Plague', 'War'):
+                hand_rows.append([f'Giant Tribes {god} Disciples', f'{god} {r[1]}', r[2]])
+    no_hand = []
+    for r in hand_rows:
+        if len(r) < 3 or not r[1].strip():
+            continue
+        fac, opr, names = r[0].strip(), r[1].strip(), [n.strip() for n in r[2].split('|') if n.strip()]
+        book = next((b for b in aof if ukey(b) == ukey(fac)), None)
+        unit = next((u for u in aof.get(book, []) if ukey(u) == ukey(opr)), None) if book else None
+        if not unit:
+            no_hand.append(f'{fac} / {opr}: not a unit in the book')
+            continue
+        if (book, unit) in result:
+            continue
+        own = AOS_FACTIONS.get(book, [])
+        found = {}
+        for n in names:
+            hits = [(i, nm) for f in own for i, nm in sv.get(f, []) if nkey(nm) == nkey(n)]
+            if not hits:
+                hits = [(i, nm) for f, ms in sv.items() if f not in own for i, nm in ms if nkey(nm) == nkey(n)]
+            if not hits:
+                no_hand.append(f'{fac} / {opr}: no Stormvault model named "{n}"')
+            for i, nm in hits:
+                found.setdefault(i, nm)
+        if found:
+            items = list(found.items())
+            result[(book, unit)] = {'warhammer': ' / '.join(names), 'tooBroad': len(items) > MAX_MODELS,
+                                    'models': [{'id': i, 'name': nm} for i, nm in items[:MAX_MODELS]]}
+    for x in no_hand:
+        print('  hand match:', x)
+
     def stem_all(s):
         return ' '.join(stem(w) for w in s.lower().split())
 
@@ -223,7 +265,7 @@ def main(stormvault):
     units.sort(key=lambda x: (x['book'], x['unit']))
     out = {
         '_comment': 'Built by tools/unit-models/build_aof_map.py from onepagefan.wiki\'s Age of Fantasy Unit Equivalences '
-                    '(the rows read so far) and Stormvault, the Age of Sigmar TTS collection. Models are named by id + name '
+                    '(Eternal Wardens), hand matches for every other army (aof-hand-matches.tsv) and Stormvault, the Age of Sigmar TTS collection. Models are named by id + name '
                     'only; the download links stay in the catalogue the game builds on your own computer.',
         'catalogue': 'Stormvault (github.com/AoS-TTS/Stormvault)',
         'aosFactions': {b: f for b, f in AOS_FACTIONS.items() if b in aof},

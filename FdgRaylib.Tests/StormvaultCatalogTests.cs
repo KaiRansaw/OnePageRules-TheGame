@@ -131,6 +131,26 @@ public class StormvaultCatalogTests
         Assert.That(map.Units.Any(u => u.Book == "Alien Hives"), "Grimdark Future's list is still there");
     }
 
+    /// <summary>Kai, 2026-11-14: every Age of Fantasy army gets its models, not just Eternal Wardens (hand matches,
+    /// tools/unit-models/aof-hand-matches.tsv - the wiki can't be read from a cloud session).</summary>
+    [Test]
+    public void EveryAgeOfFantasyArmyWithAnAosCounterpart_HasUnitsWithModels()
+    {
+        var map = UnitModelMap.Load();
+        foreach (string book in map.AosFactions.Keys.Where(b => b != "Deep-Sea Elves"))
+            Assert.That(map.Units.Count(u => u.Book == book && u.Models.Count > 0), Is.GreaterThanOrEqualTo(4), book);
+        var ardboys = map.Units.Single(u => u.Book == "Orcs" && u.Unit == "Iron Warriors");
+        Assert.That(ardboys.Models.Select(m => m.Name), Has.All.EqualTo("Orruk Ardboy"));
+        Assert.That(map.Units.Single(u => u.Book == "Giant Tribes War Disciples" && u.Unit == "War Battle Stomper Mega-Giant")
+            .Models.Select(m => m.Name), Has.All.EqualTo("Warstomper Mega-Gargant"), "the Giant Tribes rows cover the four Disciples books");
+        // Eight book names (Change Disciples, the four Daemons of X...) are shared with Grimdark Future, and some of their
+        // units too - the same daemons, the same Warhammer models - so those folders hold both games' models. The rest
+        // are Stormvault's alone.
+        var gfBooks = UnitModelMap.Load(Path.Combine(AppAssets.AssetsFolder, UnitModelMap.RelativePath)).Books.ToHashSet();
+        Assert.That(map.Units.Where(u => map.AosFactions.ContainsKey(u.Book) && !gfBooks.Contains(u.Book))
+            .SelectMany(u => u.Models).All(m => m.Id >= StormvaultCatalog.IdBase));
+    }
+
     [Test]
     public void MatchModels_ListsAgeOfFantasyArmies_AndTheirSkirmishNames()
     {
