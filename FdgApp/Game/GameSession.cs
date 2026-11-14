@@ -33,6 +33,12 @@ public sealed class GameSession
     /// <summary>An army campaign mission's write-back summary (both armies' results), once the game is recorded.</summary>
     public string? CampaignNote { get; private set; }
 
+    /// <summary>
+    /// #187: a game a dropped connection ended is written to a recovery save on the host (no clicks - a wifi blip is
+    /// common over the internet). Where it went, or why it couldn't be written; null for every other ending.
+    /// </summary>
+    public string? RecoveryNote { get; private set; }
+
     public PlayerID? LocalPlayer => Game.LocalPlayerIDs.Count > 0 ? Game.LocalPlayerIDs[0] : null;
 
     private GameSession(IFDGGame game, LobbySession lobby, HybridResolverRegistry registry, IReadOnlyList<Seat> seats)
@@ -71,6 +77,9 @@ public sealed class GameSession
             {
                 try { session.CampaignNote = FdgRaylib.Quest.StrikeTeamFiles.WriteBack(game.TableState, result); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+                // Engine thread, before anything reacts to the end: the cleanest snapshot of the game there is.
+                if (result.Outcome == EGameOutcome.Disconnect)
+                    session.RecoveryNote = RecoveryNoteFor(FdgRaylib.SaveLoad.RecoverySave.TryWrite(vm.SaveGameToJson(), DateTime.UtcNow));
             };
         vm.OnGameEnded += text =>
         {
@@ -87,6 +96,11 @@ public sealed class GameSession
         game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
         return session;
     }
+
+    /// <summary>The end card's line for a recovery save: where it is and how to resume it, or that it failed.</summary>
+    public static string RecoveryNoteFor(string? path) => path != null
+        ? $"A player's connection dropped, so the game was saved: {Path.GetFileName(path)}. Load Game on the main menu picks it up where it stopped."
+        : "A player's connection dropped, and the recovery save could not be written.";
 
     /// <summary>A seat's faction: the lobby's army, or (a resumed save, whose armies are in the game) the game's own.</summary>
     private static string FactionOf(IFDGGame game, LobbySession lobby, PlayerID id)

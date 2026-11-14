@@ -37,9 +37,16 @@ public static class BattleResolvers
     /// <summary>A confirmed volley: the other ticked weapons fire at the same unit when the engine asks for them.</summary>
     public static (UnitID Shooter, UnitID Target, HashSet<string> Weapons)? ShootAt { get; set; }
 
+    /// <summary>
+    /// #466: which of this machine's players pressed Concede in the Mission panel. The engine asks at the start of each
+    /// campaign round and is answered from this - a button, not a question every round (Kai, 2026-11-06).
+    /// </summary>
+    public static FdgRaylib.Rendering.Resolvers.ConcedeIntent Concede { get; private set; } = new();
+
     public static void Register(HybridResolverRegistry registry)
     {
         Inbox = new DecisionInbox();
+        Concede = new FdgRaylib.Rendering.Resolvers.ConcedeIntent();
         PendingActivation = null;
         NextMove = null;
         QueuedAction = null;
@@ -57,7 +64,7 @@ public static class BattleResolvers
         registry.RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(
             new Ask<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(r => new MeleeTargetDecision(r)));
         registry.RegisterResolver(new Ask<ChooseAbilityEffectRequest, int>(r => new AbilityEffectDecision(r)));
-        registry.RegisterResolver<ConcedeCheckRequest, bool>(new Ask<ConcedeCheckRequest, bool>(r => new ConcedeDecision(r)));
+        registry.RegisterResolver<ConcedeCheckRequest, bool>(new ConcedeFromButton());
         registry.RegisterResolver(new Ask<ChooseSpellRequest, ChooseSpellReply>(r => new SpellDecision(r)));
         registry.RegisterResolver(new Ask<CastAssistRequest, CastAssistReply>(r => new CastAssistDecision(r)));
         registry.RegisterResolver(new Ask<PlaceObjectsRequest<ModelData>, CancellableResult<List<PlacedObjectEntry<ModelData>>>>(r => new PlaceDecision(r)));
@@ -80,6 +87,12 @@ public static class BattleResolvers
     }
 
     /// <summary>One request type -> one kind of decision, posted to the inbox.</summary>
+    /// <summary>The round-start concede check, answered from the Mission panel's Concede button.</summary>
+    private sealed class ConcedeFromButton : IStageResolver<ConcedeCheckRequest, bool>
+    {
+        public Task<bool> Resolve(ConcedeCheckRequest request) => Task.FromResult(Concede.Has(request.TargetPlayerID));
+    }
+
     private sealed class Ask<TRequest, TReply> : IStageResolver<TRequest, TReply> where TRequest : IStageTaskRequest<TReply>
     {
         private readonly Func<TRequest, Decision<TReply>> _make;

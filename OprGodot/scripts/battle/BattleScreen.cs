@@ -1378,9 +1378,20 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _metaTip = null;
     }
 
+    private string _missionSig = "";
+
     private void RefreshMission(IGameProgress progress)
     {
-        foreach (Node c in _missionBody.GetChildren()) c.QueueFree();
+        // Rebuilt only when something on it changes: the HUD refreshes several times a second, and a button rebuilt
+        // between press and release never fires.
+        var concedeSeats = ConcedeSeats();
+        string sig = $"{progress.TotalRounds}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
+            + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"
+            + string.Join(",", concedeSeats.Select(c => $"{c.Conceded}{c.Pending}"));
+        if (sig == _missionSig) return;
+        _missionSig = sig;
+        // Removed now, not at the end of the frame: a new button can't take the name of one still waiting to go.
+        foreach (Node c in _missionBody.GetChildren()) { _missionBody.RemoveChild(c); c.QueueFree(); }
         var vm = Session.Lobby.Vm;
         _missionBody.AddChild(HudKit.Text(vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
             ? "Seize objectives" : FDG.Missions.MissionCardCatalog.Name(vm.MissionCardGame), 16, HudKit.Fg, HudKit.Bold));
@@ -1393,7 +1404,53 @@ public partial class BattleScreen : Control, IOwnBackdrop
             int n = scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount;
             _missionBody.AddChild(HudKit.Text($"{s.Name}: {n} objective{(n == 1 ? "" : "s")}", 15, _table.SeatColour(s.Id), HudKit.Semi));
         }
+        AddConcede(concedeSeats, progress.RoundCount);
         _mission.SetSummary(summary);
+    }
+
+    private sealed record ConcedeSeat(GameSession.Seat Seat, bool Conceded, bool Pending);
+
+    /// <summary>This machine's players in a campaign mission (the only games the book lets you concede), else none.</summary>
+    private List<ConcedeSeat> ConcedeSeats()
+    {
+        var table = Session.Table;
+        if (table.Progress.GameMode != FDG.EGameMode.Standard || !FDG.Stages.CampaignEventRunner.IsCampaignGame(table) || Session.EndedText != null)
+            return new List<ConcedeSeat>();
+        return Session.Seats.Where(s => s.Local && !s.Bot)
+            .Select(s => new ConcedeSeat(s, FDG.Stages.CampaignMissionLength.HasConceded(table, s.Id), BattleResolvers.Concede.Has(s.Id)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// #466 in Godot: Concede the mission (Raylib's Mission-tab button, Kai 2026-11-06 - "a button, not a question every
+    /// round"). It takes effect at the start of the next round and can be taken back until then. The confirm uses Kai's
+    /// own surrender wording.
+    /// </summary>
+    private void AddConcede(List<ConcedeSeat> seats, int? round)
+    {
+        int next = (round ?? 0) + 1;
+        foreach (ConcedeSeat c in seats)
+        {
+            string who = seats.Count > 1 ? $" ({c.Seat.Name})" : "";
+            if (c.Conceded)
+                _missionBody.AddChild(HudKit.Text($"You conceded this mission{who}.", 14, HudKit.Dim, HudKit.Semi));
+            else if (c.Pending)
+            {
+                _missionBody.AddChild(HudKit.Text($"Conceding at the start of round {next}{who}.", 14, HudKit.Gold, HudKit.Semi));
+                var back = Ui.Button("Take it back", () => BattleResolvers.Concede.Set(c.Seat.Id, false), "Keep fighting - nothing happens at the start of the round.");
+                back.Name = "TakeBackConcede";
+                _missionBody.AddChild(back);
+            }
+            else
+            {
+                var b = Ui.Button($"Concede the mission{who}", () => Confirm(ConcedeDecision.SurrenderTitle,
+                    "At the start of the next round your army leaves the table and you lose the mission. Units that leave don't count as casualties. You can take it back until the round starts.",
+                    ConcedeDecision.SurrenderYes, () => BattleResolvers.Concede.Set(c.Seat.Id, true), ConcedeDecision.SurrenderNo),
+                    "Give up this mission. Takes effect at the start of the next round.");
+                b.Name = "ConcedeMission";
+                _missionBody.AddChild(b);
+            }
+        }
     }
 
     // ================================================================== panels
@@ -1581,6 +1638,13 @@ public partial class BattleScreen : Control, IOwnBackdrop
         }
     }
 
+    /// <summary>#187: where the recovery save went when a dropped connection ended the game (host only).</summary>
+    private void AddRecoveryNote(VBoxContainer v)
+    {
+        if (Session.RecoveryNote is not { } note) return;
+        v.AddChild(Forge.ForgeWidgets.Wrapped(note, 16, HudKit.Gold));
+    }
+
     private void ShowGameOver()
     {
         GD.Print($"Game over: {Session.EndedText}");
@@ -1590,6 +1654,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         v.AddThemeConstantOverride("separation", 12);
         v.AddChild(HudKit.Text("GAME OVER", 48, HudKit.Lime, HudKit.Exo(800), HorizontalAlignment.Center));
         v.AddChild(HudKit.Text(Session.EndedText ?? "", 24, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center));
+        AddRecoveryNote(v);
         // Kai, 2026-11-11: the score on the Game Over card - objectives held (what decides the game), and what is left.
         var grid = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
         grid.AddThemeConstantOverride("h_separation", 28);
@@ -1644,6 +1709,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         v.AddThemeConstantOverride("separation", 10);
         v.AddChild(HudKit.Text(record == null ? "GAME OVER" : won ? "MISSION COMPLETE" : "MISSION FAILED", 44, record == null || won ? HudKit.Lime : Palette.WoundsRed, HudKit.Exo(800), HorizontalAlignment.Center));
         v.AddChild(HudKit.Text($"{launch.Title} - {FdgRaylib.Quest.QuestJournal.DifficultyName(launch.Difficulty)}" + (record != null ? $" - {record.Rounds} rounds" : ""), 18, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        AddRecoveryNote(v);
         if (record == null)
         {
             v.AddChild(Forge.ForgeWidgets.Wrapped((Session.EndedText ?? "") + "\nThe result could not be recorded on this computer (the heroes' files are on the host's).", 16, HudKit.Fg));
@@ -1700,6 +1766,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         var v = new VBoxContainer { CustomMinimumSize = new Vector2(680, 0) };
         v.AddThemeConstantOverride("separation", 10);
         v.AddChild(HudKit.Text(r == null ? "GAME OVER" : (r.Won ? "VICTORY" : "DEFEAT") + $" - MISSION {r.Info.Matches}", 44, r == null || r.Won ? HudKit.Lime : Palette.WoundsRed, HudKit.Exo(800), HorizontalAlignment.Center));
+        AddRecoveryNote(v);
         if (r == null)
             v.AddChild(Forge.ForgeWidgets.Wrapped((Session.EndedText ?? "") + "\nThe result could not be recorded on this computer.", 16, HudKit.Fg));
         else
