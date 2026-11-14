@@ -66,4 +66,30 @@ public class CoreBookRulesRulebookTests
             Assert.That(hook.Effect, Is.EqualTo(new Effect.RollModifier(ERollKind.Save, -1)), where + ": AP(+1) = -1 to the target's Defense roll");
         }
     }
+    /// <summary>
+    /// Build 2.08: Parry is "roll X dice per model with this rule in it" and Brace "enemies charging this unit get -X" -
+    /// neither prints an every-model clause, so neither may gate on every model having it. They gate on a model having
+    /// it, and Parry counts its own carriers. Pinned across the supplement and every shipped book, because the books
+    /// are regenerated data and the old gate would come back with a careless re-import.
+    /// </summary>
+    [Test]
+    public void ParryAndBrace_GateOnTheModelsThatHaveThem_NotOnEveryModel()
+    {
+        var definitions = new List<(string Where, SpecialRuleDefinition Def)>();
+        definitions.AddRange(BookDataCoreRules().Where(d => d.Name is "Parry" or "Brace").Select(d => ("supplement", d)));
+        foreach (string path in Directory.EnumerateFiles(Books, "*.fdgbook", SearchOption.AllDirectories))
+        {
+            BookFile book = JsonSerializer.Deserialize<BookFile>(File.ReadAllText(path), RuleJson.Options)!;
+            definitions.AddRange(book.RuleDefinitions.Where(d => d.Name is "Parry" or "Brace").Select(d => (Path.GetFileName(path), d)));
+        }
+        Assert.That(definitions.Count, Is.GreaterThan(200));
+
+        static bool Gate(Condition c, Type t) => c.GetType() == t || c is Condition.And a && (Gate(a.Left, t) || Gate(a.Right, t));
+        foreach ((string where, SpecialRuleDefinition d) in definitions)
+        {
+            HookEntry hook = d.Passive.Single();
+            Assert.That(Gate(hook.Condition, typeof(Condition.AnyModelHasThisRule)), Is.True, $"{where}: {d.Name}");
+            Assert.That(Gate(hook.Condition, typeof(Condition.AllModelsHaveThisRule)), Is.False, $"{where}: {d.Name}");
+        }
+    }
 }
