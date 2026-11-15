@@ -29,8 +29,29 @@ public static class TableLook
         }));
 
 
-    /// <summary>The background, ambient light, sun and rim light the battle is played under.</summary>
-    public static void AddLighting(Node parent)
+    /// <summary>
+    /// The room the table stands in (Kai, 2026-11-14), from the player's Settings - null for the plain dark background.
+    /// <paramref name="system"/> is the game being played, for the Auto choice.
+    /// </summary>
+    public static FdgRaylib.Terrain.TableRooms.Room? RoomFor(EGameSystem? system) =>
+        FdgRaylib.Terrain.TableRooms.Pick(FdgRaylib.Config.UserConfig.Current.View.Room, system);
+
+    private static readonly Dictionary<string, Texture2D?> Panoramas = new();
+
+    private static Texture2D? Panorama(FdgRaylib.Terrain.TableRooms.Room room)
+    {
+        string file = FdgRaylib.Terrain.TableRooms.FileFor(room);
+        if (Panoramas.TryGetValue(file, out var have)) return have;
+        Image? img = File.Exists(file) ? Image.LoadFromFile(file) : null;
+        return Panoramas[file] = img == null || img.IsEmpty() ? null : ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>
+    /// The background, ambient light, sun and rim light the battle is played under. With a <paramref name="room"/>, its
+    /// 360-degree photo is drawn all around the table instead of the dark background; the table's own lighting stays the
+    /// same, so the rules colours read the same in every room.
+    /// </summary>
+    public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null)
     {
         var env = new Godot.Environment
         {
@@ -38,6 +59,12 @@ public static class TableLook
             AmbientLightSource = Godot.Environment.AmbientSource.Color, AmbientLightColor = new Color(0.45f, 0.55f, 0.6f), AmbientLightEnergy = 0.45f,
             TonemapMode = Godot.Environment.ToneMapper.Filmic, GlowEnabled = true, GlowIntensity = 0.35f,
         };
+        if (room != null && Panorama(room) is { } pano)
+        {
+            env.BackgroundMode = Godot.Environment.BGMode.Sky;
+            env.Sky = new Sky { SkyMaterial = new PanoramaSkyMaterial { Panorama = pano } };
+            env.BackgroundEnergyMultiplier = Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.RoomBrightness, 0.2f, 1.5f);
+        }
         parent.AddChild(new WorldEnvironment { Environment = env, Name = "Environment" });
         var sun = new DirectionalLight3D { LightEnergy = 1.2f, LightColor = new Color(1f, 0.95f, 0.88f), ShadowEnabled = true, Name = "Sun" };
         sun.RotationDegrees = new Vector3(-58, 32, 0);
@@ -52,9 +79,10 @@ public static class TableLook
     /// <paramref name="mat"/> is the map's battle mat (<c>wh-mat:&lt;id&gt;</c>): its picture replaces the felt, with the
     /// same grid drawn over it; a computer without the picture gets the felt.
     /// </summary>
-    public static void AddBoard(Node parent, float w, float d, string? mat = null)
+    public static void AddBoard(Node parent, float w, float d, string? mat = null, bool floor = true)
     {
-        Mesh(parent, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
+        // The dark floor under the table; left out in a room, whose own floor shows instead.
+        if (floor) Mesh(parent, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
         Mesh(parent, new BoxMesh { Size = new Vector3(w + 2, 3, d + 2) }, Mat(new Color(0.09f, 0.075f, 0.06f), 0.6f), new Vector3(0, -1.55f, 0));
         Texture2D cloth = MatTexture(mat, w, d) ?? Felt(w, d);
         Mesh(parent, new PlaneMesh { Size = new Vector2(w, d) }, new StandardMaterial3D { AlbedoTexture = cloth, Roughness = 0.95f }, new Vector3(0, 0.01f, 0));

@@ -470,13 +470,16 @@ public partial class BattleTable : Node3D
     }
 
     // ------------------------------------------------------------------ world
-    private void Environment() => TableLook.AddLighting(this);
+    private FdgRaylib.Terrain.TableRooms.Room? _room;
+    private FdgRaylib.Terrain.TableRooms.Room? Room => _room ??= TableLook.RoomFor(Session.Lobby.Vm.GameSystem);
+
+    private void Environment() => TableLook.AddLighting(this, Room);
 
     private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f) => TableLook.Mat(c, rough, emit, emitE);
 
     private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos) => TableLook.Mesh(parent, mesh, mat, pos);
 
-    private void Board() => TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat);
+    private void Board() => TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null);
 
     // ------------------------------------------------------------------ terrain
     private void SyncTerrain()

@@ -199,6 +199,13 @@ public sealed class ViewPreferences
     public float MasterVolume { get; set; } = 1f;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
     public bool ShowUnitModels { get; set; } = true;
+
+    /// <summary>The room around the table (Kai, 2026-11-14): a <c>TableRooms</c> id, "auto" (a room matching the game,
+    /// once downloaded) or "" for none.</summary>
+    public string Room { get; set; } = "auto";
+
+    /// <summary>How bright the room behind the table is drawn (0.2 - 1.5).</summary>
+    public float RoomBrightness { get; set; } = 0.7f;
 }
 
 /// <summary>

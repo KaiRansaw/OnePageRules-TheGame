@@ -69,7 +69,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _checkFor = DefaultGame();
         _world = new Node3D { Name = "MapWorld" };
         AddChild(_world);
-        TableLook.AddLighting(_world);
+        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor));
         _board = new Node3D();
         _pieces = new Node3D();
         _marks = new Node3D();
@@ -640,7 +640,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D, Draft.Mat);
+        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null);
     }
 
     private void Sync3D()

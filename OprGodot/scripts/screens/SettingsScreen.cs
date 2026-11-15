@@ -1,3 +1,4 @@
+using FdgRaylib.Terrain;
 using FdgRaylib.Config;
 using FdgRaylib.Network;
 using Godot;
@@ -85,6 +86,68 @@ public partial class SettingsScreen : Control
             View.ShowAllTokens, on => View.ShowAllTokens = on));
         rows.AddChild(Check("Victory fireworks", "Fireworks in the winner's colours behind the Game Over card.",
             View.ShowVictoryFireworks, on => View.ShowVictoryFireworks = on));
+        RoomRows(rows);
+    }
+
+    // Kai, 2026-11-14: a room around the table - 360-degree photos from Poly Haven, downloaded on this computer.
+    private static void RoomRows(VBoxContainer rows)
+    {
+        var pick = new OptionButton { Name = "Room", CustomMinimumSize = new Vector2(360, 0) };
+        var ids = new List<string>();
+        void Fill()
+        {
+            pick.Clear();
+            ids.Clear();
+            void Add(string id, string text, bool disabled = false)
+            {
+                pick.AddItem(text);
+                pick.SetItemDisabled(pick.ItemCount - 1, disabled);
+                ids.Add(id);
+            }
+            Add(TableRooms.Auto, "Auto - grimdark for GF games, fantasy for AoF");
+            Add(TableRooms.None, "None - the plain dark background");
+            foreach (var r in TableRooms.All)
+            {
+                bool have = TableRooms.Have(r);
+                Add(r.Id, $"{r.Kind}: {r.Name}" + (have ? "" : "  (not downloaded)"), !have);
+            }
+            pick.Selected = Math.Max(0, ids.IndexOf(View.Room));
+        }
+        Fill();
+        pick.ItemSelected += i => { View.Room = ids[(int)i]; UserConfig.Save(); };
+        rows.AddChild(Row("Room around the table",
+            "A 360-degree photo of a room, all around the battle table and the Map Maker. Auto picks a downloaded room that suits the game. Takes effect from the next game.", pick));
+        rows.AddChild(Slider("Room brightness", "How bright the room behind the table is. The table itself is lit the same either way.",
+            View.RoomBrightness, 0.2, 1.5, v => View.RoomBrightness = v, "x"));
+
+        var line = new HBoxContainer();
+        line.AddThemeConstantOverride("separation", 12);
+        var status = Ui.Label("");
+        int have = TableRooms.All.Count(r => TableRooms.Have(r));
+        status.Text = $"{have} of {TableRooms.All.Count} rooms on this computer.";
+        var dl = new Button { Name = "DownloadRooms", Text = "Download rooms", CustomMinimumSize = new Vector2(220, 36), FocusMode = FocusModeEnum.None,
+            TooltipText = "Download the rooms not on this computer yet (about 20 MB each) from Poly Haven." };
+        dl.Pressed += () =>
+        {
+            dl.Disabled = true;
+            var todo = TableRooms.All.Where(r => !TableRooms.Have(r)).ToList();
+            _ = Task.Run(async () =>
+            {
+                var (saved, failed, error) = await TableRooms.DownloadAsync(todo, msg => Callable.From(() => { if (GodotObject.IsInstanceValid(status)) status.Text = msg; }).CallDeferred(), CancellationToken.None);
+                Callable.From(() =>
+                {
+                    if (!GodotObject.IsInstanceValid(status)) return;
+                    int now = TableRooms.All.Count(r => TableRooms.Have(r));
+                    status.Text = $"{now} of {TableRooms.All.Count} rooms on this computer." + (failed > 0 ? $" {failed} failed: {error}" : "");
+                    dl.Disabled = false;
+                    Fill();
+                }).CallDeferred();
+            });
+        };
+        line.AddChild(dl);
+        line.AddChild(status);
+        rows.AddChild(Row("Rooms", "Room photos are free (CC0) from Poly Haven, polyhaven.com.", line));
+        rows.AddChild(Row("", "", Ui.Label("Room photos from Poly Haven (polyhaven.com), free to use (CC0).")));
     }
 
     // ── Gameplay ─────────────────────────────────────────────────────────────────────────────────

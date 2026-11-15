@@ -23,6 +23,10 @@ public static class CreditsText
                 "OnePageRules (OPR Games) - created by Gaetano Ferrara", "Rules and army books (c) OPR Games", "https://www.onepagerules.com"),
             new Entry("Army books and rule wording", "Army Forge", "Imported from OPR's Army Forge", "https://army-forge.onepagerules.com"),
         }, "A fan-made program, not made or endorsed by OPR Games. Buy their books - they are what this game plays."),
+        new Section("Rooms around the table (downloaded on your computer)", new[]
+        {
+            new Entry("360-degree room photos", "Poly Haven and its photographers", "CC0 - public domain", "https://polyhaven.com"),
+        }),
         new Section("Icons", new[]
         {
             new Entry("Game icons", "Lorc, Delapouite and sbed - game-icons.net", "CC BY 3.0 (recoloured)", "https://game-icons.net"),
