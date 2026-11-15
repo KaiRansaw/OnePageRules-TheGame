@@ -57,6 +57,7 @@ public partial class LooksPanel : HBoxContainer
         var versions = Versions();
         var slots = _s.Slots(_row);
         string? show = slots.Count > 0 && versions.Count > 0 ? ModelLooks.Pick(versions, slots[0].Look) : null;
+        _target = show;
         if (show != null) CallDeferred(nameof(ShowPreviewDeferred), show);
     }
 
@@ -124,6 +125,8 @@ public partial class LooksPanel : HBoxContainer
             if (file == _previewFile) b.AddThemeColorOverride("font_color", Palette.Lime);
             b.Pressed += () => PickVersion(vi + 1);
             b.MouseEntered += () => ShowPreview(file);
+            b.MouseExited += () => { if (_target != null && _target != _previewFile) ShowPreview(_target); };
+            if (file == _target) b.AddThemeColorOverride("font_color", Palette.Lime);
             vlist.AddChild(b);
         }
         var vs = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -170,11 +173,20 @@ public partial class LooksPanel : HBoxContainer
     private Label _portraitNote = null!;
     private Button _makePortrait = null!, _cameraPortrait = null!;
 
+    /// <summary>
+    /// The version the portrait buttons work on (Kai, 2026-11-14: "take the portrait of the model that's selected, not
+    /// the one last under the mouse"): the version last clicked, or the look of the model slot last clicked. Hovering a
+    /// version only previews it; moving off puts the preview back on this one.
+    /// </summary>
+    private string? _target;
+
+    private void ShowTarget() { if (_target != null) ShowPreview(_target); }
+
     private PortraitCameraPopup? OpenCamera()
     {
-        if (_previewFile == null) return null;
-        string file = _previewFile;
-        var cam = PortraitCameraPopup.Open(this, file, $"{_s.Detail(_row).Unit.Name} - {ModelLooks.Label(Versions(), file)}");
+        if (_target == null) return null;
+        string file = _target;
+        var cam = PortraitCameraPopup.Open(this, file, $"{_s.Detail(_row).Unit.Name} - {ModelLooks.Label(Versions(), file)}", _s.Book.Faction, _s.Detail(_row).Unit.Name);
         cam.Saved += () => { ShowPortrait(); _status($"Portrait taken for {ModelLooks.Label(Versions(), file)}.", Palette.Lime); };
         return cam;
     }
@@ -223,24 +235,26 @@ public partial class LooksPanel : HBoxContainer
     private void ShowPortrait()
     {
         if (_portrait == null || !IsInstanceValid(_portrait)) return;
-        _makePortrait.Disabled = _cameraPortrait.Disabled = _previewFile == null;
-        if (_previewFile == null) { _portrait.Texture = null; _portraitNote.Text = ""; return; }
-        string path = UnitPortraits.PathFor(_previewFile);
-        bool chosen = UnitPortraits.IsChosen(_previewFile);
+        _makePortrait.Disabled = _cameraPortrait.Disabled = _target == null;
+        if (_target == null) { _portrait.Texture = null; _portraitNote.Text = ""; return; }
+        string path = UnitPortraits.PathFor(_target);
+        bool chosen = UnitPortraits.IsChosen(_target);
         _portrait.Texture = chosen && Image.LoadFromFile(path) is { } img ? ImageTexture.CreateFromImage(img) : null;
-        _portraitNote.Text = chosen
-            ? "This version has its own portrait - the game shows it for models wearing this look. Make it again to redo it."
-            : "No portrait of this version yet - the unit shows its official picture.";
+        string which = ModelLooks.Label(Versions(), _target);
+        _cameraPortrait.Text = $"Take portrait of {which}...";
+        _portraitNote.Text = (chosen
+            ? $"{which} has its own portrait - the game shows it for models wearing this look. Take it again to redo it."
+            : $"No portrait of {which} yet - the unit shows its official picture.") + " Click a version (or a model) to choose which one.";
     }
 
     private bool _making;
 
     private async Task MakePortrait()
     {
-        if (_making || _previewFile == null) return;
+        if (_making || _target == null) return;
         _making = true;
         _makePortrait.Disabled = true;
-        string file = _previewFile;
+        string file = _target;
         var studio = new PortraitShot.Studio();
         AddChild(studio);
         try
@@ -306,7 +320,7 @@ public partial class LooksPanel : HBoxContainer
                 else { _selected.Clear(); _selected.Add(i); }
                 _anchor = i;
                 _dragSelecting = true;
-                if (versions.Count > 0 && ModelLooks.Pick(versions, slot.Look) is { } f) _previewFile = f;
+                if (versions.Count > 0 && ModelLooks.Pick(versions, slot.Look) is { } f) { _previewFile = f; _target = f; CallDeferred(nameof(ShowTarget)); }
                 b.AcceptEvent();
                 CallDeferred(nameof(Refresh));
             }
@@ -347,6 +361,8 @@ public partial class LooksPanel : HBoxContainer
         if (number < 1 || number > versions.Count) return;
         string file = versions[number - 1];
         _previewFile = file;
+        _target = file;
+        ShowPreview(file);
         if (_selected.Count == 0)
         {
             _status("Select one or more models first (click a slot, Shift+click, or Select all), then pick a version.", Palette.HitsYellow);

@@ -18,6 +18,9 @@ public partial class PortraitCameraPopup : Control
 
     private readonly string _model;
     private readonly string _title;
+    private readonly string _faction, _unit;
+    private CropBoxes _boxes = null!;
+    private VSlider _height = null!;
     private PortraitShot.Studio _studio = null!;
     private TextureRect _view = null!;
     private Label _status = null!;
@@ -26,20 +29,22 @@ public partial class PortraitCameraPopup : Control
     private bool _orbit, _pan;
     private const int Side = 640;
 
-    public PortraitCameraPopup() : this("", "") { }
+    public PortraitCameraPopup() : this("", "", "", "") { }
 
-    public PortraitCameraPopup(string model, string title)
+    public PortraitCameraPopup(string model, string title, string faction, string unit)
     {
         _model = model;
         _title = title;
+        _faction = faction;
+        _unit = unit;
     }
 
     /// <summary>Opens over the whole screen, whatever <paramref name="from"/> sits in.</summary>
-    public static PortraitCameraPopup Open(Node from, string model, string title)
+    public static PortraitCameraPopup Open(Node from, string model, string title, string faction = "", string unit = "")
     {
         var layer = new CanvasLayer { Layer = 50 };
         from.GetTree().Root.AddChild(layer);
-        var p = new PortraitCameraPopup(model, title);
+        var p = new PortraitCameraPopup(model, title, faction, unit);
         p.SetAnchorsPreset(LayoutPreset.FullRect);
         layer.AddChild(p);
         p.TreeExiting += () => layer.QueueFree();
@@ -71,13 +76,39 @@ public partial class PortraitCameraPopup : Control
         _view.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _view.GuiInput += ViewInput;
         frame.AddChild(_view);
-        col.AddChild(HudKit.Panel(HudKit.PanelBox(8), frame));
+        // Kai, 2026-11-14: boxes showing the part of the portrait each card shows, to line the model up in them.
+        _boxes = new CropBoxes(PictureFraming.For(_faction, _unit)) { MouseFilter = MouseFilterEnum.Ignore };
+        _boxes.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        frame.AddChild(_boxes);
+        var viewRow = new HBoxContainer();
+        viewRow.AddThemeConstantOverride("separation", 10);
+        viewRow.AddChild(HudKit.Panel(HudKit.PanelBox(8), frame));
+        // The boxes' height: where the cards' crop sits on the portrait (saved as the unit's framing, as in Frame pictures).
+        var heightCol = new VBoxContainer();
+        heightCol.AddChild(HudKit.Text("Box", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        heightCol.AddChild(HudKit.Text("height", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        _height = new VSlider { Name = "BoxHeight", MinValue = 0, MaxValue = 1, Step = 0.005, Value = 1 - _boxes.Frame.Y, SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter, TooltipText = "Move the card boxes up or down the portrait - where the unit card and army cards cut it. Saved for this unit." };
+        _height.ValueChanged += v =>
+        {
+            _boxes.Frame = _boxes.Frame with { Y = 1 - (float)v };
+            _boxes.QueueRedraw();
+            if (_unit.Length > 0) PictureFraming.Set(_faction, _unit, _boxes.Frame);
+            HudKit.ForgetPictures();
+        };
+        heightCol.AddChild(_height);
+        viewRow.AddChild(heightCol);
+        col.AddChild(viewRow);
 
         _status = HudKit.Text("", 14, HudKit.Dim, HudKit.Semi);
         col.AddChild(_status);
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddThemeConstantOverride("separation", 10);
         buttons.AddChild(Btn("ResetCamera", "Reset view", "Back to the usual portrait angle.", StartView));
+        var show = new CheckBox { Name = "ShowCropBoxes", Text = "Show card boxes", ButtonPressed = true, FocusMode = FocusModeEnum.None,
+            TooltipText = "Outline the part of the portrait the unit card and the army cards / list show." };
+        show.Toggled += on => _boxes.Visible = on;
+        buttons.AddChild(show);
         buttons.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
         buttons.AddChild(Btn("TakePortrait", "Take portrait", "Save what the square shows as this version's portrait.", () => _ = Take()).Also(b => b.ThemeTypeVariation = "CommitButton"));
         buttons.AddChild(Btn("ClosePortraitCamera", "Close", "Close without taking a portrait.", QueueFree));
@@ -182,5 +213,37 @@ public partial class PortraitCameraPopup : Control
             Saved?.Invoke();
         }
         catch (Exception ex) { _status.Text = "Could not take it: " + ex.Message; }
+    }
+
+    /// <summary>
+    /// The outlines over the camera: the unit card's banner (wide, the top of it shows over the name) and the army
+    /// cards' / army list's banner (wider still), as the game crops this square picture - with the unit's framing from
+    /// Frame pictures, if it has one.
+    /// </summary>
+    private sealed partial class CropBoxes : Control
+    {
+        public PictureFraming.Frame Frame;
+
+        public CropBoxes() : this(PictureFraming.Frame.Default) { }
+
+        public CropBoxes(PictureFraming.Frame frame) { Frame = frame; }
+
+        public override void _Draw()
+        {
+            Vector2 s = Size;
+            void Box(float aspect, Color c, string label, bool labelBelow)
+            {
+                var (x, y, w, h) = PictureFraming.Region(1, 1, aspect, Frame);
+                var r = new Rect2(x * s.X, y * s.Y, w * s.X, h * s.Y);
+                DrawRect(r.Grow(1), new Color(0, 0, 0, 0.5f), false, 3);
+                DrawRect(r, c, false, 2);
+                Font f = HudKit.Semi;
+                Vector2 at = labelBelow ? new Vector2(r.Position.X + 6, r.End.Y - 8) : new Vector2(r.Position.X + 6, r.Position.Y + 18);
+                DrawString(f, at + new Vector2(1, 1), label, HorizontalAlignment.Left, -1, 15, new Color(0, 0, 0, 0.8f));
+                DrawString(f, at, label, HorizontalAlignment.Left, -1, 15, c);
+            }
+            Box(316f / HudKit.PictureSize.UnitCard, HudKit.Lime, "Unit card", false);
+            Box(HudKit.PictureSize.BannerAspect, HudKit.Friendly, "Army cards / army list", true);
+        }
     }
 }
