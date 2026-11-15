@@ -487,7 +487,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
     };
 
     private const float Pad = 12;
-    private const float CardHeight = 236;
+    // The card's banner (2026-11-14) is added on top of the old 236: the stats, weapons and rules keep the room they had.
+    private const float CardHeight = 236 + HudKit.PictureSize.UnitCard - 46;
 
     /// <summary>A rule's book wording for this game system (Army Forge's own text), or null.</summary>
     public string? RuleText(string name)
