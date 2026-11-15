@@ -68,12 +68,68 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         _updateLine = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Right);
         _updateLine.Name = "UpdateLine";
         foot.AddChild(_updateLine);
+        _offSwitch = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        foot.AddChild(_offSwitch);
+        foot.AddChild(HudKit.Gap(0, 6));
         foot.AddChild(HudKit.Text("Fan-made. Not an official OnePageRules product. Game rules and army data (c) OnePageRules.", 13, HudKit.Dim with { A = 0.7f }, HudKit.Medium, HorizontalAlignment.Right));
         HudKit.Place(this, foot, LayoutPreset.BottomRight, new Vector2(-28, -16));
 
-        // Checks quietly on opening (Kai, 2026-11-12); the button lights up when there is something new.
-        if (!ScriptedRun.IsRequested || OS.GetCmdlineUserArgs().Contains("--check-update")) _ = CheckForUpdate();
+        ShowOffSwitch();
+        // Checks quietly on opening (Kai, 2026-11-12); the button lights up when there is something new. Not at all when
+        // auto update detection is turned off (Kai, 2026-11-14).
+        if (Offline) ShowDisconnected();
+        else if (!ScriptedRun.IsRequested || OS.GetCmdlineUserArgs().Contains("--check-update")) _ = CheckForUpdate();
     }
+
+    // ================================================================== Auto update detection switch
+
+    private HBoxContainer _offSwitch = null!;
+
+    private static bool Offline => FdgRaylib.Config.UserConfig.Current.AutoUpdateDetectionOff;
+
+    /// <summary>
+    /// Kai, 2026-11-14: "TURN OFF AUTO UPDATE DETECTION" - glowing green and ON means the game does not connect to
+    /// GitHub at all, and says so. Saved, so it stays off between runs.
+    /// </summary>
+    private void ShowOffSwitch()
+    {
+        foreach (Node n in _offSwitch.GetChildren()) { _offSwitch.RemoveChild(n); n.QueueFree(); }
+        bool on = Offline;
+        var b = new Button { Name = "AutoUpdateSwitch", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(430, 44),
+            TooltipText = on
+                ? "ON: the game does not connect to GitHub - it won't look for updates, and Update is off. Click to turn auto update detection back on."
+                : "OFF: the game checks GitHub for a newer version once, when it opens (and when you press Update). It is not connected the rest of the time. Click to stop it connecting at all." };
+        var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 10, ContentMarginLeft = 14, ContentMarginRight = 10 };
+        if (on) box = box.With(x => { x.Border = HudKit.Lime; x.Glow = HudKit.Lime with { A = 0.6f }; x.Fill = new Color(0.12f, 0.19f, 0.08f, 0.96f); });
+        HudKit.StyleButton(b, box, HudKit.Fg, 15);
+        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        row.OffsetLeft = 14; row.OffsetRight = -8;
+        row.AddThemeConstantOverride("separation", 10);
+        var label = HudKit.Text("TURN OFF AUTO UPDATE DETECTION", 15, on ? HudKit.Lime : HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1));
+        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(label);
+        var state = HudKit.Chip(on ? "ON" : "OFF", on ? HudKit.Lime : HudKit.Dim, on, 15);
+        state.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        state.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(state);
+        b.AddChild(row);
+        b.Pressed += () =>
+        {
+            FdgRaylib.Config.UserConfig.Current.AutoUpdateDetectionOff = !Offline;
+            FdgRaylib.Config.UserConfig.Save();
+            ShowOffSwitch();
+            ReplaceUpdateButton(false);
+            if (Offline) ShowDisconnected();
+            else _ = CheckForUpdate();
+        };
+        _offSwitch.AddChild(b);
+    }
+
+    private void ShowDisconnected() =>
+        Line("DISCONNECTED - auto update detection is off. The game does not connect to GitHub.", HudKit.Gold);
 
     // ================================================================== Update
 
@@ -84,6 +140,13 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         string tip = available
             ? "A new version is on GitHub. Click to update."
             : "Get the newest version from GitHub.";
+        if (Offline)
+        {
+            var off = HudKit.ActionButton("Update", "clockwise-rotation", "Offline", "", HudKit.Dim, 96, disabled: true);
+            off.CustomMinimumSize = new Vector2(118, 96);
+            off.TooltipText = "Auto update detection is turned off, so the game is not connected to GitHub. Turn it back on (bottom right) to update.";
+            return off;
+        }
         var b = HudKit.ActionButton("Update", "clockwise-rotation", available ? "Update!" : "Update", "", available ? HudKit.Lime : HudKit.Teal, 96, selected: available);
         b.CustomMinimumSize = new Vector2(118, 96);
         b.TooltipText = tip;
@@ -96,9 +159,14 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         _updateStatus = s;
         Line(s.Summary, s.Error != null ? Palette.WoundsRed : s.Available ? HudKit.Lime : HudKit.Dim);
         if (s.Available == _shownAvailable) return;
-        _shownAvailable = s.Available;
+        ReplaceUpdateButton(s.Available);
+    }
+
+    private void ReplaceUpdateButton(bool available)
+    {
+        _shownAvailable = available;
         int at = _update.GetIndex();
-        var fresh = UpdateButton(s.Available);
+        var fresh = UpdateButton(available);
         _tools.RemoveChild(_update);
         _update.QueueFree();
         _update = fresh;
@@ -124,14 +192,18 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
 
     private async Task CheckForUpdate()
     {
-        Line("Checking for updates...", HudKit.Dim);
+        if (Offline) { ShowDisconnected(); return; }
+        Line("Checking GitHub for updates...", HudKit.Dim);
         var s = await Check();
-        if (IsInsideTree()) SetUpdateStatus(s);
+        if (!IsInsideTree() || Offline) return; // turned off while it was checking
+        SetUpdateStatus(s);
+        // Kai, 2026-11-14: say plainly that it is not connected all the time.
+        if (s.Error == null) Line(s.Summary + "  (checked once when the game opened - not connected the rest of the time)", s.Available ? HudKit.Lime : HudKit.Dim);
     }
 
     private async Task OnUpdatePressed()
     {
-        if (_updating) return;
+        if (_updating || Offline) return;
         _updating = true;
         try
         {

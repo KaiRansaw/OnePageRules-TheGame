@@ -137,6 +137,17 @@ public partial class ScriptedRun : Node
                     var pp = lab.OpenPortraits();
                     if (arg != "open") Callable.From(() => pp.StartFor(arg)).CallDeferred();
                 }
+                // "labframe:<army>|<unit>[|x|y|zoom]" opens Frame pictures on that unit (and frames it).
+                else if (name.StartsWith("labframe:") && arg.Split('|') is { Length: >= 2 } fr)
+                {
+                    var frp = lab.OpenFraming();
+                    FdgRaylib.Models3D.PictureFraming.Frame? frame = fr.Length >= 5
+                        ? new(float.Parse(fr[2], System.Globalization.CultureInfo.InvariantCulture), float.Parse(fr[3], System.Globalization.CultureInfo.InvariantCulture), float.Parse(fr[4], System.Globalization.CultureInfo.InvariantCulture))
+                        : null;
+                    Callable.From(() => frp.Drive(fr[0], fr[1], frame)).CallDeferred();
+                    _wait = 40;
+                    return;
+                }
                 // "labpics:<game number>|<army>" downloads official pictures (0 = all games; "open" just opens the window).
                 else if (name.StartsWith("labpics:"))
                 {

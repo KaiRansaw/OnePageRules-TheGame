@@ -62,6 +62,13 @@ public sealed class UserConfig
     /// save as you make them"). Loaded into <c>ViewSettings</c> when the window opens.</summary>
     public ViewPreferences View { get; set; } = new();
 
+    /// <summary>
+    /// The main menu's "Turn off auto update detection" switch (Kai, 2026-11-14). On: the game never contacts GitHub -
+    /// no check when it opens and the Update button is off - and the menu says it is disconnected. Off (the default):
+    /// it checks once as the game opens, and only when Update is pressed after that.
+    /// </summary>
+    public bool AutoUpdateDetectionOff { get; set; }
+
     /// <summary>The lobby settings panel, as the last hosted (non-resume) game left it.</summary>
     public HostGameSettings HostSettings { get; set; } = HostGameSettings.FromDefaults();
 

@@ -154,10 +154,16 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         right.AddChild(_hasTitle);
         _has = new VBoxContainer { Name = "Has" };
         _has.AddThemeConstantOverride("separation", 2);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 220), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 150), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _has.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         scroll.AddChild(_has);
         right.AddChild(scroll);
+        // Kai, 2026-11-14: the unit's picture under the list, as a reference while matching.
+        _unitPic = new TextureRect { Name = "UnitPicture", CustomMinimumSize = new Vector2(0, 200), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, TooltipText = "The unit's picture (Asset Lab -> Official pictures), to compare with the model." };
+        _unitPicNote = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
+        right.AddChild(_unitPic);
+        right.AddChild(_unitPicNote);
         var share = Btn("SaveMatches", "Save matches for everyone", "Saves your matches to one small file (no models in it). Tell Claude when it's saved: it goes into the game, so friends' downloads use the same matches.", SaveForEveryone);
         share.CustomMinimumSize = new Vector2(0, 40);
         right.AddChild(share);
@@ -312,8 +318,19 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         FillHas();
     }
 
+    private TextureRect _unitPic = null!;
+    private Label _unitPicNote = null!;
+
+    private void ShowUnitPicture()
+    {
+        Texture2D? t = _unit == null ? null : HudKit.UnitPicture(Book, _unit);
+        _unitPic.Texture = t;
+        _unitPicNote.Text = _unit == null ? "" : t == null ? "No picture for this unit yet (Asset Lab -> Official pictures)." : "";
+    }
+
     private void FillHas()
     {
+        ShowUnitPicture();
         foreach (Node c in _has.GetChildren()) { _has.RemoveChild(c); c.QueueFree(); }
         if (_unit == null) { _hasTitle.Text = "This unit has"; _has.AddChild(HudKit.Text("Pick a unit above.", 14, HudKit.Dim, HudKit.Semi)); return; }
         var models = ModelsOf(_unit);

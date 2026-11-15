@@ -889,7 +889,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         else
         {
             var head = new Control { CustomMinimumSize = new Vector2(width, pictureHeight), MouseFilter = MouseFilterEnum.Ignore };
-            var banner = HudKit.Banner(picture, "person", 0, pictureHeight, team, down: true);
+            var banner = HudKit.Banner(picture, "person", 0, pictureHeight, team, down: true, frame: FdgRaylib.Models3D.PictureFraming.For(faction, u.Name));
             banner.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             head.AddChild(banner);
             top.MouseFilter = MouseFilterEnum.Ignore;

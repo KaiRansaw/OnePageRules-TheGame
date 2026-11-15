@@ -287,9 +287,12 @@ public static class HudKit
     /// fills whatever space the container gives it.
     /// </summary>
     public static Control Banner(string faction, string unit, string fallbackIcon, float w, float h, Color team, float alpha = 1f, string? look = null, bool down = false)
-        => Banner(UnitPicture(faction, unit, look), fallbackIcon, w, h, team, alpha, down);
+        => Banner(UnitPicture(faction, unit, look), fallbackIcon, w, h, team, alpha, down, FdgRaylib.Models3D.PictureFraming.For(faction, unit));
 
-    public static Control Banner(Texture2D? picture, string fallbackIcon, float w, float h, Color team, float alpha = 1f, bool down = false)
+    /// <summary><paramref name="frame"/>: where the picture is centred and how far it is zoomed (the Asset Lab's picture
+    /// framing, Kai 2026-11-14); null = centred, just filling the space.</summary>
+    public static Control Banner(Texture2D? picture, string fallbackIcon, float w, float h, Color team, float alpha = 1f, bool down = false,
+        FdgRaylib.Models3D.PictureFraming.Frame? frame = null)
     {
         if (picture == null)
         {
@@ -302,12 +305,22 @@ public static class HudKit
         mat.SetShaderParameter("from", down ? 0.62f : 0.5f);
         mat.SetShaderParameter("alpha", alpha);
         mat.SetShaderParameter("size", new Vector2(w, h));
+        // The picture's crop is worked out here (not left to "cover"), so the framing can move and zoom it.
+        var crop = new AtlasTexture { Atlas = picture };
+        var f = frame ?? FdgRaylib.Models3D.PictureFraming.Frame.Default;
+        void Fit(Vector2 size)
+        {
+            if (size.X < 1 || size.Y < 1) return;
+            var (x, y, rw, rh) = FdgRaylib.Models3D.PictureFraming.Region(picture.GetWidth(), picture.GetHeight(), size.X / size.Y, f);
+            crop.Region = new Rect2(x, y, rw, rh);
+        }
+        Fit(new Vector2(w > 0 ? w : h, h));
         var tr = new TextureRect
         {
-            Texture = picture, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            Texture = crop, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale,
             CustomMinimumSize = new Vector2(w, h), ClipContents = true, Material = mat, MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        tr.Resized += () => mat.SetShaderParameter("size", tr.Size);
+        tr.Resized += () => { mat.SetShaderParameter("size", tr.Size); Fit(tr.Size); };
         return tr;
     }
 

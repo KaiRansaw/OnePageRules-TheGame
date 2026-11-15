@@ -514,7 +514,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         row.AddChild(t);
         if (picture == null) { col.AddChild(row); return; }
         var head = new Control { CustomMinimumSize = new Vector2(0, HudKit.PictureSize.UnitCard), MouseFilter = MouseFilterEnum.Ignore };
-        var banner = HudKit.Banner(picture, "person", 0, HudKit.PictureSize.UnitCard, HudKit.Friendly, down: true);
+        var banner = HudKit.Banner(picture, "person", 0, HudKit.PictureSize.UnitCard, HudKit.Friendly, down: true, frame: FdgRaylib.Models3D.PictureFraming.For(s.Book.Faction, unit.Name));
         banner.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         head.AddChild(banner);
         row.MouseFilter = MouseFilterEnum.Ignore;
