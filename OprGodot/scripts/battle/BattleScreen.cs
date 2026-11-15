@@ -200,7 +200,14 @@ public partial class BattleScreen : Control, IOwnBackdrop
                 _dragRotate = mb.Pressed ? mb.Position : null;
                 // A right CLICK (not a drag to turn the camera): drop the placed move / shot, step back, drop the
                 // picked unit (Kai, 2026-11-10) - and only then close the newest pinned enemy window.
-                if (!mb.Pressed && mb.Position.DistanceTo(_rightDown) < 4 && !Decisions.RightClick() && _pinned.Count > 0) CloseNewestPin();
+                // Kai, 2026-11-14: a right click off the selected unit also lets go of it (its highlight goes).
+                if (!mb.Pressed && mb.Position.DistanceTo(_rightDown) < 4 && !Decisions.RightClick())
+                {
+                    IModel? under = _table.ModelAt(mb.Position);
+                    if (_selected != null && (under == null || !_selected.Models.Any(m => m.ID.Equals(under.ID))))
+                        ClearSelection();
+                    else if (_pinned.Count > 0) CloseNewestPin();
+                }
                 if (mb.Pressed) _rightDown = mb.Position;
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } mb:
@@ -830,6 +837,10 @@ public partial class BattleScreen : Control, IOwnBackdrop
         row.TooltipText = mark is { Pickable: true } ? "Click to pick this unit" : mark is { Reason: { } r } ? r
             : shaken ? "Shaken" : done ? "Already activated this round" : "Click to see its card";
         row.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) { SelectUnit(u); Decisions.UnitPicked(u); } };
+        // Kai, 2026-11-14: hovering a unit in the list outlines it on the table, for as long as the pointer is on it.
+        row.MouseEntered += () => _table.Highlight.Add(u.ID);
+        row.MouseExited += () => _table.Highlight.Remove(u.ID);
+        row.TreeExiting += () => _table.Highlight.Remove(u.ID);
         return row;
     }
 

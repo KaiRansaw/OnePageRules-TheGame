@@ -83,6 +83,8 @@ public sealed class WarhammerTerrainLibrary
             string file = WarhammerTerrain.ModelPathFor(t.Catalogue, p, folder);
             if (!File.Exists(file)) continue;
             Match m = saved.TryGetValue(p.Id, out var s) ? s : new Match { Kind = GuessKind(p.Name, p.Keywords) };
+            // A guess nobody has checked yet follows the current guessing (it was only ever a guess).
+            if (!m.Checked && !m.Hidden) m.Kind = GuessKind(p.Name, p.Keywords);
             string set = t.Catalogue.Groups.TryGetValue(p.Set, out var g) ? g : "Terrain";
             entries.Add(new Entry(p.Id, p.Set, set, file, p.Keywords, p.Name, m));
         }
@@ -123,7 +125,9 @@ public sealed class WarhammerTerrainLibrary
         if (Has("storey", "ruin", "breachable")) return "Ruins";
         if (Has("rock", "boulder", "cliff", "mountain")) return "Mountain";
         if (Has("bunker", "building", "house", "tower", "structure") && Has("obscuring")) return "Building";
-        if (Has("structure", "obstacle", "container", "crate")) return "Barricade";
+        // A shipping container is a solid block you can't walk through (Kai, 2026-11-14) - a Building, not a barricade.
+        if (Has("container")) return "Building";
+        if (Has("structure", "obstacle", "crate")) return "Barricade";
         if (Has("hill")) return "Hill";
         if (Has("pond", "lake", "water")) return "LakeShallow";
         if (Has("lava")) return "Lava";
@@ -154,6 +158,26 @@ public sealed class WarhammerTerrainLibrary
             X = x, Z = z, W = w, D = d,
             Points = MapPiece.PointsFor(w, d),
         };
+    }
+
+    /// <summary>
+    /// Brings a map's Warhammer pieces up to date with their matches: a piece still carrying the rules of the kind it was
+    /// placed as (not hand-edited) takes the kind - and so the rules - its model is matched to now. Kai, 2026-11-14:
+    /// containers placed as barricades (an old guess) should be solid once they're matched as buildings. Returns how
+    /// many changed.
+    /// </summary>
+    public int Refresh(MapDraft draft)
+    {
+        int changed = 0;
+        foreach (MapPiece p in draft.Pieces)
+        {
+            if (ForLook(p.Look) is not { } e || e.Match.Kind.Length == 0 || e.Match.Kind == p.Kind) continue;
+            if (p.Rules != RulesFor(p.Kind)) continue; // its rules were changed by hand: leave it
+            p.Kind = e.Match.Kind;
+            p.Rules = RulesFor(e.Match.Kind);
+            changed++;
+        }
+        return changed;
     }
 
     /// <summary>Pieces that can go on a map: matched to a kind (decoration counts), measured, not hidden.</summary>

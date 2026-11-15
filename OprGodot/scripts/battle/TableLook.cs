@@ -168,6 +168,14 @@ public static class TableLook
         Mesh(parent, new CylinderMesh { TopRadius = rad * 0.94f, BottomRadius = rad, Height = 0.2f }, Mat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
     }
 
+    /// <summary>A rectangular base (<paramref name="w"/> across, <paramref name="d"/> front to back - along the model's
+    /// facing), drawn like <see cref="AddBase"/>: a rim in the seat colour, a dark top.</summary>
+    public static void AddRectBase(Node parent, float w, float d, Color team)
+    {
+        Mesh(parent, new BoxMesh { Size = new Vector3(w + 0.12f, 0.08f, d + 0.12f) }, Mat(team, 0.4f, team, 1.3f), new Vector3(0, 0.05f, 0));
+        Mesh(parent, new BoxMesh { Size = new Vector3(w * 0.97f, 0.2f, d * 0.97f) }, Mat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
+    }
+
     /// <summary>Height of the top of <see cref="AddBase"/> - where a model's feet go.</summary>
     public const float BaseTop = 0.25f;
 }

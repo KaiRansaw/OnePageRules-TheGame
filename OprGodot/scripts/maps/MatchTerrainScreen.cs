@@ -140,7 +140,8 @@ public partial class MatchTerrainScreen : Control
         list.AddChild(HudKit.Heading("What the rules do", 14));
         foreach (ETerrainType f in TerrainBook.RuleFlags)
         {
-            string name = TerrainBook.RuleName(f) + (TerrainBook.NeedsHeights(f) ? "  (needs heights - not in the game yet)" : "");
+            string name = TerrainBook.RuleName(f) + (TerrainBook.NeedsHeights(f) ? "  (needs heights - not in the game yet)"
+                : f == ETerrainType.Climbable ? "  (over 3\" tall is Impassable in the game; climbing needs heights - later)" : "");
             list.AddChild(HudKit.Text(name, 13, TableLook.RulesColour(f).Lightened(0.3f), HudKit.Exo(700)));
             list.AddChild(ForgeWidgets.Wrapped(TerrainBook.RuleText(f), 12, HudKit.Dim));
             list.AddChild(HudKit.Gap(0, 2));

@@ -57,6 +57,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private HBoxContainer _top = null!;
     private Label _status = null!;
 
+    private void SayRefreshed(int n) => Say($"{n} Warhammer piece{(n == 1 ? "" : "s")} updated to the kind {(n == 1 ? "its model is" : "their models are")} matched to now - save the map to keep it.", Palette.Lime);
+
     private float W => Draft.TableW;
     private float D => Draft.TableH;
     private Vector3 World(float x, float z, float y = 0) => new(x - W / 2, y, D / 2 - z);
@@ -67,6 +69,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         // The menu's own 3D table is taken away while this one is up (its camera and light would fight ours).
         MenuBackdrop.Instance?.SetActive(false);
         _checkFor = DefaultGame();
+        // Warhammer pieces follow what their models are matched to now (shown on the message line when any changed).
+        int refreshed = WarhammerModels.Library?.Refresh(Draft) ?? 0;
+        if (refreshed > 0) CallDeferred(nameof(SayRefreshed), refreshed);
         _world = new Node3D { Name = "MapWorld" };
         AddChild(_world);
         TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor));
@@ -507,13 +512,14 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
             if (!p.Round) _right.AddChild(Row("Turned", Spin(p.Angle, -180, 180, v => p.Angle = v, 5, "deg")));
-            _right.AddChild(Row("Height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall it is drawn. The table is flat for now, so height has no rules effect yet."));
+            _right.AddChild(Row("Height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall it is. The table is flat for now, so height only matters to Climbable: over 3\" tall it counts as Impassable."));
 
             _right.AddChild(HudKit.Heading("Rules (from the book)", 13));
             foreach (ETerrainType flag in TerrainBook.RuleFlags)
             {
                 var f = flag;
-                string note = TerrainBook.NeedsHeights(f) ? "  (needs heights - later)" : !TerrainBook.Plays(f, _checkFor) ? $"  (not in {GameSystemInfo.DisplayName(_checkFor)})" : "";
+                string note = TerrainBook.NeedsHeights(f) ? "  (needs heights - later)"
+                    : f == ETerrainType.Climbable && TerrainBook.Plays(f, _checkFor) ? (p.Height > TerrainBook.ClimbableMaxInches ? "  (over 3\": Impassable)" : "  (3\" or less: crossable)") : !TerrainBook.Plays(f, _checkFor) ? $"  (not in {GameSystemInfo.DisplayName(_checkFor)})" : "";
                 var cb = new CheckBox { Name = "Rule_" + f, Text = TerrainBook.RuleName(f) + note, ButtonPressed = p.Rules.HasFlag(f), FocusMode = FocusModeEnum.None,
                     TooltipText = TerrainBook.RuleName(f).ToUpperInvariant() + " TERRAIN\n" + TerrainBook.RuleText(f) };
                 cb.Toggled += on => { Draft.Remember(); p.Rules = on ? p.Rules | f : p.Rules & ~f; Rebuild(); };

@@ -351,12 +351,16 @@ public partial class BattleTable : Node3D
         var pts = new List<Vector2>();
         foreach (IModel m in models)
         {
-            float r = m.BaseRadiusInches + extra;
-            for (int a = 0; a < 360; a += 8)
-            {
-                float rad = Mathf.DegToRad(a);
-                pts.Add(new Vector2(m.Position.x + Mathf.Cos(rad) * r, m.Position.z + Mathf.Sin(rad) * r));
-            }
+            // The base's real footprint (Kai, 2026-11-14: "the highlight doesn't follow the base size") - a vehicle's
+            // rectangle, turned the way it faces - not its inscribed circle.
+            BaseFootprint fp = m.BaseShape.Footprint(m.Position, m.Facing);
+            float r = fp.Rounding + extra;
+            foreach (Float2 c in fp.Corners)
+                for (int a = 0; a < 360; a += 8)
+                {
+                    float rad = Mathf.DegToRad(a);
+                    pts.Add(new Vector2(c.X + Mathf.Cos(rad) * r, c.Y + Mathf.Sin(rad) * r));
+                }
         }
         return Geometry2D.ConvexHull(pts.ToArray());
     }
@@ -716,7 +720,9 @@ public partial class BattleTable : Node3D
         _modelRoot.AddChild(root);
         float rad = Mathf.Max(0.4f, m.BaseRadiusInches);
         var body = Mat(team.Darkened(0.45f).Lerp(new Color(0.55f, 0.55f, 0.55f), 0.25f), 0.55f);
-        TableLook.AddBase(root, m.BaseRadiusInches, team);
+        // The game's base in its real shape: a rectangle for a vehicle / monster with one (turned with the model).
+        if (m.BaseShape is RectangleBase rb) TableLook.AddRectBase(root, rb.WidthInches, rb.HeightInches, team);
+        else TableLook.AddBase(root, m.BaseRadiusInches, team);
         var rim = (StandardMaterial3D)((MeshInstance3D)root.GetChild(0)).MaterialOverride;
         float height;
         bool big = m.TotalWounds >= 6 || rad > 1.4f;

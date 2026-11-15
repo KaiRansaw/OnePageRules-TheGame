@@ -126,6 +126,8 @@ public class WarhammerTerrainLibraryTests
     [TestCase("Structure 1", "Obstacle: Light Cover Unstable position", "Barricade")]
     [TestCase("Wall 2", "Obstacle: Light Cover, scaleable, Defense line", "Barricade")]
     [TestCase("Piece 7", "", "")]
+    [TestCase("Shipping Container", "Obstacle: Light cover", "Building")]
+    [TestCase("Ammo crate", "", "Barricade")]
     public void Guesses(string name, string keywords, string kind) =>
         Assert.That(WarhammerTerrainLibrary.GuessKind(name, keywords), Is.EqualTo(kind));
 
@@ -135,5 +137,36 @@ public class WarhammerTerrainLibraryTests
         Assert.That(WarhammerTerrainLibrary.IdOf(""), Is.Null);
         Assert.That(WarhammerTerrainLibrary.IdOf("pine-wood"), Is.Null);
         Assert.That(WarhammerTerrainLibrary.IdOf("wh:abc"), Is.Null);
+    }
+
+    /// <summary>Kai, 2026-11-14: containers placed as barricades (an old guess) should become solid once matched as buildings.</summary>
+    [Test]
+    public void AMapsPieces_FollowTheirModelsMatch_UnlessTheirRulesWereEdited()
+    {
+        var lib = Library();
+        var ruin = lib.Entries.Single(e => e.Name == "Ruin");
+        var draft = MapDraft.New(72, 48);
+        var placed = WarhammerTerrainLibrary.PieceFor(ruin, 20, 20);
+        var edited = WarhammerTerrainLibrary.PieceFor(ruin, 40, 20);
+        edited.Rules |= ETerrainType.Dangerous;
+        draft.Pieces.Add(placed);
+        draft.Pieces.Add(edited);
+        ruin.Match.Kind = "Building";
+        ruin.Match.Checked = true;
+        Assert.That(lib.Refresh(draft), Is.EqualTo(1));
+        Assert.That(placed.Kind, Is.EqualTo("Building"));
+        Assert.That(placed.Rules, Is.EqualTo(TerrainBook.Kind("Building")!.Rules));
+        Assert.That(edited.Kind, Is.EqualTo("Ruins"), "rules changed by hand are left alone");
+    }
+
+    [Test]
+    public void AnUncheckedGuess_FollowsTheCurrentGuessing_ACheckedOneStays()
+    {
+        var lib = Library();
+        foreach (var e in lib.Entries) { e.Match.Kind = "Wall"; e.Match.Checked = e.Name == "Ruin"; }
+        lib.Save();
+        var again = WarhammerTerrainLibrary.Load(Path.Combine(_dir, "warhammer-terrain.json"), Path.Combine(_dir, "models"))!;
+        Assert.That(again.Entries.Single(e => e.Name == "Ruin").Match.Kind, Is.EqualTo("Wall"), "checked by Kai");
+        Assert.That(again.Entries.Single(e => e.Name == "Ruin 2").Match.Kind, Is.EqualTo("Ruins"), "still a guess");
     }
 }
