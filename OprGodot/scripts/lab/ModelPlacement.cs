@@ -16,17 +16,20 @@ public static class ModelPlacement
     /// The pivot's parent is the spot on the table; all three must be in the scene tree (bounds are measured there).
     /// Returns the pivot's transform and the finished model's box, in the parent's space.
     /// </summary>
+    /// <summary>The turn that stands a model up when its file thinks a different way is up.</summary>
+    public static Basis UpBasis(EUpAxis axis) => axis switch
+    {
+        EUpAxis.ZUp => new Basis(Vector3.Right, -Mathf.Pi / 2),
+        EUpAxis.ZDown => new Basis(Vector3.Right, Mathf.Pi / 2),
+        EUpAxis.YDown => new Basis(Vector3.Right, Mathf.Pi),
+        EUpAxis.XUp => new Basis(Vector3.Back, Mathf.Pi / 2),
+        EUpAxis.XDown => new Basis(Vector3.Back, -Mathf.Pi / 2),
+        _ => Basis.Identity,
+    };
+
     public static (Transform3D Transform, Aabb Box) Place(Node3D pivot, Node3D body, UnitModelSettings s)
     {
-        Basis up = s.UpAxis switch
-        {
-            EUpAxis.ZUp => new Basis(Vector3.Right, -Mathf.Pi / 2),
-            EUpAxis.ZDown => new Basis(Vector3.Right, Mathf.Pi / 2),
-            EUpAxis.YDown => new Basis(Vector3.Right, Mathf.Pi),
-            EUpAxis.XUp => new Basis(Vector3.Back, Mathf.Pi / 2),
-            EUpAxis.XDown => new Basis(Vector3.Back, -Mathf.Pi / 2),
-            _ => Basis.Identity,
-        };
+        Basis up = UpBasis(s.UpAxis);
         Basis turn = new Basis(Vector3.Up, Mathf.DegToRad(s.YawDegrees)) * up;
         pivot.Transform = new Transform3D(turn, Vector3.Zero);
         var holder = (Node3D)pivot.GetParent();

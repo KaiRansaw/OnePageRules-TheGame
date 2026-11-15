@@ -1,3 +1,4 @@
+using FdgRaylib.Models3D;
 using FdgRaylib.Terrain;
 using Godot;
 using OprGodot.Lab;
@@ -34,7 +35,28 @@ public static class WarhammerModels
     }
 
     /// <summary>Forget the loaded list (the match screen calls this after saving).</summary>
-    public static void Reload() => _library = null;
+    public static void Reload() { _library = null; Ups.Clear(); }
+
+    private static readonly Dictionary<string, EUpAxis> Ups = new();
+
+    /// <summary>
+    /// Which way up a piece's file stands (Kai, 2026-11-14: "some of the map assets are spawned in upside down"), from its
+    /// model settings - set on the Match terrain screen (or the Asset Lab's Up box), the same for every screen.
+    /// </summary>
+    public static EUpAxis UpOf(string file)
+    {
+        if (!Ups.TryGetValue(file, out EUpAxis up)) Ups[file] = up = UnitModelSettings.Load(file)?.UpAxis ?? EUpAxis.YUp;
+        return up;
+    }
+
+    /// <summary>Saves which way up a piece stands, for every screen that draws it.</summary>
+    public static void SetUp(string file, EUpAxis up)
+    {
+        var s = UnitModelSettings.Load(file) ?? new UnitModelSettings { BaseMm = 0, HeightMm = 0 };
+        s.UpAxis = up;
+        s.Save(file);
+        Ups[file] = up;
+    }
 
     /// <summary>
     /// Draws the model a piece's Look names onto <paramref name="footprint"/> (the piece's outline in table space, as
@@ -51,6 +73,7 @@ public static class WarhammerModels
         var pivot = new Node3D();
         holder.AddChild(pivot);
         var body = (Node3D)template.Duplicate();
+        body.Transform = new Transform3D(ModelPlacement.UpBasis(UpOf(entry.File)), Vector3.Zero);
         pivot.AddChild(body);
         Aabb? measured = AssetLoader.Bounds(body, holder);
         if (measured is not { } box || box.Size.X < 1e-3f || box.Size.Z < 1e-3f)
@@ -92,6 +115,7 @@ public static class WarhammerModels
         var holder = new Node3D();
         inTree.AddChild(holder);
         var body = (Node3D)template.Duplicate();
+        body.Transform = new Transform3D(ModelPlacement.UpBasis(UpOf(file)), Vector3.Zero);
         holder.AddChild(body);
         Aabb? box = AssetLoader.Bounds(body, holder);
         holder.QueueFree();

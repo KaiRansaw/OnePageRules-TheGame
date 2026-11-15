@@ -1,3 +1,4 @@
+using FdgRaylib.Models3D;
 using FDG;
 using FdgRaylib.Terrain;
 using Godot;
@@ -226,9 +227,36 @@ public partial class MatchTerrainScreen : Control
         size.HorizontalAlignment = HorizontalAlignment.Right;
         row.AddChild(size);
         card.AddChild(row);
+
+        // Kai, 2026-11-14: some pieces load upside down or lying over - pick which way is up; the picture, size and every
+        // map redraw with it.
+        var up = new OptionButton { Name = "WayUp", FocusMode = FocusModeEnum.None, TooltipText = "If the picture shows it upside down or lying over, pick the way that stands it up. The picture and size are made again." };
+        foreach (var (_, label) in WayUp) up.AddItem(label);
+        up.Selected = Math.Max(0, Array.FindIndex(WayUp, w => w.Axis == WarhammerModels.UpOf(e.File)));
+        up.ItemSelected += i =>
+        {
+            WarhammerModels.SetUp(e.File, WayUp[(int)i].Axis);
+            e.Match.W = e.Match.D = e.Match.H = 0; // measured again, the right way up
+            try { File.Delete(ThumbFor(e.Id)); } catch (IOException) { }
+            pic.Texture = null;
+            size.Text = SizeText(e);
+            Changed(e);
+            MakePictures();
+        };
+        card.AddChild(up);
         _cards[e.Id] = new Card(card, pic, size, kind);
         return card;
     }
+
+    private static readonly (EUpAxis Axis, string Label)[] WayUp =
+    {
+        (EUpAxis.YUp, "Way up: as loaded"),
+        (EUpAxis.YDown, "Flip upside down"),
+        (EUpAxis.ZUp, "Tip back"),
+        (EUpAxis.ZDown, "Tip forward"),
+        (EUpAxis.XUp, "Roll left"),
+        (EUpAxis.XDown, "Roll right"),
+    };
 
     private static string Ascii(string s) => new(s.Where(c => c >= ' ' && c <= '~').ToArray());
 
@@ -284,9 +312,12 @@ public partial class MatchTerrainScreen : Control
     /// Every piece without a picture or a size gets both, one at a time in the background, the pieces on screen first.
     /// The size is the model's own box in table inches - the footprint it gets on a map.
     /// </summary>
+    private bool _picturesAgain;
+
     private async void MakePictures()
     {
         if (_lib == null || _studio == null) return;
+        if (_picturesRunning) { _picturesAgain = true; return; } // the running pass picks it up when it ends
         Directory.CreateDirectory(ThumbFolder);
         var todo = Shown().Concat(_lib.Entries).Distinct().Where(e => !e.Measured || !File.Exists(ThumbFor(e.Id))).ToList();
         if (todo.Count == 0) return;
@@ -327,6 +358,7 @@ public partial class MatchTerrainScreen : Control
         _picturesRunning = false;
         SaveNow();
         UpdateStatus();
+        if (_picturesAgain) { _picturesAgain = false; MakePictures(); }
     }
 
     public override void _ExitTree() => SaveNow();
