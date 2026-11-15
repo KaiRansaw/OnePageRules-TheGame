@@ -167,6 +167,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         left.AddChild(fileRow);
         var dl = Btn("DownloadModels", "Download models...", "Fetch models for an army from Tabletop Simulator - 40k (ForceOrg) for Grimdark Future, Age of Sigmar (Stormvault) for Age of Fantasy - saved under each OPR unit's name.", () => OpenDownloads());
         left.AddChild(dl);
+        left.AddChild(Btn("MakePortraits", "Portraits from models...", "Photograph downloaded 3D models as unit portraits, a whole army at once. A model's portrait is used for that version ahead of the official picture. (One version at a time: Army Forge -> Choose looks -> Make portrait.)", () => OpenPortraits()));
         left.AddChild(Btn("FramePictures", "Frame pictures...", "Move and zoom each unit's picture so the part you want shows on the army cards, army list and unit card.", () => OpenFraming()));
         left.AddChild(Btn("OfficialPictures", "Official pictures...", "Download OPR's own picture of every unit from Army Forge and use it as the unit's portrait on the army lists and unit cards.", () => OpenOfficialPictures()));
         left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",

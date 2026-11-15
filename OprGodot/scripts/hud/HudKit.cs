@@ -184,6 +184,14 @@ public static class HudKit
         string key = faction + "/" + unit + "|" + look;
         if (Pictures.TryGetValue(key, out var t)) return t;
         t = null;
+        // A portrait made on purpose for this exact version (Army Forge -> Choose looks -> Make portrait) comes first
+        // (Kai, 2026-11-14); then the official picture; then any older model-made one.
+        if (FdgRaylib.Models3D.UnitPortraits.FindChosen(faction, unit, look) is { } chosen && Image.LoadFromFile(chosen) is { } ci)
+        {
+            t = ImageTexture.CreateFromImage(ci);
+            ModelMade.Add(t);
+            return Pictures[key] = t;
+        }
         string Norm(string s) => FdgRaylib.Models3D.OfficialPictures.Normalise(s);
         string want = Norm(unit), army = Norm(faction);
         foreach (string root in new[] { System.IO.Path.Combine(FdgRaylib.AppAssets.Root, ".."), FdgRaylib.AppAssets.Root, System.Environment.CurrentDirectory })
@@ -207,12 +215,37 @@ public static class HudKit
             if (t != null) break;
         }
         if (t == null && FdgRaylib.Models3D.UnitPortraits.Find(faction, unit, look) is { } made && Image.LoadFromFile(made) is { } mi)
+        {
             t = ImageTexture.CreateFromImage(mi);
+            ModelMade.Add(t);
+        }
         return Pictures[key] = t;
     }
 
+    /// <summary>Pictures photographed from a 3D model (clear background) - drawn over <see cref="Backdrop"/>.</summary>
+    private static readonly HashSet<Texture2D> ModelMade = new();
+
+    public static bool IsModelMade(Texture2D? t) => t != null && ModelMade.Contains(t);
+
+    private static GradientTexture2D? _backdrop;
+
+    /// <summary>
+    /// Kai, 2026-11-14: a model-made portrait has nothing behind the model, so the card looked empty around it. This is
+    /// what stands behind it: a soft lit backdrop in the game's colours, brighter behind the model, darker at the edges.
+    /// </summary>
+    public static Texture2D Backdrop => _backdrop ??= new GradientTexture2D
+    {
+        Width = 256, Height = 256, Fill = GradientTexture2D.FillEnum.Radial,
+        FillFrom = new Vector2(0.5f, 0.42f), FillTo = new Vector2(1.05f, 1.0f),
+        Gradient = new Gradient
+        {
+            Offsets = new[] { 0f, 0.55f, 1f },
+            Colors = new[] { new Color(0.44f, 0.54f, 0.56f), new Color(0.21f, 0.28f, 0.30f), new Color(0.08f, 0.11f, 0.12f) },
+        },
+    };
+
     /// <summary>Forgets the pictures already looked up, so newly made portraits show.</summary>
-    public static void ForgetPictures() { Pictures.Clear(); FdgRaylib.Models3D.UnitPortraits.Forget(); }
+    public static void ForgetPictures() { Pictures.Clear(); ModelMade.Clear(); FdgRaylib.Models3D.UnitPortraits.Forget(); }
 
     /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
     /// <remarks><paramref name="look"/> is the look picked for the unit in the army builder (its first picked model's), so
@@ -228,7 +261,21 @@ public static class HudKit
     {
         Control inner;
         if (picture is { } tex)
+        {
             inner = new TextureRect { Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, CustomMinimumSize = new Vector2(size, size), SelfModulate = Colors.White with { A = alpha }, ClipContents = true, MouseFilter = Control.MouseFilterEnum.Ignore };
+            if (IsModelMade(tex))
+            {
+                // The backdrop behind a model photographed on a clear background (Kai, 2026-11-14).
+                var stack = new Control { CustomMinimumSize = new Vector2(size, size), MouseFilter = Control.MouseFilterEnum.Ignore };
+                var back = new TextureRect { Texture = Backdrop, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale,
+                    SelfModulate = Colors.White with { A = alpha }, MouseFilter = Control.MouseFilterEnum.Ignore };
+                back.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+                stack.AddChild(back);
+                inner.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+                stack.AddChild(inner);
+                inner = stack;
+            }
+        }
         else
             inner = Icon(fallbackIcon, size * 0.72f, team with { A = alpha * 0.9f });
         var frame = Panel(new ChamferBox
@@ -321,7 +368,20 @@ public static class HudKit
             CustomMinimumSize = new Vector2(w, h), ClipContents = true, Material = mat, MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         tr.Resized += () => { mat.SetShaderParameter("size", tr.Size); Fit(tr.Size); };
-        return tr;
+        if (!IsModelMade(picture)) return tr;
+
+        // A model photographed on a clear background: the backdrop behind it, fading out the same way.
+        var holder = new Control { CustomMinimumSize = new Vector2(w, h), ClipContents = true, MouseFilter = Control.MouseFilterEnum.Ignore };
+        var backMat = (ShaderMaterial)mat.Duplicate();
+        var back = new TextureRect { Texture = Backdrop, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale,
+            Material = backMat, MouseFilter = Control.MouseFilterEnum.Ignore };
+        back.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        back.Resized += () => backMat.SetShaderParameter("size", back.Size);
+        holder.AddChild(back);
+        tr.CustomMinimumSize = Vector2.Zero;
+        tr.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        holder.AddChild(tr);
+        return holder;
     }
 
     /// <summary>Text that stays readable over a picture (a dark outline).</summary>

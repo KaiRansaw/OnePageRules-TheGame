@@ -701,6 +701,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "selall": _looks?.SelectAll(); _looks?.Refresh(); return;
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
+            case "portrait": _looks?.DriveMakePortrait(); return;
             case "save":
                 try { Status("Saved " + Path.GetFileName(s.Save(arg)), Palette.Lime); } catch (Exception e) { Status("SAVE FAILED - " + e.Message, Palette.WoundsRed); }
                 break;

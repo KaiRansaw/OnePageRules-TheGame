@@ -51,6 +51,7 @@ public partial class LooksPanel : HBoxContainer
         _previewLabel = HudKit.Text("", 17, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center);
         right.AddChild(_previewLabel);
         right.AddChild(HudKit.Text("Turns slowly - drag to turn it - mouse wheel to zoom - 28mm person for scale", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        right.AddChild(PortraitRow());
         AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(right, 8, 8, 8, 8)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
         Refresh();
         var versions = Versions();
@@ -159,7 +160,89 @@ public partial class LooksPanel : HBoxContainer
         string? line = _preview.Show(file);
         var versions = Versions();
         _previewLabel.Text = ModelLooks.Label(versions, file) + (line != null ? "  -  " + line : "");
+        ShowPortrait();
     }
+
+    // ---- Make a portrait of the version in the preview (Kai, 2026-11-14: "choose which model you want THEN make the
+    // portrait that the game then uses for that model variant").
+
+    private TextureRect _portrait = null!;
+    private Label _portraitNote = null!;
+    private Button _makePortrait = null!;
+
+    private Control PortraitRow()
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 12);
+        var frame = new Control { CustomMinimumSize = new Vector2(120, 120) };
+        var back = new TextureRect { Texture = HudKit.Backdrop, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale };
+        back.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        frame.AddChild(back);
+        _portrait = new TextureRect { Name = "VersionPortrait", ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
+        _portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        frame.AddChild(_portrait);
+        row.AddChild(HudKit.Panel(HudKit.PanelBox(6), frame));
+        var col = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+        col.AddThemeConstantOverride("separation", 6);
+        _makePortrait = Ui.Button("Make portrait of this version", () => _ = MakePortrait(),
+            "Photograph the version in the preview and use it as this unit's portrait whenever a model wears this look - ahead of the official picture.");
+        _makePortrait.Name = "MakePortrait";
+        col.AddChild(_makePortrait);
+        _portraitNote = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi);
+        _portraitNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        col.AddChild(_portraitNote);
+        row.AddChild(col);
+        return row;
+    }
+
+    private void ShowPortrait()
+    {
+        if (_portrait == null || !IsInstanceValid(_portrait)) return;
+        _makePortrait.Disabled = _previewFile == null;
+        if (_previewFile == null) { _portrait.Texture = null; _portraitNote.Text = ""; return; }
+        string path = UnitPortraits.PathFor(_previewFile);
+        bool chosen = UnitPortraits.IsChosen(_previewFile);
+        _portrait.Texture = chosen && Image.LoadFromFile(path) is { } img ? ImageTexture.CreateFromImage(img) : null;
+        _portraitNote.Text = chosen
+            ? "This version has its own portrait - the game shows it for models wearing this look. Make it again to redo it."
+            : "No portrait of this version yet - the unit shows its official picture.";
+    }
+
+    private bool _making;
+
+    private async Task MakePortrait()
+    {
+        if (_making || _previewFile == null) return;
+        _making = true;
+        _makePortrait.Disabled = true;
+        string file = _previewFile;
+        var studio = new PortraitShot.Studio();
+        AddChild(studio);
+        try
+        {
+            if (!studio.Show(file, out string? why)) { _portraitNote.Text = "The model would not load: " + why; return; }
+            studio.Aim(PortraitShot.Portrait);
+            for (int i = 0; i < 3; i++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            if (!IsInsideTree()) return;
+            string path = UnitPortraits.PathFor(file);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            Error e = studio.Grab().SavePng(path);
+            if (e != Error.Ok) { _portraitNote.Text = "Could not save the portrait: " + e; return; }
+            UnitPortraits.MarkChosen(file);
+            HudKit.ForgetPictures();
+            ShowPortrait();
+            _status($"Portrait made for {ModelLooks.Label(Versions(), file)}.", Palette.Lime);
+        }
+        finally
+        {
+            studio.QueueFree();
+            _making = false;
+            if (IsInstanceValid(_makePortrait)) _makePortrait.Disabled = false;
+        }
+    }
+
+    /// <summary>Screenshot driver: make the portrait of the version in the preview.</summary>
+    public void DriveMakePortrait() => _ = MakePortrait();
 
     private Control Slot(int i, ForgeSession.ModelSlot slot, IReadOnlyList<string> versions)
     {

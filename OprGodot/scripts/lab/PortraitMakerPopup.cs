@@ -46,7 +46,8 @@ public partial class PortraitMakerPopup : Control
         col.AddChild(HudKit.Text("MAKE PORTRAITS", 30, HudKit.Fg, HudKit.Exo(800)));
         var intro = HudKit.Text("Takes a picture of each unit's downloaded model and uses it as the unit's portrait - on the army lists, " +
                                 "unit cards, Army Forge and Horde Shop. Every version is photographed, so a unit shows the look you picked for it in the Army Forge. " +
-                                "Only units with a downloaded model get one.", 15, HudKit.Dim, HudKit.Semi);
+                                "Only units with a downloaded model get one. A portrait made here is shown for its version ahead of the official picture; " +
+                                "to do one version at a time, use Army Forge -> Choose looks -> Make portrait.", 15, HudKit.Dim, HudKit.Semi);
         intro.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         col.AddChild(intro);
 
@@ -183,6 +184,7 @@ public partial class PortraitMakerPopup : Control
                     Image img = studio.Grab();
                     Error e = img.SavePng(path);
                     if (e != Error.Ok) throw new IOException(e.ToString());
+                    UnitPortraits.MarkChosen(model); // made on purpose: used for that version ahead of the official picture
                     saved++;
                     _last.Texture = ImageTexture.CreateFromImage(img);
                     _lastName.Text = $"{unit}\n{Path.GetFileNameWithoutExtension(model)}";
