@@ -1,6 +1,6 @@
 # 460 — Fast-Play: Simplified Terrain (every piece a Solid Building)
 
-**Status**: slice 1 done 2026-11-15 (Build 2.31); slice 2 open.
+**Status**: done 2026-11-15 (slice 1 Build 2.31, slice 2 Build 2.32).
 **Source**: GF / AoF Advanced Rulebooks 3.6.0 p17 (Simplified Terrain) and p33 (Solid Buildings). Firefight and
 Skirmish Advanced books don't print Fast-Play.
 
@@ -9,6 +9,14 @@ With Simplified Terrain on, every terrain piece is a solid building: units enter
 Cover, shoot in and out, charging a unit inside targets one unit (defender picks).
 
 ## Notes (newest first)
+- 2026-11-15 slice 2 (Kai: everyone strikes; bots enter for objectives):
+  - `SolidBuildings.Touches / EngagedThrough / InMeleeRange / ForObjective`. ChooseActionStage + ChooseMeleeDefenderStage
+    use InMeleeRange; DetermineInRangeAttackers/Defenders take every living model in a building fight; PileInStage skips.
+  - `ChooseMeleeDefenderStage.DefenderPicksInsideBuilding`: the defending player picks among its units inside.
+  - `MovementUtilities.ValidateChargeReach` accepts a model within 2" of a building the enemy holds.
+  - `Ai/Solo/SoloCoOpBuildingEntry` - grid layout inside the footprint, validated with the stage's own rules; used by
+    SoloCoOpMovementResolver for Rush/Advance to objective.
+  - Tests: 3 more in `SolidBuildingsTests`.
 - 2026-11-15 slice 1 (Kai: "2 then 1"; capacity by size, every side firing ports, no destruction/collateral):
   - `ETerrainType.SolidBuilding`; `FDG.SolidBuildings` (Simplified stamp, Capacity 6/11/21 by footprint area,
     Spaces = Transport rule, MoveProblem, MayCross). Stamped in `PlaceTerrainStage.WithQuestTypes`.
@@ -18,11 +26,10 @@ Cover, shoot in and out, charging a unit inside targets one unit (defender picks
     models, leave within 6", no hopping. CoverMajority counts buildings.
   - Tests: `Tests/SolidBuildingsTests.cs` (rules + GF/AoF played games with SoloCoOp bots).
 
-## Slice 2 (open)
-- Charging units inside: "only one unit inside of it is targeted, and the defender may choose which. To charge
-  the building, simply move models in base contact with it." Needs melee range = touching the building.
-- Bots entering buildings (planners keep them as walls today).
-- Godot: a friendlier type name than "SolidBuilding" in terrain tooltips.
+## Outcome
+Done. Left: a friendlier "SolidBuilding" name in Godot terrain tooltips (cosmetic); the book's optional Building
+Destruction / Collateral Damage (Kai: not now).
 
 ## Decisions
-- Kai 2026-11-15: capacity by size; every side has firing ports; Building Destruction / Collateral Damage not now.
+- Kai 2026-11-15: capacity by size; every side has firing ports; Building Destruction / Collateral Damage not now;
+  everyone strikes in a building fight; bots enter only for objectives.

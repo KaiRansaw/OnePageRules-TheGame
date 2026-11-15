@@ -149,7 +149,7 @@ internal static class LobbyBookText
         "buildings, with clearly defined areas that can be entered and exited. When using these rules, the only way " +
         "for units to get Cover is by entering a piece of terrain.\n" +
         "In this game: units go inside a piece (the whole unit), small pieces hold 6, medium 11, large 21, and leaving " +
-        "a unit stays within 6\". Inside can shoot out from any side. Not yet: charging units inside; bots stay out.";
+        "a unit stays within 6\". Inside can shoot out from any side. Charge a building by touching its wall; everyone strikes.";
 
     // ── Advanced Rulebook v3.6.0 - Extra Actions ──
 

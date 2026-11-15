@@ -122,7 +122,6 @@ Corpus coverage is now complete too: **0 of 13,870** book rule references are de
 
 - [~] 257 — Team-based victory scoring: teammates pool objectives, unique top team wins, banner names every winning player ("Alpha and Bravo win!"); `GameResult.WinnerPlayers` added, 1v1 results byte-identical. Implemented + tested; awaiting GUI hand-verify. ([WorkItems/257](WorkItems/257-team-victory-scoring.md))
 - [x] 461 — Advanced deployment styles (18) - all four games done (B82 square, B83 long table). [detail](WorkItems/461-advanced-deployment-styles.md)
-- [ ] 460 — Fast-Play: Simplified Terrain - every piece a Solid Building. Slice 1 done (enter/leave, capacity, cover, sight; Build 2.31); open: charging units inside, bots using buildings. [detail](WorkItems/460-simplified-terrain.md)
 - [x] 459 — Fast-Play: Leader-Based Movement - done B81 (leader-only charge too); leader-first 1" separation open. [detail](WorkItems/459-fast-play-leader-movement.md)
 - [ ] 458 — Fast-Play: Leader-Based Melee - everyone strikes + rest placed (B78), leader-only charge (B81); only leader-first 1" separation open. [detail](WorkItems/458-fast-play-leader-melee.md)
 - [x] 457 — Fast-Play: Leader-Based Shooting (sight, range, cover from the leader). Done, B72 / 0.88. ([WorkItems/457](WorkItems/457-fast-play-leader-shooting.md))
