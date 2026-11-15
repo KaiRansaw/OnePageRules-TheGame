@@ -47,6 +47,10 @@ The OPR campaign books have no map rules: every rule here is a house rule.
   rivals the rivals win by VP far more often than the coin-flipping player - expected, but worth watching in play.
 
 ## Decisions
+- **Rival armies are auto-built** (Kai, 2026-11-15): each rival gets a random army book of the game and builds its own
+  starting army from the treasury; any rival can be swapped for an army the player built.
+- **Map campaigns live inside Campaign** (Kai, 2026-11-15): the wizard's first step asks Classic (one rival) or Map
+  campaign; both show in the same campaign list.
 - Garrison battles pay no treasury/VP (else the book's loss payout beats paying) - Kai's spec.
 - A taken capital stays starred (worth 1 VP to its new holder).
 - Claim cost uses at least 1 region held, so an army never pays 0.
