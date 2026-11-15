@@ -28,6 +28,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     private ETool _tool = ETool.Select;
     private TerrainBook.PieceKind _kind = TerrainBook.Kinds[1];
+    // Kai, 2026-11-14: placing a Warhammer model instead of a book shape (the model is the piece).
+    private WarhammerTerrainLibrary.Entry? _model;
+    private int _modelSet = -1;
+    private string _modelKind = "";
     private int _baseSize = 32;
     private MapPiece? _sel;
     private int _selObjective = -1;
@@ -224,14 +228,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         foreach (TerrainBook.PieceKind k in TerrainBook.Kinds)
         {
             var kind = k;
-            bool on = _tool == ETool.Place && _kind == k;
+            bool on = _tool == ETool.Place && _model == null && _kind == k;
             var b = new Button { Name = "Kind_" + k.Id, Text = k.Name, ToggleMode = true, ButtonPressed = on, FocusMode = FocusModeEnum.None,
                 CustomMinimumSize = new Vector2(126, 34), TooltipText = $"{k.BookLine}\n(Advanced Rulebook 3.6.0)\nClick it, then click the table. Right-click stops placing." };
             b.AddThemeColorOverride("font_color", BattleTable.TerrainColour(k.Rules).Lightened(0.45f));
-            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _sel = null; _selObjective = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
+            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _model = null; _sel = null; _selObjective = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
             grid.AddChild(b);
         }
         _left.AddChild(grid);
+        ModelPalette();
         _left.AddChild(HudKit.Heading("Also", 13));
         var also = new HBoxContainer();
         also.AddThemeConstantOverride("separation", 5);
@@ -272,6 +277,60 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             _left.AddChild(ForgeWidgets.Wrapped($"{gd.Book}. Advice only - it never stops you saving. Each player picking 1 piece to be Dangerous happens in the game, not the map.", 11, HudKit.Dim));
     }
 
+    /// <summary>
+    /// Kai, 2026-11-14: the downloaded Warhammer models, matched on the Match terrain screen - each one is a piece:
+    /// its size is the model's, its rules the kind it was matched to. Hidden and unmatched pieces are left out.
+    /// </summary>
+    private void ModelPalette()
+    {
+        if (WarhammerModels.Library is not { } lib || lib.Entries.Count == 0) return;
+        _left.AddChild(HudKit.Heading("Warhammer models", 13));
+        var all = lib.Placeable.ToList();
+        if (all.Count == 0)
+        {
+            _left.AddChild(ForgeWidgets.Wrapped("None matched yet - Map Maker -> Match terrain models.", 12, HudKit.Dim));
+            return;
+        }
+        var filters = new HBoxContainer();
+        filters.AddThemeConstantOverride("separation", 5);
+        var sets = lib.Sets.OrderBy(k => k.Key).ToList();
+        var set = new OptionButton { Name = "ModelSet", TooltipText = "Which of the mod's terrain sets to show." };
+        set.AddItem("All sets");
+        foreach (var kv in sets) set.AddItem(kv.Value);
+        set.Selected = Math.Max(0, sets.FindIndex(kv => kv.Key == _modelSet) + 1);
+        set.ItemSelected += i => { _modelSet = i <= 0 ? -1 : sets[(int)i - 1].Key; Rebuild(); };
+        filters.AddChild(set);
+        var kinds = WarhammerTerrainLibrary.Kinds.Where(k => all.Any(e => e.Match.Kind == k.Id)).ToList();
+        var kind = new OptionButton { Name = "ModelKind", TooltipText = "Only pieces matched to this kind." };
+        kind.AddItem("All kinds");
+        foreach (var k in kinds) kind.AddItem(k.Name);
+        kind.Selected = Math.Max(0, kinds.FindIndex(k => k.Id == _modelKind) + 1);
+        kind.ItemSelected += i => { _modelKind = i <= 0 ? "" : kinds[(int)i - 1].Id; Rebuild(); };
+        filters.AddChild(kind);
+        _left.AddChild(filters);
+
+        var shown = all.Where(e => (_modelSet < 0 || e.Set == _modelSet) && (_modelKind.Length == 0 || e.Match.Kind == _modelKind))
+            .OrderBy(e => e.Match.Kind).ThenBy(e => e.Name).ToList();
+        var list = new VBoxContainer();
+        list.AddThemeConstantOverride("separation", 3);
+        foreach (var e in shown)
+        {
+            var entry = e;
+            string kindName = WarhammerTerrainLibrary.Kinds.FirstOrDefault(k => k.Id == e.Match.Kind).Name ?? e.Match.Kind;
+            string size = e.Measured ? $" - {e.Match.W:0.#} x {e.Match.D:0.#}\"" : "";
+            var b = new Button { Name = "Model_" + e.Id, Text = $"{e.Name} ({kindName}){size}", ToggleMode = true, FocusMode = FocusModeEnum.None,
+                ButtonPressed = _tool == ETool.Place && _model?.Id == e.Id, Alignment = HorizontalAlignment.Left, ClipText = true,
+                CustomMinimumSize = new Vector2(256, 30), TooltipText = $"{e.Name}\n{e.SetName}\n{kindName}" + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") + "\nClick it, then click the table." };
+            b.AddThemeColorOverride("font_color", BattleTable.TerrainColour(WarhammerTerrainLibrary.RulesFor(e.Match.Kind)).Lightened(0.45f));
+            b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
+            list.AddChild(b);
+        }
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 260) };
+        scroll.AddChild(list);
+        _left.AddChild(scroll);
+        _left.AddChild(HudKit.Text($"{shown.Count} of {all.Count} matched pieces", 12, HudKit.Dim, HudKit.Semi));
+    }
+
     private void RightPanel()
     {
         Clear(_right);
@@ -291,12 +350,20 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             {
                 Draft.Remember();
                 var k = kinds[(int)i];
-                p.Kind = k.Id; p.Rules = k.Rules; p.Height = k.Height; p.Look = "";
+                // A Warhammer model piece keeps its model and its height; only its rules change with the kind.
+                bool model = WarhammerTerrainLibrary.IdOf(p.Look) != null;
+                p.Kind = k.Id; p.Rules = k.Rules;
+                if (!model) { p.Height = k.Height; p.Look = ""; }
                 if (p.Name.Length == 0 || TerrainBook.Kinds.Any(o => o.Name == p.Name)) p.Name = k.Name;
                 Rebuild();
             };
             _right.AddChild(Row("Kind", kind));
 
+            if (WarhammerModels.Library?.ForLook(p.Look) is { } shownModel)
+                _right.AddChild(ForgeWidgets.Wrapped($"Warhammer model: {shownModel.Name} ({shownModel.SetName}). Width and depth stretch it.", 12, HudKit.Lime));
+            else if (WarhammerTerrainLibrary.IdOf(p.Look) != null)
+                _right.AddChild(ForgeWidgets.Wrapped("A Warhammer model this computer doesn't have - shown as the plain piece.", 12, HudKit.Dim));
+            bool modelPiece = WarhammerTerrainLibrary.IdOf(p.Look) != null;
             var looks = new List<TerrainLooks.Look>(); // stand-ins only for now - real looks come from the Terrain Lab
             var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Cosmetic - the rules don't change. Auto lets the game pick." };
             look.AddItem("Auto");
@@ -310,8 +377,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 Sync3D();
             };
             look.Disabled = looks.Count == 0;
-            _right.AddChild(Row("Look", look));
-            _right.AddChild(ForgeWidgets.Wrapped($"Plain stand-in models for now, in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} colours (the Book check game). Real looks come from the Terrain Lab.", 11, HudKit.Dim));
+            if (!modelPiece) _right.AddChild(Row("Look", look));
+            if (!modelPiece) _right.AddChild(ForgeWidgets.Wrapped($"Plain stand-in models for now, in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} colours (the Book check game). Real looks come from the Terrain Lab.", 11, HudKit.Dim));
 
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
@@ -391,8 +458,26 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         col.AddChild(pick);
         col.AddChild(text);
         col.AddChild(ForgeWidgets.Wrapped($"Takes {TerrainBook.FixedCount(_checkFor)} pieces, then {TerrainBook.ExtraDice(_checkFor, themes[0])}D3 more rolled on 2D6, as the book says. Where they go is up to the editor: spread out, 6\" apart where the table allows.", 13, HudKit.Dim));
+        // Kai, 2026-11-14: the Warhammer sets as maps - the generated table dressed with one set's models.
+        var lib = WarhammerModels.Library;
+        var whSets = lib?.Sets.Where(kv => lib.Placeable.Any(e => e.Set == kv.Key && e.Measured)).OrderBy(kv => kv.Key).ToList() ?? new();
+        var useSet = new OptionButton { Name = "WarhammerSet", TooltipText = "Swap each generated piece for a model from one Warhammer set, of the same kind and close in size. Kinds the set has no model for stay plain." };
+        useSet.AddItem("Plain pieces");
+        foreach (var kv in whSets) useSet.AddItem("Warhammer: " + kv.Value);
+        if (whSets.Count > 0) col.AddChild(useSet);
         dlg.AddChild(col);
-        dlg.Confirmed += () => { Generate(themes[pick.Selected]); dlg.QueueFree(); };
+        dlg.Confirmed += () =>
+        {
+            Generate(themes[pick.Selected]);
+            if (useSet.Selected > 0 && lib != null)
+            {
+                Draft.Remember();
+                int n = lib.DressFromSet(Draft, whSets[useSet.Selected - 1].Key, new Random());
+                Say($"{n} of {Draft.Pieces.Count} pieces use {whSets[useSet.Selected - 1].Value} models; the rest have no matched model of their kind.", Palette.Lime);
+                Rebuild();
+            }
+            dlg.QueueFree();
+        };
         dlg.Canceled += () => dlg.QueueFree();
         AddChild(dlg);
         dlg.PopupCentered();
@@ -482,7 +567,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         var polys = FdgRaylib.Rendering.ZoneOutlines.Polygons(p.ToZone()).Select(poly => poly.Select(q => new Vector2(q.X - W / 2, D / 2 - q.Z)).ToArray()).ToList();
         var node = new Node3D();
         _dressed.AddChild(node);
-        TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
+        if (polys.Count == 0 || !WarhammerModels.Dress(node, p.Look, polys[0]))
+            TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
         _looks[p] = (sig, node);
         return true;
     }
@@ -535,7 +621,14 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _ghost.Visible = show;
         if (!show || TableAt(screen) is not { } at) return;
         float h = Mathf.Max(0.15f, _kind.Height);
-        _ghost.Mesh = _kind.Round ? new CylinderMesh { TopRadius = _kind.Width / 2, BottomRadius = _kind.Width / 2, Height = h } : new BoxMesh { Size = new Vector3(_kind.Width, h, _kind.Depth) };
+        if (_model != null)
+        {
+            MapPiece m = WarhammerTerrainLibrary.PieceFor(_model, 0, 0);
+            h = Mathf.Max(0.15f, m.Height);
+            _ghost.Mesh = new BoxMesh { Size = new Vector3(m.W, h, m.D) };
+        }
+        else
+            _ghost.Mesh = _kind.Round ? new CylinderMesh { TopRadius = _kind.Width / 2, BottomRadius = _kind.Width / 2, Height = h } : new BoxMesh { Size = new Vector3(_kind.Width, h, _kind.Depth) };
         _ghost.MaterialOverride = TableLook.Mat(HudKit.Lime with { A = 0.35f }, 0.5f, HudKit.Lime, 0.4f);
         _ghost.Position = World(MapDraft.SnapInch(at.X, _snap), MapDraft.SnapInch(at.Y, _snap), h / 2);
     }
@@ -648,7 +741,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         {
             case ETool.Place:
                 Draft.Remember();
-                var p = MapPiece.FromKind(_kind, x, z);
+                var p = _model != null ? WarhammerTerrainLibrary.PieceFor(_model, x, z) : MapPiece.FromKind(_kind, x, z);
                 Draft.Pieces.Add(p);
                 _sel = p;
                 Rebuild();
@@ -775,6 +868,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 var (x, z) = XZ(a[1]);
                 Draft.Remember();
                 _sel = MapPiece.FromKind(k, x, z);
+                Draft.Pieces.Add(_sel);
+                break;
+            }
+            // "model:<id>@x;z" - a Warhammer model piece (the id from the terrain list).
+            case "model" when arg.Split('@') is { Length: 2 } m && int.TryParse(m[0], out int mid) && WarhammerModels.Library?.ById(mid) is { } entry:
+            {
+                var (x, z) = XZ(m[1]);
+                Draft.Remember();
+                _sel = WarhammerTerrainLibrary.PieceFor(entry, x, z);
                 Draft.Pieces.Add(_sel);
                 break;
             }

@@ -524,6 +524,12 @@ public partial class BattleTable : Node3D
         int seed = FdgRaylib.Terrain.TerrainLooks.SeedFor(first.Average(p => p.X), first.Average(p => p.Z), t.Name);
         var holder = new Node3D();
         _terrainRoot.AddChild(holder);
+        // Kai, 2026-11-14: a Warhammer model the map placed shows as itself, when this computer has it.
+        if (WarhammerModels.Dress(holder, t.Look, polys[0]))
+        {
+            nodes.Add(holder);
+            return true;
+        }
         float h = t.HeightInches > 0.05f ? t.HeightInches : 1f;
         // Plain stand-ins for now (Kai, 2026-11-14); the pack looks (TerrainDresser.Dress) wait for the Terrain Lab pieces.
         TerrainDresser.DressBasic(holder, polys, h, kind, theme, seed, t.Name);

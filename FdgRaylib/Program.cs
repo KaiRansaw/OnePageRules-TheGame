@@ -823,6 +823,17 @@ if (sqHeroesIdx >= 0 && sqHeroesIdx + 1 < args.Length)
 // idempotent. Multiple supplement files merge later-wins by name before the bake (#375: AoF books bake
 // against GDF + AoF, so an AoF redefinition of a shared name wins; GDF books keep GDF alone).
 // Validation is hard-fail; an invalid supplement leaves the book untouched.
+// --warhammer-terrain <mod.json> [out.json]  (2026-11-14): builds the Warhammer Map Builder terrain list from a copy of
+// the mod's save, as the Asset Lab's Get Warhammer terrain button does (default output: UnitModels/warhammer-terrain.json).
+int whIdx = Array.IndexOf(args, "--warhammer-terrain");
+if (whIdx >= 0 && whIdx + 1 < args.Length)
+{
+    var wh = FdgRaylib.Terrain.WarhammerTerrain.Parse(File.ReadAllText(args[whIdx + 1]));
+    string whOut = whIdx + 2 < args.Length && !args[whIdx + 2].StartsWith("--") ? args[whIdx + 2] : FdgRaylib.Terrain.WarhammerTerrain.DefaultPath;
+    Console.WriteLine($"Warhammer terrain: {FdgRaylib.Terrain.WarhammerTerrain.Write(wh, whOut)} pieces in {wh.Sets.Count} sets -> {whOut}");
+    return;
+}
+
 int applyIdx = Array.IndexOf(args, "--apply-rules");
 if (applyIdx >= 0 && applyIdx + 2 < args.Length)
 {

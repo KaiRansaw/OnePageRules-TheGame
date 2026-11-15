@@ -1,0 +1,278 @@
+using FdgRaylib.Terrain;
+using Godot;
+using OprGodot.Battle;
+using OprGodot.Forge;
+using OprGodot.Hud;
+using OprGodot.Lab;
+
+namespace OprGodot.Maps;
+
+/// <summary>
+/// Match terrain (Kai, 2026-11-14: "match the map assets to what kind of terrain they are"). Every downloaded Warhammer
+/// terrain piece as a card - its picture, its name, the kind it is, hide - with a guess filled in from its Warhammer
+/// keywords where it has any. The kind decides the piece's rules on a map; its size comes from the model, measured
+/// here the first time (with the picture). Saves as it goes.
+/// <para>RENTAL: plain cards in a grid. The decisions (what a piece is, what it's called, whether it's used) are the
+/// permanent part and live in <see cref="WarhammerTerrainLibrary"/>.</para>
+/// </summary>
+public partial class MatchTerrainScreen : Control
+{
+    private WarhammerTerrainLibrary? _lib;
+    private OptionButton _set = null!, _show = null!;
+    private GridContainer _grid = null!;
+    private Label _status = null!;
+    private readonly Dictionary<int, Card> _cards = new();
+    private bool _dirty;
+    private double _sinceChange;
+    private PortraitShot.Studio? _studio;
+    private bool _picturesRunning;
+    private int _picturesDone, _picturesTotal;
+
+    private sealed record Card(VBoxContainer Root, TextureRect Picture, Label Size, OptionButton Kind);
+
+    /// <summary>Looking down a little more than a unit portrait: terrain is read from above.</summary>
+    private static readonly PortraitShot.Angle Angle = new("T", "Terrain", 30, 32, 1f, 1f);
+
+    private string ThumbFolder => Path.Combine(_lib!.Folder, "_thumbs");
+    private string ThumbFor(int id) => Path.Combine(ThumbFolder, id + ".png");
+
+    public override void _Ready()
+    {
+        MouseFilter = MouseFilterEnum.Stop;
+        _lib = WarhammerTerrainLibrary.Load();
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 10);
+
+        var head = new HBoxContainer();
+        head.AddThemeConstantOverride("separation", 12);
+        head.AddChild(Ui.Button("Back", Leave, "Back to the Map Maker (saves first).", "BackButton").Also(b => { b.Name = "Back"; b.CustomMinimumSize = new Vector2(110, 44); }));
+        var title = new VBoxContainer();
+        title.AddThemeConstantOverride("separation", -6);
+        title.AddChild(HudKit.Text("MATCH TERRAIN", 32, HudKit.Fg, HudKit.Exo(800)));
+        title.AddChild(HudKit.Text("What each Warhammer piece is on a map", 14, HudKit.Dim, HudKit.Semi));
+        head.AddChild(title);
+        head.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+
+        _set = new OptionButton { Name = "Set", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(240, 0), TooltipText = "Which of the mod's terrain sets to show." };
+        _set.AddItem("All sets");
+        var sets = _lib?.Sets.OrderBy(k => k.Key).ToList() ?? new();
+        foreach (var kv in sets) _set.AddItem(kv.Value);
+        _set.ItemSelected += _ => Fill();
+        head.AddChild(_set);
+        _show = new OptionButton { Name = "Show", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(200, 0), TooltipText = "Which pieces to show." };
+        foreach (string s in new[] { "All pieces", "No kind yet", "Not checked yet", "Hidden" }) _show.AddItem(s);
+        _show.ItemSelected += _ => Fill();
+        head.AddChild(_show);
+        col.AddChild(head);
+
+        var help = ForgeWidgets.Wrapped("Pick what each piece is - its kind gives it that kind's rules on a map (Ruins: cover + unstable, Building: impassable + blocks sight...). " +
+            "Decoration has no rules. Hide pieces you don't want in the Map Maker. A kind already filled in is a guess from the piece's Warhammer keywords - check it. " +
+            "Pictures and sizes are made the first time (it takes a few minutes); everything saves as you go.", 14, HudKit.Dim);
+        col.AddChild(help);
+        _status = HudKit.Text("", 14, HudKit.Lime, HudKit.Semi);
+        col.AddChild(_status);
+
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
+        _grid = new GridContainer { Columns = 7, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _grid.AddThemeConstantOverride("h_separation", 10);
+        _grid.AddThemeConstantOverride("v_separation", 14);
+        scroll.AddChild(_grid);
+        col.AddChild(scroll);
+
+        var margin = new MarginContainer();
+        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        foreach (string side in new[] { "left", "right", "top", "bottom" }) margin.AddThemeConstantOverride("margin_" + side, 24);
+        margin.AddChild(HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 18, 14, 18, 14)));
+        AddChild(margin);
+
+        if (_lib == null || _lib.Entries.Count == 0)
+        {
+            _status.Text = "No Warhammer terrain on this computer yet: Asset Lab -> Download models -> Get Warhammer terrain.";
+            _status.AddThemeColorOverride("font_color", HudKit.Gold);
+            return;
+        }
+        Fill();
+        _studio = new PortraitShot.Studio(512);
+        AddChild(_studio);
+        MakePictures();
+    }
+
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e.IsActionPressed("ui_cancel")) { Leave(); GetViewport().SetInputAsHandled(); }
+    }
+
+    private void Leave()
+    {
+        SaveNow();
+        App.I.Back();
+    }
+
+    private IEnumerable<WarhammerTerrainLibrary.Entry> Shown()
+    {
+        if (_lib == null) return Enumerable.Empty<WarhammerTerrainLibrary.Entry>();
+        var sets = _lib.Sets.OrderBy(k => k.Key).ToList();
+        int set = _set.Selected <= 0 ? -1 : sets[_set.Selected - 1].Key;
+        return _lib.Entries.Where(e => set < 0 || e.Set == set).Where(e => _show.Selected switch
+        {
+            1 => !e.Match.Hidden && e.Match.Kind.Length == 0,
+            2 => !e.Match.Hidden && !e.Match.Checked,
+            3 => e.Match.Hidden,
+            _ => true,
+        }).OrderBy(e => e.Set).ThenBy(e => NaturalKey(e.Name));
+    }
+
+    // "Piece 2" before "Piece 10".
+    private static string NaturalKey(string s) => System.Text.RegularExpressions.Regex.Replace(s, @"\d+", m => m.Value.PadLeft(6, '0'));
+
+    private void Fill()
+    {
+        foreach (Node n in _grid.GetChildren()) { _grid.RemoveChild(n); n.QueueFree(); }
+        _cards.Clear();
+        var shown = Shown().ToList();
+        foreach (var e in shown) _grid.AddChild(MakeCard(e));
+        UpdateStatus();
+    }
+
+    private Control MakeCard(WarhammerTerrainLibrary.Entry e)
+    {
+        var card = new VBoxContainer { Name = "Piece_" + e.Id, CustomMinimumSize = new Vector2(200, 0) };
+        card.AddThemeConstantOverride("separation", 4);
+        var pic = new TextureRect { CustomMinimumSize = new Vector2(200, 170), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            TooltipText = $"{e.OriginalName}\n{e.SetName}" + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") };
+        if (LoadThumb(e.Id) is { } tex) pic.Texture = tex;
+        var frame = HudKit.Panel(HudKit.PanelBox(8), pic);
+        card.AddChild(frame);
+
+        var name = new LineEdit { Name = "Name", Text = e.Name, MaxLength = 40, TooltipText = "What it is called on the map (plain letters)." };
+        name.TextChanged += t => { e.Match.Name = Ascii(t.Trim()) == e.OriginalName ? "" : Ascii(t.Trim()); Changed(e); };
+        card.AddChild(name);
+
+        var kind = new OptionButton { Name = "Kind", FocusMode = FocusModeEnum.None, TooltipText = "Which terrain kind it is - this gives it its rules on a map." };
+        kind.AddItem("? (pick a kind)");
+        foreach (var k in WarhammerTerrainLibrary.Kinds) kind.AddItem(k.Name);
+        int ki = WarhammerTerrainLibrary.Kinds.ToList().FindIndex(k => k.Id == e.Match.Kind);
+        kind.Selected = ki + 1;
+        Colour(kind, e.Match.Kind);
+        kind.ItemSelected += i =>
+        {
+            e.Match.Kind = i <= 0 ? "" : WarhammerTerrainLibrary.Kinds[(int)i - 1].Id;
+            Colour(kind, e.Match.Kind);
+            Changed(e);
+        };
+        card.AddChild(kind);
+
+        var row = new HBoxContainer();
+        var hide = new CheckBox { Name = "Hide", Text = "Hide", ButtonPressed = e.Match.Hidden, FocusMode = FocusModeEnum.None, TooltipText = "Leave it out of the Map Maker (a duplicate, a broken model, something you don't want)." };
+        hide.Toggled += on => { e.Match.Hidden = on; Changed(e); };
+        row.AddChild(hide);
+        var size = HudKit.Text(SizeText(e), 12, HudKit.Dim, HudKit.Semi);
+        size.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        size.HorizontalAlignment = HorizontalAlignment.Right;
+        row.AddChild(size);
+        card.AddChild(row);
+        _cards[e.Id] = new Card(card, pic, size, kind);
+        return card;
+    }
+
+    private static string Ascii(string s) => new(s.Where(c => c >= ' ' && c <= '~').ToArray());
+
+    private static string SizeText(WarhammerTerrainLibrary.Entry e) =>
+        e.Measured ? $"{e.Match.W:0.#} x {e.Match.D:0.#}\" , {e.Match.H:0.#}\" tall" : "measuring...";
+
+    private static void Colour(OptionButton b, string kind) =>
+        b.AddThemeColorOverride("font_color", kind.Length == 0 ? HudKit.Gold : BattleTable.TerrainColour(WarhammerTerrainLibrary.RulesFor(kind)).Lightened(0.5f));
+
+    private void Changed(WarhammerTerrainLibrary.Entry e)
+    {
+        e.Match.Checked = true;
+        _dirty = true;
+        _sinceChange = 0;
+        UpdateStatus();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!_dirty) return;
+        _sinceChange += delta;
+        if (_sinceChange > 1.5) SaveNow();
+    }
+
+    private void SaveNow()
+    {
+        if (_lib == null || !_dirty) return;
+        try { _lib.Save(); _dirty = false; WarhammerModels.Reload(); }
+        catch (Exception ex) { _status.Text = "Couldn't save: " + ex.Message; }
+        UpdateStatus();
+    }
+
+    private void UpdateStatus()
+    {
+        if (_lib == null) return;
+        int all = _lib.Entries.Count;
+        int kinded = _lib.Entries.Count(e => e.Match.Kind.Length > 0 && !e.Match.Hidden);
+        int hidden = _lib.Entries.Count(e => e.Match.Hidden);
+        int checkedCount = _lib.Entries.Count(e => e.Match.Checked);
+        string pics = _picturesRunning ? $"  -  making pictures {_picturesDone}/{_picturesTotal}" : "";
+        _status.Text = $"{all} pieces: {kinded} with a kind, {hidden} hidden, {checkedCount} checked by you  -  showing {_cards.Count}" + pics + (_dirty ? "  -  saving..." : "");
+    }
+
+    private Texture2D? LoadThumb(int id)
+    {
+        string f = ThumbFor(id);
+        if (!File.Exists(f)) return null;
+        var img = Image.LoadFromFile(f);
+        return img == null || img.IsEmpty() ? null : ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>
+    /// Every piece without a picture or a size gets both, one at a time in the background, the pieces on screen first.
+    /// The size is the model's own box in table inches - the footprint it gets on a map.
+    /// </summary>
+    private async void MakePictures()
+    {
+        if (_lib == null || _studio == null) return;
+        Directory.CreateDirectory(ThumbFolder);
+        var todo = Shown().Concat(_lib.Entries).Distinct().Where(e => !e.Measured || !File.Exists(ThumbFor(e.Id))).ToList();
+        if (todo.Count == 0) return;
+        _picturesRunning = true;
+        _picturesTotal = todo.Count;
+        _picturesDone = 0;
+        for (int frame = 0; frame < 2; frame++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        foreach (var e in todo)
+        {
+            if (!IsInsideTree()) return;
+            if (_studio.Show(e.File, out _))
+            {
+                if (!e.Measured)
+                {
+                    Aabb? box = WarhammerModels.Measure(_studio, e.File);
+                    if (box is { } b)
+                    {
+                        e.Match.W = MathF.Round(b.Size.X * 100) / 100;
+                        e.Match.D = MathF.Round(b.Size.Z * 100) / 100;
+                        e.Match.H = MathF.Round(b.Size.Y * 100) / 100;
+                        _dirty = true;
+                    }
+                }
+                _studio.Aim(Angle);
+                for (int frame = 0; frame < 3; frame++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                if (!IsInsideTree()) return;
+                _studio.Grab(256).SavePng(ThumbFor(e.Id));
+                if (_cards.TryGetValue(e.Id, out Card? card))
+                {
+                    card.Picture.Texture = LoadThumb(e.Id);
+                    card.Size.Text = SizeText(e);
+                }
+            }
+            _picturesDone++;
+            if (_picturesDone % 10 == 0) SaveNow();
+            UpdateStatus();
+        }
+        _picturesRunning = false;
+        SaveNow();
+        UpdateStatus();
+    }
+
+    public override void _ExitTree() => SaveNow();
+}

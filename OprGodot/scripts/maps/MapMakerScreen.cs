@@ -38,6 +38,10 @@ public partial class MapMakerScreen : Control
         t.AddChild(HudKit.Text("Your maps - terrain and objective markers. Deployment is picked in the lobby.", 14, HudKit.Dim, HudKit.Semi));
         top.AddChild(t);
         top.AddChild(Ui.Grow());
+        // Kai, 2026-11-14: the downloaded Warhammer terrain, matched to terrain kinds before it can be placed.
+        if (Battle.WarhammerModels.Library is { Entries.Count: > 0 })
+            top.AddChild(Ui.Button("Match terrain models", () => App.I.Open<MatchTerrainScreen>(Scenes.MatchTerrain),
+                "Say what each downloaded Warhammer terrain piece is (Ruins, Barricade, Forest...) so it can go on maps.").Also(b => { b.Name = "MatchTerrain"; b.CustomMinimumSize = new Vector2(220, 44); }));
         top.AddChild(Ui.Button("+ NEW MAP", () => OpenEditor(MapDraft.New(72, 48)), "Start an empty map (pick its table size in the editor).", "CommitButton")
             .Also(b => { b.Name = "NewMap"; b.CustomMinimumSize = new Vector2(170, 44); }));
         root.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(top, 14, 8, 14, 8)));

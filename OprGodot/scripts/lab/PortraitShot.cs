@@ -45,6 +45,9 @@ public static partial class PortraitShot
         private Camera3D _cam = null!;
         private Aabb _box;
 
+        /// <summary>The shown model's box (table inches for catalogue models) - the terrain match screen measures pieces with it.</summary>
+        public Aabb Box => _box;
+
         public Studio() : this(1024) { }
 
         public Studio(int size)
