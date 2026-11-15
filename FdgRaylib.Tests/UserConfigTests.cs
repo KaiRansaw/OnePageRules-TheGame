@@ -437,6 +437,8 @@ public class UserConfigTests
             EAiProfile aiProfile = EAiProfile.SoloRules) => throw new NotSupportedException();
         public bool CheckCanSetPlayerType(PlayerID playerID) => false;
         public SeatArmyView GetSeatArmy(PlayerID playerID) => throw new NotSupportedException();
+        public IReadOnlyDictionary<PlayerID, FDG.Network.Messages.SeatPictures> SeatPictures => new Dictionary<PlayerID, FDG.Network.Messages.SeatPictures>();
+        public void SetMyPictures(PlayerID me, FDG.Network.Messages.SeatPictures pictures) { }
         public bool TryResumeGame(out string? failReason) => throw new NotSupportedException();
     }
     [Test]

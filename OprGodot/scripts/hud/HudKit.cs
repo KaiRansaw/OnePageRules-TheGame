@@ -179,6 +179,24 @@ public static class HudKit
     /// the official pictures win - he didn't like the model-made ones. Looked for next to the repo / the game, like the
     /// Raylib build. Folder and file names match ignoring case, spaces and punctuation.
     /// </summary>
+    /// <summary>
+    /// A unit's picture as its owner sees it: another player's units show the pictures that player sent
+    /// (<see cref="SharedLooks"/>), else this computer's own lookup.
+    /// </summary>
+    public static Texture2D? UnitPicture(string faction, string unit, string? look, FDG.PlayerID? owner)
+    {
+        if (owner != null && SharedLooks.Picture(owner, unit, look, out bool made) is { } shared)
+        {
+            if (made) ModelMade.Add(shared);
+            return shared;
+        }
+        return UnitPicture(faction, unit, look);
+    }
+
+    /// <summary>How a unit's picture is framed: its owner's framing for another player's unit, else this computer's.</summary>
+    public static FdgRaylib.Models3D.PictureFraming.Frame FramingFor(string faction, string unit, FDG.PlayerID? owner = null)
+        => SharedLooks.Framing(owner, unit) ?? FdgRaylib.Models3D.PictureFraming.For(faction, unit);
+
     public static Texture2D? UnitPicture(string faction, string unit, string? look = null)
     {
         string key = faction + "/" + unit + "|" + look;
@@ -250,8 +268,9 @@ public static class HudKit
     /// <summary>A framed unit picture: the Army Forge portrait if downloaded, else <paramref name="fallbackIcon"/>.</summary>
     /// <remarks><paramref name="look"/> is the look picked for the unit in the army builder (its first picked model's), so
     /// the portrait shows the same version that stands on the table.</remarks>
-    public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f, string? look = null)
-        => Portrait(UnitPicture(faction, unit, look), fallbackIcon, size, team, alpha);
+    public static Control Portrait(string faction, string unit, string fallbackIcon, float size, Color team, float alpha = 1f, string? look = null,
+        FDG.PlayerID? owner = null)
+        => Portrait(UnitPicture(faction, unit, look, owner), fallbackIcon, size, team, alpha);
 
     /// <summary>The look a battle unit's portrait shows: the first one picked for any of its models.</summary>
     public static string? LookOf(FDG.IUnit u) => FdgRaylib.Models3D.UnitPortraits.LookOf(u.Models.Select(m => m.Look));
@@ -333,8 +352,9 @@ public static class HudKit
     /// right (or downwards) so text can sit over its end. Without a picture: the kind icon on a plain tile. A width of 0
     /// fills whatever space the container gives it.
     /// </summary>
-    public static Control Banner(string faction, string unit, string fallbackIcon, float w, float h, Color team, float alpha = 1f, string? look = null, bool down = false)
-        => Banner(UnitPicture(faction, unit, look), fallbackIcon, w, h, team, alpha, down, FdgRaylib.Models3D.PictureFraming.For(faction, unit));
+    public static Control Banner(string faction, string unit, string fallbackIcon, float w, float h, Color team, float alpha = 1f, string? look = null, bool down = false,
+        FDG.PlayerID? owner = null)
+        => Banner(UnitPicture(faction, unit, look, owner), fallbackIcon, w, h, team, alpha, down, FramingFor(faction, unit, owner));
 
     /// <summary><paramref name="frame"/>: where the picture is centred and how far it is zoomed (the Asset Lab's picture
     /// framing, Kai 2026-11-14); null = centred, just filling the space.</summary>

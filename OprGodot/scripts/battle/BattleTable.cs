@@ -175,6 +175,8 @@ public partial class BattleTable : Node3D
     private string? FileFor(IUnit unit, IModel model)
     {
         if (_library == null) return null;
+        // Another player's unit stands as that player picked it, when this computer has the same file (Kai, 2026-11-14).
+        if (OprGodot.Hud.SharedLooks.Model(unit.PlayerID, unit.Name, model.Look, _library) is { } theirs) return theirs;
         // One rule for the table and the portraits, so a unit's picture is the version that stands here.
         return FdgRaylib.Models3D.UnitPortraits.ModelFor(_library, Session.SeatOf(unit.PlayerID)?.Faction ?? "", unit.Name, model.Look);
     }

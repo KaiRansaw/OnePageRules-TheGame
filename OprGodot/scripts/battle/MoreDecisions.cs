@@ -1074,7 +1074,7 @@ public sealed class AuraPicksDecision : Decision<List<List<DataBinding<UnitData>
                 Name = $"Aura{i}_{u.Name.Replace(' ', '_')}", TooltipText = $"Give {row.Granted} to {u.Name} too." };
             var v = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
             v.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            var pic = HudKit.Portrait(_s?.Session.SeatOf(u.PlayerID)?.Faction ?? "", u.Name, "person", 48, HudKit.Friendly, look: HudKit.LookOf(u));
+            var pic = HudKit.Portrait(_s?.Session.SeatOf(u.PlayerID)?.Faction ?? "", u.Name, "person", 48, HudKit.Friendly, look: HudKit.LookOf(u), owner: u.PlayerID);
             pic.MouseFilter = Control.MouseFilterEnum.Ignore;
             pic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             v.AddChild(pic);

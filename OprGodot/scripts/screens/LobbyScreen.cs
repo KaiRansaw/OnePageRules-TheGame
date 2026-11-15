@@ -46,6 +46,8 @@ public partial class LobbyScreen : Control
 
     public override void _Ready()
     {
+        // Each seat's pictures and model picks reach the other players (Kai, 2026-11-14).
+        if (!ReferenceEquals(SharedLooks.Lobby, Vm)) SharedLooks.Reset(Vm);
         var margin = new MarginContainer();
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
         foreach (string side in new[] { "left", "right", "top", "bottom" }) margin.AddThemeConstantOverride("margin_" + side, 24);
@@ -168,6 +170,7 @@ public partial class LobbyScreen : Control
         _poll += delta;
         if (_poll < 0.25) return;
         _poll = 0;
+        SharedLooks.Tick(Session);
         Refresh(force: false);
     }
 
@@ -873,17 +876,17 @@ public partial class LobbyScreen : Control
         (ArmyListFile? army, string why) = Session.SeatArmy(info.PlayerID);
         if (army == null || army.Units.Count == 0) { _armyRows.AddChild(Note(why.Length > 0 ? why : LobbySession.NoSeatArmyText)); return; }
         Color team = SeatColour(Session.EffectiveColours()[_selectedSeat]);
-        foreach (UnitFileEntry unit in army.Units) _armyRows.AddChild(UnitRow(unit, army.Faction, team));
+        foreach (UnitFileEntry unit in army.Units) _armyRows.AddChild(UnitRow(unit, army.Faction, team, info.PlayerID));
     }
 
-    private static Control UnitRow(UnitFileEntry u, string faction, Color team)
+    private static Control UnitRow(UnitFileEntry u, string faction, Color team, PlayerID? seatId = null)
     {
         string? tough = u.SpecialRules.Select(r => r.PrintableName).FirstOrDefault(n => n.StartsWith("Tough("));
         bool hero = u.SpecialRules.Any(r => r.PrintableName == "Hero");
         int toughN = tough != null && int.TryParse(tough[6..^1], out int t) ? t : 1;
         var h = new HBoxContainer();
         h.AddThemeConstantOverride("separation", 10);
-        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), 44, team, look: FdgRaylib.Models3D.UnitPortraits.LookOf(u.ModelLooks)));
+        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), 44, team, look: FdgRaylib.Models3D.UnitPortraits.LookOf(u.ModelLooks), owner: seatId));
         var v = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         v.AddThemeConstantOverride("separation", 0);
         var top = new HBoxContainer();

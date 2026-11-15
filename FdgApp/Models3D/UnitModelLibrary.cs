@@ -16,6 +16,12 @@ public sealed class UnitModelLibrary
 
     public int FileCount { get; private set; }
 
+    // file name -> the first file by that name, for another player's pick whose folder is named differently here
+    private readonly Dictionary<string, string> _byName = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A model file in this library with this file name, or null.</summary>
+    public string? FileNamed(string fileName) => _byName.TryGetValue(fileName, out var f) ? f : null;
+
     public static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
     /// <summary>Reads the folder once (a game does this at start). <paramref name="map"/> adds the other games' names.</summary>
@@ -35,6 +41,7 @@ public sealed class UnitModelLibrary
                         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
                     if (files.Count == 0) continue;
                     units[Norm(Path.GetFileName(unitDir))] = files;
+                    foreach (string f in files) lib._byName.TryAdd(Path.GetFileName(f), f);
                     lib.FileCount += files.Count;
                 }
                 if (units.Count > 0) lib._byBook[Norm(book)] = units;

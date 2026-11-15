@@ -122,6 +122,25 @@ public partial class ScriptedRun : Node
                 _wait = 20;
                 return;
             }
+            // "sharecheck:<army>|<unit>|<out.png>" packs that unit's picture as it is sent to other players, unpacks it, and
+            // saves what the other player would see (Kai, 2026-11-14 - shared pictures).
+            if (name.StartsWith("sharecheck:") && name[11..].Split('|') is [var sa, var su, var sout])
+            {
+                var army = new FDG.SaveLoad.ArmyListFile { Faction = sa, Units = new() { new FDG.SaveLoad.UnitFileEntry { Name = su, ModelCount = 1 } } };
+                var sent = Hud.SharedLooks.Build(army);
+                foreach (var kv in sent.Pictures)
+                {
+                    var img = new Image();
+                    byte[] bytes = System.Convert.FromBase64String(kv.Value);
+                    var ok = img.LoadWebpFromBuffer(bytes);
+                    GD.Print($"sharecheck {kv.Key}: {bytes.Length} bytes, {img.GetWidth()}x{img.GetHeight()}, load {ok}, made {sent.ModelMade.Contains(kv.Key)}");
+                    img.SavePng(sout);
+                }
+                foreach (var kv in sent.Models) GD.Print($"sharecheck model {kv.Key} -> {kv.Value}");
+                if (sent.Pictures.Count == 0) GD.Print("sharecheck: no picture found");
+                _wait = 2;
+                return;
+            }
             // "lab:<file>" opens that file in the Asset Lab; "labview:0-3" picks its camera (close / play / table / top);
             // "labcopies:0-4" its copies (1 / 5 / 10 / 20 / 100); "labset:Height=40" sets one of its boxes by node name.
             if (name.StartsWith("lab") && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lab)
