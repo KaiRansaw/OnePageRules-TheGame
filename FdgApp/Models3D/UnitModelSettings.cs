@@ -56,10 +56,20 @@ public sealed class UnitModelSettings
     {
         string path = PathFor(modelFile);
         if (!File.Exists(path)) return null;
-        try { return JsonConvert.DeserializeObject<UnitModelSettings>(File.ReadAllText(path)); }
+        try
+        {
+            var s = JsonConvert.DeserializeObject<UnitModelSettings>(File.ReadAllText(path));
+            // Terrain never stands on a base (Kai, 2026-11-14). Pieces downloaded before 2.13 were saved with a 25mm one.
+            if (s != null && IsTerrain(modelFile)) s.BaseMm = 0;
+            return s;
+        }
         catch (JsonException) { return null; }
         catch (IOException) { return null; }
     }
+
+    /// <summary>True for a terrain model (the downloaded Warhammer terrain): no base, ever.</summary>
+    public static bool IsTerrain(string modelFile) =>
+        Path.GetFullPath(modelFile).Replace('\\', '/').Split('/').Contains(FdgRaylib.Terrain.WarhammerTerrain.ModelsFolderName);
 
     public void Save(string modelFile) => File.WriteAllText(PathFor(modelFile), JsonConvert.SerializeObject(this, Formatting.Indented));
 

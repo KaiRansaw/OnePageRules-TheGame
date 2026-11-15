@@ -416,6 +416,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         float baseMm = 25;
         foreach (float mm in UnitModelSettings.RoundBasesMm.OrderByDescending(x => x))
             if (Path.GetFileNameWithoutExtension(file).Contains($"{mm:0.#}mm", StringComparison.OrdinalIgnoreCase)) { baseMm = mm; break; }
+        if (UnitModelSettings.IsTerrain(file)) return new UnitModelSettings { BaseMm = 0, HeightMm = 0, UpAxis = EUpAxis.YUp };
         return new UnitModelSettings { BaseMm = baseMm, HeightMm = UnitModelSettings.GuessHeightMm(baseMm), UpAxis = up };
     }
 

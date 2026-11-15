@@ -97,7 +97,7 @@ public static class ForceOrgAssembler
         new UnitModelSettings
         {
             HeightMm = 0, // the catalogue is already at table scale (1 unit = 1 inch)
-            BaseMm = r.BaseMm ?? 25,
+            BaseMm = r.BaseMm ?? (UnitModelSettings.IsTerrain(glbPath) ? 0 : 25), // terrain: no base
             UpAxis = EUpAxis.YUp,
             YawDegrees = ModelDownloadDefaults.Load().YawDegrees, // set from the facing review
             CentreOnBase = false, // parts are placed on the base already; a rider's overhang stays where it was put

@@ -88,4 +88,25 @@ public class WarhammerTerrainTests
         TestContext.WriteLine(string.Join("\n", r.Sets.Select(s => $"{s.Value}: {r.Pieces.Count(p => p.Set == s.Key)} pieces")));
         TestContext.WriteLine(string.Join("\n", r.Pieces.Take(40).Select(p => $"{p.Name} | {p.Keywords}")));
     }
+
+    /// <summary>Kai, 2026-11-14: terrain never stands on a base - including pieces saved before 2.13 with a 25mm one.</summary>
+    [Test]
+    public void TerrainModels_NeverGetABase()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "fdg-wh-" + Guid.NewGuid().ToString("N"), WarhammerTerrain.ModelsFolderName, "Set 1");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            string piece = Path.Combine(dir, "Ruin [00001].glb");
+            new UnitModelSettings { BaseMm = 25 }.Save(piece);
+            Assert.That(UnitModelSettings.IsTerrain(piece), Is.True);
+            Assert.That(UnitModelSettings.Load(piece)!.BaseMm, Is.EqualTo(0f));
+            string unit = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(dir))!, "Alien Hives", "Grunt.glb");
+            Directory.CreateDirectory(Path.GetDirectoryName(unit)!);
+            new UnitModelSettings { BaseMm = 25 }.Save(unit);
+            Assert.That(UnitModelSettings.IsTerrain(unit), Is.False);
+            Assert.That(UnitModelSettings.Load(unit)!.BaseMm, Is.EqualTo(25f));
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(Path.GetDirectoryName(dir))!, true); }
+    }
 }
