@@ -168,7 +168,23 @@ public partial class LooksPanel : HBoxContainer
 
     private TextureRect _portrait = null!;
     private Label _portraitNote = null!;
-    private Button _makePortrait = null!;
+    private Button _makePortrait = null!, _cameraPortrait = null!;
+
+    private PortraitCameraPopup? OpenCamera()
+    {
+        if (_previewFile == null) return null;
+        string file = _previewFile;
+        var cam = PortraitCameraPopup.Open(this, file, $"{_s.Detail(_row).Unit.Name} - {ModelLooks.Label(Versions(), file)}");
+        cam.Saved += () => { ShowPortrait(); _status($"Portrait taken for {ModelLooks.Label(Versions(), file)}.", Palette.Lime); };
+        return cam;
+    }
+
+    /// <summary>Screenshot driver: open the portrait camera, turn / tilt / zoom it, and optionally take the picture.</summary>
+    public void DriveCamera(float yaw, float pitch, float zoom, bool take)
+    {
+        var cam = OpenCamera();
+        if (cam != null) Callable.From(() => cam.Drive(yaw, pitch, zoom, take)).CallDeferred();
+    }
 
     private Control PortraitRow()
     {
@@ -184,10 +200,19 @@ public partial class LooksPanel : HBoxContainer
         row.AddChild(HudKit.Panel(HudKit.PanelBox(6), frame));
         var col = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
         col.AddThemeConstantOverride("separation", 6);
-        _makePortrait = Ui.Button("Make portrait of this version", () => _ = MakePortrait(),
-            "Photograph the version in the preview and use it as this unit's portrait whenever a model wears this look - ahead of the official picture.");
+        var buttons = new HBoxContainer();
+        buttons.AddThemeConstantOverride("separation", 8);
+        // Kai, 2026-11-14: "more control - zoom in on the model, take a screenshot of just the model from that angle".
+        _cameraPortrait = Ui.Button("Take portrait...", () => OpenCamera(),
+            "Open a camera on just this version: turn, move and zoom until it looks right, then take the picture. It becomes this unit's portrait whenever a model wears this look - ahead of the official picture.");
+        _cameraPortrait.Name = "PortraitCamera";
+        _cameraPortrait.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        buttons.AddChild(_cameraPortrait);
+        _makePortrait = Ui.Button("Quick portrait", () => _ = MakePortrait(),
+            "Take it at once from the usual angle, without the camera.");
         _makePortrait.Name = "MakePortrait";
-        col.AddChild(_makePortrait);
+        buttons.AddChild(_makePortrait);
+        col.AddChild(buttons);
         _portraitNote = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi);
         _portraitNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         col.AddChild(_portraitNote);
@@ -198,7 +223,7 @@ public partial class LooksPanel : HBoxContainer
     private void ShowPortrait()
     {
         if (_portrait == null || !IsInstanceValid(_portrait)) return;
-        _makePortrait.Disabled = _previewFile == null;
+        _makePortrait.Disabled = _cameraPortrait.Disabled = _previewFile == null;
         if (_previewFile == null) { _portrait.Texture = null; _portraitNote.Text = ""; return; }
         string path = UnitPortraits.PathFor(_previewFile);
         bool chosen = UnitPortraits.IsChosen(_previewFile);

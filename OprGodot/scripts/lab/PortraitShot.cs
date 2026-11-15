@@ -48,6 +48,9 @@ public static partial class PortraitShot
         /// <summary>The shown model's box (table inches for catalogue models) - the terrain match screen measures pieces with it.</summary>
         public Aabb Box => _box;
 
+        /// <summary>The studio's camera - the portrait camera window moves it by hand.</summary>
+        public Camera3D Camera => _cam;
+
         public Studio() : this(1024) { }
 
         public Studio(int size)

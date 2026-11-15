@@ -702,6 +702,11 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
             case "portrait": _looks?.DriveMakePortrait(); return;
+            // "forge:camera:<yaw>;<pitch>;<zoom>[;take]" opens the portrait camera on the previewed version.
+            case "camera" when arg.Split(';') is { Length: >= 3 } cm:
+                _looks?.DriveCamera(float.Parse(cm[0], System.Globalization.CultureInfo.InvariantCulture), float.Parse(cm[1], System.Globalization.CultureInfo.InvariantCulture),
+                    float.Parse(cm[2], System.Globalization.CultureInfo.InvariantCulture), cm.Length > 3 && cm[3] == "take");
+                return;
             case "save":
                 try { Status("Saved " + Path.GetFileName(s.Save(arg)), Palette.Lime); } catch (Exception e) { Status("SAVE FAILED - " + e.Message, Palette.WoundsRed); }
                 break;
