@@ -651,10 +651,16 @@ public partial class LobbyScreen : Control
             army.Pressed += () => OpenArmyPicker(info);
             armyRow.AddChild(army);
             var roll = Ui.Button("Roll", () => Session.RollArmy(info.PlayerID),
-                "Roll another army from the armies folder, closest to the points limit first. Skips armies other players are using and never repeats one until this seat has seen them all.");
+                "Roll another army from the armies folder, closest to the points limit first. Skips armies other players are using and never repeats one until this seat has seen them all. With no saved army of this game, makes a legal one up from a random army book.");
             roll.Disabled = !canModify || !LobbySession.ArmyCatalogReady;
             armyRow.AddChild(roll);
             col.AddChild(armyRow);
+            if (canModify && !s.IsAssigned && Session.RollProblem is { } problem)
+            {
+                var why = HudKit.Text(problem, 14, Palette.WoundsRed, HudKit.Semi);
+                why.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                col.AddChild(why);
+            }
 
             var facts = new HBoxContainer();
             facts.AddThemeConstantOverride("separation", 8);

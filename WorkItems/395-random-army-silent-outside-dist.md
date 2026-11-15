@@ -1,6 +1,6 @@
 # 395 — Random Army does nothing outside a dist build (silent empty catalog)
 
-**Status**: todo — **HIGH PRIORITY (Chris, 2026-09-04)**
+**Status**: done 2026-11-15 (Build 2.30)
 **Related**: #372 (starter armies), #388 (human slots get a starter army), `scripts/build-dist.sh`
 
 ## Goal
@@ -10,6 +10,7 @@ work it says so in the lobby instead of doing nothing. Done means: pressing Rand
 VS build on Windows assigns an army to the row, and to an added bot, with no manual folder copying.
 
 ## Notes
+- 2026-11-15: The path half was already fixed (ArmyPaths.FindAbove walks up from the exe, so F5 / dotnet run find the repo's armies/). What was still silent: GF: Firefight and AoF: Skirmish ship with NO saved armies, so Roll and bot starter armies did nothing in those games. Fix: `RandomArmyBuilder` (engine) makes a legal army from a random book at the limit when no saved army exists (`LobbySession.MadeUpArmy`), and the lobby seat shows `RollProblem` in red when even that fails. Tests: `FdgRaylib.Tests/RandomArmyTests`.
 - 2026-09-04: Reported by Chris from his Windows laptop, running the `tactician-bc` checkout from
   Visual Studio: "The Random Army button isn't working for me or the bot." Filed by Claude from the
   Linux box without a Windows repro. Leading cause found by READING, not yet by running:
@@ -36,4 +37,4 @@ VS build on Windows assigns an army to the row, and to an added bot, with no man
   want to reference it.
 
 ## Outcome
-(open)
+Done 2026-11-15. Roll never silently does nothing: saved army, else a made-up one, else a red reason on the seat.

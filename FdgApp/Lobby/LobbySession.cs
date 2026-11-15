@@ -283,8 +283,42 @@ public sealed class LobbySession : IDisposable
             .Where(p => p.PlayerID != playerID && p.ArmyListSummary.IsAssigned)
             .Select(p => ArmyCatalogEntry.KeyFor(p.ArmyListSummary.ArmyName, p.ArmyListSummary.FactionName, p.ArmyListSummary.PointCost))
             .ToHashSet();
-        if (_picker.PickNext(playerID.ID, Vm.ArmyPoints, Vm.AllowedGameSystems, inUseByOthers) is not { } pick) return;
-        if (LoadArmyFile(pick.Path) is { } army) Vm.UpdateArmyListFile(playerID, army);
+        if (_picker.PickNext(playerID.ID, Vm.ArmyPoints, Vm.AllowedGameSystems, inUseByOthers) is { } pick
+            && LoadArmyFile(pick.Path) is { } army)
+        {
+            RollProblem = null;
+            Vm.UpdateArmyListFile(playerID, army);
+            return;
+        }
+
+        // #395: no saved army of this game (Firefight and Skirmish ship with none) - make one up from a random book.
+        if (MadeUpArmy(Vm.GameSystem, Vm.ArmyPoints, Random.Shared) is { } made)
+        {
+            RollProblem = null;
+            Vm.UpdateArmyListFile(playerID, made);
+            return;
+        }
+        RollProblem = GameSystemInfo.IsQuest(Vm.GameSystem)
+            ? $"No armies in armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)} to roll from - pick one with Choose an army."
+            : $"Couldn't make a random army: no saved armies in armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)} and no army books for this game.";
+    }
+
+    /// <summary>Why the last Roll gave nothing, for the lobby to show; null when it worked. ASCII.</summary>
+    public string? RollProblem { get; private set; }
+
+    /// <summary>
+    /// #395 - a legal army made up from a random army book of the game, at the points limit (RandomArmyBuilder). For the
+    /// four battle games; null for Quest (its enemies are whole collections) or when no book can field one.
+    /// </summary>
+    public static BuiltArmyFile? MadeUpArmy(EGameSystem system, int points, Random rng)
+    {
+        string? slug = FDG.ArmyBuilding.GameSystems.CampaignBookSlug(system);
+        if (slug == null) return null;
+        var books = BookLibrary.Load().Where(b => FDG.ArmyBuilding.GameSystems.SameSystem(b.GameSystem, slug))
+            .OrderBy(_ => rng.Next()).Take(6).ToList();
+        foreach (FDG.ArmyBuilding.BookFile book in books)
+            if (FDG.ArmyBuilding.RandomArmyBuilder.Build(book, points, rng, $"Random {book.Name}") is { } army) return army;
+        return null;
     }
 
     /// <summary>A hand-picked army for a seat. Never auto-replaced afterwards.</summary>
