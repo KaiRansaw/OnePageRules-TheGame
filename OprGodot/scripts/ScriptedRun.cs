@@ -137,6 +137,15 @@ public partial class ScriptedRun : Node
                     var pp = lab.OpenPortraits();
                     if (arg != "open") Callable.From(() => pp.StartFor(arg)).CallDeferred();
                 }
+                // "labpics:<game number>|<army>" downloads official pictures (0 = all games; "open" just opens the window).
+                else if (name.StartsWith("labpics:"))
+                {
+                    var op = lab.OpenOfficialPictures();
+                    if (arg != "open" && arg.Split('|') is [var g, var army] && int.TryParse(g, out int gi))
+                        Callable.From(() => op.StartFor(gi, army)).CallDeferred();
+                    _wait = arg == "open" ? 40 : 400;
+                    return;
+                }
                 // "labdl:<catalogue>|<unit list>|<book>" runs Download models for that book (test files; "-" = the usual one).
                 else if (name.StartsWith("labdl:") && arg.Split('|') is [var catFile, var mapFile, var book])
                 {

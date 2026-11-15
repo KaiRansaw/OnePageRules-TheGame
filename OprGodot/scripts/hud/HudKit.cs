@@ -173,24 +173,28 @@ public static class HudKit
     private static readonly Dictionary<string, Texture2D?> Pictures = new();
 
     /// <summary>
-    /// A unit's portrait: one made from its downloaded model (<see cref="FdgRaylib.Models3D.UnitPortraits"/>) first,
-    /// else its Army Forge portrait from UnitImages/&lt;faction&gt;/Portraits (what the "Download Unit Pictures"
-    /// tool fetches; a loose UnitImages/Portraits picture works for every faction), or null. Looked for next to
-    /// the repo / the game, like the Raylib build. Name matching ignores case, spaces and punctuation.
+    /// A unit's portrait: its official Army Forge picture from UnitImages/&lt;faction&gt;/Portraits first (what the Asset
+    /// Lab's "Download official pictures" fetches; a loose UnitImages/Portraits picture works for every faction), else
+    /// one made from its downloaded model (<see cref="FdgRaylib.Models3D.UnitPortraits"/>), or null. Kai, 2026-11-14:
+    /// the official pictures win - he didn't like the model-made ones. Looked for next to the repo / the game, like the
+    /// Raylib build. Folder and file names match ignoring case, spaces and punctuation.
     /// </summary>
     public static Texture2D? UnitPicture(string faction, string unit, string? look = null)
     {
         string key = faction + "/" + unit + "|" + look;
         if (Pictures.TryGetValue(key, out var t)) return t;
         t = null;
-        // A portrait made from the unit's own downloaded model comes first: it matches what stands on the table.
-        if (FdgRaylib.Models3D.UnitPortraits.Find(faction, unit, look) is { } made && Image.LoadFromFile(made) is { } mi)
-            return Pictures[key] = ImageTexture.CreateFromImage(mi);
-        static string Norm(string s) => new string(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
-        string want = Norm(unit);
+        string Norm(string s) => FdgRaylib.Models3D.OfficialPictures.Normalise(s);
+        string want = Norm(unit), army = Norm(faction);
         foreach (string root in new[] { System.IO.Path.Combine(FdgRaylib.AppAssets.Root, ".."), FdgRaylib.AppAssets.Root, System.Environment.CurrentDirectory })
         {
-            foreach (string folder in new[] { System.IO.Path.Combine(root, "UnitImages", faction, "Portraits"), System.IO.Path.Combine(root, "UnitImages", "Portraits") })
+            string images = System.IO.Path.Combine(root, "UnitImages");
+            if (!System.IO.Directory.Exists(images)) continue;
+            var folders = System.IO.Directory.EnumerateDirectories(images)
+                .Where(d => Norm(System.IO.Path.GetFileName(d)) == army)
+                .Select(d => System.IO.Path.Combine(d, "Portraits"))
+                .Append(System.IO.Path.Combine(images, "Portraits"));
+            foreach (string folder in folders)
             {
                 if (!System.IO.Directory.Exists(folder)) continue;
                 string? file = System.IO.Directory.EnumerateFiles(folder)
@@ -202,6 +206,8 @@ public static class HudKit
             }
             if (t != null) break;
         }
+        if (t == null && FdgRaylib.Models3D.UnitPortraits.Find(faction, unit, look) is { } made && Image.LoadFromFile(made) is { } mi)
+            t = ImageTexture.CreateFromImage(mi);
         return Pictures[key] = t;
     }
 
