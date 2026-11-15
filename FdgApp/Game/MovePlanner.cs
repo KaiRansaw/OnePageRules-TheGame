@@ -273,9 +273,11 @@ public static class MovePlanner
             entry => { var (_, rush, maxDist) = request.PlayerBudgetFor(entry.Model.GetValue().ID); return new ModelMoveBudget(rush, maxDist); },
             enemies, request.CanMoveThroughEnemies, request.IgnoresDifficultTerrain, request.IgnoresImpassibleTerrain,
             table.Terrain.Objects.ToList(), out List<ReasonForInvalidMove> errors, friends, lenientCoherency: true,
-            measured: request.LeaderOnlyMovement ? entry => request.IsMeasured(entry.Model.GetValue().ID) : null);
+            measured: request.LeaderOnlyMovement ? entry => request.IsMeasured(entry.Model.GetValue().ID) : null,
+            buildingEntry: true);
         if (!ok) return string.Join(", ", errors.Select(e => e.ToString()).Distinct());
-        return MovementUtilities.FastPlayChargeProblem(request, moves, enemies);
+        return MovementUtilities.FastPlayChargeProblem(request, moves, enemies)
+            ?? FDG.Stages.DefinePathStage.BuildingProblem(table, me, moves);
     }
 
     /// <summary>Null when the ConsolidateStage will accept the move; otherwise the reason, in plain words.</summary>
