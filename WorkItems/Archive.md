@@ -269,3 +269,4 @@ Detail files (where they exist) live beside this file as `NNN-slug.md`.
 - [x] 465 — Campaign mission plans: generate or write each mission on Mission Setup, save a campaign
   as a file and replay it, B89. ([WorkItems/465](465-campaign-mission-plans.md))
 - [x] 466 — Campaign missions play past round 4 until there is one winner (capped at 12 as a draw) and a player may concede from the Mission tab (army leaves, not casualties, other side wins). **Done 2026-11-06.** ([WorkItems/466](466-campaign-mission-length.md))
+- [x] 462 — Mission Cards: all eight games (B84-B86) and bots playing to their cards (Build 2.29). **Done 2026-11-15.** ([WorkItems/462](462-mission-cards.md))

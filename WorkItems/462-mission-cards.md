@@ -38,7 +38,16 @@ books name cards differently - Kai: use the names given.
   (`ModelKillers` from ApplyWoundsStage), spells, melee wins; `MissionBoard.HeroUnitsNear`.
 - Mission tab: hand, hidden cards hidden from non-local players, CHALLENGE / PARAGON tags.
 
+## Slice 3 - bots play to their cards (Build 2.29, 2026-11-15, Kai: "1")
+- `Missions/MissionCardIntent.cs` - a side's own cards as AI wants (objective VP, kill targets, shoot/melee, Infiltrate).
+- `SoloAiBrain` - card objectives count 9"/VP nearer; card targets first; 1.5x weight on the card's attack mode; Infiltrate fallback. `SoloCoOpRangedAttackResolver` - card targets first.
+- `Missions/MissionCardBotPicks.cs` - dead-card detection; discards, redraws, custom deck, placing, Planned Gambit, Direct Challenge, Coordinated Recovery. `StringSelectionRequest.Recommended` carries the pick to AI resolvers.
+- Tests: `MissionCardBotTests`, `MissionCardsTests.BotsOnlyThrowAwayCardsTheyCannotScore`, `TheOfficialAi_ScoresMoreCardsWhenItPlaysTowardsThem` (40 games: 76 vs 65 card VP; pull swept 0/9/18/30 over 80 games, 9 best).
+- House rules C "Bots and their cards".
+
+## Outcome
+Done 2026-11-15. Not done, by choice: Roll & Play, hidden card face up at any time (below); bots pick no paragon and hide no cards.
+
 ## Not done
-- Bots chasing cards.
 - Roll & Play (two dice instead of a deck) - not needed in a video game; the deck shuffle is the same odds.
 - Hidden card face up "at any time" - no play effect, not offered (house rules).
