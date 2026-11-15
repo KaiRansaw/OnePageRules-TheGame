@@ -274,10 +274,16 @@ public partial class LobbyScreen
                 return;
             }
             title.Text = d.Name;
+            // The lobby's Deployment pick, drawn on this map's table (a map never decides deployment).
+            int sides = LobbyDeploymentPreview.Sides(Vm.PlayerInfos.Select(p => (int)p.TeamNumber));
+            var plan = LobbyDeploymentPreview.For(Vm.GameSystem, Vm.GameMode, Vm.DeploymentStyle, sides, d.TableW, d.TableH);
+            big.Zones = plan.Zones.Count > 0 ? plan.Zones : null;
+            string deploy = plan.Zones.Count > 0 ? plan.Note + " Blue is the first side's zone, red the second's - change it with the lobby's Deployment setting."
+                : plan.Note.Length > 0 ? plan.Note : "Deployment is set by this game mode.";
             var kinds = d.Pieces.GroupBy(p => p.Name.Length > 0 ? p.Name : p.Kind).OrderByDescending(g => g.Count()).Select(g => g.Count() > 1 ? $"{g.Count()}x {g.Key}" : g.Key);
             facts.Text = $"{MapDraft.SizeName(d.TableW, d.TableH)} table - {d.Pieces.Count} pieces, {d.Objectives.Count} objective{(d.Objectives.Count == 1 ? "" : "s")}"
                 + (d.Objectives.Count == 0 ? " (rolled at the start)" : "") + (d.GeneratedFrom.Length > 0 ? $" - rolled on the {d.GeneratedFrom} table" : "")
-                + ".\n" + string.Join(", ", kinds) + ".\nDeployment comes from the lobby's Deployment setting.";
+                + ".\n" + string.Join(", ", kinds) + ".\n" + deploy;
         }
 
         Button Tile(string? path, MapDraft? d)
@@ -312,10 +318,7 @@ public partial class LobbyScreen
         big.GuiInput += ev =>
         {
             if (ev is not InputEventMouseMotion mm || big.Draft is not { } d) return;
-            float s = Mathf.Min(big.Size.X / d.TableW, big.Size.Y / d.TableH);
-            var off = (big.Size - new Vector2(d.TableW, d.TableH) * s) / 2;
-            Vector2 at = (mm.Position - off) / s;
-            MapPiece? piece = d.PieceAt(at.X, at.Y);
+            MapPiece? piece = big.TableAt(mm.Position) is { } at ? d.PieceAt(at.X, at.Z) : null;
             hover.Text = piece == null ? "Point at a piece to see what it is."
                 : $"{(piece.Name.Length > 0 ? piece.Name : piece.Kind)} - {TerrainBook.Describe(piece.Rules)}";
         };
