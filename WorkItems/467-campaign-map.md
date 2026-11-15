@@ -21,6 +21,13 @@ The OPR campaign books have no map rules: every rule here is a house rule.
 
 ## Notes (newest first)
 
+### 2026-11-15 - the last perks + off-screen casualties (Build 2.28)
+- `StrikeTeamInfo.FreeVeteranSurcharge` (set by `CampaignMapUpkeep.EndOfTurnPerks` while a Forge is held; spent by
+  `CampaignEconomy.Recruit(veteran)`), Medical decrements `MissionsOut` at turn end.
+- `MapTurnResult.OffScreen` lists rolled battles; `CampaignMapUpkeep.OffScreenBattle` runs AfterGame with synthetic
+  casualties (loser 1-2 on a d6, winner 1) and NoMissionReward. AfterGame's no-reward line made generic.
+- Item is feature-complete; it stays open until Kai has played a whole map campaign.
+
 ### 2026-11-15 - step 4, region battlefields (Build 2.27)
 - Not a made-up terrain mix: the Advanced Rulebook v3.6.0 generator (`TerrainBook.Generate` / `GrowToCover` / `Spread`,
   via `MapDraft.Generate`) with `CampaignMapRules.ThemeFor(type)` picking one of the book's four themes.

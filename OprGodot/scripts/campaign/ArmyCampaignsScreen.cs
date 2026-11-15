@@ -1077,7 +1077,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
             var line = new HBoxContainer();
             line.AddThemeConstantOverride("separation", 8);
             line.AddChild(QuestWidgets.Line($"{r?.Name ?? id}  {price}", 15, HudKit.Fg, 200, HudKit.Semi));
-            var vet = new CheckBox { Name = $"Veteran{i}", Text = $"5 XP (+{_s.Numbers.VeteranRecruitCost})", ButtonPressed = _cart.Veteran == i, Disabled = vetUsed, FocusMode = FocusModeEnum.None,
+            var vet = new CheckBox { Name = $"Veteran{i}", Text = side.Info.FreeVeteranSurcharge ? "5 XP (free - Forge World)" : $"5 XP (+{_s.Numbers.VeteranRecruitCost})", ButtonPressed = _cart.Veteran == i, Disabled = vetUsed, FocusMode = FocusModeEnum.None,
                 TooltipText = vetUsed ? "A veteran has already been recruited since the last mission (once per mission)." : "Book: a recruit may start with 5 XP for the veteran price. Once per mission." };
             vet.Toggled += on => { _cart.Veteran = on ? idx : -1; Rebuild(); };
             line.AddChild(vet);

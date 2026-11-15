@@ -216,6 +216,24 @@ public sealed class MapCampaignSession
             if (_armies.TryGetValue(id, out var a) && a.Army.StrikeTeam is { } info) CampaignMapUpkeep.Apply(info, change);
 
         var report = after.History[^1].Lines;
+
+        // Battles settled off the table cost the armies in them casualties and earn them XP, by the book's own
+        // after-match steps (no treasury or VP - the map paid those). Knocked-out armies are still updated: their files
+        // stay readable in the journal.
+        foreach (var (battle, attackerWon) in result.OffScreen)
+            foreach (var (side, won) in new[] { (battle.Attacker, attackerWon), (battle.Defender, !attackerWon) })
+                if (side != null && side != CampaignMap.PlayerId && _armies.TryGetValue(side, out var sa) && sa.Army.StrikeTeam is { } si)
+                    si.History.AddRange(CampaignMapUpkeep.OffScreenBattle(sa.Army, won, Numbers, D6));
+
+        // The land's perks: Forge World (free 5-XP surcharge), Medical Station (faster recovery).
+        foreach (MapFaction f in after.Alive)
+        {
+            BuiltArmyFile army = _armies[f.Id].Army;
+            List<string> perks = CampaignMapUpkeep.EndOfTurnPerks(after, f.Id, army);
+            army.StrikeTeam!.History.AddRange(perks);
+            if (f.IsPlayer) report.AddRange(perks);
+        }
+
         foreach (MapFaction rival in after.Alive.Where(f => !f.IsPlayer))
         {
             BuiltArmyFile army = _armies[rival.Id].Army;

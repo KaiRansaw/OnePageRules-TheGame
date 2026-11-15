@@ -295,7 +295,7 @@ public sealed class ArmyCampaignSession
 
     public int CartTotal(Entry e, BookFile book, Cart cart, IReadOnlyDictionary<string, (UnitFileEntry Unit, List<ItemEntry> Items)> cards) =>
         cart.Ids.Sum(id => cards.TryGetValue(id, out var c) ? c.Unit.PointCost : book.Units.FirstOrDefault(r => r.Id == id)?.BasePointCost ?? 0)
-        + (cart.Veteran >= 0 && cart.Veteran < cart.Ids.Count && !CampaignEconomy.VeteranRecruitUsed(e.Army) ? Numbers.VeteranRecruitCost : 0);
+        + (cart.Veteran >= 0 && cart.Veteran < cart.Ids.Count && !CampaignEconomy.VeteranRecruitUsed(e.Army) && !e.Info.FreeVeteranSurcharge ? Numbers.VeteranRecruitCost : 0);
 
     public string? WhyNot(Entry e, BookFile book, RosterUnit roster, Cart cart, IReadOnlyDictionary<string, (UnitFileEntry Unit, List<ItemEntry> Items)> cards) =>
         CannotAddToCart(e.Army, roster, cards.TryGetValue(roster.Id, out var c) ? c.Unit.PointCost : roster.BasePointCost,
