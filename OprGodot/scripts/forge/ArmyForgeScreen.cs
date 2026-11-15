@@ -319,7 +319,8 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         }
         if (s.List.Units.Count == 0)
             flow.AddChild(HudKit.Text("Empty - click a unit in the roster below, then + ADD (or double-click it).", 15, HudKit.Dim, HudKit.Semi));
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 150), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        // Two rows of cards before it scrolls (the cards grew with the 2026-11-14 pictures).
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 2 * (HudKit.PictureSize.ForgeCard + 12) + 10), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         flow.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         scroll.AddChild(flow);
         col.AddChild(scroll);
@@ -497,8 +498,10 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var s = _s!;
         var row = new HBoxContainer();
         row.AddThemeConstantOverride("separation", 10);
-        row.AddChild(HudKit.Portrait(s.Book.Faction, unit.Name, "person", 76, HudKit.Friendly, look: FdgRaylib.Models3D.UnitPortraits.LookOf(unit.ModelLooks)));
-        var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        // Kai, 2026-11-14 (portrait mockup, option C): the picture is a banner across the panel with the name over it.
+        Texture2D? picture = HudKit.UnitPicture(s.Book.Faction, unit.Name, FdgRaylib.Models3D.UnitPortraits.LookOf(unit.ModelLooks));
+        if (picture == null) row.AddChild(HudKit.Portrait(null, "person", 76, HudKit.Friendly));
+        var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text(where, 13, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
         var n = ForgeWidgets.Wrapped(unit.Name.ToUpperInvariant(), 22, HudKit.Fg);
@@ -507,8 +510,19 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         string cat = roster == null ? "" : s.CategoryOf(roster) + " - ";
         t.AddChild(HudKit.Text($"{cat}{unit.ModelCount} model{(unit.ModelCount == 1 ? "" : "s")}", 14, HudKit.Dim, HudKit.Semi));
         t.AddChild(HudKit.Text($"{unit.PointCost} pts", 18, Palette.PointsBlue, HudKit.Bold));
+        foreach (Node c in t.GetChildren()) if (c is Label l) HudKit.OverPicture(l);
         row.AddChild(t);
-        col.AddChild(row);
+        if (picture == null) { col.AddChild(row); return; }
+        var head = new Control { CustomMinimumSize = new Vector2(0, HudKit.PictureSize.UnitCard), MouseFilter = MouseFilterEnum.Ignore };
+        var banner = HudKit.Banner(picture, "person", 0, HudKit.PictureSize.UnitCard, HudKit.Friendly, down: true);
+        banner.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        head.AddChild(banner);
+        row.MouseFilter = MouseFilterEnum.Ignore;
+        row.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        row.GrowVertical = GrowDirection.Begin;
+        row.OffsetLeft = 2; row.OffsetBottom = 0;
+        head.AddChild(row);
+        col.AddChild(head);
     }
 
     private void Spells(VBoxContainer col)

@@ -242,6 +242,83 @@ public static class HudKit
         return frame;
     }
 
+    // ---- Picture banners (Kai, 2026-11-14, mockup option C: "c, 100, 70, 220, square")
+
+    /// <summary>
+    /// How big unit pictures are drawn, in pixels on a 1080p screen - Kai's picks from the portrait mockup. A banner is
+    /// this tall and 1.7x as wide (it fades out under the text); the unit card's banner runs the card's full width.
+    /// </summary>
+    public static class PictureSize
+    {
+        public const float ForgeCard = 100;
+        public const float ArmyList = 70;
+        public const float UnitCard = 220;
+        /// <summary>The same card shown as a hover / pinned tip over the table - smaller, so it doesn't cover the fight.</summary>
+        public const float UnitTip = 140;
+        public const float BannerAspect = 1.7f;
+    }
+
+    private static Shader? _fade;
+
+    // The picture fades to nothing towards its right edge (or bottom). Measured in the control's own pixels, not the
+    // texture's, so the crop "cover" makes doesn't move the fade.
+    private static Shader Fade => _fade ??= new Shader
+    {
+        Code = """
+            shader_type canvas_item;
+            uniform vec2 size = vec2(100.0, 100.0);
+            uniform bool down = false;
+            uniform float from = 0.5;
+            uniform float alpha = 1.0;
+            varying vec2 local;
+            void vertex() { local = VERTEX; }
+            void fragment() {
+                vec4 c = texture(TEXTURE, UV) * COLOR;
+                float t = down ? local.y / max(size.y, 1.0) : local.x / max(size.x, 1.0);
+                c.a *= alpha * (1.0 - smoothstep(from, 1.0, t));
+                COLOR = c;
+            }
+            """,
+    };
+
+    /// <summary>
+    /// A unit's picture as a banner: <paramref name="w"/> x <paramref name="h"/>, cropped to fill, fading out to the
+    /// right (or downwards) so text can sit over its end. Without a picture: the kind icon on a plain tile. A width of 0
+    /// fills whatever space the container gives it.
+    /// </summary>
+    public static Control Banner(string faction, string unit, string fallbackIcon, float w, float h, Color team, float alpha = 1f, string? look = null, bool down = false)
+        => Banner(UnitPicture(faction, unit, look), fallbackIcon, w, h, team, alpha, down);
+
+    public static Control Banner(Texture2D? picture, string fallbackIcon, float w, float h, Color team, float alpha = 1f, bool down = false)
+    {
+        if (picture == null)
+        {
+            var tile = new CenterContainer { CustomMinimumSize = new Vector2(w, h), MouseFilter = Control.MouseFilterEnum.Ignore };
+            tile.AddChild(Icon(fallbackIcon, Mathf.Min(w > 0 ? w : h, h) * 0.6f, team with { A = alpha * 0.9f }));
+            return tile;
+        }
+        var mat = new ShaderMaterial { Shader = Fade };
+        mat.SetShaderParameter("down", down);
+        mat.SetShaderParameter("from", down ? 0.62f : 0.5f);
+        mat.SetShaderParameter("alpha", alpha);
+        mat.SetShaderParameter("size", new Vector2(w, h));
+        var tr = new TextureRect
+        {
+            Texture = picture, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+            CustomMinimumSize = new Vector2(w, h), ClipContents = true, Material = mat, MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        tr.Resized += () => mat.SetShaderParameter("size", tr.Size);
+        return tr;
+    }
+
+    /// <summary>Text that stays readable over a picture (a dark outline).</summary>
+    public static Label OverPicture(Label l)
+    {
+        l.AddThemeConstantOverride("outline_size", 5);
+        l.AddThemeColorOverride("font_outline_color", new Color(0, 0, 0, 0.85f));
+        return l;
+    }
+
     /// <summary>A rough icon for a unit's kind, for when there is no picture.</summary>
     public static string KindIcon(string name, bool hero, bool shoots, int tough)
     {

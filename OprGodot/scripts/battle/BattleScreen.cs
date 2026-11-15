@@ -785,15 +785,17 @@ public partial class BattleScreen : Control, IOwnBackdrop
         var (left, max, wounds) = LeftOf(u);
         string faction = Session.SeatOf(u.PlayerID)?.Faction ?? "";
         var h = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        h.AddThemeConstantOverride("separation", 7);
         bool hero = u.RuleDefinitions.Any(r => r.RequestedName == "Hero");
         bool shoots = u.Models.FirstOrDefault()?.Weapons.Any(w => w.RangeInches > 0) == true;
-        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 36, selected || active ? HudKit.Lime : _table.SeatColour(u.PlayerID), a, HudKit.LookOf(u)));
+        // Kai, 2026-11-14 (portrait mockup, option C): the picture is a banner at the row's left, fading under the name.
+        float ph = HudKit.PictureSize.ArmyList, pw = ph * HudKit.PictureSize.BannerAspect;
+        h.AddThemeConstantOverride("separation", -(int)(pw * 0.32f));
+        h.AddChild(HudKit.Banner(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), pw, ph, selected || active ? HudKit.Lime : _table.SeatColour(u.PlayerID), a, HudKit.LookOf(u)));
         var v = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
         v.AddThemeConstantOverride("separation", 3);
         var top = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         top.AddThemeConstantOverride("separation", 4);
-        var name = HudKit.Text(u.Name.ToUpperInvariant(), 14, (selected || active ? HudKit.Lime : HudKit.Fg) with { A = a }, HudKit.Tracked(HudKit.Bold, 1));
+        var name = HudKit.OverPicture(HudKit.Text(u.Name.ToUpperInvariant(), 15, (selected || active ? HudKit.Lime : HudKit.Fg) with { A = a }, HudKit.Tracked(HudKit.Bold, 1)));
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         name.ClipText = true;
         top.AddChild(name);
@@ -817,7 +819,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
             Fill = selected || active ? new Color(HudKit.Lime, 0.13f) : new Color(0, 0, 0, done ? 0.12f : 0.25f),
             Border = selected || active ? HudKit.Lime : mark is { Pickable: true } ? HudKit.Lime with { A = 0.55f } : shaken ? Palette.WoundsRed with { A = 0.6f } : HudKit.Edge with { A = done ? 0.2f : 0.4f },
             Accent = mark is { Pickable: true } ? HudKit.Lime : Colors.Transparent, AccentLength = mark is { Pickable: true } ? 18 : 0,
-            Cut = 6, ContentMarginLeft = 3, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3,
+            Cut = 6, ContentMarginLeft = 1, ContentMarginRight = 8, ContentMarginTop = 1, ContentMarginBottom = 1,
         };
         var row = HudKit.Panel(box, h);
         row.MouseFilter = MouseFilterEnum.Stop;
@@ -848,11 +850,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _cardSig = sig;
         foreach (Node c in _unitCard.GetChildren()) c.QueueFree();
         if (show == null) { _unitCard.AddChild(HudKit.Text("No units yet.", 15, HudKit.Dim, HudKit.Semi)); return; }
-        _unitCard.AddChild(UnitInfo(show, 300, null));
+        _unitCard.AddChild(UnitInfo(show, 300, null, HudKit.PictureSize.UnitCard));
     }
 
     /// <summary>A unit's card: portrait, name, status, Q / D / models, weapons, rules (with their book text).</summary>
-    public Control UnitInfo(IUnit u, float width, string? hint)
+    public Control UnitInfo(IUnit u, float width, string? hint, float pictureHeight = HudKit.PictureSize.UnitTip)
     {
         bool mine = Session.IsMine(u.PlayerID);
         Color team = _table.SeatColour(u.PlayerID);
@@ -863,15 +865,18 @@ public partial class BattleScreen : Control, IOwnBackdrop
         bool hero = u.RuleDefinitions.Any(r => r.RequestedName == "Hero");
         bool shoots = u.Models.FirstOrDefault()?.Weapons.Any(w => w.RangeInches > 0) == true;
 
+        // Kai, 2026-11-14 (portrait mockup, option C): with a picture, it is a banner across the card's top with the
+        // name over its faded bottom; without one, the old icon row.
+        Texture2D? picture = HudKit.UnitPicture(faction, u.Name, HudKit.LookOf(u));
         var top = new HBoxContainer();
         top.AddThemeConstantOverride("separation", 8);
-        top.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 46, team, look: HudKit.LookOf(u)));
-        var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        if (picture == null) top.AddChild(HudKit.Portrait(null, HudKit.KindIcon(u.Name, hero, shoots, wounds ? max : 1), 46, team));
+        var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
         names.AddThemeConstantOverride("separation", -3);
-        var nm = HudKit.Text(u.Name.ToUpperInvariant(), 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1));
+        var nm = HudKit.OverPicture(HudKit.Text(u.Name.ToUpperInvariant(), 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1)));
         nm.ClipText = true;
         names.AddChild(nm);
-        names.AddChild(HudKit.Text($"{faction} - {Session.SeatOf(u.PlayerID)?.Name}", 14, HudKit.Dim, HudKit.Semi));
+        names.AddChild(HudKit.OverPicture(HudKit.Text($"{faction} - {Session.SeatOf(u.PlayerID)?.Name}", 14, HudKit.Dim, HudKit.Semi)));
         top.AddChild(names);
         bool done = UnitActivation.HasActivated(Session.Table.Progress, u);
         bool shaken = u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
@@ -879,7 +884,21 @@ public partial class BattleScreen : Control, IOwnBackdrop
             shaken || !mine ? HudKit.Enemy : done ? HudKit.Dim : HudKit.Lime, true, 12);
         tag.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         top.AddChild(tag);
-        col.AddChild(top);
+        if (picture == null) col.AddChild(top);
+        else
+        {
+            var head = new Control { CustomMinimumSize = new Vector2(width, pictureHeight), MouseFilter = MouseFilterEnum.Ignore };
+            var banner = HudKit.Banner(picture, "person", 0, pictureHeight, team, down: true);
+            banner.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            head.AddChild(banner);
+            top.MouseFilter = MouseFilterEnum.Ignore;
+            top.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+            top.GrowVertical = GrowDirection.Begin;
+            top.OffsetLeft = 2; top.OffsetBottom = -2;
+            tag.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+            head.AddChild(top);
+            col.AddChild(head);
+        }
 
         var stats = new HBoxContainer();
         stats.AddThemeConstantOverride("separation", 5);
