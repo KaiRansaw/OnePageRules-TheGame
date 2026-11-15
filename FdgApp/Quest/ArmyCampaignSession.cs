@@ -90,7 +90,8 @@ public sealed class ArmyCampaignSession
         return resting.Count == 0 ? "Nobody" : string.Join(", ", resting.Select(r => $"{r.Unit.Name} ({r.Sheet!.MissionsOut} more)"));
     }
 
-    /// <summary>The files a campaign is made of: both armies and their "this mission only" copies.</summary>
+    /// <summary>The files a campaign is made of: both armies and their "this mission only" copies (and for a map
+    /// campaign the map and every rival).</summary>
     public static IReadOnlyList<string> CampaignFiles(string path, StrikeTeamInfo info)
     {
         var files = new List<string> { path, IOPath.ChangeExtension(path, ".fdgmission") };
@@ -98,6 +99,18 @@ public sealed class ArmyCampaignSession
         {
             files.Add(enemy);
             files.Add(IOPath.ChangeExtension(enemy, ".fdgmission"));
+        }
+        // A map campaign (#467): the map, and every rival beyond the first.
+        if (MapCampaignSession.IsMapCampaign(info))
+        {
+            string map = IOPath.Combine(IOPath.GetDirectoryName(path) ?? "", info.CampaignMapFile!);
+            files.Add(map);
+            if (FDG.Campaign.Map.CampaignMap.Load(map) is { } m)
+                foreach (var f in m.Factions.Where(f => !f.IsPlayer && f.ArmyFile is { Length: > 0 } && !files.Contains(f.ArmyFile!)))
+                {
+                    files.Add(f.ArmyFile!);
+                    files.Add(IOPath.ChangeExtension(f.ArmyFile!, ".fdgmission"));
+                }
         }
         return files;
     }

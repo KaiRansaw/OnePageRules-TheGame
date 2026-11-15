@@ -14,11 +14,22 @@ The OPR campaign books have no map rules: every rule here is a house rule.
 
 ## Plan (agreed with Kai 2026-11-14)
 1. **Engine** - map model + file, generator, rules, turn resolution, rival orders. **Done 2026-11-14.**
-2. Rivals running their own armies between turns (CampaignBot spending, claims vs units).
+2. Rivals running their own armies between turns (CampaignBot spending, claims vs units). **Done 2026-11-15.**
 3. Godot screen: the map, region card, turn report; player battles through Mission Setup; garrison missions pay nothing.
 4. Region battlefields: a terrain mix per region type.
 
 ## Notes (newest first)
+
+### 2026-11-15 - step 2, rivals run themselves + the files
+- `CampaignMapUpkeep`: `Apply` (a turn's off-table change into StrikeTeamInfo), `LandReserve` (next claim's price while
+  neutral land is reachable), `RivalBetweenTurns` (CampaignBot.ResolveChoices + Spend with the reserve held back).
+- `FdgApp/Quest/MapCampaignSession`: Start (every army as a campaign army, rivals as bots, Endless type so the map
+  decides the end; map beside the player's file, `StrikeTeamInfo.CampaignMapFile`), Open, States/Vp/Outcome,
+  BeginTurn / Step / RecordBattle, SaveAll. `ArmyCampaignSession.CampaignFiles` now includes the map and every rival.
+- Rivals' purchases reach the turn report only once the player has met them (fog).
+- Not yet: off-screen rival-vs-rival battles cost no casualties or XP (they only pay the book's rewards); Forge and
+  Medical perks still to wire into the Camp (step 3).
+- Tests: 5 `CampaignMapUpkeepTests` (sabotage-checked: no reserve fails), 7 `MapCampaignSessionTests`.
 
 ### 2026-11-14 - step 1, the engine
 - `FDG.Campaign.Map`: `CampaignMap` (+ .fdgmap JSON file), `CampaignMapGenerator`, `CampaignMapRules`,
