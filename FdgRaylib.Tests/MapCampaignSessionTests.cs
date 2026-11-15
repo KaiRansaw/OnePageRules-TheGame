@@ -201,6 +201,16 @@ public class MapCampaignSessionTests
         Assert.That(File.Exists(info.EnemyArmyFile), Is.True, "the garrison's army file");
         Assert.That(CampaignPlans.Next(info)!.Difficulty, Is.EqualTo(EMissionDifficulty.Easy));
         Assert.That(CampaignPlans.Next(info)!.Title, Does.Contain(target.Name));
+        // Step 4: the region's own battlefield, rolled with its type's theme and opened by Mission Setup.
+        CampaignMissionPlan plan = CampaignPlans.Next(info)!;
+        Assert.That(plan.TerrainMode, Is.EqualTo(ETerrainPlacementMode.LoadFromFile));
+        Assert.That(File.Exists(plan.MapFile), Is.True, "the battlefield file");
+        TerrainLayoutFile field = FdgRaylib.Cli.TerrainLoader.TryLoadFromJson(File.ReadAllText(plan.MapFile!))!;
+        Assert.That(field.Pieces, Is.Not.Empty);
+        Assert.That(field.GeneratedFrom, Is.EqualTo(CampaignMapRules.ThemeFor(target.Type).ToString()));
+        Assert.That(Path.GetDirectoryName(plan.MapFile), Is.EqualTo(Path.GetDirectoryName(s.PlayerPath)), "beside the campaign, not in the Maps folder");
+        var setup = new MissionSetupSession(s.PlayerPath, Array.Empty<CampaignEntrant>());
+        Assert.That(setup.MapPath, Is.EqualTo(plan.MapFile), "Mission Setup opens on it");
         Assert.That(s.CollectBattle(), Is.False, "not played yet");
 
         // The mission, as the game's write-back records it.
@@ -213,6 +223,7 @@ public class MapCampaignSessionTests
         string garrisonFile = info.EnemyArmyFile!;
         Assert.That(s.CollectBattle(), Is.True);
         Assert.That(File.Exists(garrisonFile), Is.False, "the garrison is tidied away");
+        Assert.That(File.Exists(plan.MapFile), Is.False, "and the battlefield");
         Assert.That(s.InfoOf(CampaignMap.PlayerId).BankedPoints, Is.EqualTo(banked), "a garrison pays nothing");
         Assert.That(s.InfoOf(CampaignMap.PlayerId).NoMissionReward, Is.False);
 

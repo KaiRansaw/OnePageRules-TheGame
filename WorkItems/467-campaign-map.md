@@ -17,9 +17,18 @@ The OPR campaign books have no map rules: every rule here is a house rule.
 2. Rivals running their own armies between turns (CampaignBot spending, claims vs units). **Done 2026-11-15.**
 3. Godot screen: the map, region card, turn report; player battles through Mission Setup; garrison missions pay nothing.
    **Done 2026-11-15 (Build 2.26).**
-4. Region battlefields: a terrain mix per region type.
+4. Region battlefields: a terrain mix per region type. **Done 2026-11-15 (Build 2.27).**
 
 ## Notes (newest first)
+
+### 2026-11-15 - step 4, region battlefields (Build 2.27)
+- Not a made-up terrain mix: the Advanced Rulebook v3.6.0 generator (`TerrainBook.Generate` / `GrowToCover` / `Spread`,
+  via `MapDraft.Generate`) with `CampaignMapRules.ThemeFor(type)` picking one of the book's four themes.
+- `MapCampaignSession.MakeBattlefield` writes "Battlefield - <region>.fdgterrain" beside the campaign;
+  `CampaignMissionPlan.MapFile` (new) carries the path, `MissionSetupSession` prefers it over `MapName`; deleted by
+  `CollectBattle` (`MapPendingTurn.BattlefieldFile`).
+- Still open on this item: Forge (free veteran recruit) and Medical (faster recovery) perks are computed by
+  `CampaignMapRules` but not yet used by the Camp; off-screen rival battles pay rewards but cost no casualties/XP.
 
 ### 2026-11-15 - step 3, the screens (Build 2.26)
 - Mockup "Map Campaign Screens" approved (Kai: rivals may share factions; Rest is the default order; the Journal keeps

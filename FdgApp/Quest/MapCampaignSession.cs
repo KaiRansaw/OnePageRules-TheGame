@@ -3,6 +3,8 @@ using FDG.ArmyBuilding;
 using FDG.Campaign;
 using FDG.Campaign.Map;
 using FdgRaylib.Rendering;
+using FdgRaylib.SaveLoad;
+using FDG.SaveLoad;
 
 namespace FdgRaylib.Quest;
 
@@ -276,6 +278,15 @@ public sealed class MapCampaignSession
         CampaignMissionPlan plan = CampaignPlans.Next(info) ?? CampaignMissionGenerator.Generate(info.Matches + 1, System, D6);
         plan.Title = BattleTitle(battle);
         if (garrison) plan.Difficulty = EMissionDifficulty.Easy;
+        // #467 step 4 - the region's battlefield: the Advanced Rulebook generator rolled with its type's theme, for this
+        // battle only (Mission Setup opens on it; another map can still be picked there).
+        if (MakeBattlefield(region) is { } field)
+        {
+            Map.Pending.BattlefieldFile = field;
+            plan.TerrainMode = ETerrainPlacementMode.LoadFromFile;
+            plan.MapFile = field;
+            plan.MapName = Path.GetFileNameWithoutExtension(field);
+        }
         CampaignPlans.Set(info, plan);
         Map.Pending.BattleAtMatch = info.Matches;
         return StrikeTeamFiles.Save(PlayerPath, player) && Map.Save(MapPath) ? null : "Couldn't save the campaign.";
@@ -293,6 +304,11 @@ public sealed class MapCampaignSession
         if (info.Matches <= at) return false;
         bool won = info.History.Any(h => h.StartsWith($"Match {info.Matches}: won", StringComparison.Ordinal));
         pending.BattleAtMatch = null;
+        if (pending.BattlefieldFile is { } bf)
+        {
+            try { if (File.Exists(bf)) File.Delete(bf); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            pending.BattlefieldFile = null;
+        }
         if (pending.GarrisonFile is { } g)
         {
             foreach (string f in new[] { g, Path.ChangeExtension(g, ".fdgmission") })
@@ -321,6 +337,29 @@ public sealed class MapCampaignSession
             _ when b.Attacker == CampaignMap.PlayerId => $"{region}: you attack {them}",
             _ => $"{region}: {them} attacks you",
         };
+    }
+
+    /// <summary>
+    /// Rolls a region's battlefield and saves it beside the campaign: the book's generator for its type's theme on this
+    /// game's table. The file's path, or null if the game's book has no generator.
+    /// </summary>
+    public string? MakeBattlefield(MapRegion region)
+    {
+        if (!TerrainBook.HasGenerator(System)) return null;
+        var (w, h) = GameWideConstants.TableSizeFor(System);
+        var draft = FdgRaylib.Terrain.MapDraft.New(w, h);
+        draft.Generate(System, CampaignMapRules.ThemeFor(region.Type), _rng);
+        string name = $"Battlefield - {SafeName(region.Name)}";
+        draft.Name = name;
+        string path = Path.Combine(Path.GetDirectoryName(PlayerPath) ?? "", name + TerrainLayoutFile.EXTENSION_WITH_PERIOD);
+        try
+        {
+            TerrainLayoutFile layout = draft.ToLayout();
+            layout.Name = name;
+            File.WriteAllText(path, FdgRaylib.Cli.TerrainLoader.SerializeToJson(layout));
+            return path;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
     }
 
     private static string SafeName(string s) => string.Concat(s.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch)).Trim();

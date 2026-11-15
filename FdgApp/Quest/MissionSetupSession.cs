@@ -82,7 +82,7 @@ public sealed class MissionSetupSession
             }
             info.Difficulty = Plan.Difficulty;
             TerrainMode = Plan.TerrainMode;
-            MapPath = CampaignScriptPaths.MapFor(Plan.MapName);
+            MapPath = Plan.MapFile is { Length: > 0 } file && File.Exists(file) ? file : CampaignScriptPaths.MapFor(Plan.MapName);
             if (TerrainMode == ETerrainPlacementMode.LoadFromFile && MapPath == null) TerrainMode = ETerrainPlacementMode.AutoFromLayout;
             StrikeTeamFiles.Save(Path, Army!);
         }
@@ -239,6 +239,7 @@ public sealed class MissionSetupSession
         CampaignMissionPlan fresh = CampaignMissionGenerator.Generate(Plan.Mission, System, D6);
         fresh.TerrainMode = Plan.TerrainMode;
         fresh.MapName = Plan.MapName;
+        fresh.MapFile = Plan.MapFile;
         Plan = fresh;
         info.Difficulty = Plan.Difficulty;
         SavePlan();
@@ -288,6 +289,7 @@ public sealed class MissionSetupSession
         if (Plan == null) return;
         Plan.TerrainMode = TerrainMode;
         Plan.MapName = MapPath == null ? null : IOPath.GetFileNameWithoutExtension(MapPath);
+        Plan.MapFile = MapPath;
         SavePlan();
     }
 

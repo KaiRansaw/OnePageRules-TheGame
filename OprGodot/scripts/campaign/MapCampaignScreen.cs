@@ -237,7 +237,7 @@ public partial class MapCampaignScreen : Control
             if (r.Siege != null) col.AddChild(HudKit.Text($"Under siege by {map.Faction(r.Siege)?.Name} - one more win takes it.", 15, ColourOf(map, r.Siege), HudKit.Bold));
             Fact(col, "Held by", r.Owner == null ? "Nobody - a local garrison" : map.Faction(r.Owner)!.Name + (r.Owner == CampaignMap.PlayerId ? " (you)" : ""), r.Owner == null ? HudKit.Dim : ColourOf(map, r.Owner));
             Fact(col, "Perk", CampaignMapRules.PerkText(r.Type, map.Style, _s.Numbers));
-            Fact(col, "Battlefield", CampaignMapRules.BattlefieldText(r.Type, map.Style));
+            Fact(col, "Battlefield", CampaignMapRules.BattlefieldText(r.Type, map.System));
             Fact(col, "Next to", string.Join(", ", CampaignMapRules.Neighbours(map, r.Id).Select(id => map.Region(id)!.Name)));
             Actions(col, r);
         }
@@ -358,7 +358,7 @@ public partial class MapCampaignScreen : Control
         v.AddChild(HudKit.Text(head, 30, HudKit.Fg, HudKit.Exo(800)));
         v.AddChild(HudKit.Text(CampaignMapRules.TypeName(r.Type, map.Style) + (r.Starred ? " - starred" : "") + (r.Capital ? " - a capital" : "")
                                + (b.Kind == EMapBattleKind.Clash ? " - you both went for it this turn" : ""), 15, HudKit.Dim, HudKit.Semi));
-        Fact(v, "Battlefield", CampaignMapRules.BattlefieldText(r.Type, map.Style) + " (the terrain mix per type comes in a later step - pick the map in Mission Setup for now)");
+        Fact(v, "Battlefield", CampaignMapRules.BattlefieldText(r.Type, map.System) + ". Mission Setup opens on it; you can still pick another map there.");
         int under = _s.PlayerUnderdogBonus(b);
         Fact(v, "Your land", under > 0 ? $"+{under} underdog point(s) from the {Places} you hold" + (r.Owner == CampaignMap.PlayerId && r.Capital ? " (defending your capital: +2)" : "") : "No underdog points from land.");
         if (garrison)
