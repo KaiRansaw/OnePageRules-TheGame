@@ -28,7 +28,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private HBoxContainer _objectiveCounts = null!;
     private VBoxContainer _armyRows = null!, _reportRows = null!, _missionBody = null!;
     private Label _armyHead = null!;
-    private PanelContainer _unitBlock = null!;
+    private PanelContainer _unitBlock = null!, _actionBlock = null!;
     private VBoxContainer _unitCard = null!;
     private CollapsePanel _mission = null!;
     private Control? _gameOver;
@@ -489,6 +489,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
     private const float Pad = 12;
     // The card's banner (2026-11-14) is added on top of the old 236: the stats, weapons and rules keep the room they had.
     private const float CardHeight = 236 + HudKit.PictureSize.UnitCard - 46;
+    /// <summary>The actions / choices beside the card keep the card's old height whatever the picture size.</summary>
+    private const float ActionHeight = 236;
 
     /// <summary>A rule's book wording for this game system (Army Forge's own text), or null.</summary>
     public string? RuleText(string name)
@@ -559,23 +561,21 @@ public partial class BattleScreen : Control, IOwnBackdrop
         }
         HudKit.Place(_hud, menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad));
 
-        // Bottom-left: the selected unit + the four actions.
-        var block = new HBoxContainer();
-        block.AddThemeConstantOverride("separation", 10);
+        // Bottom-left: the selected unit, and beside it the four actions - two panels, so the actions keep their own
+        // size when the card is tall (Kai, 2026-11-14: the menu next to the card "needs to be a set size").
         // Kai, 2026-11-11: one size at all times - a card that grows and shrinks from unit to unit is jarring.
         // Long weapon / rule lists and long choice lists scroll inside their half instead.
         _unitCard = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         var cardScroll = new ScrollContainer { CustomMinimumSize = new Vector2(316, CardHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         cardScroll.AddChild(_unitCard);
-        block.AddChild(cardScroll);
-        block.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 0) });
-        var areaScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, CardHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _unitBlock = HudKit.Panel(Tight(12).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), cardScroll);
+        HudKit.Place(_hud, _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
+        var areaScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, ActionHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var area = Decisions.BuildActionArea();
         area.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         areaScroll.AddChild(area);
-        block.AddChild(areaScroll);
-        _unitBlock = HudKit.Panel(Tight(12).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), block);
-        HudKit.Place(_hud, _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
+        _actionBlock = HudKit.Panel(Tight(12).With(x => { x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), areaScroll);
+        HudKit.Place(_hud, _actionBlock, LayoutPreset.BottomLeft, new Vector2(Pad + 340, -Pad));
         _confirmBox = HudKit.Place(_hud, Decisions.BuildConfirmBox(), LayoutPreset.CenterBottom, new Vector2(0, -170));
 
         // Bottom-right: mission panel over the battle report.
@@ -708,10 +708,13 @@ public partial class BattleScreen : Control, IOwnBackdrop
         Vector2 min = _unitBlock.GetCombinedMinimumSize();
         if (_unitBlock.Size != min) { _unitBlock.Size = min; }
         _unitBlock.Position = new Vector2(Pad, screen.Y - Pad - min.Y);
+        Vector2 amin = _actionBlock.GetCombinedMinimumSize();
+        if (_actionBlock.Size != amin) _actionBlock.Size = amin;
+        _actionBlock.Position = new Vector2(_unitBlock.GetRect().End.X + 6, screen.Y - Pad - amin.Y);
         Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
         _confirmBox.Size = cmin;
-        // Centred above the bottom edge, but never over the unit block's choice buttons (they grow to the right).
-        float cx = Mathf.Max((screen.X - cmin.X) / 2, _unitBlock.GetRect().End.X + 16);
+        // Centred above the bottom edge, but never over the choice buttons beside the card (they grow to the right).
+        float cx = Mathf.Max((screen.X - cmin.X) / 2, _actionBlock.GetRect().End.X + 16);
         _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
 
         if (Session.EndedText != null && _gameOver == null) ShowGameOver();
