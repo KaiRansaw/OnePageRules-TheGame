@@ -68,6 +68,8 @@ public sealed class MapDraft
     public string Name = "New Map";
     /// <summary>The generator table last rolled (TerrainBook.ETheme name), or "" for a hand-built map.</summary>
     public string GeneratedFrom = "";
+    /// <summary>The battle mat the table is drawn with (<c>wh-mat:&lt;id&gt;</c>), or "" for the plain felt.</summary>
+    public string Mat = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -105,6 +107,7 @@ public sealed class MapDraft
         TableW = f.TableWidthInches;
         TableH = f.TableHeightInches;
         GeneratedFrom = f.GeneratedFrom ?? "";
+        Mat = f.Mat ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -152,6 +155,7 @@ public sealed class MapDraft
     {
         Name = Name.Trim(),
         GeneratedFrom = GeneratedFrom,
+        Mat = Mat,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry

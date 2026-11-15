@@ -1,3 +1,4 @@
+using FDG;
 using FdgRaylib.Terrain;
 using Godot;
 using OprGodot.Battle;
@@ -63,6 +64,9 @@ public partial class MatchTerrainScreen : Control
         foreach (string s in new[] { "All pieces", "No kind yet", "Not checked yet", "Hidden" }) _show.AddItem(s);
         _show.ItemSelected += _ => Fill();
         head.AddChild(_show);
+        var sheetToggle = new Button { Name = "CheatSheet", Text = "Cheat sheet", ToggleMode = true, ButtonPressed = _sheetOpen, FocusMode = FocusModeEnum.None,
+            CustomMinimumSize = new Vector2(150, 0), TooltipText = "Show or hide what each kind of terrain does (the Advanced Rulebook's words)." };
+        head.AddChild(sheetToggle);
         col.AddChild(head);
 
         var help = ForgeWidgets.Wrapped("Pick what each piece is - its kind gives it that kind's rules on a map (Ruins: cover + unstable, Building: impassable + blocks sight...). " +
@@ -77,7 +81,16 @@ public partial class MatchTerrainScreen : Control
         _grid.AddThemeConstantOverride("h_separation", 10);
         _grid.AddThemeConstantOverride("v_separation", 14);
         scroll.AddChild(_grid);
-        col.AddChild(scroll);
+        scroll.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 14);
+        body.AddChild(scroll);
+        Control sheet = CheatSheet();
+        sheet.Visible = _sheetOpen;
+        body.AddChild(sheet);
+        sheetToggle.Toggled += on => { _sheetOpen = sheet.Visible = on; _grid.Columns = on ? 5 : 7; };
+        _grid.Columns = _sheetOpen ? 5 : 7;
+        col.AddChild(body);
 
         var margin = new MarginContainer();
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -95,6 +108,48 @@ public partial class MatchTerrainScreen : Control
         _studio = new PortraitShot.Studio(512);
         AddChild(_studio);
         MakePictures();
+    }
+
+    private static bool _sheetOpen = true;
+
+    /// <summary>
+    /// Kai, 2026-11-14: a cheat sheet of what each kind does, beside the cards. Each kind with the rules the Advanced
+    /// Rulebook gives it, then each rule in the book's own words (<see cref="TerrainBook.RuleText"/>).
+    /// </summary>
+    private static Control CheatSheet()
+    {
+        var list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        list.AddThemeConstantOverride("separation", 4);
+        list.AddChild(HudKit.Heading("Kinds", 14));
+        foreach (TerrainBook.PieceKind k in TerrainBook.Kinds)
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 8);
+            row.AddChild(HudKit.Text(k.Name, 13, BattleTable.TerrainColour(k.Rules).Lightened(0.45f), HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(120, 0)));
+            row.AddChild(ForgeWidgets.Wrapped(TerrainBook.Describe(k.Rules), 13, HudKit.Fg).Also(l => l.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+            list.AddChild(row);
+        }
+        var deco = new HBoxContainer();
+        deco.AddThemeConstantOverride("separation", 8);
+        deco.AddChild(HudKit.Text("Decoration", 13, HudKit.Dim, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(120, 0)));
+        deco.AddChild(ForgeWidgets.Wrapped("No rules - only there to look at", 13, HudKit.Dim).Also(l => l.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+        list.AddChild(deco);
+
+        list.AddChild(HudKit.Gap(0, 6));
+        list.AddChild(HudKit.Heading("What the rules do", 14));
+        foreach (ETerrainType f in TerrainBook.RuleFlags)
+        {
+            string name = TerrainBook.RuleName(f) + (TerrainBook.NeedsHeights(f) ? "  (needs heights - not in the game yet)" : "");
+            list.AddChild(HudKit.Text(name, 13, TableLook.RulesColour(f).Lightened(0.3f), HudKit.Exo(700)));
+            list.AddChild(ForgeWidgets.Wrapped(TerrainBook.RuleText(f), 12, HudKit.Dim));
+            list.AddChild(HudKit.Gap(0, 2));
+        }
+        list.AddChild(ForgeWidgets.Wrapped("Advanced Rulebook v3.6.0, Terrain.", 11, HudKit.Dim));
+
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(400, 0),
+            SizeFlagsVertical = SizeFlags.ExpandFill, Name = "CheatSheetPanel" };
+        scroll.AddChild(HudKit.Pad(list, 4, 0, 10, 0).Also(c => c.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+        return scroll;
     }
 
     public override void _UnhandledInput(InputEvent e)

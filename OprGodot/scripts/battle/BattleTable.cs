@@ -476,7 +476,7 @@ public partial class BattleTable : Node3D
 
     private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos) => TableLook.Mesh(parent, mesh, mat, pos);
 
-    private void Board() => TableLook.AddBoard(this, W, D);
+    private void Board() => TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat);
 
     // ------------------------------------------------------------------ terrain
     private void SyncTerrain()

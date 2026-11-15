@@ -236,7 +236,8 @@ public partial class ModelDownloadPopup : Control
         _log.Clear();
         try
         {
-            if (WarhammerTerrain.Load() == null)
+            // A list written before the mats were read (2.14) is rebuilt too - the piece ids don't change.
+            if (WarhammerTerrain.Load() == null || WarhammerTerrain.LoadMats() == null)
                 await WarhammerTerrain.BuildAsync(line => CallDeferred(nameof(LogDeferred), line), CancellationToken.None);
         }
         catch (Exception e)
@@ -250,6 +251,8 @@ public partial class ModelDownloadPopup : Control
 
         var todo = t.Pieces.Where(p => !File.Exists(WarhammerTerrain.ModelPathFor(t.Catalogue, p))).ToList();
         int already = t.Pieces.Count - todo.Count;
+        var mats = (WarhammerTerrain.LoadMats() ?? new()).Where(m => WarhammerTerrain.MatFile(m.Look) == null).ToList();
+        if (mats.Count > 0) await FetchMats(mats);
         // Deferred like the build's own progress lines, so it lands after them.
         string summary = $"Warhammer terrain: {t.Pieces.Count} pieces, {already} already saved, {todo.Count} to fetch.";
         Later(() => Log(summary));
@@ -286,6 +289,33 @@ public partial class ModelDownloadPopup : Control
             }
             _fetchFinished = true;
         }, ct);
+    }
+
+    /// <summary>The mod's battle mats (Kai, 2026-11-14): pictures saved to Terrain - Warhammer/_mats, for the Map Maker.</summary>
+    private async Task FetchMats(List<WarhammerTerrain.Mat> mats)
+    {
+        Log($"Battle mats: {mats.Count} to fetch...");
+        SetBusy(true);
+        _stop.Disabled = true;
+        int saved = 0, failed = 0;
+        string? firstError = null;
+        await Task.Run(async () =>
+        {
+            using var dl = new ModelDownloader();
+            Directory.CreateDirectory(WarhammerTerrain.MatsFolder);
+            foreach (WarhammerTerrain.Mat m in mats)
+            {
+                var (file, error) = await dl.FetchAsync(m.Url, CancellationToken.None);
+                if (file == null) { failed++; firstError ??= $"{m.Name}: {error}"; continue; }
+                byte[] head = new byte[4];
+                using (var fs = File.OpenRead(file)) fs.ReadExactly(head, 0, Math.Min(4, (int)fs.Length));
+                File.Move(file, WarhammerTerrain.MatPathFor(m, head), true); // not kept twice: mats are big
+                saved++;
+                if (saved % 10 == 0) { int n = saved; Later(() => Log($"  {n} mats saved...")); }
+            }
+        });
+        SetBusy(false);
+        Log($"Battle mats: {saved} saved" + (failed > 0 ? $", {failed} failed ({firstError})" : "") + ". Pick one in the Map Maker (Mat button).");
     }
 
     private void SetBusy(bool busy)

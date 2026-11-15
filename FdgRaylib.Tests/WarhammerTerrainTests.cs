@@ -62,6 +62,53 @@ public class WarhammerTerrainTests
         finally { File.Delete(path); }
     }
 
+    private static string MatTile(string url, float x, float z) =>
+        "{\"Name\":\"Custom_Tile\",\"Transform\":{\"posX\":" + x + ",\"posZ\":" + z + "},\"CustomImage\":{\"ImageURL\":\"" + url +
+        "\"},\"LuaScript\":\"function applyImage() local board = getObjectFromGUID('7f414f') end\"}";
+
+    /// <summary>Kai, 2026-11-14: the mod's battle mats - tiles that paint the table with their picture - become pickable mats.</summary>
+    [Test]
+    public void BattleMats_AreRead_RowByRow_AndAMapsMatFindsItsPicture()
+    {
+        string json = Mod(Tile(0, Model("Rock", "https://x/rock")), MatTile("https://x/b", 5, 10), MatTile("https://x/a", -5, 10),
+            MatTile("https://x/c", -5, 0), MatTile("https://x/a", 9, 0));
+        WarhammerTerrain.Result r = WarhammerTerrain.Parse(json);
+        Assert.That(r.Mats.Select(m => m.Url), Is.EqualTo(new[] { "https://x/a", "https://x/b", "https://x/c" }), "top row first, left to right, no repeats");
+        Assert.That(r.Mats.Select(m => m.Name), Is.EqualTo(new[] { "Mat 1", "Mat 2", "Mat 3" }));
+        Assert.That(r.Pieces.Single().Name, Is.EqualTo("Rock"), "a mat tile is not a terrain set");
+
+        string dir = Path.Combine(Path.GetTempPath(), $"wh-mats-{Guid.NewGuid():N}");
+        string list = Path.Combine(dir, "list.json");
+        try
+        {
+            Directory.CreateDirectory(dir);
+            WarhammerTerrain.Write(r, list);
+            var mats = WarhammerTerrain.LoadMats(list)!;
+            Assert.That(mats.Select(m => m.Id), Is.EqualTo(r.Mats.Select(m => m.Id)));
+            string jpg = WarhammerTerrain.MatPathFor(mats[0], new byte[] { 0xFF, 0xD8, 0, 0 }, dir);
+            Assert.That(jpg, Does.EndWith(".jpg"));
+            Assert.That(WarhammerTerrain.MatPathFor(mats[0], new byte[] { 0x89, (byte)'P', 0, 0 }, dir), Does.EndWith(".png"));
+            File.WriteAllText(jpg, "x");
+            Assert.That(WarhammerTerrain.MatFile(mats[0].Look, dir), Is.EqualTo(jpg));
+            Assert.That(WarhammerTerrain.MatFile(mats[1].Look, dir), Is.Null, "not downloaded");
+            Assert.That(WarhammerTerrain.MatFile("", dir), Is.Null, "plain felt");
+
+            File.WriteAllText(list, "{\"pieces\":[]}");
+            Assert.That(WarhammerTerrain.LoadMats(list), Is.Null, "a list from before mats were read gets rebuilt");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Test]
+    public void AMapsMat_IsSavedWithIt()
+    {
+        var d = MapDraft.New(72, 48);
+        d.Mat = "wh-mat:1234";
+        var back = FdgRaylib.Cli.TerrainLoader.TryLoadFromJson(d.Snapshot())!;
+        Assert.That(back.Mat, Is.EqualTo("wh-mat:1234"));
+        Assert.That(FdgRaylib.Cli.TerrainLoader.TryLoadFromJson("{\"Name\":\"old\"}")!.Mat, Is.EqualTo(""), "older maps: plain felt");
+    }
+
     [TestCase("Barricade : Obstacle : Light cover, Defense line, Defensible", "Barricade", "Obstacle: Light cover, Defense line, Defensible")]
     [TestCase("Tall T'au Structure | [CC99CC]Obstacle[-]                [00BFFF]Obscuring, Breachable[-]", "Tall T'au Structure", "Obstacle: Obscuring, Breachable")]
     [TestCase("Ruin (Area Terrain)", "Ruin", "Area Terrain")]
@@ -84,6 +131,7 @@ public class WarhammerTerrainTests
         WarhammerTerrain.Result r = WarhammerTerrain.Parse(File.ReadAllText(real));
         Assert.That(r.Sets, Has.Count.EqualTo(5), "five tiles carry pieces (the sixth is empty)");
         Assert.That(r.Pieces, Has.Count.GreaterThan(200));
+        Assert.That(r.Mats, Has.Count.EqualTo(106), "the battle mats (Kai, 2026-11-14)");
         Assert.That(r.Pieces.All(p => p.Name.All(c => c <= 0x7F)), Is.True, "game text is ASCII");
         TestContext.WriteLine(string.Join("\n", r.Sets.Select(s => $"{s.Value}: {r.Pieces.Count(p => p.Set == s.Key)} pieces")));
         TestContext.WriteLine(string.Join("\n", r.Pieces.Take(40).Select(p => $"{p.Name} | {p.Keywords}")));

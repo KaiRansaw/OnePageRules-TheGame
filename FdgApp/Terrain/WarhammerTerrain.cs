@@ -60,8 +60,27 @@ public static class WarhammerTerrain
         [JsonProperty("rotY")] public float RotY { get; set; }
     }
 
+    /// <summary>
+    /// One of the mod's battle mats (Kai, 2026-11-14): a picture of a table surface. In the mod each is a small tile
+    /// whose "Apply Image" button paints the table with it; here a map can pick one (<see cref="MatPrefix"/> + id).
+    /// Numbered in the order the mod lays the tiles out, row by row - they carry no names.
+    /// </summary>
+    public sealed class Mat
+    {
+        [JsonProperty("id")] public int Id { get; set; }
+        [JsonProperty("number")] public int Number { get; set; }
+        [JsonProperty("url")] public string Url { get; set; } = "";
+        [JsonIgnore] public string Name => $"Mat {Number}";
+        [JsonIgnore] public string Look => MatPrefix + Id;
+    }
+
+    public const string MatPrefix = "wh-mat:";
+    public const string MatsFolderName = "_mats";
+    public static string MatsFolder => Path.Combine(ModelsFolder, MatsFolderName);
+
     public sealed class Result
     {
+        public readonly List<Mat> Mats = new();
         public readonly Dictionary<int, string> Sets = new();
         public readonly List<ForceOrgCatalog.Model> Models = new();
         public readonly List<Piece> Pieces = new();
@@ -106,6 +125,20 @@ public static class WarhammerTerrain
             }
             result.Layout[group] = placed;
         }
+
+        // The battle mats: tiles whose script paints the table with their own picture.
+        var mats = states.OfType<JObject>()
+            .Where(o => (string?)o["Name"] == "Custom_Tile" && ((string?)o["LuaScript"] ?? "").Contains("applyImage", StringComparison.Ordinal))
+            .Select(o => (Url: ((string?)o["CustomImage"]?["ImageURL"] ?? "").Trim(), X: (float?)o["Transform"]?["posX"] ?? 0f, Z: (float?)o["Transform"]?["posZ"] ?? 0f))
+            .Where(m => m.Url.Length > 0)
+            .OrderByDescending(m => MathF.Round(m.Z)).ThenBy(m => m.X)
+            .ToList();
+        var seenMats = new HashSet<string>();
+        foreach (var m in mats)
+        {
+            if (!seenMats.Add(m.Url)) continue;
+            result.Mats.Add(new Mat { Id = StableId(new[] { m.Url }), Number = result.Mats.Count + 1, Url = m.Url });
+        }
         return result;
     }
 
@@ -120,6 +153,7 @@ public static class WarhammerTerrain
             models = r.Models,
             pieces = r.Pieces,
             layouts = r.Layout,
+            mats = r.Mats,
         };
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         File.WriteAllText(output, JsonConvert.SerializeObject(file, Formatting.Indented));
@@ -331,6 +365,28 @@ public static class WarhammerTerrain
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return null; }
     }
+
+    /// <summary>The mats in the catalogue, or null when it was written before mats were read (2.14) or isn't there.</summary>
+    public static List<Mat>? LoadMats(string? path = null)
+    {
+        path ??= DefaultPath;
+        if (!File.Exists(path)) return null;
+        try { return JObject.Parse(File.ReadAllText(path))["mats"]?.ToObject<List<Mat>>(); }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>The downloaded picture for a map's mat (<c>wh-mat:&lt;id&gt;</c>), or null when this computer hasn't got it.</summary>
+    public static string? MatFile(string? look, string? folder = null)
+    {
+        if (look == null || !look.StartsWith(MatPrefix, StringComparison.Ordinal) || !int.TryParse(look[MatPrefix.Length..], out int id)) return null;
+        folder ??= MatsFolder;
+        if (!Directory.Exists(folder)) return null;
+        return Directory.EnumerateFiles(folder, id + ".*").FirstOrDefault(f => !f.EndsWith(".part", StringComparison.Ordinal));
+    }
+
+    /// <summary>Where a mat's picture is saved; the extension follows what the file is (PNG or JPEG).</summary>
+    public static string MatPathFor(Mat mat, byte[] head, string? folder = null) =>
+        Path.Combine(folder ?? MatsFolder, mat.Id + (head.Length > 1 && head[0] == 0x89 && head[1] == (byte)'P' ? ".png" : ".jpg"));
 
     /// <summary>Where a piece's assembled model goes: <c>UnitModels/Terrain - Warhammer/&lt;set&gt;/&lt;name&gt;.glb</c>.</summary>
     public static string ModelPathFor(ForceOrgCatalog catalogue, Piece piece, string? root = null)

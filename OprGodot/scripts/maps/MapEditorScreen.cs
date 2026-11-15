@@ -199,6 +199,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             BuildBoard(); ApplyCamera(); Rebuild();
         };
         _top.AddChild(size);
+        var mats = MatsHere();
+        string matName = mats.FirstOrDefault(m => m.Look == Draft.Mat)?.Name ?? (Draft.Mat.Length > 0 ? "Mat (not on this PC)" : "Plain felt");
+        _top.AddChild(Ui.Button("Mat: " + matName, OpenMatPicker, mats.Count > 0
+            ? "The battle mat the table is drawn with - saved with the map. Players without that picture see the plain felt."
+            : "No battle mats downloaded yet: Asset Lab -> Download models... -> Get Warhammer terrain.").Also(b => { b.Name = "MatButton"; b.Disabled = mats.Count == 0 && Draft.Mat.Length == 0; }));
         _top.AddChild(Ui.Grow());
         var rv = new Button { Name = "RulesView", Text = "Rules view", ToggleMode = true, ButtonPressed = _rulesView, FocusMode = FocusModeEnum.None,
             TooltipText = "Hide the scenery and colour every piece by what it does." };
@@ -311,24 +316,143 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
         var shown = all.Where(e => (_modelSet < 0 || e.Set == _modelSet) && (_modelKind.Length == 0 || e.Match.Kind == _modelKind))
             .OrderBy(e => e.Match.Kind).ThenBy(e => e.Name).ToList();
-        var list = new VBoxContainer();
-        list.AddThemeConstantOverride("separation", 3);
+        // Kai, 2026-11-14: a grid of pictures with names, not a plain list, so you can see what you are picking.
+        var list = new GridContainer { Columns = 3 };
+        list.AddThemeConstantOverride("h_separation", 5);
+        list.AddThemeConstantOverride("v_separation", 5);
         foreach (var e in shown)
         {
             var entry = e;
             string kindName = WarhammerTerrainLibrary.Kinds.FirstOrDefault(k => k.Id == e.Match.Kind).Name ?? e.Match.Kind;
-            string size = e.Measured ? $" - {e.Match.W:0.#} x {e.Match.D:0.#}\"" : "";
-            var b = new Button { Name = "Model_" + e.Id, Text = $"{e.Name} ({kindName}){size}", ToggleMode = true, FocusMode = FocusModeEnum.None,
-                ButtonPressed = _tool == ETool.Place && _model?.Id == e.Id, Alignment = HorizontalAlignment.Left, ClipText = true,
-                CustomMinimumSize = new Vector2(256, 30), TooltipText = $"{e.Name}\n{e.SetName}\n{kindName}" + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") + "\nClick it, then click the table." };
-            b.AddThemeColorOverride("font_color", BattleTable.TerrainColour(WarhammerTerrainLibrary.RulesFor(e.Match.Kind)).Lightened(0.45f));
+            string size = e.Measured ? $"{e.Match.W:0.#} x {e.Match.D:0.#}\"" : "";
+            var b = new Button { Name = "Model_" + e.Id, ToggleMode = true, FocusMode = FocusModeEnum.None,
+                ButtonPressed = _tool == ETool.Place && _model?.Id == e.Id, CustomMinimumSize = new Vector2(128, 152),
+                TooltipText = $"{e.Name}\n{e.SetName}\n{kindName}" + (size.Length > 0 ? $" - {size}" : "") + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") + "\nClick it, then click the table." };
+            var tile = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            tile.AddThemeConstantOverride("separation", 1);
+            tile.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            tile.OffsetLeft = 4; tile.OffsetRight = -4; tile.OffsetTop = 4; tile.OffsetBottom = -3;
+            var pic = new TextureRect { Texture = ModelThumb(lib, e.Id), CustomMinimumSize = new Vector2(0, 92), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+            tile.AddChild(pic);
+            if (pic.Texture == null) tile.AddChild(HudKit.Text("(no picture yet)", 11, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
+            var name = HudKit.Text(e.Name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center);
+            name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            name.MaxLinesVisible = 2;
+            name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            name.MouseFilter = MouseFilterEnum.Ignore;
+            tile.AddChild(name);
+            var sub = HudKit.Text(kindName + (size.Length > 0 ? " - " + size : ""), 11,
+                BattleTable.TerrainColour(WarhammerTerrainLibrary.RulesFor(e.Match.Kind)).Lightened(0.45f), HudKit.Semi, HorizontalAlignment.Center);
+            sub.ClipText = true;
+            sub.MouseFilter = MouseFilterEnum.Ignore;
+            tile.AddChild(sub);
+            b.AddChild(tile);
             b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
             list.AddChild(b);
         }
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 260) };
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 470) };
         scroll.AddChild(list);
         _left.AddChild(scroll);
         _left.AddChild(HudKit.Text($"{shown.Count} of {all.Count} matched pieces", 12, HudKit.Dim, HudKit.Semi));
+    }
+
+    // ================================================================== battle mats
+
+    /// <summary>The Warhammer Map Builder mats whose picture is on this computer.</summary>
+    private static List<WarhammerTerrain.Mat> MatsHere() =>
+        (WarhammerTerrain.LoadMats() ?? new()).Where(m => WarhammerTerrain.MatFile(m.Look) != null).ToList();
+
+    /// <summary>A small copy of a mat's picture for the picker, made once and kept in _mats/_thumbs.</summary>
+    private static Texture2D? MatThumb(WarhammerTerrain.Mat m)
+    {
+        string f = Path.Combine(WarhammerTerrain.MatsFolder, "_thumbs", m.Id + ".png");
+        if (Thumbs.TryGetValue(f, out var have) && have != null) return have;
+        if (!File.Exists(f))
+        {
+            if (WarhammerTerrain.MatFile(m.Look) is not { } src || Image.LoadFromFile(src) is not { } big || big.IsEmpty()) return null;
+            if (big.GetHeight() > big.GetWidth()) big.Rotate90(ClockDirection.Clockwise);
+            big.Resize(240, Math.Max(1, 240 * big.GetHeight() / big.GetWidth()), Image.Interpolation.Bilinear);
+            Directory.CreateDirectory(Path.GetDirectoryName(f)!);
+            big.SavePng(f);
+        }
+        Texture2D? t = Image.LoadFromFile(f) is { } img ? ImageTexture.CreateFromImage(img) : null;
+        return Thumbs[f] = t;
+    }
+
+    /// <summary>Kai, 2026-11-14: pick the map's battle mat from a grid of the mod's mats (plus the plain felt).</summary>
+    public void OpenMatPicker()
+    {
+        var mats = MatsHere();
+        var veil = new Control { Name = "MatPicker", MouseFilter = MouseFilterEnum.Stop };
+        veil.SetAnchorsPreset(LayoutPreset.FullRect);
+        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Ignore };
+        dim.SetAnchorsPreset(LayoutPreset.FullRect);
+        veil.AddChild(dim);
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(1080, 0) };
+        col.AddThemeConstantOverride("separation", 8);
+        col.AddChild(HudKit.Text("BATTLE MAT", 26, HudKit.Fg, HudKit.Exo(800)));
+        col.AddChild(HudKit.Text("The picture the table is drawn with. Saved with the map; a player without it sees the plain felt.", 14, HudKit.Dim, HudKit.Semi));
+        var grid = new GridContainer { Columns = 5 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 8);
+        void Pick(string look)
+        {
+            if (look != Draft.Mat) { Draft.Remember(); Draft.Mat = look; BuildBoard(); }
+            veil.QueueFree();
+            Rebuild();
+        }
+        var pics = new List<(TextureRect Pic, WarhammerTerrain.Mat Mat)>();
+        Button Tile(string name, string look, out TextureRect pic)
+        {
+            var b = new Button { Name = "Mat_" + (look.Length > 0 ? look[WarhammerTerrain.MatPrefix.Length..] : "Felt"), ToggleMode = true,
+                ButtonPressed = Draft.Mat == look, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(204, 150), TooltipText = name };
+            var tile = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            tile.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            tile.OffsetLeft = 4; tile.OffsetRight = -4; tile.OffsetTop = 4; tile.OffsetBottom = -3;
+            pic = new TextureRect { CustomMinimumSize = new Vector2(0, 118), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
+            tile.AddChild(pic);
+            tile.AddChild(HudKit.Text(name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
+            b.AddChild(tile);
+            b.Pressed += () => Pick(look);
+            grid.AddChild(b);
+            return b;
+        }
+        Tile("Plain felt", "", out TextureRect felt);
+        felt.Texture = TableLook.Felt(24, 16);
+        foreach (var m in mats) { Tile(m.Name, m.Look, out TextureRect pic); pics.Add((pic, m)); }
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 640) };
+        scroll.AddChild(grid);
+        col.AddChild(scroll);
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        buttons.AddChild(Ui.Button("Close", () => veil.QueueFree(), "Keep the mat as it is.").Also(b => b.Name = "CloseMats"));
+        col.AddChild(buttons);
+        AddChild(veil);
+        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
+        _ = FillMatThumbs(veil, pics);
+    }
+
+    /// <summary>Loads the picker's pictures a few a frame, so it opens at once (the first time makes the small copies).</summary>
+    private async Task FillMatThumbs(Control picker, List<(TextureRect Pic, WarhammerTerrain.Mat Mat)> pics)
+    {
+        foreach (var (pic, mat) in pics)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!IsInstanceValid(picker) || !IsInstanceValid(pic)) return;
+            pic.Texture = MatThumb(mat);
+        }
+    }
+
+    private static readonly Dictionary<string, Texture2D?> Thumbs = new();
+
+    /// <summary>A piece's picture from the match screen (UnitModels/Terrain - Warhammer/_thumbs), or null before it is made.</summary>
+    private static Texture2D? ModelThumb(WarhammerTerrainLibrary lib, int id)
+    {
+        string f = Path.Combine(lib.Folder, "_thumbs", id + ".png");
+        if (Thumbs.TryGetValue(f, out var t) && t != null) return t;
+        t = File.Exists(f) && Image.LoadFromFile(f) is { } img ? ImageTexture.CreateFromImage(img) : null;
+        return Thumbs[f] = t;
     }
 
     private void RightPanel()
@@ -516,7 +640,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D);
+        TableLook.AddBoard(_board, W, D, Draft.Mat);
     }
 
     private void Sync3D()
@@ -883,6 +1007,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             case "obj": { var (x, z) = XZ(arg); Draft.Objectives.Add((x, z)); break; }
             case "select" when int.TryParse(arg, out int i) && i < Draft.Pieces.Count: _sel = Draft.Pieces[i]; break;
             case "generate" when Enum.TryParse(arg, out TerrainBook.ETheme t): Generate(t); return;
+            // "mat:<number>" puts the mod's mat with that number on the table (0 = plain felt); "mats" opens the picker.
+            case "mat" when int.TryParse(arg, out int mn):
+                Draft.Mat = mn <= 0 ? "" : WarhammerTerrain.LoadMats()?.FirstOrDefault(m => m.Number == mn)?.Look ?? "";
+                BuildBoard();
+                break;
+            case "mats": OpenMatPicker(); return;
             case "rules": _rulesView = !_rulesView; break;
             case "top": ToggleTopView(); break;
             case "turn" when _sel != null && float.TryParse(arg, out float deg): _sel.Angle = deg; break;
