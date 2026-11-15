@@ -66,6 +66,23 @@ public sealed class ArmyCampaignSession
     public (string Title, string Line) ListRow(Entry e)
     {
         StrikeTeamInfo info = e.Info;
+        if (MapCampaignSession.IsMapCampaign(info) && MapCampaignSession.Open(e.Path, out _) is { } m)
+        {
+            // #467: a map campaign's row - its turn, VP (with starred regions) and land.
+            var outcome = m.Outcome;
+            string end = outcome switch
+            {
+                FDG.Campaign.Map.EMapOutcome.YouWon => "  WON",
+                FDG.Campaign.Map.EMapOutcome.YouLost or FDG.Campaign.Map.EMapOutcome.RivalWon => "  LOST",
+                FDG.Campaign.Map.EMapOutcome.Draw => "  DRAWN",
+                _ => "",
+            };
+            int rivals = m.Map.Factions.Count(f => !f.IsPlayer);
+            string target = m.Map.VpTarget > 0 ? $"{m.Vp(FDG.Campaign.Map.CampaignMap.PlayerId)} / {m.Map.VpTarget} VP" : $"{m.Vp(FDG.Campaign.Map.CampaignMap.PlayerId)} VP";
+            return ($"{info.Name} - map vs {Plural(rivals, "rival")}{end}",
+                    $"Turn {m.Map.Turn} - {target} - {FDG.Campaign.Map.CampaignMapRules.HeldCount(m.Map, FDG.Campaign.Map.CampaignMap.PlayerId)} held"
+                    + (m.Map.Pending != null ? " - battle waiting" : Waiting(e.Army) > 0 ? " - choices waiting" : ""));
+        }
         var standing = StandingOf(e);
         string result = standing.Outcome switch
         {
@@ -335,6 +352,98 @@ public sealed class ArmyCampaignSession
         public List<CampaignMissionPlan> Plans { get; } = new();
         public string? ScriptPath { get; set; }
         public string Premise { get; set; } = "";
+
+        // #467 - a map campaign (Kai, 2026-11-15: "inside Campaign" - Classic or Map is the wizard's first choice).
+        public bool Map { get; set; }
+        public FDG.Campaign.Map.EMapSize MapSize { get; set; } = FDG.Campaign.Map.EMapSize.Medium;
+        public List<MapRival> Rivals { get; } = new();
+    }
+
+    /// <summary>One rival of a map campaign being set up: built for you, or one of your armies (<see cref="Source"/>).</summary>
+    public sealed class MapRival
+    {
+        public string Name { get; set; } = "";
+        public BuiltArmyFile Army { get; set; } = null!;
+        public string? Source { get; set; }
+    }
+
+    // ------------------------------------------------------------------ map campaign set-up (#467)
+
+    public void SetMap(Draft d, bool map)
+    {
+        d.Map = map;
+        if (map)
+        {
+            if (d.Type == ECampaignType.PointLimited && d.VpTarget < FDG.Campaign.Map.CampaignMap.DefaultVpTarget) d.VpTarget = FDG.Campaign.Map.CampaignMap.DefaultVpTarget;
+            if (d.Rivals.Count == 0) SetRivalCount(d, 2);
+        }
+    }
+
+    private List<string> TakenNames(Draft d, int except = -1) =>
+        d.Rivals.Where((_, i) => i != except).Select(r => r.Name).Append(d.Name.Trim()).Where(n => n.Length > 0).ToList();
+
+    /// <summary>Adds rivals built for you, or drops the last ones, until there are <paramref name="count"/>. Null, or why not.</summary>
+    public string? SetRivalCount(Draft d, int count)
+    {
+        count = Math.Clamp(count, 1, MapCampaignSession.MaxRivals);
+        while (d.Rivals.Count > count) d.Rivals.RemoveAt(d.Rivals.Count - 1);
+        while (d.Rivals.Count < count)
+        {
+            if (MapCampaignSession.BuildRival(System, _rng, TakenNames(d)) is not { } built) return "No army book of this game could build a rival.";
+            d.Rivals.Add(new MapRival { Name = built.Name, Army = built.Army });
+        }
+        return null;
+    }
+
+    /// <summary>A new book and army for one rival (its name stays).</summary>
+    public string? RerollRival(Draft d, int i)
+    {
+        if (i < 0 || i >= d.Rivals.Count) return null;
+        if (MapCampaignSession.BuildRival(System, _rng, TakenNames(d, i)) is not { } built) return "No army book of this game could build a rival.";
+        built.Army.Name = d.Rivals[i].Name;
+        d.Rivals[i].Army = built.Army;
+        d.Rivals[i].Source = null;
+        return null;
+    }
+
+    /// <summary>One of your saved armies as a rival (a fresh copy). Null, or why not.</summary>
+    public string? UseArmyForRival(Draft d, int i, Entry source)
+    {
+        if (i < 0 || i >= d.Rivals.Count) return null;
+        if (CannotStart(source.Army) is { } why) return why;
+        if (StrikeTeamFiles.Load(source.Path) is not { } copy) return "Couldn't read that army file.";
+        d.Rivals[i].Army = copy;
+        d.Rivals[i].Source = source.Path;
+        return null;
+    }
+
+    public static string? RivalsProblem(Draft d)
+    {
+        if (d.Rivals.Count is < 1 or > MapCampaignSession.MaxRivals) return $"Rivals: pick 1 to {MapCampaignSession.MaxRivals}.";
+        foreach (MapRival r in d.Rivals)
+        {
+            string n = r.Name.Trim();
+            if (n.Length == 0) return "Rivals: every rival needs a name.";
+            if (string.Equals(n, d.Name.Trim(), StringComparison.OrdinalIgnoreCase)) return $"Rivals: {n} has your army's name.";
+            if (d.Rivals.Count(o => string.Equals(o.Name.Trim(), n, StringComparison.OrdinalIgnoreCase)) > 1) return $"Rivals: two are called {n}.";
+        }
+        return null;
+    }
+
+    /// <summary>START CAMPAIGN for a map campaign: every army saved and the map made. The player's file, or null with why.</summary>
+    public string? FinishMap(Draft d, out string? error)
+    {
+        error = NewProblem(d);
+        if (error != null || d.Yours is not { } yours) return null;
+        var rivals = d.Rivals.Select(r => (r.Name.Trim(), r.Army)).ToList();
+        int target = d.Type == ECampaignType.PointLimited ? d.VpTarget : 0;
+        MapCampaignSession? m = MapCampaignSession.Start(System, d.Name.Trim(), yours, rivals, d.MapSize, target, d.NoPermadeath,
+            _rng.Next(), out error);
+        if (m == null) return null;
+        CampaignJournal.SetCampaignNote(m.InfoOf(FDG.Campaign.Map.CampaignMap.PlayerId), d.Story);
+        m.SaveAll();
+        Reload();
+        return m.PlayerPath;
     }
 
     public string? YourNameProblem(Draft d)
@@ -363,8 +472,10 @@ public sealed class ArmyCampaignSession
     /// <summary>What still stands between the wizard and START CAMPAIGN, or null.</summary>
     public string? NewProblem(Draft d)
     {
+        if (d.Map && RivalsProblem(d) is { } rivals) return rivals;
         if (d.Yours == null) return "Your army: build it in the Army Forge or use one you have.";
         if (YourNameProblem(d) is { } a) return "Your army: " + a;
+        if (d.Map) return null;
         if (d.Enemy == null) return "The enemy: build it or let the game pick one.";
         if (EnemyNameProblem(d) is { } b) return "The enemy: " + b;
         return MissionsProblem(d);
@@ -372,7 +483,7 @@ public sealed class ArmyCampaignSession
 
     public bool TabDone(Draft d, int tab) => tab switch
     {
-        0 => true,
+        0 => !d.Map || RivalsProblem(d) == null,
         1 => d.Yours != null && YourNameProblem(d) == null,
         2 => d.Enemy != null && EnemyNameProblem(d) == null,
         _ => MissionsProblem(d) == null,

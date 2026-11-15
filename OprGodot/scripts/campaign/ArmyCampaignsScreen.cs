@@ -34,6 +34,12 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
 
     public EGameSystem System { get; set; } = EGameSystem.GrimdarkFuture;
 
+    /// <summary>#467 - opened from a campaign map's Camp button: straight into that campaign's Camp, and Back returns to
+    /// the map.</summary>
+    public string? CampOf { get; set; }
+
+    private bool IsMap(ArmyCampaignSession.Entry? e) => MapCampaignSession.IsMapCampaign(e?.Info);
+
     private ArmyCampaignSession _s = null!;
     private View _view = View.List;
     private int _selected;
@@ -81,6 +87,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         root.AddChild(_status);
         VisibilityChanged += () => { if (Visible) { Reload(); Say(""); Rebuild(); } };
+        if (CampOf != null) { Reselect(CampOf); _view = View.Camp; }
         Rebuild();
     }
 
@@ -104,6 +111,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
             case View.List: return true;
             case View.Recruit: _view = View.Camp; _cart.Clear(); break;
             case View.Journal: _view = Current != null ? View.Camp : View.List; break;
+            case View.Camp when CampOf != null: return true; // back to the map it was opened from
             case View.Camp: _view = View.List; _enemySide = false; break;
             default: _view = View.List; break;
         }
@@ -182,11 +190,11 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
                 break;
             case View.New:
             {
-                if (_tab < 3)
+                if (_tab < (_draft.Map ? 1 : 3))
                     _top.AddChild(Ui.Button("NEXT", () => { _tab++; Rebuild(); }, "The next tab.", "CommitButton")
                         .Also(x => { x.Name = "NextTab"; x.CustomMinimumSize = new Vector2(140, 44); }));
                 string? problem = _s.NewProblem(_draft);
-                _top.AddChild(Ui.Button("START CAMPAIGN", FinishNew, problem ?? "Save both armies and open the Camp.", _tab == 3 ? "CommitButton" : null)
+                _top.AddChild(Ui.Button("START CAMPAIGN", FinishNew, problem ?? (_draft.Map ? "Save every army, make the map and open it." : "Save both armies and open the Camp."), _tab == (_draft.Map ? 1 : 3) ? "CommitButton" : null)
                     .Also(x => { x.Name = "StartCampaign"; x.Disabled = problem != null; x.CustomMinimumSize = new Vector2(200, 44); }));
                 break;
             }
@@ -200,7 +208,8 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
                     Current is { } c2 && _s.EnemyOf(c2.Info) != null ? "Do the rival's books: its trait picks, upgrades and recruits (house rule B17). The screen tints red." : "This campaign has no standing enemy.");
                 foe.Name = "EnemyArmy";
                 foe.ToggleMode = true; foe.ButtonPressed = _enemySide;
-                foe.Disabled = Current is not { } c3 || _s.EnemyOf(c3.Info) == null;
+                foe.Disabled = Current is not { } c3 || _s.EnemyOf(c3.Info) == null || IsMap(c3);
+                if (IsMap(Current)) foe.TooltipText = "In a map campaign the rivals run their own armies (house rule B24).";
                 _top.AddChild(foe);
                 _top.AddChild(Ui.Button("Journal", OpenJournal, "The campaign's story, and what happened in every mission.").Also(x => x.Name = "Journal"));
                 break;
@@ -286,8 +295,42 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         return pb;
     }
 
+    /// <summary>#467 - a map campaign's summary on the list: the armies on the map, last turn, OPEN THE MAP.</summary>
+    private void MapListDetail(VBoxContainer col, ArmyCampaignSession.Entry c)
+    {
+        var m = MapCampaignSession.Open(c.Path, out string? error);
+        col.AddChild(HudKit.Text(c.Info.Name.ToUpperInvariant() + " - MAP CAMPAIGN", 26, HudKit.Fg, HudKit.Exo(800)));
+        if (m == null) { col.AddChild(ForgeWidgets.Wrapped(error ?? "Couldn't open the campaign map.", 15, Palette.WoundsRed)); }
+        else
+        {
+            var map = m.Map;
+            col.AddChild(HudKit.Text($"Turn {map.Turn} - " + (map.VpTarget > 0 ? $"first to {map.VpTarget} VP, or take every rival's capital" : "Endless") + (c.Info.NoPermadeath ? " - No Permadeath" : ""), 16, Palette.HeroGold, HudKit.Bold));
+            col.AddChild(HudKit.Heading("Armies", 13));
+            foreach (var f in map.Factions)
+            {
+                bool met = FDG.Campaign.Map.CampaignMapRules.HasMet(map, FDG.Campaign.Map.CampaignMap.PlayerId, f.Id);
+                string line = !f.Alive ? $"{f.Name} - knocked out"
+                    : !met ? $"{f.Name} - not met yet"
+                    : $"{f.Name}{(f.IsPlayer ? " (you)" : "")} - {m.Vp(f.Id)} VP, {FDG.Campaign.Map.CampaignMapRules.HeldCount(map, f.Id)} held, {m.StateOf(f.Id).Treasury} pts";
+                col.AddChild(HudKit.Text(line, 16, f.Alive ? MapCampaignScreen.ColourOf(map, f.Id) : HudKit.Dim, HudKit.Semi));
+            }
+            col.AddChild(HudKit.Heading("Last turn", 13));
+            if (map.History.Count == 0) col.AddChild(HudKit.Text("Nothing played yet.", 14, HudKit.Dim, HudKit.Semi));
+            else foreach (string line in map.History[^1].Lines.Take(8)) col.AddChild(ForgeWidgets.Wrapped(line, 13, HudKit.Dim));
+        }
+        col.AddChild(HudKit.Grow());
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        row.AddChild(Ui.Button("Delete", () => AskDelete(c), "Delete this campaign (asks first). Removes every army and the map.", "BackButton").Also(x => x.Name = "Delete"));
+        row.AddChild(HudKit.Text("Delete asks first and removes every army and the map.", 13, HudKit.Dim, HudKit.Semi).Also(l => { l.SizeFlagsHorizontal = SizeFlags.ExpandFill; l.SizeFlagsVertical = SizeFlags.ShrinkCenter; }));
+        row.AddChild(Ui.Button("OPEN THE MAP", () => OpenMap(c.Path), "The campaign map: your land, the rivals, this turn's order.", "CommitButton")
+            .Also(x => { x.Name = "OpenMap"; x.CustomMinimumSize = new Vector2(220, 52); x.AddThemeFontSizeOverride("font_size", 19); }));
+        col.AddChild(row);
+    }
+
     private void ListDetail(VBoxContainer col, ArmyCampaignSession.Entry c)
     {
+        if (IsMap(c)) { MapListDetail(col, c); return; }
         var foe = _s.EnemyOf(c.Info);
         var st = _s.StandingOf(c);
         var head = new HBoxContainer();
@@ -401,8 +444,8 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         col.AddThemeConstantOverride("separation", 10);
         var tabs = new HBoxContainer();
         tabs.AddThemeConstantOverride("separation", 8);
-        string[] names = { "1  Rules", "2  Your army", "3  The enemy", "4  Missions" };
-        for (int i = 0; i < 4; i++)
+        string[] names = _draft.Map ? new[] { "1  Rules and rivals", "2  Your army" } : new[] { "1  Rules", "2  Your army", "3  The enemy", "4  Missions" };
+        for (int i = 0; i < names.Length; i++)
         {
             int idx = i;
             bool done = _s.TabDone(_draft, i);
@@ -438,6 +481,16 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
 
     private void RulesTab(VBoxContainer page)
     {
+        page.AddChild(HudKit.Heading("How do you want to play?", 14));
+        var kind = new HBoxContainer();
+        kind.AddThemeConstantOverride("separation", 16);
+        kind.AddChild(Radio("Classic", "Classic - you against one rival, mission after mission (the book's campaign)", !_draft.Map,
+            () => { _s.SetMap(_draft, false); Rebuild(); }, "The Campaign Rules as written."));
+        kind.AddChild(Radio("MapCampaign", MapStyleName + " - fight over a map against 1 to 3 rivals", _draft.Map,
+            () => { string? e = null; _s.SetMap(_draft, true); if (_draft.Rivals.Count == 0) e = "No army book of this game could build a rival."; Say(e ?? "", e != null ? Palette.WoundsRed : null); Rebuild(); },
+            "Take land, hold starred regions for VP, take the rivals' capitals. House rule B24 - the books have no map rules."));
+        page.AddChild(kind);
+        if (_draft.Map) MapSettings(page);
         page.AddChild(HudKit.Heading("How the campaign is won", 14));
         var race = new HBoxContainer();
         race.AddThemeConstantOverride("separation", 10);
@@ -458,7 +511,85 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         var story = new TextEdit { Name = "Story", Text = _draft.Story, CustomMinimumSize = new Vector2(0, 140), WrapMode = TextEdit.LineWrappingMode.Boundary, PlaceholderText = "Who is fighting, and why..." };
         story.TextChanged += () => _draft.Story = story.Text;
         page.AddChild(story);
-        page.AddChild(ForgeWidgets.Wrapped("Book: the VP target is D3+4. Picking your own number is house rule B15. Game-limited and time-limited campaigns are left out (B15).", 13, HudKit.Dim));
+        page.AddChild(ForgeWidgets.Wrapped(_draft.Map
+            ? "On a map, starred regions count 1 VP each while you hold them, on top of mission VP; taking every rival's capital also wins. 10 is a good target (B24)."
+            : "Book: the VP target is D3+4. Picking your own number is house rule B15. Game-limited and time-limited campaigns are left out (B15).", 13, HudKit.Dim));
+    }
+
+    private string MapStyleName => FDG.Campaign.Map.CampaignMapRules.StyleFor(System) == FDG.Campaign.Map.EMapStyle.Realm ? "Map campaign (a realm)" : "Map campaign (a star system)";
+
+    /// <summary>#467 - the map's own settings and the rivals built for you (Map Campaign Screens mockup, screen 1).</summary>
+    private void MapSettings(VBoxContainer page)
+    {
+        bool realm = FDG.Campaign.Map.CampaignMapRules.StyleFor(System) == FDG.Campaign.Map.EMapStyle.Realm;
+        string places = realm ? "regions" : "planets";
+        page.AddChild(HudKit.Heading("Map size", 14));
+        var size = new HBoxContainer();
+        size.AddThemeConstantOverride("separation", 16);
+        foreach (var (sz, label, tip) in new[]
+                 {
+                     (FDG.Campaign.Map.EMapSize.Small, $"Small - 8 {places}", "Fighting from the first turn."),
+                     (FDG.Campaign.Map.EMapSize.Medium, $"Medium - 14 {places}", "A few turns before the armies meet."),
+                     (FDG.Campaign.Map.EMapSize.Large, $"Large - 20 {places}", "A long war."),
+                 })
+            size.AddChild(Radio("Size" + sz, label, _draft.MapSize == sz, () => { _draft.MapSize = sz; Rebuild(); }, tip + " (Bigger with 3 rivals: every army needs room.)"));
+        page.AddChild(size);
+
+        page.AddChild(HudKit.Heading("Rivals - built for you", 14));
+        var count = new HBoxContainer();
+        count.AddThemeConstantOverride("separation", 16);
+        for (int i = 1; i <= MapCampaignSession.MaxRivals; i++)
+        {
+            int n = i;
+            count.AddChild(Radio("Rivals" + i, i == 1 ? "1 rival" : $"{i} rivals", _draft.Rivals.Count == i,
+                () => { Say(_s.SetRivalCount(_draft, n) ?? "", Palette.WoundsRed); Rebuild(); }, "Each rival runs its own army: it spends its own treasury, recruits and buys land."));
+        }
+        page.AddChild(count);
+        page.AddChild(ForgeWidgets.Wrapped($"Each rival gets a random {Game} army book and builds its own starting army from the {_s.Numbers.Treasury} pts treasury. Reroll for another book, or use one of your own armies.", 14, HudKit.Dim));
+        var colours = new[] { new Color("ed5c4d"), new Color("f0a03c"), new Color("b07ae8") };
+        for (int i = 0; i < _draft.Rivals.Count; i++)
+        {
+            int idx = i;
+            ArmyCampaignSession.MapRival r = _draft.Rivals[i];
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 10);
+            row.AddChild(new ColorRect { Color = colours[i % colours.Length], CustomMinimumSize = new Vector2(14, 14), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+            var name = new LineEdit { Name = $"RivalName{i}", Text = r.Name, CustomMinimumSize = new Vector2(260, 0), MaxLength = 40 };
+            name.TextChanged += t => r.Name = t;
+            name.FocusExited += Rebuild;
+            row.AddChild(name);
+            int heroes = r.Army.Units.Count(CampaignRules.IsHero);
+            row.AddChild(HudKit.Text($"{r.Army.Faction} - {r.Army.TotalPoints} pts - {ArmyCampaignSession.Plural(r.Army.Units.Count, "unit")}"
+                                     + (heroes > 0 ? $" - {ArmyCampaignSession.Plural(heroes, "Hero")}" : "") + (r.Source != null ? " (your army)" : ""),
+                15, HudKit.Fg, HudKit.Semi).Also(l => { l.SizeFlagsHorizontal = SizeFlags.ExpandFill; l.SizeFlagsVertical = SizeFlags.ShrinkCenter; }));
+            row.AddChild(Ui.Button("Reroll", () => { Say(_s.RerollRival(_draft, idx) ?? $"{_draft.Rivals[idx].Name} now fields {_draft.Rivals[idx].Army.Faction}.", Palette.Lime); Rebuild(); },
+                "Another random army book and army for this rival.").Also(x => x.Name = $"RerollRival{i}"));
+            var mine = new OptionButton { Name = $"RivalArmy{i}", TooltipText = $"Use one of your saved {Game} armies for this rival (a copy - yours stays)." };
+            mine.AddItem("Use my army...");
+            var saved = _s.Armies;
+            foreach (var a in saved)
+            {
+                string? why = _s.CannotStart(a.Army);
+                mine.AddItem($"{a.Army.Name} - {a.Army.Faction} - {a.Army.TotalPoints} pts" + (why != null ? "  (won't fit)" : ""));
+                if (why != null) mine.SetItemDisabled(mine.ItemCount - 1, true);
+            }
+            mine.ItemSelected += sel =>
+            {
+                if (sel <= 0) return;
+                string? e = _s.UseArmyForRival(_draft, idx, saved[(int)sel - 1]);
+                Say(e ?? $"{_draft.Rivals[idx].Name} uses {saved[(int)sel - 1].Army.Name}.", e != null ? Palette.WoundsRed : Palette.Lime);
+                Rebuild();
+            };
+            row.AddChild(mine);
+            page.AddChild(row);
+            var flow = new HFlowContainer();
+            flow.AddThemeConstantOverride("h_separation", 6);
+            flow.AddThemeConstantOverride("v_separation", 6);
+            foreach (UnitFileEntry u in r.Army.Units)
+                flow.AddChild(HudKit.Text(u.Name + (CampaignRules.IsHero(u) ? " (Hero)" : "") + $" {u.PointCost}", 13, HudKit.Dim, HudKit.Semi));
+            page.AddChild(HudKit.Pad(flow, 24, 0, 0, 4));
+        }
+        if (ArmyCampaignSession.RivalsProblem(_draft) is { } p) page.AddChild(HudKit.Text(p, 14, Palette.HitsYellow, HudKit.Semi));
     }
 
     private void ArmyTab(VBoxContainer page, bool enemy)
@@ -611,6 +742,18 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
 
     private void FinishNew()
     {
+        if (_draft.Map)
+        {
+            string? mapPath = _s.FinishMap(_draft, out string? mapError);
+            if (mapPath == null) { Say(mapError ?? "Couldn't start the campaign.", Palette.WoundsRed); return; }
+            Reselect(mapPath);
+            _view = View.List;
+            Say($"Map campaign started: {_draft.Name.Trim()} against {ArmyCampaignSession.Plural(_draft.Rivals.Count, "rival")}.", Palette.Lime);
+            _draft = new ArmyCampaignSession.Draft();
+            Rebuild();
+            OpenMap(mapPath);
+            return;
+        }
         string? path = _s.Finish(_draft, out string? error);
         if (path == null) { Say(error ?? "Couldn't start the campaign.", Palette.WoundsRed); return; }
         Reselect(path);
@@ -663,7 +806,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         bottom.AddChild(Ui.Button("+ Recruit units", OpenRecruit, "Buy new units from the treasury (the Forge's roster and a cart).", "CommitButton").Also(x => x.Name = "Recruit"));
         bottom.AddChild(HudKit.Text($"Treasury {side.Info.BankedPoints} pts", 18, Palette.HeroGold, HudKit.Bold).Also(l => l.SizeFlagsVertical = SizeFlags.ShrinkCenter));
         mid.AddChild(bottom);
-        if (!_enemySide && _s.EnemyOf(cur.Info) != null)
+        if (!_enemySide && _s.EnemyOf(cur.Info) != null && !IsMap(cur))
             mid.AddChild(HudKit.Text("Switch to Enemy army (top) to do the rival's books - the screen tints red while you edit it.", 13, HudKit.Dim, HudKit.Semi));
         row.AddChild(HudKit.Panel(SideBox(), HudKit.Pad(mid, 14, 10, 14, 10)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
 
@@ -677,6 +820,11 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
         nextCol.AddThemeConstantOverride("separation", 8);
         nextCol.AddChild(ns);
         string? cant = PlayProblem(cur);
+        if (IsMap(cur))
+            nextCol.AddChild(Ui.Button("BACK TO THE MAP", () => { if (CampOf != null) App.I.Back(); else OpenMap(cur.Path); },
+                    "Battles in a map campaign come from the map: give your order there and END TURN.", "CommitButton")
+                .Also(x => { x.Name = "BackToMap"; x.CustomMinimumSize = new Vector2(0, 56); x.AddThemeFontSizeOverride("font_size", 20); }));
+        else
         nextCol.AddChild(Ui.Button("PLAY NEXT MISSION", () => OpenMissionSetup(cur), cant ?? "Opens Mission Setup: the mission, who's coming on both sides, the difficulty, START MISSION.", "CommitButton")
             .Also(x => { x.Name = "PlayNext"; x.Disabled = cant != null; x.CustomMinimumSize = new Vector2(0, 56); x.AddThemeFontSizeOverride("font_size", 20); }));
         if (cant != null) nextCol.AddChild(ForgeWidgets.Wrapped(cant, 13, Palette.HitsYellow));
@@ -823,6 +971,9 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard
             foreach (string line in CampaignJournal.RecordFor(c.Info, c.Info.Matches).Take(8)) col.AddChild(ForgeWidgets.Wrapped(line, 13, HudKit.Fg));
         }
     }
+
+    /// <summary>#467 - the campaign map screen for a map campaign.</summary>
+    private void OpenMap(string path) => App.I.Open<MapCampaignScreen>(Scenes.MapCampaign, m => { m.CampaignPath = path; m.System = System; });
 
     private void OpenMissionSetup(ArmyCampaignSession.Entry c)
     {

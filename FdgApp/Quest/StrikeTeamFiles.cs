@@ -213,7 +213,8 @@ public static class StrikeTeamFiles
             // was shown to the player and then never checked, so the bonus could not be earned at all.
             // Scored before the objective is cleared, and paid by CompleteSpecialObjective so the
             // treasury write stays in one place.
-            if (team.StrikeTeam.SpecialObjective is { Length: > 0 } objective)
+            bool garrison = team.StrikeTeam.NoMissionReward; // #467: a map campaign's garrison battle pays nothing
+            if (team.StrikeTeam.SpecialObjective is { Length: > 0 } objective && !garrison)
             {
                 PlayerID owner = group.First().Unit.PlayerID;
                 CampaignObjectiveResult scored = CampaignObjectives.Score(table, owner, objective);
@@ -229,6 +230,11 @@ public static class StrikeTeamFiles
                 // A new objective is rolled before the next mission, so this one is done either way.
                 team.StrikeTeam.SpecialObjective = "";
             }
+            else if (garrison) team.StrikeTeam.SpecialObjective = "";
+
+            // #467: the map's one-mission settings are spent.
+            team.StrikeTeam.NoMissionReward = false;
+            team.StrikeTeam.MapUnderdogBonus = 0;
 
             // #455 - the bot does NOT spend its own treasury, pick its own traits or recruit. Kai's
             // call (campaign-flow-spec section 4, confirmed 2026-11-05): "the bot never spends its own

@@ -16,9 +16,24 @@ The OPR campaign books have no map rules: every rule here is a house rule.
 1. **Engine** - map model + file, generator, rules, turn resolution, rival orders. **Done 2026-11-14.**
 2. Rivals running their own armies between turns (CampaignBot spending, claims vs units). **Done 2026-11-15.**
 3. Godot screen: the map, region card, turn report; player battles through Mission Setup; garrison missions pay nothing.
+   **Done 2026-11-15 (Build 2.26).**
 4. Region battlefields: a terrain mix per region type.
 
 ## Notes (newest first)
+
+### 2026-11-15 - step 3, the screens (Build 2.26)
+- Mockup "Map Campaign Screens" approved (Kai: rivals may share factions; Rest is the default order; the Journal keeps
+  every turn's report).
+- Engine: `StrikeTeamInfo.NoMissionReward` (AfterGame pays nothing; write-back skips the special objective) and
+  `MapUnderdogBonus` (UnderdogPool.Seed adds it, players only); `MapRivalArmy` (auto-built rivals and garrisons,
+  `Adopt` re-points sheets' TeamFile); `CampaignBot.IsHeroEntry` public; generator retries layouts until nobody
+  borders on turn 1 (Medium/Large: 0 of 100 maps in the test, was 24).
+- FdgApp: `MapCampaignSession.PrepareBattle / CollectBattle / BattleTitle / LaterPlayerBattles / ReloadArmies`,
+  `RivalBooks / BuildRival`; `ArmyCampaignSession` draft map settings, rival reroll / use-my-army, `FinishMap`, map rows.
+- Godot: `MapCampaignScreen` (+ `MapView`), wizard Classic/Map, list detail + OPEN THE MAP, Camp BACK TO THE MAP,
+  BattleScreen CONTINUE TO THE MAP, Mission Setup garrison text. ScriptedRun `mapdemo:<n>` / `mapdo:<order>`.
+- Not tested end to end in a played GUI game here (xvfb is too slow for a whole battle); the write-back half is covered
+  by `AGarrisonBattle_IsSetUp_PaysNothing_AndLandsOnTheMap` and the AfterGame / underdog tests.
 
 ### 2026-11-15 - step 2, rivals run themselves + the files
 - `CampaignMapUpkeep`: `Apply` (a turn's off-table change into StrikeTeamInfo), `LandReserve` (next claim's price while

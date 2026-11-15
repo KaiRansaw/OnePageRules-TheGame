@@ -122,6 +122,40 @@ public partial class ScriptedRun : Node
                 _wait = 20;
                 return;
             }
+            // "mapdo:<garrison|claim|attack|rest>" gives that order on the open campaign map and ends the turn (#467).
+            if (name.StartsWith("mapdo:") && Find<Campaign.MapCampaignScreen>(GetTree().Root) is { } mcs)
+            {
+                mcs.DemoTurn(name[6..]);
+                _wait = 20;
+                return;
+            }
+            // "mapdemo:<rivals>" starts a Grimdark Future map campaign with armies built for both sides, and opens its map
+            // (#467 - screenshots of the map screen without clicking through the wizard).
+            if (name.StartsWith("mapdemo:") && int.TryParse(name[8..], out int demoRivals))
+            {
+                var rng = new System.Random(7);
+                var taken = new List<string>();
+                var mine = FdgRaylib.Quest.MapCampaignSession.BuildRival(FDG.EGameSystem.GrimdarkFuture, rng, taken)!.Value;
+                taken.Add("Iron Reavers");
+                var rivals = new List<(string, FDG.ArmyBuilding.BuiltArmyFile)>();
+                for (int i = 0; i < demoRivals; i++)
+                {
+                    var r = FdgRaylib.Quest.MapCampaignSession.BuildRival(FDG.EGameSystem.GrimdarkFuture, rng, taken)!.Value;
+                    taken.Add(r.Name);
+                    rivals.Add((r.Name, r.Army));
+                }
+                mine.Army.StrikeTeam = null;
+                var started = FdgRaylib.Quest.MapCampaignSession.Start(FDG.EGameSystem.GrimdarkFuture, "Iron Reavers " + rng.Next(1000), mine.Army, rivals,
+                    FDG.Campaign.Map.EMapSize.Medium, 10, false, 11, out string? err);
+                GD.Print("mapdemo: " + (started?.PlayerPath ?? err));
+                if (started != null)
+                {
+                    App.I.Open<Campaign.ArmyCampaignsScreen>(Scenes.ArmyCampaigns, x => x.System = FDG.EGameSystem.GrimdarkFuture);
+                    App.I.Open<Campaign.MapCampaignScreen>(Scenes.MapCampaign, x => { x.CampaignPath = started.PlayerPath; });
+                }
+                _wait = 30;
+                return;
+            }
             // "sharecheck:<army>|<unit>|<out.png>" packs that unit's picture as it is sent to other players, unpacks it, and
             // saves what the other player would see (Kai, 2026-11-14 - shared pictures).
             if (name.StartsWith("sharecheck:") && name[11..].Split('|') is [var sa, var su, var sout])

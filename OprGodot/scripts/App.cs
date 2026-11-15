@@ -172,6 +172,7 @@ public static class Scenes
     public const string QuestCampaigns = "res://scenes/screens/QuestCampaigns.tscn";
     public const string ArmyCampaigns = "res://scenes/screens/ArmyCampaigns.tscn";
     public const string MissionSetup = "res://scenes/screens/MissionSetup.tscn";
+    public const string MapCampaign = "res://scenes/screens/MapCampaign.tscn";
     public const string MapMaker = "res://scenes/screens/MapMaker.tscn";
     public const string MapEditor = "res://scenes/screens/MapEditor.tscn";
     public const string MatchTerrain = "res://scenes/screens/MatchTerrain.tscn";

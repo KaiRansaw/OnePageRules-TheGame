@@ -2,6 +2,7 @@ using FDG;
 using FDG.ArmyBuilding;
 using FDG.Campaign;
 using FDG.Campaign.Map;
+using FdgRaylib.Rendering;
 
 namespace FdgRaylib.Quest;
 
@@ -71,7 +72,8 @@ public sealed class MapCampaignSession
         {
             var (rivalName, army) = rivals[i];
             string path = NewPath(rivalName.Trim());
-            CampaignRules.Start(army, rivalName.Trim(), path, n, system, ECampaignType.Endless, noPermadeath, isBot: true);
+            if (army.StrikeTeam != null) MapRivalArmy.Adopt(army, rivalName.Trim(), path, noPermadeath); // built for you
+            else CampaignRules.Start(army, rivalName.Trim(), path, n, system, ECampaignType.Endless, noPermadeath, isBot: true);
             army.Selections = null;
             if (!StrikeTeamFiles.Save(path, army)) { Undo(); error = $"Couldn't save {rivalName}'s army file."; return null; }
             written.Add(path);
@@ -106,6 +108,19 @@ public sealed class MapCampaignSession
         for (int i = 2; File.Exists(path); i++) path = Path.Combine(folder, $"Campaign - {safe} {i}.fdgarmy");
         return path;
     }
+
+    // ------------------------------------------------------------------ rivals built for you
+
+    /// <summary>This game's army books (a rival may share a faction with you or another rival - Kai, 2026-11-15).</summary>
+    public static IReadOnlyList<FDG.ArmyBuilding.BookFile> RivalBooks(EGameSystem system)
+    {
+        string? slug = FDG.ArmyBuilding.GameSystems.CampaignBookSlug(system);
+        return BookLibrary.Load().Where(b => FDG.ArmyBuilding.GameSystems.SameSystem(b.GameSystem, slug)).ToList();
+    }
+
+    /// <summary>A rival army built for you: a random book of the game, a name not already taken, a legal starting army.</summary>
+    public static (string Name, BuiltArmyFile Army)? BuildRival(EGameSystem system, Random rng, IReadOnlyCollection<string> namesTaken) =>
+        MapRivalArmy.Build(system, RivalBooks(system), rng, namesTaken);
 
     // ------------------------------------------------------------------ loading
 
@@ -143,6 +158,18 @@ public sealed class MapCampaignSession
 
     public StrikeTeamInfo InfoOf(string faction) => _armies[faction].Army.StrikeTeam!;
 
+    /// <summary>
+    /// Re-reads every army from disk. The map screen calls it whenever it opens: a mission's write-back, the Camp's
+    /// recruits and the trait picks all change the army files behind the session's back, and a stale copy saved over them
+    /// would undo that.
+    /// </summary>
+    public void ReloadArmies()
+    {
+        foreach (string id in _armies.Keys.ToList())
+            if (StrikeTeamFiles.Load(_armies[id].Path) is { StrikeTeam: not null } fresh) _armies[id] = (_armies[id].Path, fresh);
+        if (CampaignMap.Load(MapPath) is { } map) Map = map;
+    }
+
     public MapArmyState StateOf(string faction)
     {
         BuiltArmyFile army = _armies[faction].Army;
@@ -164,6 +191,7 @@ public sealed class MapCampaignSession
     /// <summary>Gives the player's order and starts the turn (the rivals pick theirs). Null, or why not.</summary>
     public string? BeginTurn(MapOrder order)
     {
+        ReloadArmies();
         if (Map.Pending != null) return "A turn is already under way.";
         if (Outcome != EMapOutcome.InProgress) return "The campaign is over.";
         if (WhyNot(order) is { } why) return why;
@@ -177,6 +205,7 @@ public sealed class MapCampaignSession
     /// </summary>
     public MapTurnResult Step()
     {
+        ReloadArmies();
         MapTurnResult result = CampaignMapTurn.Resolve(Map, Numbers);
         if (!result.Finished) return result;
 
@@ -204,6 +233,110 @@ public sealed class MapCampaignSession
     {
         CampaignMapTurn.RecordPlayerResult(Map, playerWon);
         Map.Save(MapPath);
+    }
+
+    // ------------------------------------------------------------------ the player's battles
+
+    /// <summary>A battle has been set up and its mission not yet recorded.</summary>
+    public bool BattleUnderWay => Map.Pending?.BattleAtMatch != null;
+
+    /// <summary>The army file the player fights in a battle: a rival's, or (for a garrison) null until it is made.</summary>
+    public string? OpponentPath(MapBattle b) => b.OpponentOf(CampaignMap.PlayerId) is { } id && _armies.TryGetValue(id, out var a) ? a.Path : null;
+
+    /// <summary>
+    /// Readies the player's campaign army for the battle the turn is waiting on, so Mission Setup opens on it: the
+    /// opponent (a rival's campaign army, or a garrison made now), the land's underdog points, and for a garrison no
+    /// rewards and Easy difficulty (its force comes out at about half yours - house rule B24). Null, or why not.
+    /// </summary>
+    public string? PrepareBattle(MapBattle battle)
+    {
+        ReloadArmies();
+        if (Map.Pending == null) return "No turn is under way.";
+        if (BattleUnderWay) return null; // already set up (the screen was left and reopened)
+        MapRegion region = Map.Region(battle.Region)!;
+        BuiltArmyFile player = _armies[CampaignMap.PlayerId].Army;
+        StrikeTeamInfo info = player.StrikeTeam!;
+
+        string? enemyPath = OpponentPath(battle);
+        bool garrison = battle.OpponentOf(CampaignMap.PlayerId) == null;
+        if (garrison)
+        {
+            int budget = MissionSetupSession.Fieldable(player).Sum(x => x.Unit.PointCost);
+            if (MapRivalArmy.Garrison(System, RivalBooks(System), _rng, region.Name, budget) is not { } g) return "Couldn't raise a garrison - no army book for this game.";
+            enemyPath = Path.Combine(Path.GetDirectoryName(PlayerPath) ?? "", $"Garrison - {SafeName(region.Name)}.fdgarmy");
+            MapRivalArmy.Adopt(g, g.Name, enemyPath, info.NoPermadeath);
+            g.Selections = null;
+            if (!StrikeTeamFiles.Save(enemyPath, g)) return "Couldn't save the garrison's army file.";
+            Map.Pending.GarrisonFile = enemyPath;
+        }
+
+        info.EnemyArmyFile = enemyPath;
+        info.NoMissionReward = garrison;
+        info.MapUnderdogBonus = PlayerUnderdogBonus(battle);
+        CampaignMissionPlan plan = CampaignPlans.Next(info) ?? CampaignMissionGenerator.Generate(info.Matches + 1, System, D6);
+        plan.Title = BattleTitle(battle);
+        if (garrison) plan.Difficulty = EMissionDifficulty.Easy;
+        CampaignPlans.Set(info, plan);
+        Map.Pending.BattleAtMatch = info.Matches;
+        return StrikeTeamFiles.Save(PlayerPath, player) && Map.Save(MapPath) ? null : "Couldn't save the campaign.";
+    }
+
+    /// <summary>
+    /// After the mission: if the battle set up by <see cref="PrepareBattle"/> has been played (the campaign army's match
+    /// count moved on), records who won on the map, tidies the garrison away and saves. Returns whether a result was taken.
+    /// </summary>
+    public bool CollectBattle()
+    {
+        ReloadArmies();
+        if (Map.Pending is not { BattleAtMatch: { } at } pending) return false;
+        StrikeTeamInfo info = InfoOf(CampaignMap.PlayerId);
+        if (info.Matches <= at) return false;
+        bool won = info.History.Any(h => h.StartsWith($"Match {info.Matches}: won", StringComparison.Ordinal));
+        pending.BattleAtMatch = null;
+        if (pending.GarrisonFile is { } g)
+        {
+            foreach (string f in new[] { g, Path.ChangeExtension(g, ".fdgmission") })
+                try { if (File.Exists(f)) File.Delete(f); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            pending.GarrisonFile = null;
+        }
+        // The map's one-mission settings, in case the write-back didn't run (a quit game).
+        info.NoMissionReward = false;
+        info.MapUnderdogBonus = 0;
+        info.EnemyArmyFile = Map.Factions.FirstOrDefault(f => !f.IsPlayer && f.Alive)?.ArmyFile ?? info.EnemyArmyFile;
+        CampaignMapTurn.RecordPlayerResult(Map, won);
+        StrikeTeamFiles.Save(PlayerPath, _armies[CampaignMap.PlayerId].Army);
+        Map.Save(MapPath);
+        return true;
+    }
+
+    /// <summary>"Bastion IX: you attack the Hollow Choir" - the mission's title. ASCII (game text).</summary>
+    public string BattleTitle(MapBattle b)
+    {
+        string region = Map.Region(b.Region)?.Name ?? b.Region;
+        string? them = b.OpponentOf(CampaignMap.PlayerId) is { } id ? Map.Faction(id)?.Name : null;
+        return b.Kind switch
+        {
+            EMapBattleKind.Garrison => $"{region}: the local garrison",
+            EMapBattleKind.Clash => $"{region}: you meet {them} there",
+            _ when b.Attacker == CampaignMap.PlayerId => $"{region}: you attack {them}",
+            _ => $"{region}: {them} attacks you",
+        };
+    }
+
+    private static string SafeName(string s) => string.Concat(s.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch)).Trim();
+
+    /// <summary>The player's battles still to come this turn after the one it is waiting on (for the battle card).</summary>
+    public IReadOnlyList<MapBattle> LaterPlayerBattles(MapBattle current)
+    {
+        // Replay the turn with the current battle answered both ways would change what follows; a plain forecast is
+        // enough for the card: the regions other armies ordered against the player's land, not yet reached.
+        if (Map.Pending is not { } p) return Array.Empty<MapBattle>();
+        int at = Map.Regions.FindIndex(r => r.Id == current.Region);
+        return p.Orders.Where(o => !Map.Faction(o.Faction)!.IsPlayer && o.Kind == EOrderKind.Attack
+                                   && Map.Region(o.Region)?.Owner == CampaignMap.PlayerId
+                                   && Map.Regions.FindIndex(r => r.Id == o.Region) > at)
+            .Select(o => new MapBattle(o.Region!, o.Faction, CampaignMap.PlayerId, EMapBattleKind.Attack, Map.Region(o.Region)!.Capital))
+            .ToList();
     }
 
     /// <summary>The underdog points the player's land gives in a battle (Shrines, a defended capital or Fortress).</summary>

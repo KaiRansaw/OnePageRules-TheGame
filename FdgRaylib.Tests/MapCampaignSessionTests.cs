@@ -82,6 +82,27 @@ public class MapCampaignSessionTests
         Assert.That(MapCampaignSession.Start(EGameSystem.GrimdarkFuture, "A", Army(6), four, EMapSize.Small, 10, false, 1, out _, _dir), Is.Null);
     }
 
+    /// <summary>Rivals built for you keep their bought units and sheets, and every sheet points at the rival's file.</summary>
+    [Test]
+    public void AutoBuiltRivals_AreSavedWithTheirSheetsPointingAtTheirFiles()
+    {
+        Assume.That(MapCampaignSession.RivalBooks(EGameSystem.GrimdarkFuture), Is.Not.Empty, "no bundled books found from the test host");
+        var rivals = Enumerable.Range(0, 2).Select(i => MapCampaignSession.BuildRival(EGameSystem.GrimdarkFuture, new Random(i), new List<string>())!.Value).ToList();
+        var units = rivals.Select(r => r.Army.Units.Select(u => u.Name).ToList()).ToList();
+        MapCampaignSession s = MapCampaignSession.Start(EGameSystem.GrimdarkFuture, "Iron Reavers", Army(6),
+            rivals.Select((r, i) => ($"Rival {i}", r.Army)).ToList(), EMapSize.Small, 10, false, 3, out string? error, _dir)!;
+        Assert.That(error, Is.Null);
+        for (int i = 0; i < 2; i++)
+        {
+            var (path, army) = s.Armies["r" + (i + 1)];
+            BuiltArmyFile onDisk = StrikeTeamFiles.Load(path)!;
+            Assert.That(onDisk.Units.Select(u => u.Name), Is.EqualTo(units[i]), "nothing renamed or lost");
+            Assert.That(onDisk.Units.All(u => CampaignRules.Sheet(u)!.TeamFile == path), Is.True);
+            Assert.That(onDisk.StrikeTeam!.Name, Is.EqualTo($"Rival {i}"));
+            Assert.That(onDisk.StrikeTeam.IsBot, Is.True);
+        }
+    }
+
     [Test]
     public void Open_ReadsBackTheSameCampaign()
     {
@@ -140,6 +161,82 @@ public class MapCampaignSessionTests
         MapRegion far = s.Map.Regions.First(r => r.Owner == null && !CampaignMapRules.CanReach(s.Map, CampaignMap.PlayerId, r));
         Assert.That(s.BeginTurn(new MapOrder(CampaignMap.PlayerId, EOrderKind.Garrison, far.Id)), Is.Not.Null);
         Assert.That(s.Map.Pending, Is.Null);
+    }
+
+    [TestCase(EGameSystem.GrimdarkFuture)]
+    [TestCase(EGameSystem.GFFirefight)]
+    [TestCase(EGameSystem.AgeOfFantasy)]
+    [TestCase(EGameSystem.AoFSkirmish)]
+    public void ARivalBuiltForYou_IsALegalStartingArmyFromThatGamesBooks(EGameSystem system)
+    {
+        var books = MapCampaignSession.RivalBooks(system);
+        Assume.That(books, Is.Not.Empty, "no bundled books found from the test host");
+        string slug = FDG.ArmyBuilding.GameSystems.CampaignBookSlug(system)!;
+        for (int seed = 0; seed < 5; seed++)
+        {
+            var built = MapCampaignSession.BuildRival(system, new Random(seed), new List<string>());
+            Assert.That(built, Is.Not.Null, $"{system} seed {seed}");
+            Assert.That(CampaignRules.CannotStart(built!.Value.Army, CampaignNumbers.For(system)), Is.Null);
+            Assert.That(FDG.ArmyBuilding.GameSystems.SameSystem(built.Value.Army.Book!.GameSystem, slug), Is.True, "only this game's own books");
+        }
+    }
+
+    /// <summary>
+    /// A garrison battle end to end on disk: set up (garrison made, no rewards, Easy, the land's underdog points), the
+    /// mission recorded the way the game's write-back does it, then collected onto the map.
+    /// </summary>
+    [Test]
+    public void AGarrisonBattle_IsSetUp_PaysNothing_AndLandsOnTheMap()
+    {
+        Assume.That(MapCampaignSession.RivalBooks(EGameSystem.GrimdarkFuture), Is.Not.Empty, "no bundled books found from the test host");
+        MapCampaignSession s = StartOne();
+        MapRegion target = CampaignMapRules.Reachable(s.Map, CampaignMap.PlayerId).First(x => x.Owner == null);
+        Assert.That(s.BeginTurn(new MapOrder(CampaignMap.PlayerId, EOrderKind.Garrison, target.Id)), Is.Null);
+        MapBattle battle = s.Step().WaitingFor!;
+        Assert.That(battle.Kind, Is.EqualTo(EMapBattleKind.Garrison));
+
+        Assert.That(s.PrepareBattle(battle), Is.Null);
+        StrikeTeamInfo info = s.InfoOf(CampaignMap.PlayerId);
+        Assert.That(info.NoMissionReward, Is.True);
+        Assert.That(File.Exists(info.EnemyArmyFile), Is.True, "the garrison's army file");
+        Assert.That(CampaignPlans.Next(info)!.Difficulty, Is.EqualTo(EMissionDifficulty.Easy));
+        Assert.That(CampaignPlans.Next(info)!.Title, Does.Contain(target.Name));
+        Assert.That(s.CollectBattle(), Is.False, "not played yet");
+
+        // The mission, as the game's write-back records it.
+        BuiltArmyFile army = StrikeTeamFiles.Load(s.PlayerPath)!;
+        int banked = army.StrikeTeam!.BankedPoints;
+        var results = army.Units.Select(u => new CampaignUnitResult(CampaignRules.Sheet(u)!.Id, false, 0, 0)).ToList();
+        CampaignRules.AfterGame(army, results, true, CampaignNumbers.GrimdarkFuture, () => 3);
+        StrikeTeamFiles.Save(s.PlayerPath, army);
+
+        string garrisonFile = info.EnemyArmyFile!;
+        Assert.That(s.CollectBattle(), Is.True);
+        Assert.That(File.Exists(garrisonFile), Is.False, "the garrison is tidied away");
+        Assert.That(s.InfoOf(CampaignMap.PlayerId).BankedPoints, Is.EqualTo(banked), "a garrison pays nothing");
+        Assert.That(s.InfoOf(CampaignMap.PlayerId).NoMissionReward, Is.False);
+
+        MapTurnResult r;
+        while (!(r = s.Step()).Finished) s.RecordBattle(true);
+        Assert.That(s.Map.Region(target.Id)!.Owner, Is.EqualTo(CampaignMap.PlayerId));
+    }
+
+    [Test]
+    public void ARivalBattle_PointsMissionSetupAtThatRival_WithTheLandsUnderdogPoints()
+    {
+        MapCampaignSession s = StartOne();
+        MapRegion mine = s.Map.Regions.First(r => r.Owner == CampaignMap.PlayerId && !r.Capital);
+        mine.Type = ERegionType.Shrine; // +1 underdog point
+        s.SaveAll();
+        var battle = new MapBattle(mine.Id, "r2", CampaignMap.PlayerId, EMapBattleKind.Attack, false);
+        // A turn has to be under way for a battle to be prepared.
+        Assert.That(s.BeginTurn(new MapOrder(CampaignMap.PlayerId, EOrderKind.Rest)), Is.Null);
+        Assert.That(s.PrepareBattle(battle), Is.Null);
+        StrikeTeamInfo info = s.InfoOf(CampaignMap.PlayerId);
+        Assert.That(info.EnemyArmyFile, Is.EqualTo(s.Armies["r2"].Path));
+        Assert.That(info.NoMissionReward, Is.False);
+        Assert.That(info.MapUnderdogBonus, Is.EqualTo(1));
+        Assert.That(CampaignPlans.Next(info)!.Title, Does.Contain("attacks you"));
     }
 
     [Test]

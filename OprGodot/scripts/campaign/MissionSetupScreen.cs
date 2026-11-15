@@ -77,7 +77,8 @@ public partial class MissionSetupScreen : Control
     {
         foreach (Control holder in new Control[] { _top, _body })
             foreach (Node c in holder.GetChildren()) { holder.RemoveChild(c); c.QueueFree(); }
-        var b = Ui.Button("Back to camp", App.I.Back, "Back to the Camp. Nothing is started.", "BackButton");
+        bool map = MapCampaignSession.IsMapCampaign(_s.Info);
+        var b = Ui.Button(map ? "Back to the map" : "Back to camp", App.I.Back, map ? "Back to the campaign map. Nothing is started; the battle waits." : "Back to the Camp. Nothing is started.", "BackButton");
         b.Name = "Back";
         b.CustomMinimumSize = new Vector2(150, 44);
         _top.AddChild(b);
@@ -250,7 +251,9 @@ public partial class MissionSetupScreen : Control
             "Fills their force at random from the units they own, to the same difficulty. Without it they bring their most experienced units first.").Also(x => x.Name = "Randomize"));
         col.AddChild(row);
         col.AddChild(ForgeWidgets.Wrapped(MissionDifficulty.Describe(info.Difficulty, _s.YoursComing, _s.Numbers), 14, HudKit.Fg));
-        col.AddChild(ForgeWidgets.Wrapped(MissionDifficulty.DescribeReward(info.Difficulty, _s.Numbers), 13, HudKit.Dim));
+        col.AddChild(ForgeWidgets.Wrapped(info.NoMissionReward
+            ? "A garrison battle on the campaign map: no treasury or VP either way - the land is the prize (house rule B24)."
+            : MissionDifficulty.DescribeReward(info.Difficulty, _s.Numbers), 13, HudKit.Dim));
 
         if (_s.ChallengeBonusesApply)
         {

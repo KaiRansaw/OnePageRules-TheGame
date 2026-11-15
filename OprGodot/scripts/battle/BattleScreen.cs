@@ -1857,7 +1857,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
         row.AddThemeConstantOverride("separation", 12);
         row.AddChild(Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table."));
         row.AddChild(Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.").Also(x => x.Name = "SaveReport"));
-        var cont = Ui.Button("CONTINUE TO CAMP", App.I.BackTo<Campaign.ArmyCampaignsScreen>, "Back to the Camp, with this mission recorded.", "CommitButton");
+        // #467: a map campaign's battle goes back to the map, which records it and carries the turn on.
+        bool onMap = FdgRaylib.Quest.MapCampaignSession.IsMapCampaign(r?.Info);
+        var cont = onMap
+            ? Ui.Button("CONTINUE TO THE MAP", App.I.BackTo<Campaign.MapCampaignScreen>, "Back to the campaign map: this battle is recorded there and the turn carries on.", "CommitButton")
+            : Ui.Button("CONTINUE TO CAMP", App.I.BackTo<Campaign.ArmyCampaignsScreen>, "Back to the Camp, with this mission recorded.", "CommitButton");
         cont.Name = "ContinueCampaign";
         cont.CustomMinimumSize = new Vector2(260, 52);
         row.AddChild(cont);
