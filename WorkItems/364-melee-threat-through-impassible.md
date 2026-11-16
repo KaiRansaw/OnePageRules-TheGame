@@ -1,6 +1,6 @@
 # 364 — Melee threat is measured straight-line, through impassible terrain
 
-**Status**: open
+**Status**: open (Tactician only) - official-AI half done 2026-11-15
 **Related**: #363 (the sight-line half of the same "estimates ignore terrain" family), #264
 (approach term switched to WALKING distance - this is the threat side, still straight-line),
 #191 (Tactician umbrella)
@@ -25,6 +25,13 @@ Net effect: the AI over-fears melee behind hard cover and under-values the groun
 actually protects - the same shape as #363's phantom volley, one mechanism over.
 
 ## Notes
+
+- 2026-11-15: **the official AI's half is fixed** (Build 2.33). The lobby bot is the Solo & Co-Op AI (#419), not
+  the Tactician, and its version of this bug was the reverse: `SoloAiBrain.ChargeTarget` counted an enemy behind a
+  wall as in charge range, planned the charge and the move failed. Now `Ai/Solo/SoloAiReach.ChargeGap` walks the
+  route (RouteMetrics, straight when clear) and a building's occupant is reached at its wall (#460). Tests in
+  `SoloAiBrainTests` (long wall / short wall). The Tactician's threat pricing below is still straight-line - it is
+  behind `--ai-profile` only, so no lobby game sees it.
 
 - 2026-08-05: split out of #363 while implementing facet 3 (sight-gated incoming fire).
   #363 deliberately left melee alone - "a charge needs a path, not a sight line" - which is the
