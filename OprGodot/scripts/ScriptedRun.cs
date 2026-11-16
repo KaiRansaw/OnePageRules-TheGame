@@ -186,12 +186,11 @@ public partial class ScriptedRun : Node
             {
                 string arg = name[(name.IndexOf(':') + 1)..];
                 if (name.StartsWith("lab:")) lab.Open(arg);
-                // "labstl:<figure.stl>" opens Import a printable model; "labstlset:base|areas|book|unit" (blank = leave);
+                // "labstl:<figure.stl>" opens Import a printable model; "labstlset:base|book|unit" (blank = leave);
                 // "labstlsave" saves.
                 else if (name.StartsWith("labstl:")) lab.OpenStlImport(arg);
-                else if (name.StartsWith("labstlset:") && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp && arg.Split('|') is { Length: 4 } st)
-                    imp.Drive(int.TryParse(st[0], out int bp) ? bp : null, int.TryParse(st[1], out int ar) ? ar : null,
-                        st[2].Length > 0 ? st[2] : null, st[3].Length > 0 ? st[3] : null);
+                else if (name.StartsWith("labstlset:") && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp && arg.Split('|') is { Length: 3 } st)
+                    imp.Drive(int.TryParse(st[0], out int bp) ? bp : null, st[1].Length > 0 ? st[1] : null, st[2].Length > 0 ? st[2] : null);
                 else if (name == "labstlsave" && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp2) imp2.DriveSave();
                 // "labstlwait" holds the next step until the import has read and lightened its files.
                 else if (name == "labstlwait" && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp3) _holdWhile = () => imp3.Busy;

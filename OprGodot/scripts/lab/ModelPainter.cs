@@ -1,6 +1,5 @@
 using FdgRaylib.Models3D;
 using Godot;
-using System.Linq;
 
 namespace OprGodot.Lab;
 
@@ -87,62 +86,9 @@ void fragment() {
         }
     }
 
-    // ------------------------------------------------------------------ areas (imported printable models)
-
-    /// <summary>The material name an imported model's areas carry: "Area 3" (1 = the biggest). Survives the .glb.</summary>
-    public const string AreaPrefix = "Area ";
-
-    public static string AreaName(int area) => AreaPrefix + area.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-    /// <summary>The area a surface's material belongs to, or null for an ordinary model's material.</summary>
-    public static int? AreaOf(Material? m) =>
-        m != null && m.ResourceName.StartsWith(AreaPrefix, StringComparison.Ordinal)
-        && int.TryParse(m.ResourceName[AreaPrefix.Length..].Split(' ')[0], out int n) ? n : null;
-
-    /// <summary>
-    /// The areas of an imported model, with each one's share of the model (by triangles) and its plain colour.
-    /// Empty for an ordinary model - the colour swapper is for those.
-    /// </summary>
-    public static List<(int Area, float Share, Color Colour)> Areas(Node3D root)
-    {
-        var count = new SortedDictionary<int, (long Tris, Color Colour)>();
-        long total = 0;
-        foreach (MeshInstance3D mi in AssetLoader.All<MeshInstance3D>(root))
-        {
-            if (mi.Mesh == null) continue;
-            for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
-            {
-                Material? m = mi.Mesh.SurfaceGetMaterial(s);
-                if (AreaOf(m) is not int n) continue;
-                var arrays = mi.Mesh.SurfaceGetArrays(s);
-                long tris = arrays[(int)Mesh.ArrayType.Index].AsInt32Array().Length / 3;
-                if (tris == 0) tris = arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array().Length / 3;
-                total += tris;
-                Color c = m is BaseMaterial3D bm ? bm.AlbedoColor : AssetLoader.StlGrey;
-                count[n] = count.TryGetValue(n, out var had) ? (had.Tris + tris, had.Colour) : (tris, c);
-            }
-        }
-        return count.Select(kv => (kv.Key, total > 0 ? kv.Value.Tris / (float)total : 0f, kv.Value.Colour)).ToList();
-    }
-
-    /// <summary>Repaints every surface under <paramref name="root"/>: area colours, then the colour swaps. Nothing to do: left alone.</summary>
+    /// <summary>Repaints every surface under <paramref name="root"/> with the model's swaps. No swaps: left alone.</summary>
     public static void Apply(Node3D root, string? paint)
     {
-        var areas = ModelPaint.Areas(paint);
-        if (areas.Count > 0)
-            foreach (MeshInstance3D mi in AssetLoader.All<MeshInstance3D>(root))
-            {
-                if (mi.Mesh == null) continue;
-                for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
-                {
-                    Material? m = mi.GetActiveMaterial(s);
-                    if (AreaOf(m) is not int n || !areas.TryGetValue(n, out int rgb)) continue;
-                    var coloured = m is StandardMaterial3D sm ? (StandardMaterial3D)sm.Duplicate() : new StandardMaterial3D { Roughness = 0.7f, ResourceName = AreaName(n) };
-                    coloured.AlbedoColor = ColorOf(rgb);
-                    mi.SetSurfaceOverrideMaterial(s, coloured);
-                }
-            }
-
         List<ColourSwap> swaps = ModelPaint.Parse(paint);
         if (swaps.Count == 0) return;
         var from = new Vector3[4];

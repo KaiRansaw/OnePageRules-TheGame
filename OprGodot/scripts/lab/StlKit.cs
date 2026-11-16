@@ -5,8 +5,7 @@ namespace OprGodot.Lab;
 
 /// <summary>
 /// A printable model brought into the game once (Kai, 2026-11-15): its figure STL and, if wanted, its base STL,
-/// made light enough for the table, split into areas for the colouring-book painter, and saved as one .glb in the
-/// unit's folder - where Army Forge's looks find it, and from where it travels to other players like any model.
+/// made light enough for the table and saved as one .glb in the unit's folder - where Army Forge's looks find it, and from where it travels to other players like any model.
 ///
 /// <para><b>Why convert at all.</b> A printable figure is 1-2 million triangles (a 50-90 MB file). Opening one took
 /// most of a minute, every time. Converted, it is ~100,000 triangles and opens at once.</para>
@@ -25,7 +24,6 @@ public sealed class StlKit
     public required StlMesh Light;
     /// <summary>0 = figure, 1 = base, for each triangle of <see cref="Light"/>.</summary>
     public required int[] PieceOfTriangle;
-    public required MeshAreas Areas;
     public int FullTriangles;
     /// <summary>The base piece's width, mm (0 with no base piece).</summary>
     public float BaseWidthMm;
@@ -82,19 +80,7 @@ public sealed class StlKit
         }
         var light = new StlMesh { Positions = pos.ToArray(), Indices = idx.ToArray() };
 
-        progress?.Invoke("Finding the areas...");
         var pieceArr = piece.ToArray();
-        // Developer aid: FDG_DUMP_LIGHT=<folder> writes the light mesh, so the area finder can be tuned on it in tests.
-        if (System.Environment.GetEnvironmentVariable("FDG_DUMP_LIGHT") is { Length: > 0 } dump)
-        {
-            Directory.CreateDirectory(dump);
-            string stem = Path.Combine(dump, Path.GetFileNameWithoutExtension(figureFile));
-            File.WriteAllBytes(stem + ".pos", light.Positions.SelectMany(BitConverter.GetBytes).ToArray());
-            File.WriteAllBytes(stem + ".idx", light.Indices.SelectMany(BitConverter.GetBytes).ToArray());
-            File.WriteAllBytes(stem + ".piece", pieceArr.SelectMany(BitConverter.GetBytes).ToArray());
-        }
-        MeshAreas areas = MeshAreas.Find(light.Positions, light.Indices, pieceArr);
-
         var b = light.Bounds();
         float baseWidth = 0;
         if (lightBase != null)
@@ -104,7 +90,7 @@ public sealed class StlKit
         }
         return new StlKit
         {
-            FigureFile = figureFile, BaseFile = baseFile, Light = light, PieceOfTriangle = pieceArr, Areas = areas,
+            FigureFile = figureFile, BaseFile = baseFile, Light = light, PieceOfTriangle = pieceArr,
             FullTriangles = full, BaseWidthMm = baseWidth, HeightMm = b.Y1 - b.Y0,
         };
     }
@@ -171,57 +157,27 @@ public sealed class StlKit
         return n;
     }
 
-    /// <summary>A distinct colour per area, for showing which is which before anything is painted.</summary>
-    public static Color GuideColour(int area) => Color.FromHsv((area * 0.61803f) % 1f, 0.55f, 0.85f);
-
-    /// <summary>
-    /// The model in <paramref name="areaCount"/> areas, one surface each - material named "Area n" (with " Base" on
-    /// the base's area). <paramref name="guideColours"/>: each area in its own colour (the importer's preview);
-    /// otherwise plain grey (what is saved).
-    /// </summary>
-    public Node3D Build(int areaCount, bool guideColours, out int areaTotal)
+    /// <summary>The model as one plain grey mesh, ready to show or save.</summary>
+    public Node3D Build()
     {
-        int[] area = Areas.AreasFor(areaCount, out float[] shares);
-        areaTotal = shares.Length;
         Vector3[] normals = SmoothNormals(Light.Positions, Light.Indices);
-        var isBase = new bool[shares.Length];
-        for (int t = 0; t < area.Length; t++) if (PieceOfTriangle[t] == 1) isBase[area[t]] = true;
-
-        var mesh = new ArrayMesh();
-        for (int a = 0; a < shares.Length; a++)
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        for (int v = 0; v < Light.Corners; v++)
         {
-            var st = new SurfaceTool();
-            st.Begin(Mesh.PrimitiveType.Triangles);
-            var local = new Dictionary<int, int>();
-            int next = 0;
-            void Corner(int v)
-            {
-                if (local.TryGetValue(v, out int li)) { st.AddIndex(li); return; }
-                st.SetNormal(normals[v]);
-                st.AddVertex(new Vector3(Light.Positions[v * 3], Light.Positions[v * 3 + 1], Light.Positions[v * 3 + 2]));
-                local[v] = next;
-                st.AddIndex(next++);
-            }
-            for (int t = 0; t < area.Length; t++)
-            {
-                if (area[t] != a) continue;
-                // STL lists corners anticlockwise from outside; Godot's front faces are clockwise.
-                Corner(Light.Indices[t * 3]);
-                Corner(Light.Indices[t * 3 + 2]);
-                Corner(Light.Indices[t * 3 + 1]);
-            }
-            if (next == 0) continue;
-            var mat = new StandardMaterial3D
-            {
-                ResourceName = ModelPainter.AreaName(a + 1) + (isBase[a] ? " Base" : ""),
-                AlbedoColor = guideColours ? GuideColour(a) : AssetLoader.StlGrey,
-                Roughness = 0.7f,
-            };
-            st.SetMaterial(mat);
-            st.Commit(mesh);
+            st.SetNormal(normals[v]);
+            st.AddVertex(new Vector3(Light.Positions[v * 3], Light.Positions[v * 3 + 1], Light.Positions[v * 3 + 2]));
         }
+        // STL lists corners anticlockwise from outside; Godot's front faces are clockwise.
+        for (int t = 0; t < Light.Indices.Length; t += 3)
+        {
+            st.AddIndex(Light.Indices[t]);
+            st.AddIndex(Light.Indices[t + 2]);
+            st.AddIndex(Light.Indices[t + 1]);
+        }
+        st.SetMaterial(new StandardMaterial3D { ResourceName = "Plain", AlbedoColor = AssetLoader.StlGrey, Roughness = 0.7f });
         var root = new Node3D { Name = UnitModelMap.SafeName(Path.GetFileNameWithoutExtension(FigureFile)) };
-        root.AddChild(new MeshInstance3D { Mesh = mesh, Name = "Model" });
+        root.AddChild(new MeshInstance3D { Mesh = st.Commit(), Name = "Model" });
         return root;
     }
 
@@ -229,9 +185,9 @@ public sealed class StlKit
     /// Saves the model as a .glb at <paramref name="glbPath"/>, with its settings beside it: the base size the base
     /// piece is (snapped to a usual size), the height the kit stands, already upright. Returns an error, or null.
     /// </summary>
-    public string? Save(string glbPath, int areaCount)
+    public string? Save(string glbPath)
     {
-        Node3D root = Build(areaCount, guideColours: false, out _);
+        Node3D root = Build();
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(glbPath)!);
@@ -251,7 +207,7 @@ public sealed class StlKit
                 UpAxis = EUpAxis.YUp,
                 CentreOnBase = true,
                 Notes = $"Imported from {Path.GetFileName(FigureFile)}" + (BaseFile != null ? $" + {Path.GetFileName(BaseFile)}" : "")
-                        + $" ({FullTriangles:N0} triangles -> {Light.Triangles:N0}), {areaCount} areas.",
+                        + $" ({FullTriangles:N0} triangles -> {Light.Triangles:N0}).",
             }.Save(glbPath);
             return null;
         }

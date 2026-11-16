@@ -7,9 +7,9 @@ using OprGodot.Hud;
 namespace OprGodot.Lab;
 
 /// <summary>
-/// "Import a printable model" (Kai, 2026-11-15): pick a figure STL, pick its base from the files beside it, see the
-/// areas the game finds (each in its own colour), choose how many, and save it to a unit. After that the unit's
-/// models can wear it in Army Forge, coloured area by area.
+/// "Import a printable model" (Kai, 2026-11-15): pick a figure STL, pick its base from the files beside it, see it,
+/// and save it to a unit. After that the unit's models can wear it in Army Forge, like any downloaded model.
+/// (Colouring it area by area was tried in 2.40 and taken out at Kai's word the same evening.)
 /// </summary>
 public partial class StlImportPopup : Control
 {
@@ -22,9 +22,8 @@ public partial class StlImportPopup : Control
     private Task<StlKit>? _work;
     private volatile string _progress = "";
 
-    private Label _figureLabel = null!, _status = null!, _info = null!;
+    private Label _figureLabel = null!, _status = null!;
     private OptionButton _base = null!, _book = null!, _unit = null!;
-    private SpinBox _areas = null!;
     private LineEdit _name = null!;
     private Button _save = null!;
     private Node3D _stage = null!;
@@ -56,7 +55,7 @@ public partial class StlImportPopup : Control
         var col = new VBoxContainer { CustomMinimumSize = new Vector2(520, 0) };
         col.AddThemeConstantOverride("separation", 9);
         col.AddChild(HudKit.Text("IMPORT A PRINTABLE MODEL", 28, HudKit.Fg, HudKit.Exo(800)));
-        col.AddChild(Wrapped("A 3D-printing model (.stl) and its base, made light enough for the table and split into areas you can colour in Army Forge. Done once - after that it opens at once.", 14, HudKit.Dim));
+        col.AddChild(Wrapped("A 3D-printing model (.stl) and its base, made light enough for the table and saved to a unit. Done once - after that it opens at once.", 14, HudKit.Dim));
 
         col.AddChild(HudKit.Heading("Figure", 15));
         var figRow = new HBoxContainer();
@@ -72,20 +71,6 @@ public partial class StlImportPopup : Control
         _base = new OptionButton { Name = "BasePiece", TooltipText = "The kit's own base to stand the figure on, or none (the game's plain base only)." };
         _base.ItemSelected += _ => StartPrepare();
         col.AddChild(_base);
-
-        col.AddChild(HudKit.Heading("Areas to colour", 15));
-        var areaRow = new HBoxContainer();
-        areaRow.AddThemeConstantOverride("separation", 10);
-        _areas = new SpinBox { Name = "AreaCount", MinValue = 2, MaxValue = 24, Step = 1, Value = MeshAreas.DefaultCount, CustomMinimumSize = new Vector2(120, 0),
-            TooltipText = "How many areas the model is split into. Fewer: big areas (cloak, body, base). More: smaller ones (belt, beard, staff head)." };
-        _areas.ValueChanged += _ => ShowKit();
-        areaRow.AddChild(_areas);
-        _info = HudKit.Text("", 14, HudKit.Dim, HudKit.Semi);
-        _info.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _info.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        areaRow.AddChild(_info);
-        col.AddChild(areaRow);
-        col.AddChild(Wrapped("Each area shows in its own colour on the right. Try a few numbers until the parts you want to paint are separate.", 13, HudKit.Dim));
 
         col.AddChild(HudKit.Heading("Save it for", 15));
         _book = new OptionButton { Name = "Book", TooltipText = "The army book whose unit this model stands for." };
@@ -114,7 +99,7 @@ public partial class StlImportPopup : Control
         col.AddChild(buttons);
         cols.AddChild(col);
 
-        // ---- right: the model, each area in its own colour, turning
+        // ---- right: the model, turning
         var view = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(560, 620) };
         var vp = new SubViewport { OwnWorld3D = true, Msaa3D = Viewport.Msaa.Msaa4X };
         view.AddChild(vp);
@@ -224,7 +209,7 @@ public partial class StlImportPopup : Control
     {
         if (_kit == null || _stage == null) return;
         foreach (Node c in _stage.GetChildren()) c.QueueFree();
-        Node3D model = _kit.Build((int)_areas.Value, guideColours: true, out int got);
+        Node3D model = _kit.Build();
         var b = _kit.Light.Bounds();
         // Centred on the turntable, feet on the floor.
         model.Position = new Vector3(-(b.X0 + b.X1) / 2, -b.Y0, -(b.Z0 + b.Z1) / 2);
@@ -232,7 +217,6 @@ public partial class StlImportPopup : Control
         float h = b.Y1 - b.Y0, size = Math.Max(h, Math.Max(b.X1 - b.X0, b.Z1 - b.Z0));
         _cam.Position = new Vector3(0, h * 0.75f, size * 2.3f);
         _cam.LookAt(new Vector3(0, h * 0.45f, 0), Vector3.Up);
-        _info.Text = $"{got} areas (from {_kit.Areas.MinAreas} to {Math.Min(_kit.Areas.MaxAreas, 24)}).";
         _status.Text = $"Ready: {_kit.FullTriangles:N0} triangles made {_kit.Light.Triangles:N0}, {h:0} mm tall"
                        + (_kit.BaseWidthMm > 0 ? $", base {_kit.BaseWidthMm:0} mm across." : ".");
         _status.Modulate = Palette.Lime;
@@ -245,19 +229,18 @@ public partial class StlImportPopup : Control
         string name = _name.Text.Trim().Length > 0 ? _name.Text.Trim() : Path.GetFileNameWithoutExtension(_kit.FigureFile);
         string path = Path.Combine(UnitModelPaths.Root, UnitModelMap.SafeName(_book.GetItemText(_book.Selected)),
             UnitModelMap.SafeName(_unit.GetItemText(_unit.Selected)), UnitModelMap.SafeName(name) + ".glb");
-        string? error = _kit.Save(path, (int)_areas.Value);
+        string? error = _kit.Save(path);
         if (error != null) { _status.Text = error; _status.Modulate = Palette.WoundsRed; return; }
         ForgeWidgets.ForgetModels();
-        _status.Text = $"Saved for {_unit.GetItemText(_unit.Selected)}. In Army Forge: that unit -> Choose looks -> pick \"{name}\", then colour its areas.";
+        _status.Text = $"Saved for {_unit.GetItemText(_unit.Selected)}. In Army Forge: that unit -> Choose looks -> pick \"{name}\".";
         _status.Modulate = Palette.Lime;
         Saved?.Invoke(path);
     }
 
-    /// <summary>Screenshot driver: chooses the base (index in the list, 0 = none), the area count, the army and unit.</summary>
-    public void Drive(int? basePick, int? areas, string? book, string? unit)
+    /// <summary>Screenshot driver: chooses the base (index in the list, 0 = none), the army and unit.</summary>
+    public void Drive(int? basePick, string? book, string? unit)
     {
         if (basePick is int bp && bp < _base.ItemCount) { _base.Select(bp); StartPrepare(); }
-        if (areas is int a) _areas.Value = a;
         if (book != null && _books.Keys.ToList().IndexOf(book) is int bi and >= 0) { _book.Select(bi); FillUnits(); }
         if (unit != null) for (int i = 0; i < _unit.ItemCount; i++) if (_unit.GetItemText(i) == unit) _unit.Select(i);
     }
