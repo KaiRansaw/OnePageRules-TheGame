@@ -215,7 +215,9 @@ public partial class LooksPanel : HBoxContainer
                 Name = $"Colour{++n}", Color = colour, EditAlpha = false, CustomMinimumSize = new Vector2(52, 36), FocusMode = FocusModeEnum.None,
                 TooltipText = $"About {share * 100:0}% of this model. Click to choose what this colour becomes on the {_selected.Count} selected model{(_selected.Count == 1 ? "" : "s")}.",
             };
-            swatch.PopupClosed += () => Repaint(from, ModelPainter.Rgb(swatch.Color));
+            // Deferred: the repaint rebuilds this panel, and freeing the swatch while its own popup is still closing
+            // crashed the game (Kai, 2026-11-15, Build 2.36 - "Parameter data.tree is null", then signal 11).
+            swatch.PopupClosed += () => { int to = ModelPainter.Rgb(swatch.Color); Callable.From(() => Repaint(from, to)).CallDeferred(); };
             row.AddChild(swatch);
         }
         box.AddChild(row);
@@ -232,18 +234,19 @@ public partial class LooksPanel : HBoxContainer
             line.AddChild(HudKit.Text("->", 15, HudKit.Dim, HudKit.Bold));
             line.AddChild(new ColorRect { Color = ModelPainter.ColorOf(sw.To), CustomMinimumSize = new Vector2(28, 22) });
             int from = sw.From;
-            line.AddChild(Ui.Button("Undo", () => Repaint(from, null), "Take this colour change off the selected models.", "BackButton"));
+            line.AddChild(Ui.Button("Undo", () => Callable.From(() => Repaint(from, null)).CallDeferred(), "Take this colour change off the selected models.", "BackButton"));
             box.AddChild(line);
         }
         var buttons = new HBoxContainer();
         buttons.AddThemeConstantOverride("separation", 8);
-        var clear = Ui.Button("Original colours", () =>
+        var clear = Ui.Button("Original colours", () => Callable.From(() =>
         {
             if (_selected.Count == 0) return;
-            _s.ClearPaint(_selected.Where(i => i < slots.Count).Select(i => slots[i]));
+            var now = _s.Slots(_row);
+            _s.ClearPaint(_selected.Where(i => i < now.Count).Select(i => now[i]));
             Refresh();
             ShowTarget();
-        }, "Take every colour change off the selected models.", "BackButton");
+        }).CallDeferred(), "Take every colour change off the selected models.", "BackButton");
         clear.Name = "ClearPaint";
         clear.Disabled = _selected.Count == 0;
         buttons.AddChild(clear);
@@ -252,6 +255,16 @@ public partial class LooksPanel : HBoxContainer
             ? "Select models first (click one, Shift+click, or Select all), then click a colour."
             : "Up to 4 colour changes a model. Saved in the army file - other players see them too.", 13, HudKit.Dim));
         return box;
+    }
+
+    /// <summary>Screenshot driver: does what a person does - opens swatch <paramref name="n"/>'s colour popup, picks
+    /// <paramref name="rgb"/> and closes it.</summary>
+    public void DriveSwatch(int n, int rgb)
+    {
+        if (FindChild($"Colour{n}", true, false) is not ColorPickerButton b) { _status($"No swatch {n}.", Palette.WoundsRed); return; }
+        b.GetPopup().Popup();
+        b.Color = ModelPainter.ColorOf(rgb);
+        b.GetPopup().Hide();
     }
 
     /// <summary>Gives the selected models a colour swap (or, with <paramref name="to"/> null, takes it off).</summary>

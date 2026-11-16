@@ -711,6 +711,10 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "selall": _looks?.SelectAll(); _looks?.Refresh(); return;
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
+            // "forge:swatch:N:RRGGBB" picks a colour in swatch N's popup and closes it, like a person does.
+            case "swatch" when arg.Split(':') is [var sn, var sc] && int.TryParse(sn, out int swn):
+                _looks?.DriveSwatch(swn, int.Parse(sc, System.Globalization.NumberStyles.HexNumber));
+                return;
             // "forge:paint:RRGGBB>RRGGBB" repaints the selected models (the colour painter).
             case "paint" when arg.Split('>') is [var pf, var pt]:
                 _looks?.Repaint(int.Parse(pf, System.Globalization.NumberStyles.HexNumber), int.Parse(pt, System.Globalization.NumberStyles.HexNumber));
