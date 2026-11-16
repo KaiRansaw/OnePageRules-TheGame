@@ -918,6 +918,9 @@ if (randArmyIdx >= 0 && randArmyIdx + 4 < args.Length)
         RosterUnit u = book.Units[rng.Next(book.Units.Count)];
         if (u.BasePointCost <= 0 || spent + u.BasePointCost > target) continue;
         if (counts.GetValueOrDefault(u.Id) >= 2) continue;
+        // Unique: one copy per army (found by the 2026-11-15 performance sweep - a doubled named hero tripped the
+        // lobby's "Launch anyway?" check).
+        if (counts.ContainsKey(u.Id) && u.Rules.Any(r => r.PrintableName.StartsWith("Unique", StringComparison.OrdinalIgnoreCase))) continue;
         if (IsHero(u) && heroPts + u.BasePointCost > target / 3 && heroPts > 0) continue;
         list.Units.Add(new BuilderUnit { RosterUnitId = u.Id, ModelCount = u.BaseModelCount });
         counts[u.Id] = counts.GetValueOrDefault(u.Id) + 1;
