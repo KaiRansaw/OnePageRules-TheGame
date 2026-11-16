@@ -29,6 +29,8 @@ public sealed class LoadedAsset
 /// <item><b>.glb / .gltf</b> through Godot's own glTF loader (materials, textures, animations).</item>
 /// <item><b>.obj</b> (what the Tabletop Simulator mod's models are) through a reader here: groups, materials from
 /// the .mtl, and the skin from map_Kd - or, when there is no .mtl, a picture with the same name beside it.</item>
+/// <item><b>.stl</b> (printable miniatures) through <see cref="StlMesh"/>: shape only, shown in plain grey, with
+/// lighter copies for distance when it is sculpted finer than a table needs.</item>
 /// <item><b>.png / .jpg / .webp</b> as a picture.</item>
 /// </list>
 /// </summary>
@@ -54,16 +56,17 @@ public static class AssetLoader
             {
                 ".glb" or ".gltf" => LoadGltf(file, asset),
                 ".obj" => LoadObj(file, asset),
+                ".stl" => LoadStl(file, asset),
                 _ => null,
             };
             if (asset.Model == null)
             {
-                asset.Error ??= "This file type can't be opened here (use .glb, .gltf, .obj, .png or .jpg).";
+                asset.Error ??= "This file type can't be opened here (use .glb, .gltf, .obj, .stl, .png or .jpg).";
                 return asset;
             }
             Measure(asset.Model, asset);
             if (asset.Triangles == 0) asset.Warnings.Add("No triangles found - the file may be empty or use a feature this reader skips.");
-            if (asset.Triangles > HeavyTriangles)
+            if (asset.Triangles > HeavyTriangles && ext != ".stl") // an STL says its own (it carries lighter copies)
                 asset.Warnings.Add($"Heavy: {asset.Triangles:N0} triangles. Fine for one hero; a big army of these will be slow - a lighter version (under {HeavyTriangles / 1000}k) is better for the table.");
         }
         catch (Exception e)
@@ -279,6 +282,61 @@ public static class AssetLoader
         var root = new Node3D { Name = Path.GetFileNameWithoutExtension(file) };
         root.AddChild(new MeshInstance3D { Mesh = mesh, Name = "Mesh" });
         return root;
+    }
+
+    // ------------------------------------------------------------------ STL
+
+    /// <summary>
+    /// An STL over this many triangles gets lighter copies for distance. Printable models are sculpted for a printer
+    /// (one piece can be 300,000 triangles); at table distance the difference can't be seen, and a squad drawn at full
+    /// detail would crawl.
+    /// </summary>
+    public const int StlTriangles = 40_000;
+
+    /// <summary>The plain colour an STL is shown in - it has none of its own. Light enough for the painter to work on.</summary>
+    public static readonly Color StlGrey = new(0.72f, 0.71f, 0.69f);
+
+    private static Node3D? LoadStl(string file, LoadedAsset asset)
+    {
+        StlMesh full;
+        try { full = StlMesh.Read(file); }
+        catch (InvalidDataException e) { asset.Error = e.Message; return null; }
+        if (full.Triangles == 0) { asset.Error = "No triangles in this STL file."; return null; }
+        asset.Warnings.Add("STL files have no colour - shown in plain grey.");
+
+        var mat = new StandardMaterial3D { Roughness = 0.7f, AlbedoColor = StlGrey };
+        ArrayMesh mesh = StlArrayMesh(full, mat, out int lods);
+        if (full.Triangles > StlTriangles)
+            asset.Warnings.Add(lods > 0
+                ? $"Detailed ({full.Triangles:N0} triangles): full detail up close, lighter copies further away ({lods} steps)."
+                : $"Detailed ({full.Triangles:N0} triangles), and no lighter copies could be made - a squad of these will be slow.");
+        var root = new Node3D { Name = Path.GetFileNameWithoutExtension(file) };
+        root.AddChild(new MeshInstance3D { Mesh = mesh, Name = "Mesh" });
+        return root;
+    }
+
+    /// <summary>
+    /// A Godot mesh from an STL's triangles, with smooth normals worked out from the shape. A detailed one gets
+    /// Godot's own lighter copies (levels of detail) built in, which the renderer swaps between by how big the model
+    /// is on screen - so a hero seen up close keeps every sculpted fold and a squad across the table costs little.
+    /// </summary>
+    public static ArrayMesh StlArrayMesh(StlMesh m, Material mat, out int lods)
+    {
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        for (int i = 0; i < m.Positions.Length; i += 3)
+            st.AddVertex(new Vector3(m.Positions[i], m.Positions[i + 1], m.Positions[i + 2]));
+        foreach (int i in m.Indices) st.AddIndex(i);
+        st.GenerateNormals();
+        st.SetMaterial(mat);
+        lods = 0;
+        if (m.Triangles <= StlTriangles) return st.Commit();
+
+        var im = new ImporterMesh();
+        im.AddSurface(Mesh.PrimitiveType.Triangles, st.CommitToArrays(), material: mat);
+        im.GenerateLods(60f, 0f, new Godot.Collections.Array());
+        lods = im.GetSurfaceLodCount(0);
+        return im.GetMesh();
     }
 
     private static void ReadMtl(string path, Dictionary<string, ObjMaterial> into)

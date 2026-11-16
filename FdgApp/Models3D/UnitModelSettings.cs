@@ -111,7 +111,7 @@ public enum EUpAxis
 public static class UnitModelPaths
 {
     /// <summary>Files the Asset Lab can open: 3D models and pictures.</summary>
-    public static readonly string[] ModelExtensions = { ".glb", ".gltf", ".obj" };
+    public static readonly string[] ModelExtensions = { ".glb", ".gltf", ".obj", ".stl" };
     public static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".webp" };
 
     public const string FolderName = "UnitModels";

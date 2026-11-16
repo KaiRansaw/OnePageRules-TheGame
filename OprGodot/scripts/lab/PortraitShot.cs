@@ -189,7 +189,7 @@ public static partial class PortraitShot
         public Batch(string folder, string outDir, Angle[]? angles = null)
         {
             _files = Directory.Exists(folder)
-                ? Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories).Where(f => f.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".gltf", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".obj", StringComparison.OrdinalIgnoreCase)).OrderBy(f => f).ToList()
+                ? Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories).Where(UnitModelPaths.IsModel).OrderBy(f => f).ToList()
                 : new List<string>();
             _out = outDir;
             _angles = angles ?? Angles;
