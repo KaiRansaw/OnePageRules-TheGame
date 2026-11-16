@@ -197,6 +197,8 @@ public sealed class ViewPreferences
     public float CameraSpeed { get; set; } = 1f;
     public bool InvertTilt { get; set; }
     public float MasterVolume { get; set; } = 1f;
+    /// <summary>Godot build: the small click and hover sounds on menu buttons (Kai, 2026-11-15).</summary>
+    public bool MenuSounds { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
     public bool ShowUnitModels { get; set; } = true;
 

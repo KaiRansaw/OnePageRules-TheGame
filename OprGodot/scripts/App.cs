@@ -52,7 +52,13 @@ public partial class App : Node
 
         // The tactical HUD look for every screen (Kai, 2026-11-10).
         GetTree().Root.Theme = Hud.HudTheme.Build();
+        // Menu sounds (2026-11-15), and the saved Master volume from the first frame, not only once Settings is opened.
+        Hud.UiSound.Install(this);
+        AudioServer.SetBusVolumeDb(0, Mathf.LinearToDb(Math.Max(UserConfig.Current.View.MasterVolume, 0.0001f)));
     }
+
+    /// <summary>Sees every input first, to know whether the player is on the mouse or the keyboard/controller.</summary>
+    public override void _Input(InputEvent e) => Hud.UiJuice.NoteInput(e);
 
     /// <summary>F11 switches fullscreen on and off on every screen (also in an editor run).</summary>
     public override void _UnhandledKeyInput(InputEvent e)
@@ -83,6 +89,7 @@ public partial class App : Node
         if (_screens.TryPeek(out Control? under)) under.Visible = false;
         _host.AddChild(screen);
         _screens.Push(screen);
+        if (!ScriptedRun.IsRequested) Hud.UiJuice.ScreenIn(screen);
         return screen;
     }
 
@@ -95,13 +102,22 @@ public partial class App : Node
     {
         if (_screens.Count <= 1) return; // the main menu has no Back
         if (_screens.Peek() is IBackGuard guard && !guard.AllowBack()) return;
-        _screens.Pop().QueueFree();
-        _screens.Peek().Visible = true;
+        Control leaving = _screens.Pop();
+        Reveal(_screens.Peek());
+        if (ScriptedRun.IsRequested) leaving.QueueFree();
+        else Hud.UiJuice.ScreenOut(leaving, leaving.QueueFree);
+    }
+
+    /// <summary>Shows a screen again that was under the one closing, with the same fade-in a new one gets.</summary>
+    private static void Reveal(Control screen)
+    {
+        screen.Visible = true;
+        if (!ScriptedRun.IsRequested) Hud.UiJuice.ScreenIn(screen, 12f);
     }
 
     /// <summary>Runs <paramref name="action"/> a moment later - after screens just closed have let go of things
     /// (a closed lobby releases the network port when it leaves the tree, at the end of the frame).</summary>
-    public void Later(Action action) => GetTree().CreateTimer(0.2).Timeout += action;
+    public void Later(Action action) => GetTree().CreateTimer(0.35).Timeout += action; // after Back's 0.14 s fade-out too
 
     /// <summary>A plain message box over whatever is showing.</summary>
     public void Message(string title, string text)
@@ -119,13 +135,13 @@ public partial class App : Node
     {
         if (!_screens.Any(s => s is T)) { ToMainMenu(); return; }
         while (_screens.Count > 1 && _screens.Peek() is not T) _screens.Pop().QueueFree();
-        _screens.Peek().Visible = true;
+        Reveal(_screens.Peek());
     }
 
     public void ToMainMenu()
     {
         while (_screens.Count > 1) _screens.Pop().QueueFree();
-        if (_screens.TryPeek(out Control? menu)) menu.Visible = true;
+        if (_screens.TryPeek(out Control? menu)) Reveal(menu);
     }
 
     /// <summary>Esc means Back on every screen that has one.</summary>

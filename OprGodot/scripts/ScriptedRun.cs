@@ -60,6 +60,16 @@ public partial class ScriptedRun : Node
                 _wait = int.MaxValue;
                 return;
             }
+            // "key:Down" presses and releases that key (keyboard focus checks); "hover:Name" acts as if the mouse moved onto
+            // the button called Name (the menu feel - UiJuice).
+            if (name.StartsWith("key:") && Enum.TryParse(name[4..], out Key key))
+            {
+                Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true });
+                Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false });
+                return;
+            }
+            if (name.StartsWith("hover:") && GetTree().Root.FindChild(name[6..], true, false) is Control hovered)
+            { hovered.EmitSignal(Control.SignalName.MouseEntered); return; }
             // "tab:Name" opens the tab called Name in whatever TabContainer has one.
             if (name.StartsWith("tab:")) { OpenTab(GetTree().Root, name[4..]); return; }
             // "army:<file>" gives the first (host) seat that army in the lobby; "confirm" presses OK on an open dialog.

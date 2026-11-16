@@ -38,9 +38,11 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         col.AddChild(HudKit.Gap(0, 34));
         col.AddChild(HudKit.Heading("Choose a game", 18));
         col.AddChild(HudKit.Gap(0, 12));
-        col.AddChild(GameTile(GameScreen.EFamily.GrimdarkFuture, "fire-ray"));
+        _gfTile = GameTile(GameScreen.EFamily.GrimdarkFuture, "fire-ray");
+        col.AddChild(_gfTile);
         col.AddChild(HudKit.Gap(0, 14));
-        col.AddChild(GameTile(GameScreen.EFamily.AgeOfFantasy, "sword-clash"));
+        _aofTile = GameTile(GameScreen.EFamily.AgeOfFantasy, "sword-clash");
+        col.AddChild(_aofTile);
         HudKit.Place(this, col, LayoutPreset.CenterLeft, new Vector2(110, -40));
 
         var tools = new HBoxContainer();
@@ -75,10 +77,47 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         HudKit.Place(this, foot, LayoutPreset.BottomRight, new Vector2(-28, -16));
 
         ShowOffSwitch();
+
+        // The feel (2026-11-15): every button here lifts, brightens, clicks, and can be reached with the keyboard or a
+        // controller - arrows / d-pad move, Enter / A presses. Down from the bottom tile goes to the tools row.
+        UiJuice.Attach(this);
+        _aofTile.FocusNeighborBottom = _aofTile.GetPathTo(tools.GetChild(0));
+        foreach (Node t in tools.GetChildren()) ((Control)t).FocusNeighborTop = ((Control)t).GetPathTo(_aofTile);
+        GetViewport().GuiFocusChanged += c => { if (IsInstanceValid(this) && IsAncestorOf(c)) _lastFocus = c; };
+        VisibilityChanged += () => { if (Visible && UiJuice.KeyboardMode) (_lastFocus ?? _gfTile).CallDeferred(Control.MethodName.GrabFocus); };
+        if (!ScriptedRun.IsRequested) Arrive(col, tools, foot);
         // Checks quietly on opening (Kai, 2026-11-12); the button lights up when there is something new. Not at all when
         // auto update detection is turned off (Kai, 2026-11-14).
         if (Offline) ShowDisconnected();
         else if (!ScriptedRun.IsRequested || OS.GetCmdlineUserArgs().Contains("--check-update")) _ = CheckForUpdate();
+    }
+
+    private Button _gfTile = null!, _aofTile = null!;
+    private Control? _lastFocus;
+
+    /// <summary>The menu builds itself in on opening: title, then each tile, then the tools, a beat apart.</summary>
+    private async void Arrive(VBoxContainer col, Control tools, Control foot)
+    {
+        // Wait for the containers to lay the pieces out, so they slide to where they really sit.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!IsInsideTree()) return;
+        UiJuice.Stagger(col.GetChildren().OfType<Control>().Append(tools).Append(foot), 0.035f);
+    }
+
+    /// <summary>The first arrow / d-pad press with nothing picked puts the cursor on the first tile.</summary>
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (!Visible) return;
+        Control? owner = GetViewport().GuiGetFocusOwner();
+        if (owner != null && IsAncestorOf(owner)) return;
+        foreach (string a in new[] { "ui_up", "ui_down", "ui_left", "ui_right", "ui_accept", "ui_focus_next" })
+            if (e.IsActionPressed(a))
+            {
+                (_lastFocus ?? _gfTile).GrabFocus();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
     }
 
     // ================================================================== Auto update detection switch

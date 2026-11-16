@@ -185,6 +185,8 @@ public partial class SettingsScreen : Control
                 View.MasterVolume = v;
                 AudioServer.SetBusVolumeDb(0, Mathf.LinearToDb(Math.Max(v, 0.0001f)));
             }, ""));
+        rows.AddChild(Check("Menu sounds", "A soft tick when the mouse or the keyboard cursor moves onto a button, and a click when you press one.",
+            View.MenuSounds, on => View.MenuSounds = on));
         foreach (string channel in new[] { "Music", "Effects", "Voices" })
         {
             var slider = new HSlider { MinValue = 0, MaxValue = 100, Value = 80, Editable = false, CustomMinimumSize = new Vector2(360, 0) };
