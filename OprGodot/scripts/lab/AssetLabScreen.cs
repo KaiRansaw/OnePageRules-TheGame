@@ -165,6 +165,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         fileRow.AddChild(Btn("OpenFolder", "Open folder", "Open the UnitModels folder in Windows, to add or rename files.", () => OS.ShellOpen(_root)));
         fileRow.AddChild(Btn("Rescan", "Refresh", "Look for new files now (it also checks by itself every couple of seconds).", Rescan));
         left.AddChild(fileRow);
+        left.AddChild(Btn("ImportStl", "Import printable model...", "Bring in a 3D-printing model (.stl) and its base: made light for the table, split into areas you can colour in Army Forge, saved to a unit. Dropping an .stl on the window opens this too.", () => OpenStlImport()));
         var dl = Btn("DownloadModels", "Download models...", "Fetch models for an army from Tabletop Simulator - 40k (ForceOrg) for Grimdark Future, Age of Sigmar (Stormvault) for Age of Fantasy - saved under each OPR unit's name.", () => OpenDownloads());
         left.AddChild(dl);
         left.AddChild(Btn("MakePortraits", "Portraits from models...", "Photograph downloaded 3D models as unit portraits, a whole army at once. A model's portrait is used for that version ahead of the official picture. (One version at a time: Army Forge -> Choose looks -> Make portrait.)", () => OpenPortraits()));
@@ -174,7 +175,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
             () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview, r => r.InitialFilter = _filter.Text)));
         left.AddChild(Btn("MatchModels", "Match models...", "Give the catalogue models no unit uses yet to an OPR unit by hand, and take wrong matches away.",
             () => App.I.Open<MatchModelsScreen>(Scenes.MatchModels, m => m.StartBook = _filter.Text.Trim().Length > 0 ? _filter.Text.Trim() : null)));
-        _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png), .stl or a picture onto the window to copy it in and open it.", 14, HudKit.Dim, HudKit.Semi);
+        _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png) or a picture onto the window to copy it in and open it. An .stl opens Import a printable model.", 14, HudKit.Dim, HudKit.Semi);
         _hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         left.AddChild(_hint);
 
@@ -345,6 +346,12 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
     private void OnFilesDropped(string[] files)
     {
         // Copy in, keeping a dropped folder's own name, so UnitModels/<Faction>/... works by dropping a faction folder.
+        // A printable model is imported (made light, split into areas), not copied: those files are 50-90 MB each.
+        if (files.Length > 0 && files.All(f => f.EndsWith(".stl", StringComparison.OrdinalIgnoreCase)))
+        {
+            OpenStlImport(files.FirstOrDefault(f => !StlKit.IsBaseFile(f)) ?? files[0]);
+            return;
+        }
         string? firstModel = null;
         string dropDir = Path.Combine(_root, "_Dropped");
         foreach (string src in files)
@@ -379,6 +386,14 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
     {
         var p = ModelDownloadPopup.Open(this, catalogue, map);
         p.Saved += () => { _list.Clear(); Rescan(); };
+        return p;
+    }
+
+    /// <summary>Opens Import a printable model, on <paramref name="figure"/> if given.</summary>
+    public StlImportPopup OpenStlImport(string? figure = null)
+    {
+        var p = StlImportPopup.Open(this, figure);
+        p.Saved += file => { _list.Clear(); Rescan(); };
         return p;
     }
 

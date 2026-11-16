@@ -18,6 +18,9 @@ internal static class ForgeWidgets
     private static UnitModelLibrary? _models;
     private static bool _modelsScanned;
 
+    /// <summary>Makes the next <see cref="Models"/> read the folder again (a model was just imported or downloaded).</summary>
+    public static void ForgetModels() => _modelsScanned = false;
+
     /// <summary>The downloaded unit models, scanned once per run (Rescan after a download).</summary>
     public static UnitModelLibrary? Models()
     {

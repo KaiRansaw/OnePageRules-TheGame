@@ -37,10 +37,15 @@ public partial class ScriptedRun : Node
         return run._presses.Count > 0 || run._shot != null;
     }
 
+    /// <summary>While this says so, the next step waits (a slow job such as an STL import).</summary>
+    private Func<bool>? _holdWhile;
+
     public override void _Process(double delta)
     {
         if (--_wait > 0) return;
         _wait = 15;
+        if (_holdWhile?.Invoke() == true) return;
+        _holdWhile = null;
 
         if (_presses.TryDequeue(out string? name))
         {
@@ -181,6 +186,15 @@ public partial class ScriptedRun : Node
             {
                 string arg = name[(name.IndexOf(':') + 1)..];
                 if (name.StartsWith("lab:")) lab.Open(arg);
+                // "labstl:<figure.stl>" opens Import a printable model; "labstlset:base|areas|book|unit" (blank = leave);
+                // "labstlsave" saves.
+                else if (name.StartsWith("labstl:")) lab.OpenStlImport(arg);
+                else if (name.StartsWith("labstlset:") && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp && arg.Split('|') is { Length: 4 } st)
+                    imp.Drive(int.TryParse(st[0], out int bp) ? bp : null, int.TryParse(st[1], out int ar) ? ar : null,
+                        st[2].Length > 0 ? st[2] : null, st[3].Length > 0 ? st[3] : null);
+                else if (name == "labstlsave" && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp2) imp2.DriveSave();
+                // "labstlwait" holds the next step until the import has read and lightened its files.
+                else if (name == "labstlwait" && Find<Lab.StlImportPopup>(GetTree().Root) is { } imp3) _holdWhile = () => imp3.Busy;
                 else if (name.StartsWith("labview:") && int.TryParse(arg, out int v)) lab.View(v);
                 else if (name.StartsWith("labcopies:") && int.TryParse(arg, out int c)) lab.SetCopies(c);
                 else if (name.StartsWith("labset:") && arg.Split('=') is [var box, var val]) lab.SetBox(box, val);

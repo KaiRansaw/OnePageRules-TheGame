@@ -203,6 +203,9 @@ public partial class LooksPanel : HBoxContainer
             box.AddChild(ForgeWidgets.Wrapped("Pick a version (or a model) to see its colours here.", 13, HudKit.Dim));
             return box;
         }
+        // An imported printable model: colour it area by area (the colouring book) instead of swapping colours.
+        if (ModelPainter.Areas(shown) is { Count: > 0 } areas) return AreasBox(box, slots, areas);
+
         var row = new HFlowContainer();
         row.AddThemeConstantOverride("h_separation", 6);
         row.AddThemeConstantOverride("v_separation", 6);
@@ -255,6 +258,75 @@ public partial class LooksPanel : HBoxContainer
             ? "Select models first (click one, Shift+click, or Select all), then click a colour."
             : "Up to 4 colour changes a model. Saved in the army file - other players see them too.", 13, HudKit.Dim));
         return box;
+    }
+
+    /// <summary>
+    /// The colouring book (Kai, 2026-11-15, option 3 of the painter mockups): one row per area of an imported
+    /// printable model, biggest first, each with its colour. Hovering a row lights that area up on the model; clicking
+    /// its colour picks a new one for every selected model.
+    /// </summary>
+    private Control AreasBox(VBoxContainer box, IReadOnlyList<ForgeSession.ModelSlot> slots, List<(int Area, float Share, Color Colour)> areas)
+    {
+        var first = _selected.Where(i => i < slots.Count).Select(i => slots[i]).FirstOrDefault();
+        var painted = _selected.Count == 0 ? new SortedDictionary<int, int>() : ModelPaint.Areas(first.Paint);
+        var grid = new GridContainer { Columns = 3 };
+        grid.AddThemeConstantOverride("h_separation", 8);
+        grid.AddThemeConstantOverride("v_separation", 4);
+        foreach (var (area, share, plain) in areas)
+        {
+            int a = area;
+            string label = $"Area {area}" + (_preview?.AreaIsBase(area) == true ? " (base)" : "") + $"  -  {share * 100:0}%";
+            var name = HudKit.Text(label, 14, HudKit.Fg, HudKit.Semi);
+            name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            name.MouseFilter = MouseFilterEnum.Pass;
+            var pick = new ColorPickerButton
+            {
+                Name = $"Area{area}", Color = painted.TryGetValue(area, out int rgb) ? ModelPainter.ColorOf(rgb) : plain, EditAlpha = false,
+                CustomMinimumSize = new Vector2(64, 30), FocusMode = FocusModeEnum.None,
+                TooltipText = $"Colour area {area} on the {_selected.Count} selected model{(_selected.Count == 1 ? "" : "s")}.",
+            };
+            pick.MouseEntered += () => _preview?.Highlight(a);
+            pick.MouseExited += () => _preview?.Highlight(null);
+            name.MouseEntered += () => _preview?.Highlight(a);
+            name.MouseExited += () => _preview?.Highlight(null);
+            // Deferred, as the swatches: the repaint rebuilds this panel while the picker's popup is still closing.
+            pick.PopupClosed += () => { int to = ModelPainter.Rgb(pick.Color); Callable.From(() => PaintArea(a, to)).CallDeferred(); };
+            var undo = Ui.Button("Plain", () => Callable.From(() => PaintArea(a, null)).CallDeferred(), $"Area {area} back to plain grey on the selected models.", "BackButton");
+            undo.Disabled = !painted.ContainsKey(area);
+            grid.AddChild(name);
+            grid.AddChild(pick);
+            grid.AddChild(undo);
+        }
+        box.AddChild(grid);
+        var clear = Ui.Button("All plain", () => Callable.From(() =>
+        {
+            if (_selected.Count == 0) return;
+            var now = _s.Slots(_row);
+            _s.ClearPaint(_selected.Where(i => i < now.Count).Select(i => now[i]));
+            Refresh();
+            ShowTarget();
+        }).CallDeferred(), "Take every colour off the selected models.", "BackButton");
+        clear.Name = "ClearPaint";
+        clear.Disabled = _selected.Count == 0;
+        box.AddChild(clear);
+        box.AddChild(ForgeWidgets.Wrapped(_selected.Count == 0
+            ? "Select models first (click one, Shift+click, or Select all), then pick each area's colour."
+            : "Point at an area's row to see it light up on the model. Saved in the army file - other players see it too.", 13, HudKit.Dim));
+        return box;
+    }
+
+    /// <summary>Screenshot driver: lights area <paramref name="area"/> up, as pointing at its row does.</summary>
+    public void DriveHighlight(int area) => _preview?.Highlight(area);
+
+    /// <summary>Colours one area on the selected models (null: back to plain).</summary>
+    public void PaintArea(int area, int? rgb)
+    {
+        var slots = _s.Slots(_row);
+        if (_selected.Count == 0) { _status("Select one or more models first, then pick a colour.", Palette.HitsYellow); return; }
+        _s.SetAreaPaint(_selected.Where(i => i < slots.Count).Select(i => slots[i]), area, rgb);
+        _status(rgb == null ? $"Area {area} is plain again." : $"Area {area} painted on {_selected.Count} model{(_selected.Count == 1 ? "" : "s")}.", Palette.Lime);
+        Refresh();
+        ShowTarget();
     }
 
     /// <summary>Screenshot driver: does what a person does - opens swatch <paramref name="n"/>'s colour popup, picks
@@ -550,11 +622,46 @@ public partial class LookPreview : SubViewportContainer
         pivot.AddChild(body);
         Shown = a.Model; // the unpainted original: the painter reads the model's own colours from it
         ModelPainter.Apply(body, paint);
+        _body = body;
+        _lit = null;
         var (_, box) = ModelPlacement.Place(pivot, body, s);
         _focusY = Mathf.Max(0.5f, box.Size.Y * 0.45f);
         _distance = Mathf.Max(4.5f, Mathf.Max(box.Size.Y, Mathf.Max(box.Size.X, box.Size.Z)) * 2.4f + 2f);
         Aim();
         return $"{(s.BaseMm > 0 ? $"{s.BaseMm:0.#} mm base, " : "")}stands {box.Size.Y * UnitModelSettings.MmPerInch:0} mm tall";
+    }
+
+    private Node3D? _body;
+    private List<(MeshInstance3D Mi, int Surface, Material? Was)>? _lit;
+
+    /// <summary>True when area <paramref name="area"/> of the model on show is its base piece.</summary>
+    public bool AreaIsBase(int area) =>
+        Shown != null && AssetLoader.All<MeshInstance3D>(Shown).Any(mi => mi.Mesh != null && Enumerable.Range(0, mi.Mesh.GetSurfaceCount())
+            .Any(s => mi.Mesh.SurfaceGetMaterial(s) is { } m && ModelPainter.AreaOf(m) == area && m.ResourceName.EndsWith(" Base", StringComparison.Ordinal)));
+
+    /// <summary>Lights up one area of the model on show (null: none) - so a person sees which part a row is.</summary>
+    public void Highlight(int? area)
+    {
+        if (_body == null || !IsInstanceValid(_body)) return;
+        if (_lit != null) foreach (var (mi, s, was) in _lit) if (IsInstanceValid(mi)) mi.SetSurfaceOverrideMaterial(s, was);
+        _lit = null;
+        if (area is not int n) return;
+        _lit = new();
+        foreach (MeshInstance3D mi in AssetLoader.All<MeshInstance3D>(_body))
+        {
+            if (mi.Mesh == null) continue;
+            for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
+            {
+                Material? active = mi.GetActiveMaterial(s);
+                if (ModelPainter.AreaOf(active) != n || active is not StandardMaterial3D sm) continue;
+                _lit.Add((mi, s, mi.GetSurfaceOverrideMaterial(s)));
+                var glow = (StandardMaterial3D)sm.Duplicate();
+                glow.EmissionEnabled = true;
+                glow.Emission = HudKit.Lime;
+                glow.EmissionEnergyMultiplier = 0.55f;
+                mi.SetSurfaceOverrideMaterial(s, glow);
+            }
+        }
     }
 
     public override void _Process(double delta) => Spin(delta);

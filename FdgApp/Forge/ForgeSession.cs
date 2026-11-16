@@ -282,6 +282,19 @@ internal sealed class ForgeSession
         }
     }
 
+    /// <summary>Colours area <paramref name="area"/> of these models (an imported printable model), or with null puts it back.</summary>
+    public void SetAreaPaint(IEnumerable<ModelSlot> slots, int area, int? rgb)
+    {
+        foreach (ModelSlot s in slots)
+        {
+            BuilderUnit bu = List.Units[s.Row];
+            bu.ModelPaints ??= new List<string?>();
+            while (bu.ModelPaints.Count <= s.Index) bu.ModelPaints.Add(null);
+            bu.ModelPaints[s.Index] = Models3D.ModelPaint.WithArea(bu.ModelPaints[s.Index], area, rgb);
+            if (bu.ModelPaints.All(p => p == null)) bu.ModelPaints = null;
+        }
+    }
+
     /// <summary>Takes every colour swap off these models.</summary>
     public void ClearPaint(IEnumerable<ModelSlot> slots)
     {

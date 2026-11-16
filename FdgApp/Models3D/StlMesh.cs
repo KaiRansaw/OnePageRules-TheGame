@@ -26,10 +26,14 @@ public sealed class StlMesh
     public int Triangles => Indices.Length / 3;
     public int Corners => Positions.Length / 3;
 
-    public static StlMesh Read(string file) => Read(File.ReadAllBytes(file));
+    public static StlMesh Read(string file, bool standUp = true) => Read(File.ReadAllBytes(file), standUp);
 
-    /// <summary>Reads a binary or text STL. Throws <see cref="InvalidDataException"/> when it is neither.</summary>
-    public static StlMesh Read(byte[] data)
+    /// <summary>
+    /// Reads a binary or text STL. Throws <see cref="InvalidDataException"/> when it is neither.
+    /// <paramref name="standUp"/> false leaves it exactly as the file has it - for a kit, whose pieces must all be
+    /// turned the same way (decided from the base: <see cref="KitUp"/>).
+    /// </summary>
+    public static StlMesh Read(byte[] data, bool standUp = true)
     {
         var welder = new Welder();
         if (IsBinary(data))
@@ -59,7 +63,7 @@ public sealed class StlMesh
         }
         StlMesh mesh = welder.Build();
         mesh.DropFlatTriangles();
-        mesh.StandUp();
+        if (standUp) mesh.StandUp();
         return mesh;
     }
 
@@ -89,7 +93,23 @@ public sealed class StlMesh
     {
         var b = Bounds();
         bool onBedZ = Math.Abs(b.Z0) < 1e-4f && Math.Abs(b.Y0) > 1e-3f;
-        if (!onBedZ) return;
+        if (onBedZ) TurnZUp();
+    }
+
+    /// <summary>
+    /// Which way a kit is up, from its base: a base is a flat disc, so its thinnest side is the up axis - 'Z' or 'Y'.
+    /// (A figure alone can't tell: a staff or a cloak can make it deeper than it is tall.)
+    /// </summary>
+    public static char KitUp(StlMesh basePiece)
+    {
+        var b = basePiece.Bounds();
+        float dx = b.X1 - b.X0, dy = b.Y1 - b.Y0, dz = b.Z1 - b.Z0;
+        return dz < dy && dz < dx ? 'Z' : 'Y';
+    }
+
+    /// <summary>Turns a Z-up model so Y is up, as the game is.</summary>
+    public void TurnZUp()
+    {
         FileUp = 'Z';
         for (int i = 0; i < Positions.Length; i += 3)
         {

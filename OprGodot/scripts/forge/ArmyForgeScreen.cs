@@ -712,6 +712,14 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
             // "forge:swatch:N:RRGGBB" picks a colour in swatch N's popup and closes it, like a person does.
+            // "forge:area:N:RRGGBB" colours area N of the selected models (an imported printable model).
+            case "area" when arg.Split(':') is [var an, var ac] && int.TryParse(an, out int areaN):
+                _looks?.PaintArea(areaN, int.Parse(ac, System.Globalization.NumberStyles.HexNumber));
+                return;
+            // "forge:light:N" lights area N up on the preview, as pointing at its row does.
+            case "light" when int.TryParse(arg, out int lightN):
+                _looks?.DriveHighlight(lightN);
+                return;
             case "swatch" when arg.Split(':') is [var sn, var sc] && int.TryParse(sn, out int swn):
                 _looks?.DriveSwatch(swn, int.Parse(sc, System.Globalization.NumberStyles.HexNumber));
                 return;
