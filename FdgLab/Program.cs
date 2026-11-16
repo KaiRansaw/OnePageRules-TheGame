@@ -283,7 +283,8 @@ static async Task<int> RunSmoke(string[] args)
     var spec = GameSpec.TwoPlayer(
         Armies.LoadSlot(Arg(args, "--a") ?? Armies.BuiltinSpec) with { Profile = profileA },
         Armies.LoadSlot(Arg(args, "--b") ?? Armies.BuiltinSpec) with { Profile = profileB },
-        seed: IntArg(args, "--seed", 42));
+        seed: IntArg(args, "--seed", 42),
+        randomness: Arg(args, "--dice") == "probabilistic" ? ERandomnessType.Probabilistic : ERandomnessType.Realistic);
 
     // --repeat N: play the SAME spec N times in one process. Any variation between iterations is a
     // determinism bug — either leaked cross-game state or in-game nondeterminism (#193 contract).
