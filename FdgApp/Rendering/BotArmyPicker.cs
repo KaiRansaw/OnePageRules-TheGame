@@ -141,8 +141,15 @@ public sealed class BotArmyPicker
             }
         }
 
+        // Kai, 2026-11-15: bots field real lists - an Army Forge Ready-to-Play list in the band beats a sample one.
+        List<ArmyCatalogEntry> real = band.Where(IsReadyToPlay).ToList();
+        if (real.Count > 0) return real[_rng.Next(real.Count)];
         return band.Count > 0 ? band[_rng.Next(band.Count)] : First(pool, eligible);
     }
+
+    /// <summary>An Army Forge Ready-to-Play list (shipped under armies/&lt;game&gt;/Ready-to-Play/).</summary>
+    public static bool IsReadyToPlay(ArmyCatalogEntry entry) =>
+        entry.Path.Replace('\\', '/').Contains("/" + FdgRaylib.Import.ReadyListHarvester.FolderName + "/", StringComparison.OrdinalIgnoreCase);
 
     private static ArmyCatalogEntry? First(
         IReadOnlyList<ArmyCatalogEntry> ranked, Func<ArmyCatalogEntry, bool> predicate)

@@ -1165,6 +1165,20 @@ if (retrofitBasesIdx >= 0 && retrofitBasesIdx + 1 < args.Length)
     return;
 }
 
+// --harvest-ready-lists [perBook]  (Kai, 2026-11-15): download Army Forge's Ready-to-Play lists (official + best-voted
+// community lists), rebuild each against the bundled books, keep the ones still legal, and write them into
+// armies/<game>/Ready-to-Play/ - where bots and Choose an army find them. Re-run when OPR updates.
+int harvestIdx = Array.IndexOf(args, "--harvest-ready-lists");
+if (harvestIdx >= 0)
+{
+    if (FdgRaylib.ArmyPaths.FolderPath is not { } armiesRoot) { Console.WriteLine("No armies folder found."); Environment.Exit(1); return; }
+    int perBook = harvestIdx + 1 < args.Length && int.TryParse(args[harvestIdx + 1], out int pb) ? pb : 4;
+    var harvest = await FdgRaylib.Import.ReadyListHarvester.RunAsync(armiesRoot, perBook: perBook, log: Console.WriteLine);
+    Console.WriteLine($"Ready-to-Play: {harvest.Books} books, {harvest.Fetched} lists read, {harvest.Kept} kept.");
+    foreach (var (why, n) in harvest.SkippedBecause.OrderByDescending(kv => kv.Value)) Console.WriteLine($"  skipped {n}: {why}");
+    return;
+}
+
 // --make-scenario <scenario.json> <out.fdgsave>  (#167 T1): compile a compact scenario JSON (armies,
 // placements, wounds/tokens, whose activation it is) into a resumable save positioned at the start of
 // the active player's activation. Author a rule test in ~20 lines of JSON instead of playing to it.
