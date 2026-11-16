@@ -202,6 +202,7 @@ public partial class BattleTable : Node3D
         root.AddChild(pivot);
         var body = (Node3D)source.Duplicate();
         pivot.AddChild(body);
+        Lab.ModelPainter.Apply(body, m.Paint); // the colour painter - every player sees the owner's colours
         var (_, box) = Lab.ModelPlacement.Place(pivot, body, s);
         height = box.End.Y;
         return true;

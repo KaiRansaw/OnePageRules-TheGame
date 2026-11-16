@@ -230,7 +230,7 @@ internal sealed class ForgeSession
     // ---------------------------------------------------------------- looks (Kai, 2026-11-12)
 
     /// <summary>One model of a unit as the look picker shows it: which list row owns it and where in that row.</summary>
-    public readonly record struct ModelSlot(int Row, int Index, string? Look, IReadOnlyList<string> Special);
+    public readonly record struct ModelSlot(int Row, int Index, string? Look, IReadOnlyList<string> Special, string? Paint = null);
 
     /// <summary>Every model of the unit at <paramref name="index"/> in table order - a combined pair's both
     /// halves, the first copy first - with its look and any special kit it carries.</summary>
@@ -246,8 +246,10 @@ internal sealed class ForgeSession
             var (unit, _) = Detail(r);
             var special = ForgeRules.SpecialKit(unit);
             var looks = List.Units[r].ModelLooks;
+            var paints = List.Units[r].ModelPaints;
             for (int i = 0; i < unit.ModelCount; i++)
-                slots.Add(new ModelSlot(r, i, looks != null && i < looks.Count ? looks[i] : null, special[i]));
+                slots.Add(new ModelSlot(r, i, looks != null && i < looks.Count ? looks[i] : null, special[i],
+                    paints != null && i < paints.Count ? paints[i] : null));
         }
         return slots;
     }
@@ -262,6 +264,33 @@ internal sealed class ForgeSession
             while (bu.ModelLooks.Count <= s.Index) bu.ModelLooks.Add(null);
             bu.ModelLooks[s.Index] = string.IsNullOrEmpty(look) ? null : look;
             if (bu.ModelLooks.All(l => l == null)) bu.ModelLooks = null;
+        }
+    }
+
+    /// <summary>Gives these models a colour swap (Kai, 2026-11-15: the colour painter) - or, with <paramref name="to"/>
+    /// null, takes that colour's swap off them.</summary>
+    public void SetPaint(IEnumerable<ModelSlot> slots, int from, int? to)
+    {
+        foreach (ModelSlot s in slots)
+        {
+            BuilderUnit bu = List.Units[s.Row];
+            bu.ModelPaints ??= new List<string?>();
+            while (bu.ModelPaints.Count <= s.Index) bu.ModelPaints.Add(null);
+            string? had = bu.ModelPaints[s.Index];
+            bu.ModelPaints[s.Index] = to is int c ? Models3D.ModelPaint.With(had, from, c) : Models3D.ModelPaint.Without(had, from);
+            if (bu.ModelPaints.All(p => p == null)) bu.ModelPaints = null;
+        }
+    }
+
+    /// <summary>Takes every colour swap off these models.</summary>
+    public void ClearPaint(IEnumerable<ModelSlot> slots)
+    {
+        foreach (ModelSlot s in slots)
+        {
+            BuilderUnit bu = List.Units[s.Row];
+            if (bu.ModelPaints == null || s.Index >= bu.ModelPaints.Count) continue;
+            bu.ModelPaints[s.Index] = null;
+            if (bu.ModelPaints.All(p => p == null)) bu.ModelPaints = null;
         }
     }
 
@@ -281,8 +310,14 @@ internal sealed class ForgeSession
     {
         foreach (int r in new[] { index, PartnerOf(index) })
         {
-            if (r < 0 || List.Units[r].ModelLooks is not { } looks) continue;
+            if (r < 0) continue;
             int n = Detail(r).Unit.ModelCount;
+            if (List.Units[r].ModelPaints is { } paints)
+            {
+                if (paints.Count > n) paints.RemoveRange(n, paints.Count - n);
+                if (paints.All(p => p == null)) List.Units[r].ModelPaints = null;
+            }
+            if (List.Units[r].ModelLooks is not { } looks) continue;
             if (looks.Count > n) looks.RemoveRange(n, looks.Count - n);
             if (looks.All(l => l == null)) List.Units[r].ModelLooks = null;
         }

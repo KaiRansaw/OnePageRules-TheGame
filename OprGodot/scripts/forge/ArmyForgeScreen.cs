@@ -711,6 +711,10 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "selall": _looks?.SelectAll(); _looks?.Refresh(); return;
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
+            // "forge:paint:RRGGBB>RRGGBB" repaints the selected models (the colour painter).
+            case "paint" when arg.Split('>') is [var pf, var pt]:
+                _looks?.Repaint(int.Parse(pf, System.Globalization.NumberStyles.HexNumber), int.Parse(pt, System.Globalization.NumberStyles.HexNumber));
+                return;
             case "portrait": _looks?.DriveMakePortrait(); return;
             // "forge:camera:<yaw>;<pitch>;<zoom>[;take]" opens the portrait camera on the previewed version.
             case "camera" when arg.Split(';') is { Length: >= 3 } cm:

@@ -149,6 +149,9 @@ public partial class LooksPanel : HBoxContainer
         reset.Name = "ResetLooks";
         buttons.AddChild(reset);
         left.AddChild(buttons);
+        _coloursHolder = new VBoxContainer();
+        _coloursHolder.AddChild(ColoursBox(slots));
+        left.AddChild(_coloursHolder);
         left.AddChild(ForgeWidgets.Wrapped("Models you don't pick use the unit's first version. Looks are saved in the army file; a friend sees them if they have those models downloaded.", 13, HudKit.Dim));
         return HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(left, 16, 12, 16, 12));
     }
@@ -160,10 +163,111 @@ public partial class LooksPanel : HBoxContainer
     {
         if (_preview == null || !IsInstanceValid(_preview)) return;
         _previewFile = file;
-        string? line = _preview.Show(file);
+        string? line = _preview.Show(file, PreviewPaint(file));
         var versions = Versions();
         _previewLabel.Text = ModelLooks.Label(versions, file) + (line != null ? "  -  " + line : "");
         ShowPortrait();
+        RefreshColours();
+    }
+
+    // ---- The colour painter (Kai, 2026-11-15: "individual models, and I'd like the opponents to see them" - colour
+    // swaps). Pick one of the model's own colours, pick what it becomes; every selected model gets that swap.
+
+    private VBoxContainer? _coloursHolder;
+
+    /// <summary>Re-reads the colours of the model now in the preview.</summary>
+    private void RefreshColours()
+    {
+        if (_coloursHolder == null || !IsInstanceValid(_coloursHolder)) return;
+        foreach (Node c in _coloursHolder.GetChildren()) { _coloursHolder.RemoveChild(c); c.QueueFree(); }
+        _coloursHolder.AddChild(ColoursBox(_s.Slots(_row)));
+    }
+
+    /// <summary>The paint the preview wears: the first selected model's, when it wears this version.</summary>
+    private string? PreviewPaint(string file)
+    {
+        var slots = _s.Slots(_row);
+        var versions = Versions();
+        foreach (int i in _selected)
+            if (i < slots.Count && ModelLooks.Pick(versions, slots[i].Look) == file) return slots[i].Paint;
+        return null;
+    }
+
+    private Control ColoursBox(IReadOnlyList<ForgeSession.ModelSlot> slots)
+    {
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 6);
+        box.AddChild(HudKit.Heading("Colours - repaint the selected models", 15));
+        if (_preview?.Shown is not { } shown || !IsInstanceValid(shown))
+        {
+            box.AddChild(ForgeWidgets.Wrapped("Pick a version (or a model) to see its colours here.", 13, HudKit.Dim));
+            return box;
+        }
+        var row = new HFlowContainer();
+        row.AddThemeConstantOverride("h_separation", 6);
+        row.AddThemeConstantOverride("v_separation", 6);
+        int n = 0;
+        foreach (var (colour, share) in ModelPainter.MainColours(shown))
+        {
+            int from = ModelPainter.Rgb(colour);
+            var swatch = new ColorPickerButton
+            {
+                Name = $"Colour{++n}", Color = colour, EditAlpha = false, CustomMinimumSize = new Vector2(52, 36), FocusMode = FocusModeEnum.None,
+                TooltipText = $"About {share * 100:0}% of this model. Click to choose what this colour becomes on the {_selected.Count} selected model{(_selected.Count == 1 ? "" : "s")}.",
+            };
+            swatch.PopupClosed += () => Repaint(from, ModelPainter.Rgb(swatch.Color));
+            row.AddChild(swatch);
+        }
+        box.AddChild(row);
+        if (n == 0) box.AddChild(ForgeWidgets.Wrapped("This model has no colours the painter can read.", 13, HudKit.Dim));
+
+        // What the first selected model has now, each swap with a button to undo it.
+        var first = _selected.Where(i => i < slots.Count).Select(i => slots[i]).FirstOrDefault();
+        var swaps = _selected.Count == 0 ? new List<ColourSwap>() : ModelPaint.Parse(first.Paint);
+        foreach (ColourSwap sw in swaps)
+        {
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 8);
+            line.AddChild(new ColorRect { Color = ModelPainter.ColorOf(sw.From), CustomMinimumSize = new Vector2(28, 22) });
+            line.AddChild(HudKit.Text("->", 15, HudKit.Dim, HudKit.Bold));
+            line.AddChild(new ColorRect { Color = ModelPainter.ColorOf(sw.To), CustomMinimumSize = new Vector2(28, 22) });
+            int from = sw.From;
+            line.AddChild(Ui.Button("Undo", () => Repaint(from, null), "Take this colour change off the selected models.", "BackButton"));
+            box.AddChild(line);
+        }
+        var buttons = new HBoxContainer();
+        buttons.AddThemeConstantOverride("separation", 8);
+        var clear = Ui.Button("Original colours", () =>
+        {
+            if (_selected.Count == 0) return;
+            _s.ClearPaint(_selected.Where(i => i < slots.Count).Select(i => slots[i]));
+            Refresh();
+            ShowTarget();
+        }, "Take every colour change off the selected models.", "BackButton");
+        clear.Name = "ClearPaint";
+        clear.Disabled = _selected.Count == 0;
+        buttons.AddChild(clear);
+        box.AddChild(buttons);
+        box.AddChild(ForgeWidgets.Wrapped(_selected.Count == 0
+            ? "Select models first (click one, Shift+click, or Select all), then click a colour."
+            : "Up to 4 colour changes a model. Saved in the army file - other players see them too.", 13, HudKit.Dim));
+        return box;
+    }
+
+    /// <summary>Gives the selected models a colour swap (or, with <paramref name="to"/> null, takes it off).</summary>
+    public void Repaint(int from, int? to)
+    {
+        var slots = _s.Slots(_row);
+        if (_selected.Count == 0)
+        {
+            _status("Select one or more models first, then click a colour.", Palette.HitsYellow);
+            return;
+        }
+        if (to == from) return;
+        _s.SetPaint(_selected.Where(i => i < slots.Count).Select(i => slots[i]), from, to);
+        _status(to == null ? "Colour change taken off." : $"{_selected.Count} model{(_selected.Count == 1 ? "" : "s")} repainted.", Palette.Lime);
+        Refresh();
+        ShowTarget();
     }
 
     // ---- Make a portrait of the version in the preview (Kai, 2026-11-14: "choose which model you want THEN make the
@@ -411,8 +515,12 @@ public partial class LookPreview : SubViewportContainer
         Aim();
     }
 
-    /// <summary>Shows a model file; returns a short line about it, or the reason it can't.</summary>
-    public string? Show(string file)
+    /// <summary>The model on show as loaded - unpainted - for reading its own colours (the painter). Null before anything is shown.</summary>
+    public Node3D? Shown { get; private set; }
+
+    /// <summary>Shows a model file, painted with <paramref name="paint"/>'s colour swaps; returns a short line about it,
+    /// or the reason it can't.</summary>
+    public string? Show(string file, string? paint = null)
     {
         if (_stage == null) return null;
         foreach (Node c in _stage.GetChildren()) { _stage.RemoveChild(c); c.QueueFree(); }
@@ -427,6 +535,8 @@ public partial class LookPreview : SubViewportContainer
         holder.AddChild(pivot);
         var body = (Node3D)a.Model.Duplicate();
         pivot.AddChild(body);
+        Shown = a.Model; // the unpainted original: the painter reads the model's own colours from it
+        ModelPainter.Apply(body, paint);
         var (_, box) = ModelPlacement.Place(pivot, body, s);
         _focusY = Mathf.Max(0.5f, box.Size.Y * 0.45f);
         _distance = Mathf.Max(4.5f, Mathf.Max(box.Size.Y, Mathf.Max(box.Size.X, box.Size.Z)) * 2.4f + 2f);
