@@ -326,7 +326,7 @@ public sealed class LobbySession : IDisposable
         }
 
         // #395: no saved army of this game (Firefight and Skirmish ship with none) - make one up from a random book.
-        if (MadeUpArmy(Vm.GameSystem, Vm.ArmyPoints, Random.Shared) is { } made)
+        if (MadeUpArmy(Vm.GameSystem, Vm.ArmyPoints, Random.Shared, Vm.ForceOrg) is { } made)
         {
             RollProblem = null;
             Vm.UpdateArmyListFile(playerID, made);
@@ -344,14 +344,14 @@ public sealed class LobbySession : IDisposable
     /// #395 - a legal army made up from a random army book of the game, at the points limit (RandomArmyBuilder). For the
     /// four battle games; null for Quest (its enemies are whole collections) or when no book can field one.
     /// </summary>
-    public static BuiltArmyFile? MadeUpArmy(EGameSystem system, int points, Random rng)
+    public static BuiltArmyFile? MadeUpArmy(EGameSystem system, int points, Random rng, bool forceOrg = true)
     {
         string? slug = FDG.ArmyBuilding.GameSystems.CampaignBookSlug(system);
         if (slug == null) return null;
         var books = BookLibrary.Load().Where(b => FDG.ArmyBuilding.GameSystems.SameSystem(b.GameSystem, slug))
             .OrderBy(_ => rng.Next()).Take(6).ToList();
         foreach (FDG.ArmyBuilding.BookFile book in books)
-            if (FDG.ArmyBuilding.RandomArmyBuilder.Build(book, points, rng, $"Random {book.Name}") is { } army) return army;
+            if (FDG.ArmyBuilding.RandomArmyBuilder.Build(book, points, rng, $"Random {book.Name}", forceOrg) is { } army) return army;
         return null;
     }
 
@@ -423,6 +423,8 @@ public sealed class LobbySession : IDisposable
         if (!Vm.HasHostPrivileges || Vm.PlayerInfos.Count == 0) return "Not hosting.";
         if (LoadArmyFile(launch.ArmyFile) is not { } army) return "Couldn't read your campaign army.";
         PlayerID host = Vm.PlayerInfos[0].PlayerID;
+        // The campaign books: "players may bring any number of their units" - no Force Organisation (Kai, 2026-11-15).
+        Vm.SetForceOrg(false);
         if (army.TotalPoints > Vm.ArmyPoints) Vm.SetArmyPoints(army.TotalPoints);
         _served.Add(host.ID);
         Vm.UpdateArmyListFile(host, army);

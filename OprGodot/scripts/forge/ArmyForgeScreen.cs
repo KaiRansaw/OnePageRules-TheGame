@@ -4,6 +4,7 @@ using FdgRaylib;
 using FdgRaylib.Forge;
 using FdgRaylib.Models3D;
 using FdgRaylib.Rendering;
+using FdgRaylib.Config;
 using Godot;
 using OprGodot.Hud;
 
@@ -89,6 +90,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             try
             {
                 _s = new ForgeSession(new List<BookFile>(t.Result));
+                _s.ForceOrg = Campaign == null && UserConfig.Current.HostSettings.ForgeForceOrg;
                 if (OpenPath != null) OpenFile(OpenPath);
                 if (Campaign is { } build && !BeginCampaign(build)) return;
             }
@@ -253,6 +255,14 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var name = new LineEdit { Name = "ArmyName", PlaceholderText = "army name", Text = s.List.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
         name.TextChanged += txt => s.List.Name = txt;
         _top.AddChild(name);
+
+        // Force Organisation (Kai, 2026-11-15): the Advanced Rulebook's optional army caps, on or off; remembered.
+        var forceOrg = new CheckBox { Name = "ForceOrg", Text = "Force Org", ButtonPressed = s.ForceOrg, FocusMode = FocusModeEnum.None,
+            TooltipText = "The Advanced Rulebook's optional Force Organisation: limits on Heroes, copies of a unit, any one unit's share "
+                + "of the points, the number of units, and models/Tough. On: lists breaking them get a warning. Off: no such limits "
+                + "(the book's default - \"no limitations as to how many units you can take\")." };
+        forceOrg.Toggled += on => { s.ForceOrg = on; UserConfig.Current.HostSettings.ForgeForceOrg = on; UserConfig.Save(); Rebuild(); };
+        _top.AddChild(forceOrg);
 
         _top.AddChild(HudKit.Text("Limit", 15, HudKit.Dim, HudKit.Semi));
         var limit = new SpinBox { Name = "Limit", MinValue = 0, MaxValue = 20000, Step = 50, Value = s.List.PointsLimit, Suffix = "pts", CustomMinimumSize = new Vector2(120, 0), TooltipText = "The points limit for this list." };

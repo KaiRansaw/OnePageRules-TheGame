@@ -164,7 +164,11 @@ internal sealed class ForgeSession
     /// <summary>One compiled unit per list row (combined copies stay two rows).</summary>
     public List<UnitFileEntry> Rows() => ListCompiler.CompileRows(Book, List);
 
-    public IReadOnlyList<ListIssue> Issues(BuiltArmyFile compiled) => ListValidator.Validate(Book, List, compiled);
+    /// <summary>Whether the list is checked against the optional Force Organisation caps (Kai, 2026-11-15: a switch; off
+    /// for a campaign army - "players may bring any number of their units").</summary>
+    public bool ForceOrg { get; set; } = true;
+
+    public IReadOnlyList<ListIssue> Issues(BuiltArmyFile compiled) => ListValidator.Validate(Book, List, compiled, ForceOrg);
 
     public (UnitFileEntry Unit, List<ItemEntry> Items) Detail(int index) => ListCompiler.CompileUnitDetailed(Book, List.Units[index]);
 

@@ -501,6 +501,11 @@ public partial class LobbyScreen : Control
             }
         }
 
+        // Force Organisation (Kai, 2026-11-15): the Advanced Rulebooks' optional army caps. Not for Quest (heroes) or a
+        // campaign mission (the campaign books: "players may bring any number of their units").
+        if (!GameSystemInfo.IsQuest(system) && Session.ArmyCampaign == null)
+            Check(rows, "Force Organisation", Vm.ForceOrg, LobbyBookText.ForceOrg(system), locked, v => Vm.SetForceOrg(v));
+
         if (LobbyDeploymentPreview.KingOfTheHillApplies(system, mode))
             Check(rows, "King of the Hill (3-4 sides)", Vm.KingOfTheHill, LobbyBookText.KingOfTheHill + "\n\n" + LobbyBookText.FreeForAll(system), locked, v => Vm.SetKingOfTheHill(v));
 

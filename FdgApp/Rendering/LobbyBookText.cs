@@ -114,6 +114,21 @@ internal static class LobbyBookText
 
     // ── Advanced Rulebook v3.6.0 - Fast-Play Rules (GF and AoF only) ──
 
+    /// <summary>Force Organisation (Advanced Rulebooks 3.6.0, Preparation) with this game's numbers (ForceOrgProfile).</summary>
+    internal static string ForceOrg(EGameSystem system)
+    {
+        var p = FDG.SaveLoad.ForceOrgProfile.For(FDG.ArmyBuilding.GameSystems.CampaignBookSlug(system));
+        string density = p.DensityAllowancePerBlock == 1
+            ? $"Only 1 model or Tough per {p.DensityPointsPerBlock}pts"
+            : $"Only {p.DensityAllowancePerBlock} total Tough per {p.DensityPointsPerBlock}pts";
+        return "Force Organisation (Optional): \"Optionally you and your opponent may agree to use the force organisation rules, "
+            + "which help make army composition more consistent and balanced.\" " +
+            $"Only 1 Hero per {p.PointsPerHero}pts; only 1+X copies of the same unit, where X is 1 per {p.PointsPerExtraCopy}pts; "
+            + $"no single unit worth over {p.MaxSingleUnitPercent}% of total points; only 1 unit per {p.PointsPerUnit}pts; {density}.\n"
+            + "In this game: off by default (the book: \"no limitations as to how many units you can take\"). On: the launch check "
+            + "lists any army breaking these, and a made-up Random Army keeps to them. Never in a campaign mission.";
+    }
+
     internal static string FastPlayIntro(EGameSystem system) =>
         "Fast-Play rules allow you to speed up regular games, as well as play epic battles of massive size quickly.\n" +
         $"We highly recommend using these rules when playing games with {FastPlay.RecommendedFromPoints(system) ?? 0}pts " +

@@ -243,6 +243,9 @@ public sealed class HostGameSettings
     public bool FastPlayMelee { get; set; }
     public bool FastPlayShooting { get; set; }
     public bool FastPlaySimplifiedTerrain { get; set; }
+    public bool ForceOrg { get; set; }
+    /// <summary>The Army Forge's Force Org switch (Kai, 2026-11-15) - on unless turned off.</summary>
+    public bool ForgeForceOrg { get; set; } = true;
     public int? NumberOfRounds { get; set; }
     public bool KingOfTheHill { get; set; }
     public bool PickDangerousTerrain { get; set; }
@@ -279,6 +282,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = settings.FastPlayMelee,
         FastPlayShooting       = settings.FastPlayShooting,
         FastPlaySimplifiedTerrain = settings.FastPlaySimplifiedTerrain,
+        ForceOrg = settings.ForceOrg,
         NumberOfRounds         = settings.NumberOfRounds,
         KingOfTheHill          = settings.KingOfTheHill,
         PickDangerousTerrain   = settings.PickDangerousTerrain,
@@ -313,6 +317,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = viewModel.FastPlayMelee,
         FastPlayShooting       = viewModel.FastPlayShooting,
         FastPlaySimplifiedTerrain = viewModel.FastPlaySimplifiedTerrain,
+        ForceOrg = viewModel.ForceOrg,
         NumberOfRounds         = viewModel.NumberOfRounds,
         KingOfTheHill          = viewModel.KingOfTheHill,
         PickDangerousTerrain   = viewModel.PickDangerousTerrain,
@@ -352,6 +357,7 @@ public sealed class HostGameSettings
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
         viewModel.SetFastPlay(FastPlayMovement, FastPlayMelee, FastPlayShooting);
         viewModel.SetFastPlaySimplifiedTerrain(FastPlaySimplifiedTerrain);
+        viewModel.SetForceOrg(ForceOrg);
         viewModel.SetNumberOfRounds(NumberOfRounds);
         viewModel.SetKingOfTheHill(KingOfTheHill);
         viewModel.SetPickDangerousTerrain(PickDangerousTerrain);
