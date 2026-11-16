@@ -315,6 +315,9 @@ public partial class ScriptedRun : Node
             // (the selected unit's middle + dx,dz inches), "hoverrel:dx;dz" (the same, pointer only).
             // "autopick" lets the bot answer whatever the battle is asking right now (e.g. which unit to deploy next).
             if (name == "autopick" && Find<Battle.BattleScreen>(GetTree().Root) is { Decisions.Current: { } now } ab) { now.AutoPlay(ab); return; }
+            // "reportcard" / "reportcardpin" shows (or pins) the battle report's card for the latest fight.
+            if (name.StartsWith("reportcard") && Find<Battle.BattleScreen>(GetTree().Root) is { } rb)
+            { GD.Print($"ScriptedRun: report card {(rb.DriveReportCard(name == "reportcardpin") ? "shown" : "- no fight yet")}"); return; }
             if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }  // also "clickdrag:x;z|x2;z2"
             if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");

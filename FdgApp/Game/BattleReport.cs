@@ -44,7 +44,8 @@ public sealed class BattleReport : IPresentationSink
         Outcome? Attack = null, float MovedInches = 0f, string? TargetName = null);
 
     /// <summary>What an attack did, as numbers (the block view shows these, not the sentence).</summary>
-    public sealed record Outcome(bool Melee, float Hits, float Attacks, float Wounds, int ModelsLost, bool Routed, string Weapons);
+    public sealed record Outcome(bool Melee, float Hits, float Attacks, float Wounds, int ModelsLost, bool Routed, string Weapons,
+        bool HasSaves = false, float Saves = 0f, float Ignored = 0f);
 
     /// <summary>
     /// One activation as the report's block view shows it (Kai, 2026-11-11, mockup A): who, what they did,
@@ -561,7 +562,8 @@ public sealed class BattleReport : IPresentationSink
                 body = AttackSummary();
             }
             Outcome? outcome = Kind == Kind.Attack && Heading.Length == 0
-                ? new Outcome(Melee, Hits, Attacks, HasSaves ? MathF.Max(0f, SaveTotal - Saves - Ignored) : 0f, Lost, Routed, string.Join(", ", Weapons))
+                ? new Outcome(Melee, Hits, Attacks, HasSaves ? MathF.Max(0f, SaveTotal - Saves - Ignored) : 0f, Lost, Routed, string.Join(", ", Weapons),
+                    HasSaves, Saves, Ignored)
                 : null;
             return new Line(Id, Kind, Round, title, body, Colour, Loud, Attacker, Target, Player, Units.ToList(), FromAt, ToAt,
                 MovedFrom.ToList(), MovedTo.ToList(), Rolls.ToList(), Details.ToList(), outcome, MovedInches,

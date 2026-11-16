@@ -115,6 +115,9 @@ public partial class BattleScreen : Control, IOwnBackdrop
     public override void _Process(double delta)
     {
         UpdateHover(delta);
+        // Alt held over a report block: the card shows every die too (and back when it's let go).
+        if (_cardBlock != null && _blockCard != null && IsInstanceValid(_blockCard) && Input.IsKeyPressed(Key.Alt) != _cardDice)
+            ShowBlockCard(_cardBlock);
         while (_shots.TryDequeue(out var shot)) _table.Shots(shot.From, shot.To, shot.VolleyCount, shot.IsMelee);
         if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
         {
@@ -1261,16 +1264,35 @@ public partial class BattleScreen : Control, IOwnBackdrop
     }
 
     private Control? _blockCard;
+    private BattleReport.Block? _cardBlock;
+    private bool _cardDice;
 
-    /// <summary>The hover card: every die behind the block, attack by attack (the numbers live here, not in the report).</summary>
+    /// <summary>
+    /// The hover card (Kai, 2026-11-15, mockup option A): who won, then each attack as steps, then what happened
+    /// after. Every die only while Alt is held.
+    /// </summary>
     private void ShowBlockCard(BattleReport.Block b)
     {
         HideBlockCard();
-        if (BlockCardBody(b) is not { } v) return;
+        _cardBlock = b;
+        _cardDice = Input.IsKeyPressed(Key.Alt);
+        if (BlockCardBody(b, _cardDice) is not { } v) return;
         _blockCard = HudKit.Panel(Tight(8).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; x.Border = Colors.White with { A = 0.6f }; }), v);
         _blockCard.MouseFilter = MouseFilterEnum.Ignore;
         _hud.AddChild(_blockCard);
         CallDeferred(nameof(PlaceBlockCard));
+    }
+
+    /// <summary>Screenshot driver: shows the hover card of the latest block with a fight in it (as pointing at it does).</summary>
+    public bool DriveReportCard(bool pin)
+    {
+        var block = BattleReport.Blocks(Session.Report.Snapshot()).LastOrDefault(x => x.Lines.Any(l => l.Attack is { Melee: true })
+                    && x.Lines.Count(l => l.Attack != null) >= 2)
+            ?? BattleReport.Blocks(Session.Report.Snapshot()).LastOrDefault(x => x.Lines.Any(l => l.Attack != null));
+        if (block == null) return false;
+        if (pin) PinBlockCard(block);
+        else ShowBlockCard(block);
+        return true;
     }
 
     private readonly Dictionary<int, FloatingPanel> _pinnedBlocks = new();
@@ -1280,7 +1302,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         int key = b.Activation?.Id ?? b.Lines.FirstOrDefault()?.Id ?? 0;
         if (_pinnedBlocks.TryGetValue(key, out FloatingPanel? open) && IsInstanceValid(open)) { open.Minimised = false; return; }
-        Control body = BlockCardBody(b) ?? HudKit.Text("Nothing was rolled.", 14, HudKit.Dim, HudKit.Medium);
+        Control body = BlockCardBody(b, dice: true, pinned: true) ?? HudKit.Text("Nothing was rolled.", 14, HudKit.Dim, HudKit.Medium);
         string title = b.Unit is { } u ? NameOf(u, "Report") : "Report";
         var panel = new FloatingPanel(title, body, b.Unit is { } id ? SideOf(id) : HudKit.Teal);
         panel.Closed += () => _pinnedBlocks.Remove(key);
@@ -1291,33 +1313,100 @@ public partial class BattleScreen : Control, IOwnBackdrop
         HideBlockCard();
     }
 
-    private Control? BlockCardBody(BattleReport.Block b)
+    private Control? BlockCardBody(BattleReport.Block b, bool dice, bool pinned = false)
     {
-        var v = new VBoxContainer { CustomMinimumSize = new Vector2(380, 0), MouseFilter = MouseFilterEnum.Ignore };
-        v.AddThemeConstantOverride("separation", 3);
-        bool any = false;
-        foreach (BattleReport.Line l in b.Lines.Where(l => l.Rolls.Count > 0 || l.Details.Count > 0))
+        ReportCard.Card? card = ReportCard.For(b, id => NameOf(id, ""));
+        bool anyDice = b.Lines.Any(l => l.Rolls.Count > 0 || l.Details.Count > 0);
+        if (card == null && !anyDice) return null;
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(420, 0), MouseFilter = MouseFilterEnum.Ignore };
+        v.AddThemeConstantOverride("separation", 6);
+
+        if (card != null)
         {
-            any = true;
-            string title = string.Concat(l.Title.Select(p => p.Text));
-            var t = HudKit.Text(title, 14, l.Attack != null ? SideOf(l.Attacker) : HudKit.Fg, HudKit.Bold);
-            t.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            t.CustomMinimumSize = new Vector2(380, 0);
-            v.AddChild(t);
-            foreach (BattleReport.Roll r in l.Rolls)
+            Color headColour = card.HeadlineUnit is { } hu ? SideOf(hu) : HudKit.Fg;
+            v.AddChild(Wrapped(card.Headline.ToUpperInvariant(), 19, headColour, HudKit.Exo(800)));
+            if (card.Subline.Length > 0) v.AddChild(Wrapped(card.Subline, 15, HudKit.Fg, HudKit.Semi));
+            foreach (ReportCard.AttackRow a in card.Attacks)
             {
-                var row = HudKit.Text($"  {r.Who}: {r.Label} ({r.Threshold}+)  "
-                    + (r.Faces.Count > 0 ? string.Join(" ", r.Faces) + "  -  " : "") + r.Result
-                    + (r.Modifiers.Count > 0 ? "  [" + string.Join(", ", r.Modifiers) + "]" : ""), 13, HudKit.Dim, HudKit.Medium);
-                row.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-                row.CustomMinimumSize = new Vector2(380, 0);
-                v.AddChild(row);
+                v.AddChild(HudKit.Gap(0, 2));
+                var who = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                who.AddThemeConstantOverride("separation", 6);
+                who.AddChild(HudKit.Text(a.ByName.ToUpperInvariant(), 14, a.By is { } by ? SideOf(by) : HudKit.Fg, HudKit.Bold));
+                who.AddChild(HudKit.Text(a.Verb + " " + a.TargetName, 14, HudKit.Dim, HudKit.Semi));
+                v.AddChild(who);
+                var steps = new HFlowContainer { MouseFilter = MouseFilterEnum.Ignore };
+                steps.AddThemeConstantOverride("h_separation", 5);
+                steps.AddThemeConstantOverride("v_separation", 4);
+                for (int i = 0; i < a.Steps.Count; i++)
+                {
+                    if (i > 0) steps.AddChild(HudKit.Text("->", 13, HudKit.Dim with { A = 0.6f }, HudKit.Semi).With(l => l.VerticalAlignment = VerticalAlignment.Center));
+                    steps.AddChild(StepChip(a.Steps[i]));
+                }
+                v.AddChild(steps);
+                foreach (string note in a.Notes) v.AddChild(Wrapped(note, 13, Palette.RuleGold, HudKit.Semi));
             }
-            foreach (string d in l.Details) v.AddChild(HudKit.Text("  " + d, 13, HudKit.Dim, HudKit.Medium));
+            if (card.After.Count > 0)
+            {
+                v.AddChild(new HSeparator { MouseFilter = MouseFilterEnum.Ignore });
+                foreach (ReportCard.AfterRow r in card.After)
+                {
+                    var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                    row.AddThemeConstantOverride("separation", 8);
+                    var text = Wrapped(r.Text, 15, HudKit.Fg, HudKit.Semi);
+                    text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    row.AddChild(text);
+                    if (r.Tag != null) row.AddChild(HudKit.Chip(r.Tag, r.Bad ? Palette.WoundsRed : HudKit.Lime, true, 12));
+                    v.AddChild(row);
+                }
+            }
         }
-        if (!any) return null;
-        v.AddChild(HudKit.Text("Right-click the block to keep this open.", 12, HudKit.Dim with { A = 0.7f }, HudKit.Medium));
+
+        if (dice && anyDice)
+        {
+            v.AddChild(new HSeparator { MouseFilter = MouseFilterEnum.Ignore });
+            v.AddChild(HudKit.Text("EVERY DIE", 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 1)));
+            foreach (BattleReport.Line l in b.Lines.Where(l => l.Rolls.Count > 0 || l.Details.Count > 0))
+            {
+                v.AddChild(Wrapped(string.Concat(l.Title.Select(p => p.Text)), 13, l.Attack != null ? SideOf(l.Attacker) : HudKit.Fg, HudKit.Bold));
+                foreach (BattleReport.Roll r in l.Rolls)
+                    v.AddChild(Wrapped($"  {r.Who}: {r.Label} ({r.Threshold}+)  "
+                        + (r.Faces.Count > 0 ? string.Join(" ", r.Faces) + "  -  " : "") + r.Result
+                        + (r.Modifiers.Count > 0 ? "  [" + string.Join(", ", r.Modifiers) + "]" : ""), 13, HudKit.Dim, HudKit.Medium));
+                foreach (string d in l.Details) v.AddChild(Wrapped("  " + d, 13, HudKit.Dim, HudKit.Medium));
+            }
+        }
+        string foot = pinned ? "" : dice || !anyDice ? "Right-click the block to keep this open." : "Hold Alt to see every die. Right-click the block to keep this open.";
+        if (foot.Length > 0) v.AddChild(HudKit.Text(foot, 12, HudKit.Dim with { A = 0.75f }, HudKit.Medium));
         return v;
+    }
+
+    /// <summary>One number in an attack's chain: the number big, what it counts small under it; the last one red when it hurt.</summary>
+    private static Control StepChip(ReportCard.Step step)
+    {
+        bool hurt = step.Final && step.Hurt;
+        var box = new StyleBoxFlat
+        {
+            BgColor = hurt ? new Color(Palette.WoundsRed, 0.18f) : new Color(1, 1, 1, 0.05f),
+            BorderColor = hurt ? Palette.WoundsRed : HudKit.Edge,
+            ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 2, ContentMarginBottom = 3,
+        };
+        box.SetBorderWidthAll(1);
+        var panel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(54, 0) };
+        panel.AddThemeStyleboxOverride("panel", box);
+        var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        col.AddThemeConstantOverride("separation", -4);
+        col.AddChild(HudKit.Text(step.Value, 19, hurt ? Palette.WoundsRed.Lightened(0.25f) : HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center));
+        col.AddChild(HudKit.Text(step.Label, 11, hurt ? Palette.WoundsRed.Lightened(0.45f) : HudKit.Dim, HudKit.Tracked(HudKit.Bold, 1), HorizontalAlignment.Center));
+        panel.AddChild(col);
+        return panel;
+    }
+
+    private static Label Wrapped(string s, int size, Color colour, Font font)
+    {
+        var l = HudKit.Text(s, size, colour, font);
+        l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        l.CustomMinimumSize = new Vector2(420, 0);
+        return l;
     }
 
     private void PlaceBlockCard()
@@ -1334,6 +1423,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
     {
         if (_blockCard != null && IsInstanceValid(_blockCard)) _blockCard.QueueFree();
         _blockCard = null;
+        _cardBlock = null;
     }
 
     private readonly Dictionary<string, string> _terms = new();
