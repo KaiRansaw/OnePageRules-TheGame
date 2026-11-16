@@ -326,7 +326,14 @@ public static class AssetLoader
         st.Begin(Mesh.PrimitiveType.Triangles);
         for (int i = 0; i < m.Positions.Length; i += 3)
             st.AddVertex(new Vector3(m.Positions[i], m.Positions[i + 1], m.Positions[i + 2]));
-        foreach (int i in m.Indices) st.AddIndex(i);
+        // STL lists a triangle's corners anticlockwise seen from outside; Godot's front faces are clockwise. Without
+        // the swap every face is drawn from inside: the model looks hollow, with holes (Kai, 2026-11-15, Baird).
+        for (int t = 0; t < m.Indices.Length; t += 3)
+        {
+            st.AddIndex(m.Indices[t]);
+            st.AddIndex(m.Indices[t + 2]);
+            st.AddIndex(m.Indices[t + 1]);
+        }
         st.GenerateNormals();
         st.SetMaterial(mat);
         lods = 0;
@@ -417,6 +424,37 @@ public static class AssetLoader
         if (n is T t) yield return t;
         foreach (Node c in n.GetChildren())
             foreach (T x in All<T>(c)) yield return x;
+    }
+
+    /// <summary>
+    /// Like <see cref="Bounds"/>, but measured from the points themselves rather than by turning each mesh's box: a
+    /// box tipped at an angle reaches past the model, so a tilted model measured that way floats above its base.
+    /// Slower (every point is read), so only for a model turned other than by square turns.
+    /// </summary>
+    public static Aabb? ExactBounds(Node3D root, Node3D space)
+    {
+        Aabb? box = null;
+        Transform3D toSpace = space.GlobalTransform.AffineInverse();
+        foreach (MeshInstance3D mi in All<MeshInstance3D>(root))
+        {
+            if (mi.Mesh == null || !mi.Visible) continue;
+            Transform3D t = toSpace * mi.GlobalTransform;
+            for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
+            {
+                Vector3[] pts = mi.Mesh.SurfaceGetArrays(s)[(int)Mesh.ArrayType.Vertex].AsVector3Array();
+                if (pts.Length == 0) continue;
+                Vector3 lo = t * pts[0], hi = lo;
+                foreach (Vector3 p in pts)
+                {
+                    Vector3 q = t * p;
+                    lo = lo.Min(q);
+                    hi = hi.Max(q);
+                }
+                var b = new Aabb(lo, hi - lo);
+                box = box is { } x ? x.Merge(b) : b;
+            }
+        }
+        return box;
     }
 
     /// <summary>The box round every mesh under <paramref name="root"/>, in <paramref name="space"/>'s own coordinates.</summary>

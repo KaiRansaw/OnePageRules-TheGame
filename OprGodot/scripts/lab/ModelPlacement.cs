@@ -27,13 +27,19 @@ public static class ModelPlacement
         _ => Basis.Identity,
     };
 
+    /// <summary>Stood up (<see cref="UnitModelSettings.UpAxis"/>), then tipped by the free tilts - before any turn.</summary>
+    public static Basis StandBasis(UnitModelSettings s) =>
+        new Basis(Vector3.Back, -Mathf.DegToRad(s.TiltSideDegrees))
+        * new Basis(Vector3.Right, Mathf.DegToRad(s.TiltForwardDegrees))
+        * UpBasis(s.UpAxis);
+
     public static (Transform3D Transform, Aabb Box) Place(Node3D pivot, Node3D body, UnitModelSettings s)
     {
-        Basis up = UpBasis(s.UpAxis);
-        Basis turn = new Basis(Vector3.Up, Mathf.DegToRad(s.YawDegrees)) * up;
+        Basis turn = new Basis(Vector3.Up, Mathf.DegToRad(s.YawDegrees)) * StandBasis(s);
         pivot.Transform = new Transform3D(turn, Vector3.Zero);
         var holder = (Node3D)pivot.GetParent();
-        Aabb raw = AssetLoader.Bounds(body, holder) ?? new Aabb(Vector3.Zero, Vector3.One);
+        bool tilted = s.TiltForwardDegrees % 90 != 0 || s.TiltSideDegrees % 90 != 0;
+        Aabb raw = (tilted ? AssetLoader.ExactBounds(body, holder) : AssetLoader.Bounds(body, holder)) ?? new Aabb(Vector3.Zero, Vector3.One);
         float h = Mathf.Max(raw.Size.Y, 1e-4f);
         float k = s.HeightMm > 0 ? s.HeightMm / UnitModelSettings.MmPerInch / h : 1f;
         Vector3 centre = raw.GetCenter() * k;

@@ -37,6 +37,16 @@ public sealed class UnitModelSettings
     public float YawDegrees { get; set; }
 
     /// <summary>
+    /// Tip forwards (+) or back (-), in degrees, after standing it up and before turning it (Kai, 2026-11-15: "fix the
+    /// model orientation by all axis"). With <see cref="TiltSideDegrees"/> and <see cref="YawDegrees"/> any way a file
+    /// was saved can be stood right - not only the six square turns of <see cref="UpAxis"/>.
+    /// </summary>
+    public float TiltForwardDegrees { get; set; }
+
+    /// <summary>Tip to its right (+) or left (-), in degrees - see <see cref="TiltForwardDegrees"/>.</summary>
+    public float TiltSideDegrees { get; set; }
+
+    /// <summary>
     /// Centre the model over its base (true) or keep the file's own origin (false - for a model whose origin was
     /// deliberately placed, e.g. a rider whose mount overhangs the base).
     /// </summary>

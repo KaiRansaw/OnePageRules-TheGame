@@ -40,13 +40,28 @@ public class StlMeshTests
     [Test]
     public void Binary_IsReadWelded_AndStoodYUp()
     {
-        StlMesh m = StlMesh.Read(Binary(Cube, CubeFaces));
+        // sitting on the printer's bed (Z = 0), a little way off the Y axis
+        float[][] onBed = Cube.Select(c => new[] { c[0], c[1] + 5, c[2] }).ToArray();
+        StlMesh m = StlMesh.Read(Binary(onBed, CubeFaces));
         Assert.That(m.Triangles, Is.EqualTo(12));
         Assert.That(m.Corners, Is.EqualTo(8), "shared corners are shared, not repeated per triangle");
         var b = m.Bounds();
         Assert.That(b.Y0, Is.EqualTo(0).Within(1e-5));
         Assert.That(b.Y1, Is.EqualTo(10).Within(1e-5), "the file's Z (height) becomes the game's Y (up)");
-        Assert.That(b.Z0, Is.EqualTo(-10).Within(1e-5));
+        Assert.That(b.Z0, Is.EqualTo(-15).Within(1e-5));
+        Assert.That(m.FileUp, Is.EqualTo('Z'), "a cube sitting on Z = 0 is a print-ready, Z-up file");
+    }
+
+    [Test]
+    public void YUpFile_NotSittingOnZZero_IsLeftAsItIs()
+    {
+        // Archvillain's kits: Y-up, somewhere off the origin.
+        float[][] raised = Cube.Select(c => new[] { c[0], c[1] - 60, c[2] + 3 }).ToArray();
+        StlMesh m = StlMesh.Read(Binary(raised, CubeFaces));
+        Assert.That(m.FileUp, Is.EqualTo('Y'));
+        var b = m.Bounds();
+        Assert.That(b.Y0, Is.EqualTo(-60).Within(1e-4));
+        Assert.That(b.Z0, Is.EqualTo(3).Within(1e-4));
     }
 
     [Test]

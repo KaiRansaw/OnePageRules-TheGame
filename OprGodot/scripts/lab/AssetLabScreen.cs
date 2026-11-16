@@ -36,7 +36,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
     private LineEdit _filter = null!;
     private Label _folderLabel = null!, _info = null!, _fps = null!, _saved = null!, _hint = null!;
     private OptionButton _base = null!, _up = null!, _copies = null!, _seat = null!, _light = null!, _anim = null!;
-    private SpinBox _height = null!, _yaw = null!;
+    private SpinBox _height = null!, _yaw = null!, _tiltFwd = null!, _tiltSide = null!;
     private CheckBox _centre = null!, _showRefs = null!, _showToken = null!, _spin = null!;
     private Control _hudPreview = null!;
     private VBoxContainer _hudSlots = null!;
@@ -157,7 +157,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         _filter = new LineEdit { Name = "Filter", PlaceholderText = "Filter files (e.g. Alien Hives, Grunts)", ClearButtonEnabled = true, TooltipText = "Show only files whose folder or name contains this." };
         _filter.TextChanged += _ => { _list.Clear(); Rescan(); };
         left.AddChild(_filter);
-        _files = new ItemList { Name = "Files", CustomMinimumSize = new Vector2(0, 250), SizeFlagsVertical = SizeFlags.ExpandFill, SelectMode = ItemList.SelectModeEnum.Single };
+        _files = new ItemList { Name = "Files", CustomMinimumSize = new Vector2(0, 110), SizeFlagsVertical = SizeFlags.ExpandFill, SelectMode = ItemList.SelectModeEnum.Single };
         _files.ItemSelected += i => { if (i >= 0 && i < _list.Count) Open(_list[(int)i]); };
         left.AddChild(_files);
         var fileRow = new HBoxContainer();
@@ -207,6 +207,11 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         yawRow.AddChild(_yaw);
         yawRow.AddChild(Btn("TurnRight", ">", "Turn it 45 degrees.", () => _yaw.Value = Wrap(_yaw.Value + 45)));
         Row(grid, "Facing", yawRow);
+
+        _tiltFwd = TiltRow(grid, "TiltForward", "Tip fwd/back", "Tip it forwards (+) or back (-). For a model saved at an odd angle - Up fixes the square turns, this the rest.",
+            v => _settings.TiltForwardDegrees = v);
+        _tiltSide = TiltRow(grid, "TiltSide", "Tip sideways", "Tip it to its right (+) or left (-).",
+            v => _settings.TiltSideDegrees = v);
 
         _centre = new CheckBox { Name = "Centre", Text = "Centre on base", ButtonPressed = true, TooltipText = "Stand the middle of the model over the middle of the base. Turn off for a model whose own centre point was placed on purpose (a rider leaning past its base)." };
         _centre.Toggled += on => { if (!_quiet) { _settings.CentreOnBase = on; Rebuild(); } };
@@ -408,12 +413,27 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         View(_copies.Selected >= 3 ? 1 : 0);
     }
 
+    /// <summary>A free tilt: a box in degrees, with 90-degree tips either side.</summary>
+    private SpinBox TiltRow(GridContainer grid, string name, string label, string tip, Action<float> set)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 4);
+        var box = new SpinBox { Name = name, MinValue = -180, MaxValue = 180, Step = 1, Suffix = "deg", SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tip };
+        box.ValueChanged += v => { if (!_quiet) { set((float)v); Rebuild(); } };
+        row.AddChild(Btn(name + "Less", "<", "Tip it 90 degrees the other way.", () => box.Value = Wrap(box.Value - 90)));
+        row.AddChild(box);
+        row.AddChild(Btn(name + "More", ">", "Tip it 90 degrees.", () => box.Value = Wrap(box.Value + 90)));
+        Row(grid, label, row);
+        return box;
+    }
+
     private static UnitModelSettings FirstGuess(string file, LoadedAsset? asset)
     {
         // Lying down? A model much deeper than it is tall was almost certainly exported Z-up (most Tabletop
         // Simulator and CAD files) - stand it up. A wide flat thing (a tank) can fool this; the dropdown fixes that.
         EUpAxis up = EUpAxis.YUp;
-        if (asset?.Model != null && RawBox(asset.Model) is { } box && box.Size.Z > box.Size.Y * 1.3f && box.Size.Z > box.Size.X * 0.8f)
+        // (Not an STL: its reader has already stood it up, from where the file sits on the printer's bed.)
+        if (asset?.Model != null && !file.EndsWith(".stl", StringComparison.OrdinalIgnoreCase) && RawBox(asset.Model) is { } box && box.Size.Z > box.Size.Y * 1.3f && box.Size.Z > box.Size.X * 0.8f)
             up = EUpAxis.ZUp;
 
         // A base size in the name ("Grunt 32mm.glb") is a strong hint; otherwise infantry on 25mm.
@@ -455,6 +475,8 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         _height.Value = _settings.HeightMm;
         _up.Select((int)_settings.UpAxis);
         _yaw.Value = _settings.YawDegrees;
+        _tiltFwd.Value = _settings.TiltForwardDegrees;
+        _tiltSide.Value = _settings.TiltSideDegrees;
         _centre.ButtonPressed = _settings.CentreOnBase;
         _quiet = false;
     }

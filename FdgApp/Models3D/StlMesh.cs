@@ -6,10 +6,10 @@ namespace FdgRaylib.Models3D;
 /// <summary>
 /// An STL file read into a plain indexed triangle mesh (Kai, 2026-11-15: models for 3D printing, often a kit of
 /// several pieces). STL is what printable miniatures ship as: shape only - no colour, no texture, no parts - in
-/// millimetres with Z up.
+/// millimetres, with no agreed "up" (see <see cref="StandUp"/>).
 ///
 /// <para>Reading welds the corners the triangles share (an STL repeats every corner for every triangle), and turns
-/// the model so Y is up, as everything else in the game is. Sizes are left in the file's millimetres - the Asset Lab
+/// the model so Y is up, as everything else in the game is, when it can tell the file was Z-up. Sizes are left in the file's millimetres - the Asset Lab
 /// sets the height the model stands at.</para>
 ///
 /// <para>Printable models are sculpted for a 3D printer, not a game: one piece alone can be 300,000 triangles. The
@@ -59,6 +59,7 @@ public sealed class StlMesh
         }
         StlMesh mesh = welder.Build();
         mesh.DropFlatTriangles();
+        mesh.StandUp();
         return mesh;
     }
 
@@ -74,6 +75,29 @@ public sealed class StlMesh
     }
 
     private static float F(string s) => float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
+
+    /// <summary>Which way the file said was up: 'Y' (as the game) or 'Z' (turned to Y when read).</summary>
+    public char FileUp { get; private set; } = 'Y';
+
+    /// <summary>
+    /// STL files don't say which way is up, and makers differ: a file prepared for printing (Eivor) sits on the
+    /// printer's bed - its lowest point at exactly Z = 0, Z up - while others (Archvillain's kits) are saved Y-up,
+    /// figure and base sharing one place. So: a model whose lowest Z is exactly 0 (and lowest Y is not) is Z-up and
+    /// is turned; anything else is taken as Y-up. The Asset Lab's "Up" box fixes a wrong guess.
+    /// </summary>
+    private void StandUp()
+    {
+        var b = Bounds();
+        bool onBedZ = Math.Abs(b.Z0) < 1e-4f && Math.Abs(b.Y0) > 1e-3f;
+        if (!onBedZ) return;
+        FileUp = 'Z';
+        for (int i = 0; i < Positions.Length; i += 3)
+        {
+            float y = Positions[i + 1], z = Positions[i + 2];
+            Positions[i + 1] = z; // a turn, not a mirror, so the triangles keep facing outwards
+            Positions[i + 2] = y == 0f ? 0f : -y;
+        }
+    }
 
     /// <summary>The smallest box round the model: (min x, min y, min z, max x, max y, max z).</summary>
     public (float X0, float Y0, float Z0, float X1, float Y1, float Z1) Bounds()
@@ -102,7 +126,7 @@ public sealed class StlMesh
         if (idx.Count != Indices.Length) Indices = idx.ToArray();
     }
 
-    /// <summary>Shares corners that sit at exactly the same place, and turns Z-up into Y-up as it goes.</summary>
+    /// <summary>Shares corners that sit at exactly the same place.</summary>
     private sealed class Welder
     {
         private readonly Dictionary<(int, int, int), int> _at = new();
@@ -112,9 +136,7 @@ public sealed class StlMesh
 
         public void Add(float x, float y, float z)
         {
-            // STL is Z-up; the game is Y-up. A turn, not a mirror, so the triangles keep facing outwards.
-            float gx = x, gy = z, gz = -y;
-            if (gz == 0f) gz = 0f; // -0 and +0 are the same corner
+            float gx = x, gy = y, gz = z;
             var key = (BitConverter.SingleToInt32Bits(gx), BitConverter.SingleToInt32Bits(gy), BitConverter.SingleToInt32Bits(gz));
             if (!_at.TryGetValue(key, out int i))
             {
