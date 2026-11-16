@@ -219,13 +219,15 @@ public partial class BattleTable : Node3D
         // simply read again next frame.
         try
         {
-            SyncTerrain();
-            SyncObjectives();
-            SyncModels((float)delta);
+            long t0 = PerfProbe.Start(); SyncTerrain(); PerfProbe.Stop("terrain", t0);
+            t0 = PerfProbe.Start(); SyncObjectives(); PerfProbe.Stop("objectives", t0);
+            t0 = PerfProbe.Start(); SyncModels((float)delta); PerfProbe.Stop("models", t0);
         }
         catch (InvalidOperationException) { }
+        long t1 = PerfProbe.Start();
         try { SyncOutlines(); } catch (InvalidOperationException) { }
-        SyncGhosts();
+        PerfProbe.Stop("outlines", t1);
+        t1 = PerfProbe.Start(); SyncGhosts(); PerfProbe.Stop("ghosts", t1);
     }
 
     // ------------------------------------------------------------------ unit outlines and weapon ranges
@@ -444,25 +446,15 @@ public partial class BattleTable : Node3D
             AddChild(layer.Root);
             foreach (Ghost g in ghosts)
             {
-                var mat = Mat(g.Colour with { A = g.Ring ? 0.9f : g.Colour.A * 0.45f }, 0.5f, g.Colour, 1.2f);
-                mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-                mat.NoDepthTest = g.Ring;
+                // Perf sweep (2026-11-15): one shared material / mesh per look instead of new ones per disc.
+                var mat = TableLook.SharedMat(g.Colour with { A = g.Ring ? 0.9f : g.Colour.A * 0.45f }, 0.5f, g.Colour, 1.2f,
+                    unshaded: true, noDepthTest: g.Ring);
                 Mesh mesh = g.Ring
-                    ? new TorusMesh { InnerRadius = g.Radius - 0.08f, OuterRadius = g.Radius + 0.08f, Rings = 96, RingSegments = 6 }
-                    : new CylinderMesh { TopRadius = g.Radius, BottomRadius = g.Radius, Height = 0.12f };
+                    ? TableLook.SharedMesh($"ghostring:{g.Radius}", () => new TorusMesh { InnerRadius = g.Radius - 0.08f, OuterRadius = g.Radius + 0.08f, Rings = 96, RingSegments = 6 })
+                    : TableLook.SharedMesh($"ghostdisc:{g.Radius}", () => new CylinderMesh { TopRadius = g.Radius, BottomRadius = g.Radius, Height = 0.12f });
                 Mesh(layer.Root, mesh, mat, World(g.X, g.Z, 0.08f));
             }
-            foreach (GhostLine line in lines)
-            {
-                Vector3 a = World(line.From.X, line.From.Y, 0.1f), b = World(line.To.X, line.To.Y, 0.1f);
-                float len = a.DistanceTo(b);
-                if (len < 0.05f) continue;
-                var mat = Mat(line.Colour, 0.5f, line.Colour, 1.2f);
-                mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-                mat.NoDepthTest = true;
-                var mi = Mesh(layer.Root, new BoxMesh { Size = new Vector3(line.Width, 0.04f, len) }, mat, (a + b) / 2);
-                mi.LookAt(b, Vector3.Up);
-            }
+            if (LinesMesh(lines) is { } merged) layer.Root.AddChild(merged);
             foreach (GhostText t in texts)
             {
                 var l = new Label3D
@@ -475,6 +467,68 @@ public partial class BattleTable : Node3D
             }
         }
     }
+
+    /// <summary>
+    /// Every line of a preview layer as ONE mesh (perf sweep, 2026-11-15). Each line used to be its own box with its
+    /// own material - a unit's range outlines were a few hundred nodes, rebuilt whenever the pointer moved. The boxes
+    /// are the same (width x 0.04 high, from end to end, unshaded, drawn over everything), now coloured per vertex.
+    /// </summary>
+    private MeshInstance3D? LinesMesh(List<GhostLine> lines)
+    {
+        var solid = new List<(Vector3 A, Vector3 B, float W, Color C)>();
+        var seeThrough = new List<(Vector3 A, Vector3 B, float W, Color C)>();
+        foreach (GhostLine line in lines)
+        {
+            Vector3 a = World(line.From.X, line.From.Y, 0.1f), b = World(line.To.X, line.To.Y, 0.1f);
+            if (a.DistanceTo(b) < 0.05f) continue;
+            (line.Colour.A < 1 ? seeThrough : solid).Add((a, b, line.Width, line.Colour));
+        }
+        if (solid.Count == 0 && seeThrough.Count == 0) return null;
+        var mesh = new ArrayMesh();
+        AddBoxes(mesh, solid, false);
+        AddBoxes(mesh, seeThrough, true);
+        return new MeshInstance3D { Mesh = mesh, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    }
+
+    private static void AddBoxes(ArrayMesh mesh, List<(Vector3 A, Vector3 B, float W, Color C)> boxes, bool alpha)
+    {
+        if (boxes.Count == 0) return;
+        var st = new SurfaceTool();
+        st.Begin(Godot.Mesh.PrimitiveType.Triangles);
+        foreach (var (a, b, w, c) in boxes)
+        {
+            Vector3 along = (b - a).Normalized();
+            Vector3 side = along.Cross(Vector3.Up);
+            if (side.LengthSquared() < 1e-6f) side = Vector3.Right;
+            side = side.Normalized() * (w / 2);
+            Vector3 up = side.Cross(along).Normalized() * 0.02f;
+            if (up.Y < 0) up = -up;
+            Vector3[] p =
+            {
+                a - side - up, a + side - up, a + side + up, a - side + up,
+                b - side - up, b + side - up, b + side + up, b - side + up,
+            };
+            int[] quads = { 0, 1, 2, 3, 4, 7, 6, 5, 0, 4, 5, 1, 1, 5, 6, 2, 2, 6, 7, 3, 3, 7, 4, 0 };
+            st.SetColor(c);
+            for (int q = 0; q < quads.Length; q += 4)
+            {
+                st.AddVertex(p[quads[q]]); st.AddVertex(p[quads[q + 1]]); st.AddVertex(p[quads[q + 2]]);
+                st.AddVertex(p[quads[q]]); st.AddVertex(p[quads[q + 2]]); st.AddVertex(p[quads[q + 3]]);
+            }
+        }
+        st.Commit(mesh);
+        mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, alpha ? LineMatAlpha : LineMatSolid);
+    }
+
+    private static StandardMaterial3D LineMat(bool alpha) => new()
+    {
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, NoDepthTest = true, VertexColorUseAsAlbedo = true,
+        VertexColorIsSrgb = true, CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        Transparency = alpha ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
+    };
+    private static StandardMaterial3D? _lineSolid, _lineAlpha;
+    private static StandardMaterial3D LineMatSolid => _lineSolid is { } m && IsInstanceValid(m) ? m : _lineSolid = LineMat(false);
+    private static StandardMaterial3D LineMatAlpha => _lineAlpha is { } m && IsInstanceValid(m) ? m : _lineAlpha = LineMat(true);
 
     // ------------------------------------------------------------------ world
     private FdgRaylib.Terrain.TableRooms.Room? _room;
@@ -652,6 +706,7 @@ public partial class BattleTable : Node3D
     private void SyncModels(float delta)
     {
         var live = new HashSet<ModelID>();
+        Func<IUnit, bool> activated = UnitActivation.Checker(Session.Table.Progress); // once per frame, not per unit
         foreach (IUnit unit in Session.Table.Units.Objects)
         {
             bool mine = Session.IsMine(unit.PlayerID);
@@ -672,7 +727,11 @@ public partial class BattleTable : Node3D
                     view!.Root.Position = World(p);
                 }
                 Vector3 target = World(p);
-                view!.Root.Position = view.Root.Position.Lerp(target, Mathf.Min(1f, delta * 10f));
+                // Perf sweep (2026-11-15): a model that has arrived is left alone - writing the same transform to
+                // every model every frame made Godot re-propagate each model's whole node tree.
+                Vector3 at = view!.Root.Position;
+                if (at.DistanceSquaredTo(target) > 1e-8f)
+                    view.Root.Position = at.DistanceSquaredTo(target) < 1e-6f ? target : at.Lerp(target, Mathf.Min(1f, delta * 10f));
                 // Which way it looks: the engine's facing (FacingRules - towards the enemy at deployment, the way it
                 // moved, what it attacked). A model's front is its +Z (the Asset Lab's FRONT arrow); table z runs
                 // the other way to world z. Turns smoothly rather than snapping.
@@ -680,8 +739,13 @@ public partial class BattleTable : Node3D
                 if (f.X * f.X + f.Y * f.Y > 0.01f)
                 {
                     float want = Mathf.Atan2(f.X, -f.Y);
-                    float yaw = fresh ? want : Mathf.LerpAngle(view.Root.Rotation.Y, want, Mathf.Min(1f, delta * 6f));
-                    view.Root.Rotation = new Vector3(0, yaw, 0);
+                    float now = view.Root.Rotation.Y;
+                    float off = Mathf.Abs(Mathf.AngleDifference(now, want));
+                    if (fresh || off > 1e-4f)
+                    {
+                        float yaw = fresh || off < 1e-3f ? want : Mathf.LerpAngle(now, want, Mathf.Min(1f, delta * 6f));
+                        view.Root.Rotation = new Vector3(0, yaw, 0);
+                    }
                 }
                 sum += target;
                 placed++;
@@ -689,24 +753,29 @@ public partial class BattleTable : Node3D
             }
 
             bool shaken = unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
-            bool done = UnitActivation.HasActivated(Session.Table.Progress, unit);
+            bool done = activated(unit);
             if (placed > 0)
             {
                 Label3D label = Label(unit, mine);
-                label.Position = sum / placed + new Vector3(0, top, 0);
                 bool selected = Selected is { } s && s.Equals(unit.ID);
-                label.Visible = mine || ShowEnemyNames.Contains(unit.ID) || selected;
-                label.Modulate = (selected ? HudKit.Lime : SeatColour(unit.PlayerID).Lightened(0.35f)) with { A = done ? 0.55f : 1f };
+                // Perf sweep (2026-11-15): only what changed is written (same picture, far fewer engine calls).
+                Vector3 labelAt = sum / placed + new Vector3(0, top, 0);
+                bool show = mine || ShowEnemyNames.Contains(unit.ID) || selected;
+                Color tint = (selected ? HudKit.Lime : SeatColour(unit.PlayerID).Lightened(0.35f)) with { A = done ? 0.55f : 1f };
+                if (label.Position != labelAt) label.Position = labelAt;
+                if (label.Visible != show) label.Visible = show;
+                if (label.Modulate != tint) label.Modulate = tint;
                 Sprite3D[] marks = Marks(unit);
-                marks[0].Visible = done;
-                marks[1].Visible = shaken;
-                marks[0].Position = label.Position + new Vector3(-0.8f, 1.3f, 0);
-                marks[1].Position = label.Position + new Vector3(0.8f, 1.3f, 0);
+                if (marks[0].Visible != done) marks[0].Visible = done;
+                if (marks[1].Visible != shaken) marks[1].Visible = shaken;
+                Vector3 m0 = labelAt + new Vector3(-0.8f, 1.3f, 0), m1 = labelAt + new Vector3(0.8f, 1.3f, 0);
+                if (marks[0].Position != m0) marks[0].Position = m0;
+                if (marks[1].Position != m1) marks[1].Position = m1;
             }
             else if (_labels.TryGetValue(unit.ID, out Label3D? gone))
             {
-                gone.Visible = false;
-                foreach (Sprite3D mk in Marks(unit)) mk.Visible = false;
+                if (gone.Visible) gone.Visible = false;
+                foreach (Sprite3D mk in Marks(unit)) if (mk.Visible) mk.Visible = false;
             }
         }
         foreach (ModelID dead in _models.Keys.Where(id => !live.Contains(id)).ToList())
@@ -722,7 +791,7 @@ public partial class BattleTable : Node3D
         var root = new Node3D();
         _modelRoot.AddChild(root);
         float rad = Mathf.Max(0.4f, m.BaseRadiusInches);
-        var body = Mat(team.Darkened(0.45f).Lerp(new Color(0.55f, 0.55f, 0.55f), 0.25f), 0.55f);
+        var body = TableLook.SharedMat(team.Darkened(0.45f).Lerp(new Color(0.55f, 0.55f, 0.55f), 0.25f), 0.55f); // shared per side (perf sweep)
         // The game's base in its real shape: a rectangle for a vehicle / monster with one (turned with the model).
         if (m.BaseShape is RectangleBase rb) TableLook.AddRectBase(root, rb.WidthInches, rb.HeightInches, team);
         else TableLook.AddBase(root, m.BaseRadiusInches, team);
@@ -732,20 +801,18 @@ public partial class BattleTable : Node3D
         if (AddUnitModel(root, m, unit, out float modelHeight)) height = modelHeight;
         else if (big)
         {
-            Mesh(root, new BoxMesh { Size = new Vector3(rad * 1.3f, 1.8f, rad * 1.6f) }, body, new Vector3(0, 1.15f, 0));
+            Mesh(root, TableLook.SharedMesh($"tokbox:{rad}", () => new BoxMesh { Size = new Vector3(rad * 1.3f, 1.8f, rad * 1.6f) }), body, new Vector3(0, 1.15f, 0));
             height = 2.05f;
         }
         else
         {
             float h = m.TotalWounds >= 3 ? 1.5f : 1.05f;
-            Mesh(root, new CapsuleMesh { Radius = rad * 0.42f, Height = h }, body, new Vector3(0, 0.25f + h / 2, 0));
-            Mesh(root, new SphereMesh { Radius = rad * 0.3f, Height = rad * 0.6f }, body, new Vector3(0, 0.3f + h, 0));
+            Mesh(root, TableLook.SharedMesh($"tokcap:{rad}:{h}", () => new CapsuleMesh { Radius = rad * 0.42f, Height = h }), body, new Vector3(0, 0.25f + h / 2, 0));
+            Mesh(root, TableLook.SharedMesh($"tokhead:{rad}", () => new SphereMesh { Radius = rad * 0.3f, Height = rad * 0.6f }), body, new Vector3(0, 0.3f + h, 0));
             height = 0.3f + h + rad * 0.3f;
         }
-        var ringMat = Mat(HudKit.Lime, 0.5f, HudKit.Lime, 1.5f);
-        ringMat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
-        ringMat.NoDepthTest = true;
-        var ring = Mesh(root, new TorusMesh { InnerRadius = rad + 0.18f, OuterRadius = rad + 0.42f, Rings = 48, RingSegments = 6 }, ringMat, new Vector3(0, 0.1f, 0));
+        var ringMat = TableLook.SharedMat(HudKit.Lime, 0.5f, HudKit.Lime, 1.5f, unshaded: true, noDepthTest: true);
+        var ring = Mesh(root, TableLook.SharedMesh($"selring:{rad}", () => new TorusMesh { InnerRadius = rad + 0.18f, OuterRadius = rad + 0.42f, Rings = 48, RingSegments = 6 }), ringMat, new Vector3(0, 0.1f, 0));
         ring.Visible = false;
         return new ModelView { Root = root, Body = body, Rim = rim, Ring = ring, RingMat = ringMat, Model = m, Unit = unit, Height = height };
     }

@@ -87,6 +87,8 @@ void fragment() {
     }
 
     /// <summary>Repaints every surface under <paramref name="root"/> with the model's swaps. No swaps: left alone.</summary>
+    private static readonly Dictionary<(ulong Source, string Paint), ShaderMaterial> Painted = new();
+
     public static void Apply(Node3D root, string? paint)
     {
         List<ColourSwap> swaps = ModelPaint.Parse(paint);
@@ -101,7 +103,17 @@ void fragment() {
             for (int s = 0; s < mi.Mesh.GetSurfaceCount(); s++)
             {
                 Material? m = mi.GetActiveMaterial(s);
+                // Perf sweep (2026-11-15): every painted model of a squad shares one material per original material
+                // and paint, instead of a new one per model (10 models = 10 identical materials before).
+                var key = (m?.GetInstanceId() ?? 0UL, paint!);
+                if (Painted.TryGetValue(key, out ShaderMaterial? shared) && GodotObject.IsInstanceValid(shared)
+                    && (m == null || GodotObject.IsInstanceValid(m)))
+                {
+                    mi.SetSurfaceOverrideMaterial(s, shared);
+                    continue;
+                }
                 var sm = new ShaderMaterial { Shader = PaintShader };
+                Painted[key] = sm;
                 if (m is BaseMaterial3D bm)
                 {
                     sm.SetShaderParameter("albedo_tex", bm.AlbedoTexture ?? White);

@@ -114,7 +114,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     public override void _Process(double delta)
     {
-        UpdateHover(delta);
+        long t0 = PerfProbe.Start(); UpdateHover(delta); PerfProbe.Stop("hover", t0);
         // Alt held over a report block: the card shows every die too (and back when it's let go).
         if (_cardBlock != null && _blockCard != null && IsInstanceValid(_blockCard) && Input.IsKeyPressed(Key.Alt) != _cardDice)
             ShowBlockCard(_cardBlock);
@@ -127,7 +127,7 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _tick += delta;
         if (_tick < 0.15) return;
         _tick = 0;
-        RefreshHud();
+        t0 = PerfProbe.Start(); RefreshHud(); PerfProbe.Stop("hud(every 0.15s)", t0);
     }
 
     // ================================================================== camera
@@ -480,7 +480,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
 
     private void SelectNextReady()
     {
-        var mine = MyUnits().Where(u => !UnitActivation.HasActivated(Session.Table.Progress, u)).ToList();
+        Func<IUnit, bool> activated = UnitActivation.Checker(Session.Table.Progress);
+        var mine = MyUnits().Where(u => !activated(u)).ToList();
         if (mine.Count == 0) return;
         int i = _selected == null ? -1 : mine.FindIndex(u => u.ID.Equals(_selected.ID));
         SelectUnit(mine[(i + 1) % mine.Count]); Decisions.UnitPicked(mine[(i + 1) % mine.Count]);
@@ -649,17 +650,23 @@ public partial class BattleScreen : Control, IOwnBackdrop
         _round.Text = progress.RoundCount?.ToString() ?? "-";
         _roundOf.Text = $"/{progress.TotalRounds}";
 
-        // Objectives held, per seat colour.
-        foreach (Node c in _objectiveCounts.GetChildren()) c.QueueFree();
+        long tp = PerfProbe.Start();
+        // Objectives held, per seat colour. Rebuilt only when a count changes (perf sweep, 2026-11-15 - it used to be
+        // thrown away and remade every refresh).
         var objectives = Session.Table.Objectives.Objects.ToList();
-        foreach (GameSession.Seat seat in Session.Seats)
-        {
-            int held = objectives.Count(ob => ob.OwnerID is { } owner && owner.Equals(seat.Id));
-            _objectiveCounts.AddChild(Count(held, _table.SeatColour(seat.Id), $"{seat.Name} holds {held}"));
-        }
+        var held = Session.Seats.Select(seat => (seat, n: objectives.Count(ob => ob.OwnerID is { } owner && owner.Equals(seat.Id)))).ToList();
         int neutral = objectives.Count(ob => ob.OwnerID == null);
-        _objectiveCounts.AddChild(Count(neutral, new Color(0.85f, 0.88f, 0.9f), $"{neutral} held by nobody"));
+        string objSig = string.Join(",", held.Select(h => $"{h.seat.Id}:{h.seat.Name}:{h.n}:{_table.SeatColour(h.seat.Id).ToHtml()}")) + "|" + neutral;
+        if (objSig != _objectiveSig)
+        {
+            _objectiveSig = objSig;
+            foreach (Node c in _objectiveCounts.GetChildren()) c.QueueFree();
+            foreach (var (seat, n) in held)
+                _objectiveCounts.AddChild(Count(n, _table.SeatColour(seat.Id), $"{seat.Name} holds {n}"));
+            _objectiveCounts.AddChild(Count(neutral, new Color(0.85f, 0.88f, 0.9f), $"{neutral} held by nobody"));
+        }
 
+        PerfProbe.Stop("hud.objectives", tp); tp = PerfProbe.Start();
         // Whose turn, and how many the other side still has to activate.
         IUnit? activating = progress.ActivatingUnit;
         if (activating != null)
@@ -698,10 +705,11 @@ public partial class BattleScreen : Control, IOwnBackdrop
             else if (open is ActivateDecision && _showEnemy) ShowList(false);
         }
 
-        RefreshArmy(progress);
-        RefreshCard(activating);
-        RefreshReport();
-        RefreshMission(progress);
+        PerfProbe.Stop("hud.turn+prompt", tp); tp = PerfProbe.Start();
+        RefreshArmy(progress); PerfProbe.Stop("hud.army", tp); tp = PerfProbe.Start();
+        RefreshCard(activating); PerfProbe.Stop("hud.card", tp); tp = PerfProbe.Start();
+        RefreshReport(); PerfProbe.Stop("hud.report", tp); tp = PerfProbe.Start();
+        RefreshMission(progress); PerfProbe.Stop("hud.mission", tp); tp = PerfProbe.Start();
 
         // Army list fills the space between the round box and the unit block.
         float top = _roundBox.GetRect().End.Y + 8, bottom = _unitBlock.GetRect().Position.Y - 8;
@@ -727,10 +735,12 @@ public partial class BattleScreen : Control, IOwnBackdrop
         float cx = Mathf.Max((screen.X - cmin.X) / 2, _actionBlock.GetRect().End.X + 16);
         _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
 
+        PerfProbe.Stop("hud.layout", tp);
         if (Session.EndedText != null && _gameOver == null) ShowGameOver();
     }
 
     private IUnit? _lastActivating;
+    private string? _objectiveSig;
     private Decision? _listFollowed;
 
     private void ShowList(bool enemy)
@@ -759,7 +769,8 @@ public partial class BattleScreen : Control, IOwnBackdrop
         List<IUnit> mine = _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
         // Before round 1 the list is the deployment list: still to place first, placed units under a divider.
         bool setup = progress.RoundCount == null;
-        bool Done(IUnit u) => setup ? u.GetIsOnBattlefield() : UnitActivation.HasActivated(progress, u);
+        Func<IUnit, bool> activated = UnitActivation.Checker(progress); // the pool read once, not once per unit
+        bool Done(IUnit u) => setup ? u.GetIsOnBattlefield() : activated(u);
         var ready = mine.Where(u => !Done(u) && Alive(u)).ToList();
         var done = mine.Where(u => Done(u) && Alive(u)).ToList();
         // The open decision's choices first, then the units it can't take, then the rest.
@@ -770,8 +781,25 @@ public partial class BattleScreen : Control, IOwnBackdrop
         if (sig == _armySig) return;
         _armySig = sig;
         _armyHead.Text = setup ? $"{ready.Count} to deploy" : _showEnemy ? $"{ready.Count}/{ready.Count + done.Count} to go" : $"{ready.Count}/{ready.Count + done.Count} to go - Tab";
-        foreach (Node c in _armyRows.GetChildren()) c.QueueFree();
-        foreach (IUnit u in ready) _armyRows.AddChild(ArmyRow(u, false));
+        // Perf sweep (2026-11-15): a row whose unit looks exactly as before is kept and moved into place; only rows
+        // that changed are built again. Rebuilding all of them (pictures and all) on every activation or click was
+        // the battle screen's biggest single cost on a big table.
+        var keep = new Dictionary<string, Control>();
+        foreach (Node c in _armyRows.GetChildren())
+        {
+            _armyRows.RemoveChild(c);
+            if (c is Control row && row.HasMeta(RowKeyMeta) && !keep.ContainsKey((string)row.GetMeta(RowKeyMeta))) keep[(string)row.GetMeta(RowKeyMeta)] = row;
+            else c.QueueFree();
+        }
+        Control Row(IUnit u, bool isDone)
+        {
+            string key = ArmyRowKey(u, isDone);
+            if (keep.Remove(key, out Control? old)) return old;
+            Control made = ArmyRow(u, isDone);
+            made.SetMeta(RowKeyMeta, key);
+            return made;
+        }
+        foreach (IUnit u in ready) _armyRows.AddChild(Row(u, false));
         if (done.Count > 0)
         {
             var sep = new HBoxContainer();
@@ -779,8 +807,22 @@ public partial class BattleScreen : Control, IOwnBackdrop
             sep.AddChild(HudKit.Text(setup ? "DEPLOYED" : "ACTIVATED", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
             sep.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(0, 1), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter });
             _armyRows.AddChild(sep);
-            foreach (IUnit u in done) _armyRows.AddChild(ArmyRow(u, true));
+            foreach (IUnit u in done) _armyRows.AddChild(Row(u, true));
         }
+        foreach (Control unused in keep.Values) unused.QueueFree();
+    }
+
+    private static readonly StringName RowKeyMeta = "army_row_key";
+
+    /// <summary>Everything an army row shows, as text: two rows with the same key look the same.</summary>
+    private string ArmyRowKey(IUnit u, bool done)
+    {
+        bool selected = _selected?.ID.Equals(u.ID) == true;
+        bool active = Session.Table.Progress.ActivatingUnit?.ID.Equals(u.ID) == true;
+        bool shaken = u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
+        UnitMark? mark = Decisions.ListMark(u);
+        return $"{u.ID.ID}|{u.Name}|{done}|{selected}|{active}|{shaken}|{LeftOf(u)}|{mark?.Pickable}|{mark?.Reason}|{HudKit.LookOf(u)}"
+            + $"|{Session.SeatOf(u.PlayerID)?.Faction}|{_table.SeatColour(u.PlayerID).ToHtml()}";
     }
 
     private static bool Alive(IUnit u) => u.Models.Any(m => m.RemainingWounds > 0);

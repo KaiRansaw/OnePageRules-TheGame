@@ -30,6 +30,21 @@ public static class UnitActivation
     }
 
     /// <summary>
+    /// <see cref="HasActivated"/> for many units at once (performance sweep, 2026-11-15): reads the round, the
+    /// activating unit and the unactivated pool ONCE, then answers each unit with a set lookup. Asking
+    /// <see cref="HasActivated"/> per unit rebuilt the whole pool for every unit - the battle screen did that for
+    /// every unit, every frame. Same answers, by construction: the rules below are HasActivated's, in order.
+    /// </summary>
+    public static Func<IUnit, bool> Checker(IGameProgress progress)
+    {
+        if (progress.RoundCount == null) return _ => false;
+        UnitID? activating = progress.ActivatingUnit?.ID;
+        var pool = new HashSet<UnitID>();
+        foreach (var u in progress.UnactivatedUnits) pool.Add(u.ID);
+        return unit => !(activating?.Equals(unit.ID) == true) && !IsInReserve(unit) && !pool.Contains(unit.ID);
+    }
+
+    /// <summary>
     /// #404: the unit is held off-table in reserve (Ambush) and has not arrived yet. A distinct state
     /// from both "ready" and "activated", and the one the army list labels "In Reserve".
     /// </summary>

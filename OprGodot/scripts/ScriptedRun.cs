@@ -40,8 +40,34 @@ public partial class ScriptedRun : Node
     /// <summary>While this says so, the next step waits (a slow job such as an STL import).</summary>
     private Func<bool>? _holdWhile;
 
+    // "perf:N" (performance sweep, 2026-11-15): samples the next N frames' script time, draw calls, objects drawn,
+    // node count and memory, then prints one summary line ("ScriptedRun: perf ...") and carries on.
+    private int _perfLeft;
+    private readonly List<double> _perfProcess = new();
+    private double _perfDraw, _perfObjects, _perfNodes, _perfMem, _perfFrames, _perfWall;
+
+    private void SamplePerf(double delta)
+    {
+        _perfProcess.Add(Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000);
+        _perfDraw = Math.Max(_perfDraw, Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame));
+        _perfObjects = Math.Max(_perfObjects, Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame));
+        _perfNodes = Math.Max(_perfNodes, Performance.GetMonitor(Performance.Monitor.ObjectNodeCount));
+        _perfMem = Math.Max(_perfMem, Performance.GetMonitor(Performance.Monitor.MemoryStatic) / 1048576.0);
+        _perfFrames++; _perfWall += delta;
+        if (--_perfLeft > 0) return;
+        _perfProcess.Sort();
+        double avg = _perfProcess.Average(), p95 = _perfProcess[(int)(_perfProcess.Count * 0.95)], max = _perfProcess[^1];
+        long managed = GC.GetTotalMemory(false) / 1048576;
+        GD.Print($"ScriptedRun: perf frames={_perfFrames} process_ms avg={avg:0.00} p95={p95:0.00} max={max:0.00} drawcalls_max={_perfDraw} "
+            + $"objects_max={_perfObjects} nodes_max={_perfNodes} godot_mem_mb={_perfMem:0} managed_mb={managed} wall_s={_perfWall:0.0}");
+        GD.Print($"ScriptedRun: perf ms/frame {PerfProbe.TakeReport(_perfFrames)}");
+        PerfProbe.Enabled = false;
+        _perfProcess.Clear(); _perfDraw = _perfObjects = _perfNodes = _perfMem = _perfFrames = _perfWall = 0;
+    }
+
     public override void _Process(double delta)
     {
+        if (_perfLeft > 0) { SamplePerf(delta); return; }
         if (--_wait > 0) return;
         _wait = 15;
         if (_holdWhile?.Invoke() == true) return;
@@ -312,6 +338,7 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
                 return;
             }
+            if (name.StartsWith("perf:") && int.TryParse(name[5..], out int perfFrames)) { _perfLeft = perfFrames; PerfProbe.TakeReport(1); PerfProbe.Enabled = true; return; }
             // "snap:Name" saves a picture of the screen as it is now (<shot dir>/Name.png).
             if (name.StartsWith("snap:"))
             {

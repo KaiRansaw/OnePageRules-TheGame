@@ -1,4 +1,6 @@
 using FDG;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
@@ -150,6 +152,34 @@ public static class TableLook
         return m;
     }
 
+    // Performance sweep (2026-11-15): materials and meshes the table makes once per MODEL were identical for every
+    // model of a side (the base rim, the dark base top, the token body, the selection ring). Each unique material
+    // is its own render state, so a 6000-point table drew ~2700 calls. These caches hand out ONE material / mesh per
+    // look. Only for things nobody changes after creation - a material that is recoloured later (objective
+    // markers) keeps using Mat().
+    private static readonly Dictionary<(Color, float, Color?, float, bool, bool), StandardMaterial3D> SharedMats = new();
+    private static readonly Dictionary<string, Mesh> SharedMeshes = new();
+
+    /// <summary>One shared, never-changed material per look (see <see cref="SharedMats"/>).</summary>
+    public static StandardMaterial3D SharedMat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f,
+        bool unshaded = false, bool noDepthTest = false)
+    {
+        var key = (c, rough, emit, emitE, unshaded, noDepthTest);
+        if (SharedMats.TryGetValue(key, out StandardMaterial3D? m) && GodotObject.IsInstanceValid(m)) return m;
+        m = Mat(c, rough, emit, emitE);
+        if (unshaded) m.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        m.NoDepthTest = noDepthTest;
+        SharedMats[key] = m;
+        return m;
+    }
+
+    /// <summary>One shared mesh per shape and size (<paramref name="key"/> names both).</summary>
+    public static Mesh SharedMesh(string key, Func<Mesh> make)
+    {
+        if (SharedMeshes.TryGetValue(key, out Mesh? mesh) && GodotObject.IsInstanceValid(mesh)) return mesh;
+        return SharedMeshes[key] = make();
+    }
+
     public static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos)
     {
         var mi = new MeshInstance3D { Mesh = mesh, MaterialOverride = mat, Position = pos };
@@ -164,16 +194,20 @@ public static class TableLook
     public static void AddBase(Node parent, float radiusInches, Color team)
     {
         float rad = Mathf.Max(0.4f, radiusInches);
-        Mesh(parent, new CylinderMesh { TopRadius = rad + 0.05f, BottomRadius = rad + 0.07f, Height = 0.08f }, Mat(team, 0.4f, team, 1.3f), new Vector3(0, 0.05f, 0));
-        Mesh(parent, new CylinderMesh { TopRadius = rad * 0.94f, BottomRadius = rad, Height = 0.2f }, Mat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
+        Mesh(parent, SharedMesh($"baserim:{rad}", () => new CylinderMesh { TopRadius = rad + 0.05f, BottomRadius = rad + 0.07f, Height = 0.08f }),
+            SharedMat(team, 0.4f, team, 1.3f), new Vector3(0, 0.05f, 0));
+        Mesh(parent, SharedMesh($"basetop:{rad}", () => new CylinderMesh { TopRadius = rad * 0.94f, BottomRadius = rad, Height = 0.2f }),
+            SharedMat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
     }
 
     /// <summary>A rectangular base (<paramref name="w"/> across, <paramref name="d"/> front to back - along the model's
     /// facing), drawn like <see cref="AddBase"/>: a rim in the seat colour, a dark top.</summary>
     public static void AddRectBase(Node parent, float w, float d, Color team)
     {
-        Mesh(parent, new BoxMesh { Size = new Vector3(w + 0.12f, 0.08f, d + 0.12f) }, Mat(team, 0.4f, team, 1.3f), new Vector3(0, 0.05f, 0));
-        Mesh(parent, new BoxMesh { Size = new Vector3(w * 0.97f, 0.2f, d * 0.97f) }, Mat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
+        Mesh(parent, SharedMesh($"rectrim:{w}x{d}", () => new BoxMesh { Size = new Vector3(w + 0.12f, 0.08f, d + 0.12f) }),
+            SharedMat(team, 0.4f, team, 1.3f), new Vector3(0, 0.05f, 0));
+        Mesh(parent, SharedMesh($"recttop:{w}x{d}", () => new BoxMesh { Size = new Vector3(w * 0.97f, 0.2f, d * 0.97f) }),
+            SharedMat(new Color(0.08f, 0.09f, 0.1f), 0.5f), new Vector3(0, 0.15f, 0));
     }
 
     /// <summary>Height of the top of <see cref="AddBase"/> - where a model's feet go.</summary>
