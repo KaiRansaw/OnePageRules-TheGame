@@ -612,6 +612,18 @@ public partial class LobbyScreen : Control
                     : "You are playing this seat. Click to hand it to a bot. Hand every seat to a bot to watch the game play itself.");
             toggle.CustomMinimumSize = new Vector2(90, 0);
             head.AddChild(toggle);
+            // Which bot (Kai, 2026-11-15): the official AI by default, Tactical and Expert pickable.
+            if (bot && Session.CanPickBrain)
+            {
+                var brains = LobbySession.Brains.Select(b => b.Profile).ToList();
+                var brain = Choice(brains, Session.BrainOf(info),
+                    p => LobbySession.Brains.First(b => b.Profile == p).Name,
+                    p => LobbySession.Brains.First(b => b.Profile == p).Tip,
+                    false, p => Session.SetBrain(info, p));
+                brain.Name = "SeatBrain";
+                brain.TooltipText = "Which bot plays this seat.";
+                head.AddChild(brain);
+            }
         }
         else head.AddChild(HudKit.Chip(Session.SeatOwnerLabel(info).ToUpperInvariant(), HudKit.Dim, false, 13));
         head.AddChild(HudKit.Grow());

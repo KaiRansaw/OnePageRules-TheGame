@@ -131,7 +131,41 @@ public sealed class LobbySession : IDisposable
     {
         if (!Vm.CheckCanSetPlayerType(info.PlayerID)) return;
         if (info.PlayerType == EPlayerType.AI) Vm.SetPlayerType(info.PlayerID, EPlayerType.Local);
-        else Vm.SetPlayerType(info.PlayerID, EPlayerType.AI, BotProfile);
+        else Vm.SetPlayerType(info.PlayerID, EPlayerType.AI, BrainOf(info));
+    }
+
+    // ------------------------------------------------------------------ bot brains (Kai, 2026-11-15)
+
+    /// <summary>
+    /// The three bots a battle-game seat can have (Kai, 2026-11-15: "bring back both; default is the OPR AI, the other
+    /// 2 are pickable"). The official Solo &amp; Co-Op AI is the default and the only one that follows a book; the
+    /// Tactician and the Strategist (#191) play to win and were hidden from the lobby since 2026-10-31. Quest games
+    /// always use their own book AI.
+    /// </summary>
+    public static readonly IReadOnlyList<(EAiProfile Profile, string Name, string Tip)> Brains = new[]
+    {
+        (EAiProfile.SoloCoOp, "Official AI",
+            "OnePageRules' own Solo & Co-Op rules: it takes and holds objectives, shoots the closest target it can see, and favours enemies that haven't moved yet. Predictable, and by the book."),
+        (EAiProfile.Tactician, "Tactical",
+            "Not a book AI - a bot that plays to win: weighs threats, cover and which objectives it can really hold, focuses fire, and screens its own units. Thinks quickly."),
+        (EAiProfile.Strategist, "Expert (slow)",
+            "The Tactical bot plus a search that looks ahead several moves before each activation. The strongest bot, and it takes about 5-10 seconds a unit to think."),
+    };
+
+    private readonly Dictionary<Guid, EAiProfile> _brains = new();
+
+    /// <summary>Whether this game lets a seat pick its bot: the four battle games (Quest has its own book AI).</summary>
+    public bool CanPickBrain => !GameSystemInfo.IsQuest(Vm.GameSystem);
+
+    /// <summary>The bot picked for a seat - the official AI until changed.</summary>
+    public EAiProfile BrainOf(LobbyPlayerInfoSummary info) =>
+        CanPickBrain && _brains.TryGetValue(info.PlayerID.ID, out EAiProfile p) ? p : BotProfile;
+
+    public void SetBrain(LobbyPlayerInfoSummary info, EAiProfile profile)
+    {
+        if (!CanPickBrain || !Vm.CheckCanSetPlayerType(info.PlayerID)) return;
+        _brains[info.PlayerID.ID] = profile;
+        if (info.PlayerType == EPlayerType.AI) Vm.SetPlayerType(info.PlayerID, EPlayerType.AI, profile);
     }
 
     /// <summary>The seat's tag, read from where the viewer sits (a joined friend sees YOU / HOST).</summary>
