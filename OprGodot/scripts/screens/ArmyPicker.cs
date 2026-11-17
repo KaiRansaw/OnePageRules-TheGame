@@ -140,7 +140,6 @@ public partial class ArmyPicker : PanelContainer
         b.Name = "Army_" + Forge.ForgeWidgets.SafeName(army);
         b.CustomMinimumSize = new Vector2(0, 96 * HudKit.PictureSize.Scale);
         b.FocusMode = FocusModeEnum.All;
-        b.TooltipText = army;
         var box = new ChamferBox { Fill = Palette.Panel, Border = HudKit.Edge, Cut = 10, BorderWidth = 1 };
         b.AddThemeStyleboxOverride("normal", box);
         b.AddThemeStyleboxOverride("hover", box.With(x => x.Border = HudKit.EdgeHot));
@@ -182,6 +181,8 @@ public partial class ArmyPicker : PanelContainer
             var box = (ChamferBox)t.Tile.GetThemeStylebox("normal");
             bool on = t.Name == army;
             t.Tile.AddThemeStyleboxOverride("normal", box.With(x => { x.Border = on ? HudKit.Lime : HudKit.Edge; x.BorderWidth = on ? 3 : 1; }));
+            // The picked army's name turns the go colour - the frame alone hides behind the picture.
+            if (t.Tile.GetNodeOrNull<Label>("%ArmyName") is { } nm) nm.AddThemeColorOverride("font_color", on ? HudKit.Lime : HudKit.Fg);
         }
         if (_info == null) return;
         _commit.Disabled = army == null;

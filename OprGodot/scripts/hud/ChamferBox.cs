@@ -146,6 +146,18 @@ public partial class ChamferBox : StyleBox
         Color mod = state == "disabled" ? new Color(1, 1, 1, 0.5f) : Colors.White;
         if (h <= 60)
         {
+            if (def.FrameOwnFill)
+            {
+                // Sci-Fi Minimalism: every short button is the pack's own button art (BtnDefault). Its "selected" tile
+                // (a small square with a bar) is never stretched over a wide button - Kai, 2026-11-17: it read as a thick
+                // home-made green line. Selected / main buttons are the brighter art instead; their text says the rest.
+                string bst = state == "disabled" ? "disabled" : state == "normal" && !filled ? "normal" : "hover";
+                Texture2D? b = Skin.Tex($"btn_{bst}", Look) ?? Skin.Tex("btn_normal", Look);
+                if (b == null) return false;
+                Patch(ci, rect, b, def.Button, mod);
+                if (state == "active" || state == "hover" && filled) Patch(ci, rect, b, def.Button, mod with { A = 0.6f });
+                return true;
+            }
             string kind = filled || state == "active" ? "fill" : "btn";
             string st = state == "disabled" ? (kind == "fill" ? "normal" : "disabled") : state;
             Texture2D? tex = Skin.Tex($"{kind}_{st}", Look) ?? Skin.Tex($"{kind}_normal", Look);
@@ -163,8 +175,7 @@ public partial class ChamferBox : StyleBox
         }
         Patch(ci, rect, frame, def.Frame, state == "active" || state == "hover" ? mod : mod with { A = mod.A * 0.9f });
         if (state == "active" && !def.FrameOwnFill) Patch(ci, rect, frame, def.Frame, mod);   // selected: brighter line
-        if (state == "active" && def.FrameOwnFill)    // selected: the go colour along the bottom, like the art's own marker
-            RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X, rect.End.Y - 4, rect.Size.X, 4), Looks.Get(Look).Go);
+        if (state == "active" && def.FrameOwnFill) Patch(ci, rect, frame, def.Frame, mod with { A = 0.7f });   // selected: the frame brighter
         return true;
     }
 
@@ -180,6 +191,17 @@ public partial class ChamferBox : StyleBox
     /// <summary>The accent and left bars still mark headers and selected rows over the pack's frames.</summary>
     private void DrawBars(Rid ci, Rect2 rect)
     {
+        // Sci-Fi Minimalism: the go-coloured decoration bars are not part of the pack (Kai, 2026-11-17) - only bars that
+        // carry information (team colours, a selected row's own colour) are drawn over its art.
+        if (Skin.Current is { FrameOwnFill: true })
+        {
+            Color go = Looks.Get(Look).Go;
+            if (LeftBar.A > 0 && !Near(LeftBar, go) && !Near(LeftBar, Looks.Get(Look).Accent) && !Near(LeftBar, HudKit.Teal))
+                RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 2, rect.Position.Y + 10, 3, Mathf.Max(0, rect.Size.Y - 20)), LeftBar);
+            if (Accent.A > 0 && !Near(Accent, go))
+                RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 16, rect.Position.Y - AccentThickness / 2f, Mathf.Min(AccentLength, rect.Size.X - 32), AccentThickness), Accent);
+            return;
+        }
         if (LeftBar.A > 0) RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 2, rect.Position.Y + 10, 3, Mathf.Max(0, rect.Size.Y - 20)), LeftBar);
         if (Accent.A > 0)
             RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 16, rect.Position.Y - AccentThickness / 2f, Mathf.Min(AccentLength, rect.Size.X - 32), AccentThickness), Accent);
