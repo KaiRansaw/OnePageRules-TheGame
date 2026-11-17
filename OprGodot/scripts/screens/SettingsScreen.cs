@@ -75,8 +75,14 @@ public partial class SettingsScreen : Control
                 Config.StartFullscreen = on;
                 DisplayServer.WindowSetMode(on ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
             }));
-        rows.AddChild(Check("Hologram UI (test)", "The hologram UI pack (Wenrexa, free) on every panel and button - teal for Grimdark Future, gold for Age of Fantasy. Off: back to the plain cut-corner panels. Changes straight away.",
-            View.UiSkin != "classic", Hud.Skin.Set));
+        // UI themes from art packs (Kai, 2026-11-16) - Classic is the drawn look; each pack is one entry in Hud.Skin.All.
+        var themes = new OptionButton { Name = "UiTheme" };
+        var ids = new List<string> { "classic" };
+        themes.AddItem("Classic (drawn panels)");
+        foreach (var d in Hud.Skin.All) { ids.Add(d.Id); themes.AddItem(d.Label); }
+        themes.Selected = Math.Max(0, ids.IndexOf(View.UiSkin));
+        themes.ItemSelected += i => Hud.Skin.Set(ids[(int)i]);
+        rows.AddChild(Row("UI theme", "The art on every panel and button. Each pack has a Grimdark colouring and an Age of Fantasy one. Classic = the plain cut-corner panels. Changes straight away.", themes));
         rows.AddChild(Check("3D unit models", "Show the models you downloaded in the Asset Lab on the battle table. Off: everyone is the plain token (quicker on a slow computer). Takes effect from the next game.",
             View.ShowUnitModels, on => View.ShowUnitModels = on));
         rows.AddChild(Check("Unit labels", "Show each unit's name over it on the table.",

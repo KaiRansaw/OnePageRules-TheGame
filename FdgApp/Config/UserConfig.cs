@@ -201,9 +201,12 @@ public sealed class ViewPreferences
     public bool MenuSounds { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
     public bool ShowUnitModels { get; set; } = true;
-    /// <summary>Godot build: the UI art. "hologram" = the Wenrexa hologram pack (Kai's test, 2026-11-16); "classic" = the
-    /// drawn cut-corner panels it replaced. A switch so the test can be rolled back from Settings.</summary>
-    public string UiSkin { get; set; } = "hologram";
+    /// <summary>Godot build: the UI theme - "classic" (the drawn cut-corner panels) or an art pack's id ("hologram",
+    /// "minimal"; OprGodot Hud.Skin.All). Kai is trying packs (2026-11-16); Settings -> Display -> UI theme.</summary>
+    public string UiSkin { get; set; } = "minimal";
+    /// <summary>The newest UI theme this copy has switched to by itself: a build that adds a theme puts it on once (Kai is
+    /// trying them one after another); picking another in Settings sticks until the next new theme arrives.</summary>
+    public string UiSkinOffered { get; set; } = "";
 
     /// <summary>The room around the table (Kai, 2026-11-14): a <c>TableRooms</c> id, "auto" (a room matching the game,
     /// once downloaded) or "" for none.</summary>

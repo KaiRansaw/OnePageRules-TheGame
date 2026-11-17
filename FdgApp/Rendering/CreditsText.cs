@@ -31,6 +31,7 @@ public static class CreditsText
         {
             new Entry("Game icons", "Lorc, Delapouite and sbed - game-icons.net", "CC BY 3.0 (recoloured)", "https://game-icons.net"),
             new Entry("Hologram UI frames", "Wenrexa - Free UI Hologram Interface", "CC0 - public domain", "https://opengameart.org/content/free-ui-hologram-interface"),
+            new Entry("Sci-Fi Minimalism UI", "Wenrexa - UI Sci-Fi Minimalism #01", "CC0 - public domain", "https://wenrexa.itch.io/sci-fi-style-interfacenesia-01"),
         }),
         new Section("Fonts", new[]
         {

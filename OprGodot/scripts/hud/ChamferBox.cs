@@ -61,7 +61,7 @@ public partial class ChamferBox : StyleBox
 
     public override void _Draw(Rid canvasItem, Rect2 rect)
     {
-        if (Skin.Holo && DrawHolo(canvasItem, rect)) { DrawBars(canvasItem, rect); return; }
+        if (Skin.On && DrawHolo(canvasItem, rect)) { DrawBars(canvasItem, rect); return; }
         if (Glow.A > 0)
             for (int i = 3; i >= 1; i--)
             {
@@ -138,42 +138,43 @@ public partial class ChamferBox : StyleBox
     /// </summary>
     private bool DrawHolo(Rid ci, Rect2 rect)
     {
+        if (Skin.Current is not { } def) return false;
         string state = State();
         float w = rect.Size.X, h = rect.Size.Y;
         if (w < 4 || h < 4) return false;
-        bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a lime/gold-filled box: the selected / commit look
-        Color mod = state == "disabled" ? new Color(1, 1, 1, 0.55f) : Colors.White;
+        bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a go-coloured box: the selected / commit look
+        Color mod = state == "disabled" ? new Color(1, 1, 1, 0.5f) : Colors.White;
         if (h <= 60)
         {
             string kind = filled || state == "active" ? "fill" : "btn";
             string st = state == "disabled" ? (kind == "fill" ? "normal" : "disabled") : state;
             Texture2D? tex = Skin.Tex($"{kind}_{st}", Look) ?? Skin.Tex($"{kind}_normal", Look);
             if (tex == null) return false;
-            // Button art: line ~2 px in; corners ~10 px. Fill buttons have a soft 0-7 px glow edge.
-            float grow = kind == "fill" ? 3 : 1;
-            Rect2 r = rect.Grow(grow);
-            float mm = Mathf.Min(kind == "fill" ? 14 : 12, Mathf.Min(r.Size.X, r.Size.Y) / 2f - 1);
-            RenderingServer.CanvasItemAddNinePatch(ci, r, new Rect2(Vector2.Zero, tex.GetSize()), tex.GetRid(),
-                new Vector2(mm, mm), new Vector2(mm, mm), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, true, mod);
+            Patch(ci, rect, tex, kind == "fill" ? def.Filled : def.Button, mod);
             return true;
         }
         Texture2D? frame = Skin.Tex("frame", Look);
         if (frame == null) return false;
-        // The fill, rounded like the frame (radius 14), just inside the line.
-        Color fill = filled ? Fill : Fill;
-        if (state == "hover") fill = fill.Lightened(0.05f);
-        if (fill.A > 0) RoundFill(fill, 14).Draw(ci, rect.Grow(-1));
-        // The frame's line is 19 px in from its edge; grow by that so the line lands on our edge.
-        const float lineIn = 19, corner = 38;
-        Rect2 fr = rect.Grow(lineIn - 1);
-        float m = Mathf.Min(corner, Mathf.Min(fr.Size.X, fr.Size.Y) / 2f - 1);
-        Color fm = state is "active" ? mod : state == "hover" ? mod : mod with { A = mod.A * 0.85f };
-        RenderingServer.CanvasItemAddNinePatch(ci, fr, new Rect2(Vector2.Zero, frame.GetSize()), frame.GetRid(),
-            new Vector2(m, m), new Vector2(m, m), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, false, fm);
-        if (state == "active")   // selected: a second pass makes the line brighter
-            RenderingServer.CanvasItemAddNinePatch(ci, fr, new Rect2(Vector2.Zero, frame.GetSize()), frame.GetRid(),
-                new Vector2(m, m), new Vector2(m, m), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, false, mod);
+        if (!def.FrameOwnFill)
+        {
+            // The fill, rounded like the frame, just inside its line.
+            Color fill = state == "hover" ? Fill.Lightened(0.05f) : Fill;
+            if (fill.A > 0) RoundFill(fill, def.FillRadius).Draw(ci, rect.Grow(-1));
+        }
+        Patch(ci, rect, frame, def.Frame, state == "active" || state == "hover" ? mod : mod with { A = mod.A * 0.9f });
+        if (state == "active" && !def.FrameOwnFill) Patch(ci, rect, frame, def.Frame, mod);   // selected: brighter line
+        if (state == "active" && def.FrameOwnFill)    // selected: the go colour along the bottom, like the art's own marker
+            RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X, rect.End.Y - 4, rect.Size.X, 4), Looks.Get(Look).Go);
         return true;
+    }
+
+    private static void Patch(Rid ci, Rect2 rect, Texture2D tex, Skin.Patch p, Color mod)
+    {
+        Rect2 r = rect.Grow(p.Grow);
+        float half = Mathf.Min(r.Size.X, r.Size.Y) / 2f - 1;
+        float l = Mathf.Min(p.Left, half), t = Mathf.Min(p.Top, half), rr = Mathf.Min(p.Right, half), b = Mathf.Min(p.Bottom, half);
+        RenderingServer.CanvasItemAddNinePatch(ci, r, new Rect2(Vector2.Zero, tex.GetSize()), tex.GetRid(),
+            new Vector2(l, t), new Vector2(rr, b), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, p.Center, mod);
     }
 
     /// <summary>The accent and left bars still mark headers and selected rows over the pack's frames.</summary>

@@ -52,6 +52,14 @@ public partial class App : Node
         }
         if (scripted) AddChild(run);
 
+        // A newly added UI theme goes on once by itself, so a pulled build shows the pack being tried (Hud.Skin).
+        string newest = Hud.Skin.All[^1].Id;
+        if (UserConfig.Current.View.UiSkinOffered != newest)
+        {
+            UserConfig.Current.View.UiSkin = newest;
+            UserConfig.Current.View.UiSkinOffered = newest;
+            UserConfig.Save();
+        }
         // The tactical HUD look for every screen (Kai, 2026-11-10).
         GetTree().Root.Theme = Hud.HudTheme.Build();
         // Menu sounds (2026-11-15), and the saved Master volume from the first frame, not only once Settings is opened.
