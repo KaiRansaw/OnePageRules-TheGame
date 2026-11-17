@@ -276,6 +276,9 @@ public partial class ArmyForgeScreen : Control, IBackGuard
 
         var left = HudKit.Panel(HudKit.PanelBox(12));
         left.CustomMinimumSize = new Vector2(460, 0);
+        _unitHolder = left;
+        _rows = rows;
+        _issues = issues;
         left.AddChild(HudKit.Pad(UnitPanel(rows, issues), 14, 12, 14, 12));
         body.AddChild(left);
 
@@ -373,7 +376,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             string tag = partner >= 0 ? "Combined" : s.List.Units[i].JoinsUnitId != null ? "Joined" : "";
             if (issues.Any(x => x.UnitIndex == i && x.Severity == ListIssueSeverity.Error)) tag = "!";
             flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, $"Army{i}", rows[i].Name, rows[i].PointCost, tag, s.SelectedIndex == i, () => { s.SelectRow(idx); Rebuild(); }, null,
-                FdgRaylib.Models3D.UnitPortraits.LookOf(s.List.Units[i].ModelLooks)));
+                FdgRaylib.Models3D.UnitPortraits.LookOf(s.List.Units[i].ModelLooks), () => Hover(idx, null)));
         }
         if (s.List.Units.Count == 0)
             flow.AddChild(HudKit.Text("Empty - click a unit in the roster below, then + ADD (or double-click it).", 15, HudKit.Dim, HudKit.Semi));
@@ -421,7 +424,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 string id = u.Id;
                 int pts = s.RosterCards.TryGetValue(u.Id, out var card) ? card.Unit.PointCost : u.BasePointCost;
                 flow.AddChild(ForgeWidgets.Card(_s!.Book.Faction, "Roster_" + u.Name, u.Name, pts, "", s.SelectedRosterId == u.Id,
-                    () => { s.SelectRoster(id); Rebuild(); }, () => { s.Add(id); Rebuild(); }));
+                    () => { s.SelectRoster(id); Rebuild(); }, () => { s.Add(id); Rebuild(); }, hover: () => Hover(null, id)));
             }
             box.AddChild(flow);
             int weight = 2 + (group.Units.Count + 2) / 3;
@@ -438,6 +441,40 @@ public partial class ArmyForgeScreen : Control, IBackGuard
     /// <summary>A unit card: picture, name, points, an optional tag. Click selects; double-click adds.</summary>
     // ================================================================== the clicked unit
 
+    private PanelContainer? _unitHolder;
+    private List<UnitFileEntry> _rows = new();
+    private IReadOnlyList<ListIssue> _issues = Array.Empty<ListIssue>();
+    private int? _hoverRow;
+    private string? _hoverRoster;
+
+    /// <summary>The mouse is over a card: show it in the unit panel unless a card was clicked.</summary>
+    private void Hover(int? row, string? roster)
+    {
+        if (_s == null || _s.HasSelection || (_hoverRow == row && _hoverRoster == roster)) return;
+        _hoverRow = row;
+        _hoverRoster = roster;
+        RefreshUnitPanel();
+    }
+
+    /// <summary>Rebuilds only the left unit panel (the cards stay, so the mouse keeps its hover).</summary>
+    private void RefreshUnitPanel()
+    {
+        if (_unitHolder == null || !IsInstanceValid(_unitHolder)) return;
+        foreach (Node c in _unitHolder.GetChildren()) { _unitHolder.RemoveChild(c); c.QueueFree(); }
+        _unitHolder.AddChild(HudKit.Pad(UnitPanel(_rows, _issues), 14, 12, 14, 12));
+    }
+
+    /// <summary>Right-click anywhere lets go of the clicked card, so hovering works again (Kai, 2026-11-17).</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (e is not InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } || _s == null || !_s.HasSelection) return;
+        if (_view != View.Main || !IsVisibleInTree() || GetViewport().GuiGetFocusOwner() is PopupMenu) return;
+        _s.ClearSelection();
+        _hoverRow = null;
+        _hoverRoster = null;
+        Rebuild();
+    }
+
     private Control UnitPanel(List<UnitFileEntry> rows, IReadOnlyList<ListIssue> issues)
     {
         var s = _s!;
@@ -449,7 +486,11 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         scroll.AddChild(col);
         outer.AddChild(scroll);
 
-        if (s.SelectedIndex is int idx && idx < s.List.Units.Count)
+        // What the panel shows (Kai, 2026-11-17): the clicked card; with none clicked, the card under the mouse
+        // (the last one hovered, so the mouse can travel to the panel to scroll it).
+        int? shownRow = s.HasSelection ? s.SelectedIndex : _hoverRow;
+        string? shownRoster = s.HasSelection ? s.SelectedRosterId : _hoverRoster;
+        if (shownRow is int idx && idx < s.List.Units.Count)
         {
             BuilderUnit bu = s.List.Units[idx];
             var (unit, items) = s.Detail(idx);
@@ -522,7 +563,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             remove.CustomMinimumSize = new Vector2(0, 42);
             outer.AddChild(remove);
         }
-        else if (s.SelectedRosterId is { } rid && s.Roster(rid) is { } roster)
+        else if (shownRoster is { } rid && s.Roster(rid) is { } roster && s.RosterCards.ContainsKey(rid))
         {
             var (card, items) = s.RosterCards[rid];
             Title(col, "FROM THE ROSTER", card, roster);
@@ -546,7 +587,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         }
         else
         {
-            col.AddChild(ForgeWidgets.Wrapped("Click a unit card to see it here.", 16, HudKit.Dim));
+            col.AddChild(ForgeWidgets.Wrapped("Hover over a unit card to see it here. Click a card to keep it here; right-click anywhere to let go.", 16, HudKit.Dim));
         }
         return outer;
     }

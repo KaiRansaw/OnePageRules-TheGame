@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FDG.ArmyBuilding;
 using FDG.Rules.Definitions;
 using FDG.Rules.Dispatch;
@@ -22,12 +23,18 @@ public sealed class RuleGlossary
         "No description available - this rule is not enforced by the engine and does nothing in play.";
 
     private readonly Dictionary<string, string> _byName;
+    private readonly Dictionary<string, List<string>> _grants;
 
-    private RuleGlossary(Dictionary<string, string> byName) => _byName = byName;
+    private RuleGlossary(Dictionary<string, string> byName, Dictionary<string, List<string>> grants)
+    {
+        _byName = byName;
+        _grants = grants;
+    }
 
     /// <summary>An empty glossary (every lookup misses). For screens with no book in hand.</summary>
     public static RuleGlossary Empty { get; } =
-        new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+        new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase));
 
     /// <summary>
     /// Core catalog first, then the book's embedded definitions overriding by name — the same
@@ -53,6 +60,8 @@ public sealed class RuleGlossary
         string? gameSystem = null)
     {
         var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var grants = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (SpecialRuleDefinition definition in CoreRuleCatalog.All) grants[definition.Name] = GrantedBy(definition).ToList();
 
         // Lowest priority: the hand-written summary each definition was authored with. #420 measured
         // these against OPR's own text and 36 of the 38 that could be checked did not match - several
@@ -79,15 +88,49 @@ public sealed class RuleGlossary
         // two answers for one name. A faction rule that only this book has is here and nowhere else.
         if (definitions is not null)
             foreach (SpecialRuleDefinition definition in definitions)
+            {
                 if (!string.IsNullOrWhiteSpace(definition.Description))
                     byName[definition.Name] = definition.Description;
+                grants[definition.Name] = GrantedBy(definition).ToList();
+            }
 
         // Deliberately NOT seeded with every name OPR publishes. The glossary's key set is also its
         // answer to "is this rule known here?", and a rule the engine has no definition for must keep
         // reading as unknown rather than acquiring a confident description of behaviour that will never
         // happen. That is the #420 fault in miniature: convincing text in front of nothing.
-        return new RuleGlossary(byName);
+        return new RuleGlossary(byName, grants);
     }
+
+    /// <summary>
+    /// The rules a definition hands out - "Furious Aura" gives Furious, a spell gives its target Fearless. Kai,
+    /// 2026-11-17: a hover that says "gets Furious" must also say what Furious does, so every hover that shows a
+    /// rule appends these. Read from the definition's own effects (the names the engine will actually grant),
+    /// never guessed from the wording. The rule itself and duplicates are left out.
+    /// </summary>
+    public static IEnumerable<string> GrantedBy(SpecialRuleDefinition? definition)
+    {
+        if (definition == null) return Array.Empty<string>();
+        return (definition.Passive ?? Array.Empty<HookEntry>()).Where(e => e.Effect != null).Select(e => e.Effect)
+            .Concat((definition.Activated ?? Array.Empty<ActivatedAbility>()).Where(a => a.Effect != null).Select(a => a.Effect))
+            .SelectMany(FDG.SaveLoad.SpellRuleReferences.GrantedRuleNames)
+            .Where(n => !string.IsNullOrWhiteSpace(n) && !string.Equals(n, definition.Name, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>"\n\nFurious\n&lt;what Furious does&gt;" for each rule <paramref name="granted"/> names that has text, else "".</summary>
+    public static string GrantedText(IEnumerable<string> granted, Func<string, string?> describe)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (string g in granted)
+            if (describe(g) is { } text && !string.IsNullOrWhiteSpace(text))
+                sb.Append("\n\n").Append(g).Append('\n').Append(text);
+        return sb.ToString();
+    }
+
+    /// <summary>The rules <paramref name="ruleName"/> hands out (empty when none, or the name is unknown).</summary>
+    public IReadOnlyList<string> Grants(string ruleName) =>
+        _grants.TryGetValue(ruleName, out List<string>? g) ? g : Array.Empty<string>();
 
     /// <summary>The description for a canonical rule name, or null when the name resolves to nothing (or to
     /// a definition that was authored without a description).</summary>
@@ -112,11 +155,20 @@ public sealed class RuleGlossary
     /// <summary>Tooltip body for a rule: its description, or the inert-in-play note when it has none.
     /// Prefixed with the rule's own printable name so the tooltip stands alone when several rules sit on
     /// one line.</summary>
-    public string Tooltip(SpecialRuleEntry entry) => Compose(entry.PrintableName, Describe(entry));
+    public string Tooltip(SpecialRuleEntry entry) => Compose(entry.PrintableName, Describe(entry), Canonical(entry));
+
+    /// <summary>The name a rule's grants are filed under: the alias's own when it has some, else the rule it stands for.</summary>
+    private string Canonical(SpecialRuleEntry entry) => entry switch
+    {
+        SpecialRuleEntry_Core core => core.Name,
+        SpecialRuleEntry_CoreNumeric numeric => numeric.Name,
+        SpecialRuleEntry_Alias alias => _grants.ContainsKey(alias.Name) ? alias.Name : Canonical(alias.AliasedRule),
+        _ => entry.PrintableName,
+    };
 
     /// <inheritdoc cref="Tooltip(SpecialRuleEntry)"/>
-    public string Tooltip(string ruleName) => Compose(ruleName, Describe(ruleName));
+    public string Tooltip(string ruleName) => Compose(ruleName, Describe(ruleName), ruleName);
 
-    private static string Compose(string printableName, string? description) =>
-        $"{printableName}\n{description ?? UnknownRuleText}";
+    private string Compose(string printableName, string? description, string canonical) =>
+        $"{printableName}\n{description ?? UnknownRuleText}" + GrantedText(Grants(canonical), Describe);
 }

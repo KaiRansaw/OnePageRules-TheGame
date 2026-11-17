@@ -139,6 +139,12 @@ internal sealed class ForgeSession
 
     public void SelectRoster(string rosterId) { SelectedRosterId = rosterId; SelectedIndex = null; }
 
+    /// <summary>Nothing picked - the Forge's unit panel follows the mouse again (right-click, Kai 2026-11-17).</summary>
+    public void ClearSelection() { SelectedRosterId = null; SelectedIndex = null; }
+
+    /// <summary>True when a card was clicked (the unit panel stays on it instead of following the mouse).</summary>
+    public bool HasSelection => SelectedIndex != null || SelectedRosterId != null;
+
     public void SelectRow(int index)
     {
         if (index < 0 || index >= List.Units.Count) return;

@@ -14,6 +14,7 @@ namespace OprGodot;
 /// </summary>
 public partial class ScriptedRun : Node
 {
+    private Vector2 _mouse;
     private Queue<string> _presses = new();
     private string? _shot;
     private int _wait = 20;
@@ -92,6 +93,21 @@ public partial class ScriptedRun : Node
             {
                 Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true });
                 Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = false });
+                return;
+            }
+            // "mouseat:Name" moves the real pointer onto the control called Name (tooltips, hover panels); "rclick" right-clicks there.
+            if (name.StartsWith("mouseat:") && GetTree().Root.FindChild(name[8..], true, false) is Control under)
+            {
+                Vector2 at = under.GetGlobalRect().GetCenter();
+                _mouse = at;
+                GetViewport().WarpMouse(at);
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+                return;
+            }
+            if (name == "rclick")
+            {
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, Position = _mouse, GlobalPosition = _mouse });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = false, Position = _mouse, GlobalPosition = _mouse });
                 return;
             }
             if (name.StartsWith("hover:") && GetTree().Root.FindChild(name[6..], true, false) is Control hovered)

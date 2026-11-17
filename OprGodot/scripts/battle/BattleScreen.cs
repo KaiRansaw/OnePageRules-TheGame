@@ -1043,7 +1043,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
     {
         string bare = rule.RequestedName.Contains('(') ? rule.RequestedName[..rule.RequestedName.IndexOf('(')].Trim() : rule.RequestedName;
         string? book = RuleText(rule.Definition.Name) ?? RuleText(bare) ?? RuleText(rule.RequestedName);
-        return book != null ? $"{rule.RequestedName}:\n{book}" : RuleText(rule);
+        string granted = FdgRaylib.Rendering.RuleGlossary.GrantedText(FdgRaylib.Rendering.RuleGlossary.GrantedBy(rule.Definition),
+            n => RuleText(n) ?? (FDG.Rules.Dispatch.CoreRuleCatalog.All.FirstOrDefault(d => string.Equals(d.Name, n, StringComparison.OrdinalIgnoreCase))?.Description is { Length: > 0 } d ? d : null));
+        return (book != null ? $"{rule.RequestedName}:\n{book}" : RuleText(rule)) + granted;
     }
 
     private static string RuleText(FDG.Rules.Dispatch.ResolvedRule rule) =>

@@ -197,4 +197,25 @@ public class RuleGlossaryTests
         Assert.That(RuleGlossary.Build((IEnumerable<SpecialRuleDefinition>?)null).Describe("Stealth"),
             Is.Not.Null);
     }
+
+    // Kai, 2026-11-17: "Furious Aura only says it gives the unit Furious, but it doesn't say what Furious is."
+    [Test]
+    public void Tooltip_ARuleThatGrantsAnother_AlsoExplainsTheGrantedRule()
+    {
+        RuleGlossary glossary = RuleGlossary.Build(BookWith());
+        string furious = glossary.Describe("Furious")!;
+        Assert.That(furious, Is.Not.Empty);
+
+        string tip = glossary.Tooltip(new SpecialRuleEntry_Core("Furious Aura"));
+        Assert.That(tip, Does.StartWith("Furious Aura\n"));
+        Assert.That(tip, Does.EndWith("\n\nFurious\n" + furious));
+        Assert.That(glossary.Grants("Furious Aura"), Is.EqualTo(new[] { "Furious" }));
+    }
+
+    [Test]
+    public void Tooltip_ARuleThatGrantsNothing_IsUnchanged()
+    {
+        RuleGlossary glossary = RuleGlossary.Build(BookWith());
+        Assert.That(glossary.Tooltip("Stealth"), Is.EqualTo("Stealth\n" + glossary.Describe("Stealth")));
+    }
 }

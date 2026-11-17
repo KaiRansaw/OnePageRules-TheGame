@@ -36,9 +36,11 @@ internal static class ForgeWidgets
         return _models;
     }
 
-    public static Control Card(string faction, string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick, string? look = null)
+    public static Control Card(string faction, string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick, string? look = null, Action? hover = null)
     {
-        var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(100, 0), FocusMode = FocusModeEnum.None, ToggleMode = false, TooltipText = unit };
+        // No name tooltip (Kai, 2026-11-17): hovering shows the whole unit in the Forge's left panel instead.
+        var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(100, 0), FocusMode = FocusModeEnum.None, ToggleMode = false };
+        if (hover != null) b.MouseEntered += hover;
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
         if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
@@ -125,6 +127,7 @@ internal static class ForgeWidgets
         {
             var chip = HudKit.Chip(ForgeRules.ItemSummary(item), HudKit.Fg, size: 14);
             chip.TooltipText = item.Rules.Count == 0 ? item.Name : string.Join("\n\n", item.Rules.Select(r => glossary.Tooltip(r)));
+            chip.Name = "Item_" + SafeName(item.Name);
             chips.AddChild(chip);
         }
         foreach (SpecialRuleEntry r in unit.SpecialRules)
@@ -132,6 +135,7 @@ internal static class ForgeWidgets
             bool isNew = before != null && !before.SpecialRules.Any(o => o.PrintableName == r.PrintableName);
             var chip = HudKit.Chip(r.PrintableName + (isNew ? " (new)" : ""), isNew ? Palette.Lime : Palette.RuleGold, size: 14);
             chip.TooltipText = glossary.Tooltip(r);
+            chip.Name = "Rule_" + SafeName(r.PrintableName);
             chips.AddChild(chip);
         }
         col.AddChild(chips);
