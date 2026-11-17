@@ -119,49 +119,68 @@ public partial class ChamferBox : StyleBox
         return "normal";
     }
 
-    /// <summary>The pack's art for this box: a button frame for short boxes, a square button for small squares, the
-    /// glowing panel frame (over this box's own fill) for everything bigger. False = nothing to draw with.</summary>
+    private static readonly Dictionary<Color, StyleBoxFlat> Fills = new();
+
+    /// <summary>A rounded fill matching the pack frames' corners (cached per colour).</summary>
+    private static StyleBoxFlat RoundFill(Color c, int radius)
+    {
+        if (Fills.TryGetValue(c, out var f) && f.CornerRadiusTopLeft == radius) return f;
+        f = new StyleBoxFlat { BgColor = c, AntiAliasing = true };
+        f.SetCornerRadiusAll(radius);
+        return Fills[c] = f;
+    }
+
+    /// <summary>
+    /// The pack's art for this box, laid so the frame's bright line sits exactly on the box's edge (the glow spills
+    /// outside, as the drawn glow did) - so content keeps the same padding it had with the cut-corner panels. Short
+    /// boxes (buttons, chips, fields) use the pack's button frames; anything taller gets this box's own fill with
+    /// rounded corners under the pack's glowing panel frame. False = nothing to draw with.
+    /// </summary>
     private bool DrawHolo(Rid ci, Rect2 rect)
     {
         string state = State();
         float w = rect.Size.X, h = rect.Size.Y;
         if (w < 4 || h < 4) return false;
-        Texture2D? tex;
-        int m;
         bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a lime/gold-filled box: the selected / commit look
-        if (h <= 76)
+        Color mod = state == "disabled" ? new Color(1, 1, 1, 0.55f) : Colors.White;
+        if (h <= 60)
         {
             string kind = filled || state == "active" ? "fill" : "btn";
-            string st = kind == "fill" ? (state == "disabled" ? "normal" : state) : state;
-            tex = Skin.Tex($"{kind}_{st}", Look) ?? Skin.Tex($"{kind}_normal", Look);
-            m = kind == "fill" ? 16 : 12;
-            if (state == "disabled" && kind == "fill") tex = Skin.Tex("btn_disabled", Look);
+            string st = state == "disabled" ? (kind == "fill" ? "normal" : "disabled") : state;
+            Texture2D? tex = Skin.Tex($"{kind}_{st}", Look) ?? Skin.Tex($"{kind}_normal", Look);
+            if (tex == null) return false;
+            // Button art: line ~2 px in; corners ~10 px. Fill buttons have a soft 0-7 px glow edge.
+            float grow = kind == "fill" ? 3 : 1;
+            Rect2 r = rect.Grow(grow);
+            float mm = Mathf.Min(kind == "fill" ? 14 : 12, Mathf.Min(r.Size.X, r.Size.Y) / 2f - 1);
+            RenderingServer.CanvasItemAddNinePatch(ci, r, new Rect2(Vector2.Zero, tex.GetSize()), tex.GetRid(),
+                new Vector2(mm, mm), new Vector2(mm, mm), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, true, mod);
+            return true;
         }
-        else if (w <= 240 && h <= 240 && w / h is > 0.6f and < 1.6f)
-        {
-            tex = Skin.Tex(state is "hover" or "active" ? "sqr_hover" : "sqr_normal", Look);
-            m = 34;
-            if (Fill.A > 0) RenderingServer.CanvasItemAddRect(ci, rect.Grow(-6), Fill with { A = Fill.A * 0.6f });
-        }
-        else
-        {
-            tex = Skin.Tex("frame", Look);
-            m = 30;
-            if (Fill.A > 0) RenderingServer.CanvasItemAddRect(ci, rect.Grow(-7), Fill);
-        }
-        if (tex == null) return false;
-        float mm = Mathf.Min(m, Mathf.Min(w, h) / 2f - 1);
-        Color mod = state == "disabled" ? new Color(1, 1, 1, 0.55f) : Colors.White;
-        RenderingServer.CanvasItemAddNinePatch(ci, rect, new Rect2(Vector2.Zero, tex.GetSize()), tex.GetRid(),
-            new Vector2(mm, mm), new Vector2(mm, mm), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, true, mod);
+        Texture2D? frame = Skin.Tex("frame", Look);
+        if (frame == null) return false;
+        // The fill, rounded like the frame (radius 14), just inside the line.
+        Color fill = filled ? Fill : Fill;
+        if (state == "hover") fill = fill.Lightened(0.05f);
+        if (fill.A > 0) RoundFill(fill, 14).Draw(ci, rect.Grow(-1));
+        // The frame's line is 19 px in from its edge; grow by that so the line lands on our edge.
+        const float lineIn = 19, corner = 38;
+        Rect2 fr = rect.Grow(lineIn - 1);
+        float m = Mathf.Min(corner, Mathf.Min(fr.Size.X, fr.Size.Y) / 2f - 1);
+        Color fm = state is "active" ? mod : state == "hover" ? mod : mod with { A = mod.A * 0.85f };
+        RenderingServer.CanvasItemAddNinePatch(ci, fr, new Rect2(Vector2.Zero, frame.GetSize()), frame.GetRid(),
+            new Vector2(m, m), new Vector2(m, m), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, false, fm);
+        if (state == "active")   // selected: a second pass makes the line brighter
+            RenderingServer.CanvasItemAddNinePatch(ci, fr, new Rect2(Vector2.Zero, frame.GetSize()), frame.GetRid(),
+                new Vector2(m, m), new Vector2(m, m), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, false, mod);
         return true;
     }
 
     /// <summary>The accent and left bars still mark headers and selected rows over the pack's frames.</summary>
     private void DrawBars(Rid ci, Rect2 rect)
     {
-        if (LeftBar.A > 0) RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 4, rect.Position.Y + 8, 3, rect.Size.Y - 16), LeftBar);
+        if (LeftBar.A > 0) RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 2, rect.Position.Y + 10, 3, Mathf.Max(0, rect.Size.Y - 20)), LeftBar);
         if (Accent.A > 0)
-            RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 18, rect.Position.Y + 3, Mathf.Min(AccentLength, rect.Size.X - 36), AccentThickness), Accent);
+            RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 16, rect.Position.Y - AccentThickness / 2f, Mathf.Min(AccentLength, rect.Size.X - 32), AccentThickness), Accent);
     }
 }
