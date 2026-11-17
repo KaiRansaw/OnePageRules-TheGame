@@ -180,7 +180,7 @@ public partial class PictureManager : PanelContainer
         _slotTitle.Text = slot.Label.ToUpperInvariant();
         _where.Text = slot.Kind switch
         {
-            MenuPictures.EKind.Backdrop => $"The {MenuPictures.FamilyName(slot.Family)} half of the main menu, and behind its game screen.",
+            MenuPictures.EKind.Backdrop => $"The {MenuPictures.FamilyName(slot.Family)} card on the main menu (shown whole), and behind its game screen.",
             MenuPictures.EKind.GameTile => $"This game's tile on the {MenuPictures.FamilyName(slot.Family)} game screen.",
             _ => $"This army's tile wherever an army is picked, its lobby seat strip and its side of the loading screen - in all three {MenuPictures.FamilyName(slot.Family)} games.",
         };
@@ -200,7 +200,8 @@ public partial class PictureManager : PanelContainer
         foreach (Node n in _previews.GetChildren()) { _previews.RemoveChild(n); n.QueueFree(); }
         (string, float)[] shapes = _slot.Kind switch
         {
-            MenuPictures.EKind.Backdrop => new[] { ("Main menu (its half of the screen)", 0.89f), ("Game screen, behind the tiles", 16f / 9f) },
+            // The main menu card takes the picture's own shape (Build 2.56), so it shows whole there.
+            MenuPictures.EKind.Backdrop => new[] { ("Main menu card (the whole picture)", tex is { } t && t.GetHeight() > 0 ? (float)t.GetWidth() / t.GetHeight() : 16f / 9f), ("Game screen, behind the tiles", 16f / 9f) },
             MenuPictures.EKind.GameTile => new[] { ("Big tile (army vs army)", 1.55f), ("Small tile", 1.45f) },
             _ => new[] { ("Army tile", 3.6f), ("Lobby seat strip", 6f), ("Loading screen (its half)", 0.89f) },
         };
@@ -222,11 +223,10 @@ public partial class PictureManager : PanelContainer
                 // The tile's fade and name, as the army grid draws them.
                 var holder = new Control { ClipContents = true };
                 inner.SetAnchorsPreset(LayoutPreset.FullRect);
-                inner.AnchorLeft = 0.28f;
                 holder.AddChild(inner);
                 var fade = new TextureRect
                 {
-                    Texture = new GradientTexture2D { Gradient = new Gradient { Colors = new[] { Palette.Panel, Palette.Panel with { A = 0 } }, Offsets = new[] { 0.25f, 0.62f } }, FillTo = new Vector2(1, 0), Width = 256, Height = 8 },
+                    Texture = new GradientTexture2D { Gradient = new Gradient { Colors = new[] { new Color(0, 0, 0, 0.62f), new Color(0, 0, 0, 0) }, Offsets = new[] { 0.0f, 0.6f } }, FillTo = new Vector2(1, 0), Width = 256, Height = 8 },
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore,
                 };
                 fade.SetAnchorsPreset(LayoutPreset.FullRect);

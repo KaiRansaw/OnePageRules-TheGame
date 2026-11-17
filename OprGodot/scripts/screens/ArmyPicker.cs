@@ -46,36 +46,33 @@ public partial class ArmyPicker : PanelContainer
         return picker;
     }
 
+    private const string LayoutScene = "res://scenes/screens/ArmyPickerLayout.tscn";
+    private const string TileScene = "res://scenes/screens/ArmyTile.tscn";
+    private static PackedScene? _tileScene;
+
     public override void _Ready()
     {
         Name = "ArmyPicker";
         MouseFilter = MouseFilterEnum.Stop;
         AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink });
-        var margin = new MarginContainer();
-        foreach (string side in new[] { "left", "right" }) margin.AddThemeConstantOverride("margin_" + side, 32);
-        foreach (string side in new[] { "top", "bottom" }) margin.AddThemeConstantOverride("margin_" + side, 24);
-        AddChild(margin);
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 12);
-        margin.AddChild(col);
+        // The layout lives in scenes/screens/ArmyPickerLayout.tscn (editable in the Godot editor; Kai, 2026-11-17); this
+        // fills it in. Panels and buttons come from the UI theme, so the grid matches every other screen.
+        var layout = GD.Load<PackedScene>(LayoutScene).Instantiate<Control>();
+        AddChild(layout);
 
-        // Top: title, where you are, search.
-        var top = new HBoxContainer();
-        top.AddThemeConstantOverride("separation", 20);
-        var title = new Label { Text = Title };
+        var title = layout.GetNode<Label>("%Title");
+        title.Text = Title;
         Ui.ScreenTitle(title);
         title.AddThemeFontSizeOverride("font_size", 40);
-        top.AddChild(title);
-        var crumb = HudKit.Text(Crumb.Length > 0 ? Crumb : GameSystemInfo.DisplayName(System), 18, HudKit.Lime, HudKit.Semi);
-        crumb.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        top.AddChild(crumb);
-        HBoxContainer tabs = top;
-        if (Games != null)
-        {
-            // The game tabs get a row of their own under the title, so the top bar never runs off the screen.
-            tabs = new HBoxContainer();
-            tabs.AddThemeConstantOverride("separation", 8);
-        }
+        var crumb = layout.GetNode<Label>("%Crumb");
+        crumb.Text = Crumb.Length > 0 ? Crumb : GameSystemInfo.DisplayName(System);
+        crumb.AddThemeFontOverride("font", HudKit.Semi);
+        crumb.AddThemeFontSizeOverride("font_size", 18);
+        crumb.AddThemeColorOverride("font_color", HudKit.Lime);
+
+        // The game tabs (Army Forge only) get a row of their own under the title, so the top bar never runs off the screen.
+        var tabs = layout.GetNode<HBoxContainer>("%Tabs");
+        tabs.Visible = Games != null;
         if (Games != null)
             foreach (EGameSystem g in Games)
             {
@@ -86,20 +83,10 @@ public partial class ArmyPicker : PanelContainer
                 tab.SizeFlagsVertical = SizeFlags.ShrinkCenter;
                 tabs.AddChild(tab);
             }
-        top.AddChild(Ui.Grow());
-        var search = new LineEdit { Name = "ArmySearch", PlaceholderText = "Search armies...", ClearButtonEnabled = true, CustomMinimumSize = new Vector2(300, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        search.TextChanged += Filter;
-        top.AddChild(search);
-        col.AddChild(top);
-        if (tabs != top) col.AddChild(tabs);
-        col.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(0, 1) });
+        layout.GetNode<LineEdit>("%ArmySearch").TextChanged += Filter;
 
         // The grid, folded into Army Forge's groups.
-        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 8);
-        scroll.AddChild(body);
-        col.AddChild(scroll);
+        var body = layout.GetNode<VBoxContainer>("%Body");
         var names = Armies ?? BookIndex.Books(System).Select(b => b.Name).ToList();
         foreach (ArmyGroups.Group g in ArmyGroups.Arrange(System, names))
         {
@@ -121,21 +108,16 @@ public partial class ArmyPicker : PanelContainer
         }
 
         // Bottom: Back, what is picked, the main button.
-        var bottom = new HBoxContainer();
-        bottom.AddThemeConstantOverride("separation", 16);
-        var back = Ui.Button("Back", Close, "Close without picking (Esc).", "BackButton");
-        back.Name = "ArmyPickerBack";
-        back.CustomMinimumSize = new Vector2(130, 50);
-        bottom.AddChild(back);
-        _info = HudKit.Text("Pick an army", 20, HudKit.Dim, HudKit.Semi);
-        _info.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        _info.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        bottom.AddChild(_info);
-        _commit = Ui.Button(CommitText, Commit, "Use the picked army (or double-click a tile).", "CommitButton");
-        _commit.Name = "ArmyPickerCommit";
-        _commit.CustomMinimumSize = new Vector2(300, 54);
-        bottom.AddChild(_commit);
-        col.AddChild(bottom);
+        var back = layout.GetNode<Button>("%ArmyPickerBack");
+        back.TooltipText = "Close without picking (Esc).";
+        back.Pressed += Close;
+        _info = layout.GetNode<Label>("%Info");
+        _info.AddThemeFontOverride("font", HudKit.Semi);
+        _info.AddThemeFontSizeOverride("font_size", 20);
+        _commit = layout.GetNode<Button>("%ArmyPickerCommit");
+        _commit.Text = CommitText;
+        _commit.TooltipText = "Use the picked army (or double-click a tile).";
+        _commit.Pressed += Commit;
 
         Select(Selected);
         if (Selected != null && _tiles.FirstOrDefault(t => t.Name == Selected).Tile is { } sel)
@@ -149,56 +131,42 @@ public partial class ArmyPicker : PanelContainer
             if (n is ScrollContainer sc) { sc.EnsureControlVisible(tile); return; }
     }
 
+    /// <summary>One army: scenes/screens/ArmyTile.tscn filled in - its picture over the whole tile, a shade behind the name.</summary>
     private Button Tile(string army)
     {
         int? count = Counts == null ? null : Counts.TryGetValue(army, out int n) ? n : 0;
-        var b = new Button
-        {
-            Name = "Army_" + Forge.ForgeWidgets.SafeName(army), CustomMinimumSize = new Vector2(0, 96 * HudKit.PictureSize.Scale), SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            ClipContents = true, FocusMode = FocusModeEnum.All, TooltipText = army,
-        };
+        _tileScene ??= GD.Load<PackedScene>(TileScene);
+        var b = _tileScene.Instantiate<Button>();
+        b.Name = "Army_" + Forge.ForgeWidgets.SafeName(army);
+        b.CustomMinimumSize = new Vector2(0, 96 * HudKit.PictureSize.Scale);
+        b.FocusMode = FocusModeEnum.All;
+        b.TooltipText = army;
         var box = new ChamferBox { Fill = Palette.Panel, Border = HudKit.Edge, Cut = 10, BorderWidth = 1 };
         b.AddThemeStyleboxOverride("normal", box);
         b.AddThemeStyleboxOverride("hover", box.With(x => x.Border = HudKit.EdgeHot));
         b.AddThemeStyleboxOverride("pressed", box.With(x => x.Border = HudKit.Lime));
         b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 
-        // The picture fills the whole card (Kai, 2026-11-17: no empty space on the left); a see-through shade behind the
-        // name keeps it readable.
+        // The picture fills the tile inside its frame (Kai, 2026-11-17: no empty space on the left).
         Control art = MenuArt.View(MenuPictures.Army(System, army), System);
         art.MouseFilter = MouseFilterEnum.Ignore;
-        art.AnchorLeft = 0; art.AnchorRight = 1; art.AnchorBottom = 1;
-        art.OffsetLeft = 1; art.OffsetTop = 1; art.OffsetRight = -1; art.OffsetBottom = -1;
-        b.AddChild(art);
-        var fade = new TextureRect
-        {
-            Texture = new GradientTexture2D
-            {
-                Gradient = new Gradient { Colors = new[] { new Color(0, 0, 0, 0.62f), new Color(0, 0, 0, 0) }, Offsets = new[] { 0.0f, 0.6f } },
-                FillTo = new Vector2(1, 0), Width = 256, Height = 8,
-            },
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore,
-        };
-        fade.SetAnchorsPreset(LayoutPreset.FullRect);
-        fade.OffsetLeft = 1; fade.OffsetTop = 1; fade.OffsetRight = -1; fade.OffsetBottom = -1;
-        b.AddChild(fade);
-        var name = HudKit.Text(army, Mathf.RoundToInt(21 * Math.Max(0.85f, HudKit.PictureSize.Scale)), HudKit.Fg, HudKit.Bold);
+        art.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        b.GetNode<Control>("%Art").AddChild(art);
+        var name = b.GetNode<Label>("%ArmyName");
+        name.Text = army;
+        name.AddThemeFontOverride("font", HudKit.Bold);
+        name.AddThemeFontSizeOverride("font_size", Mathf.RoundToInt(21 * Math.Max(0.85f, HudKit.PictureSize.Scale)));
+        name.AddThemeColorOverride("font_color", HudKit.Fg);
         name.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
         name.AddThemeConstantOverride("shadow_offset_y", 2);
         name.MouseFilter = MouseFilterEnum.Ignore;
-        name.SetAnchorsPreset(LayoutPreset.LeftWide);
-        name.AnchorRight = 0.7f;
-        name.OffsetLeft = 18;
-        name.VerticalAlignment = VerticalAlignment.Center;
-        b.AddChild(name);
         if (count is { } c)
         {
             var badge = HudKit.Chip(c == 0 ? "no lists" : c == 1 ? "1 list" : $"{c} lists", c == 0 ? HudKit.Dim : HudKit.Lime, c > 0, 15);
             badge.MouseFilter = MouseFilterEnum.Ignore;
             badge.SetAnchorsPreset(LayoutPreset.BottomRight);
             badge.GrowHorizontal = GrowDirection.Begin; badge.GrowVertical = GrowDirection.Begin;
-            badge.OffsetRight = -10; badge.OffsetBottom = -8;
-            b.AddChild(badge);
+            b.GetNode<Control>("%Badge").AddChild(badge);
             if (c == 0) b.Modulate = new Color(0.55f, 0.55f, 0.55f);
         }
         b.Pressed += () => Select(army);

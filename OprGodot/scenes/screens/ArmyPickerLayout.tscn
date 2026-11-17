@@ -1,0 +1,92 @@
+[gd_scene format=3]
+
+[node name="ArmyPickerLayout" type="MarginContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Top" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Column/Top"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Choose an Army"
+
+[node name="Crumb" type="Label" parent="Column/Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "Army Forge  >  Grimdark Future"
+
+[node name="Spacer" type="Control" parent="Column/Top"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ArmySearch" type="LineEdit" parent="Column/Top"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_vertical = 4
+placeholder_text = "Search armies..."
+clear_button_enabled = true
+
+[node name="Tabs" type="HBoxContainer" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ListPanel" type="PanelContainer" parent="Column"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Column/ListPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Body" type="VBoxContainer" parent="Column/ListPanel/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="BottomPanel" type="PanelContainer" parent="Column"]
+layout_mode = 2
+
+[node name="Bottom" type="HBoxContainer" parent="Column/BottomPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ArmyPickerBack" type="Button" parent="Column/BottomPanel/Bottom"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 50)
+layout_mode = 2
+theme_type_variation = &"BackButton"
+text = "Back"
+
+[node name="Info" type="Label" parent="Column/BottomPanel/Bottom"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+text = "Pick an army"
+
+[node name="ArmyPickerCommit" type="Button" parent="Column/BottomPanel/Bottom"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 54)
+layout_mode = 2
+theme_type_variation = &"CommitButton"
+text = "CHOOSE THIS ARMY"
