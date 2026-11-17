@@ -163,17 +163,18 @@ public partial class ArmyPicker : PanelContainer
         b.AddThemeStyleboxOverride("pressed", box.With(x => x.Border = HudKit.Lime));
         b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 
-        // The picture on the right ~70%, faded into the panel on the left so the name reads.
+        // The picture fills the whole card (Kai, 2026-11-17: no empty space on the left); a see-through shade behind the
+        // name keeps it readable.
         Control art = MenuArt.View(MenuPictures.Army(System, army), System);
         art.MouseFilter = MouseFilterEnum.Ignore;
-        art.AnchorLeft = 0.28f; art.AnchorRight = 1; art.AnchorBottom = 1;
+        art.AnchorLeft = 0; art.AnchorRight = 1; art.AnchorBottom = 1;
         art.OffsetLeft = 1; art.OffsetTop = 1; art.OffsetRight = -1; art.OffsetBottom = -1;
         b.AddChild(art);
         var fade = new TextureRect
         {
             Texture = new GradientTexture2D
             {
-                Gradient = new Gradient { Colors = new[] { Palette.Panel, Palette.Panel with { A = 0 } }, Offsets = new[] { 0.25f, 0.62f } },
+                Gradient = new Gradient { Colors = new[] { new Color(0, 0, 0, 0.62f), new Color(0, 0, 0, 0) }, Offsets = new[] { 0.0f, 0.6f } },
                 FillTo = new Vector2(1, 0), Width = 256, Height = 8,
             },
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore,
