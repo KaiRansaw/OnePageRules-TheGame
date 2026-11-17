@@ -30,6 +30,7 @@ public static class CreditsText
         new Section("Icons", new[]
         {
             new Entry("Game icons", "Lorc, Delapouite and sbed - game-icons.net", "CC BY 3.0 (recoloured)", "https://game-icons.net"),
+            new Entry("Hologram UI frames", "Wenrexa - Free UI Hologram Interface", "CC0 - public domain", "https://opengameart.org/content/free-ui-hologram-interface"),
         }),
         new Section("Fonts", new[]
         {

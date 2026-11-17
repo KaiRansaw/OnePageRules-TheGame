@@ -27,6 +27,8 @@ public partial class ChamferBox : StyleBox
     [Export] public float AccentThickness { get; set; } = 3f;
     /// <summary>A bar down the left edge (selected / active state); transparent for none.</summary>
     [Export] public Color LeftBar { get; set; } = Colors.Transparent;
+    /// <summary>The look this box was made in - picks the hologram skin's colourway (teal / gold).</summary>
+    [Export] public Looks.ELook Look { get; set; } = Looks.Current.Id;
 
     public ChamferBox()
     {
@@ -59,6 +61,7 @@ public partial class ChamferBox : StyleBox
 
     public override void _Draw(Rid canvasItem, Rect2 rect)
     {
+        if (Skin.Holo && DrawHolo(canvasItem, rect)) { DrawBars(canvasItem, rect); return; }
         if (Glow.A > 0)
             for (int i = 3; i >= 1; i--)
             {
@@ -80,6 +83,11 @@ public partial class ChamferBox : StyleBox
                 new Rect2(rect.Position.X, rect.Position.Y + c, 3, rect.Size.Y - c - cb), LeftBar);
         }
 
+        DrawBorderAndAccent(canvasItem, rect);
+    }
+
+    private void DrawBorderAndAccent(Rid canvasItem, Rect2 rect)
+    {
         if (BorderWidth > 0 && Border.A > 0)
         {
             var line = Outline(rect, BorderWidth / 2f);
@@ -94,5 +102,66 @@ public partial class ChamferBox : StyleBox
             RenderingServer.CanvasItemAddRect(canvasItem,
                 new Rect2(start, rect.Position.Y - AccentThickness / 2f, len, AccentThickness), Accent);
         }
+    }
+
+    // ================================================================== hologram skin (Skin.cs)
+
+    private static bool Near(Color a, Color b) => Mathf.Abs(a.R - b.R) + Mathf.Abs(a.G - b.G) + Mathf.Abs(a.B - b.B) < 0.12f;
+
+    /// <summary>Which state a box stands for, read from its border (the HUD marks hover with EdgeHot and pressed /
+    /// selected with the go colour).</summary>
+    private string State()
+    {
+        Looks.Look l = Looks.Get(Look);
+        if (Border.A < 0.45f) return "disabled";
+        if (Near(Border, l.Go)) return "active";
+        if (Near(Border, l.EdgeHot)) return "hover";
+        return "normal";
+    }
+
+    /// <summary>The pack's art for this box: a button frame for short boxes, a square button for small squares, the
+    /// glowing panel frame (over this box's own fill) for everything bigger. False = nothing to draw with.</summary>
+    private bool DrawHolo(Rid ci, Rect2 rect)
+    {
+        string state = State();
+        float w = rect.Size.X, h = rect.Size.Y;
+        if (w < 4 || h < 4) return false;
+        Texture2D? tex;
+        int m;
+        bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a lime/gold-filled box: the selected / commit look
+        if (h <= 76)
+        {
+            string kind = filled || state == "active" ? "fill" : "btn";
+            string st = kind == "fill" ? (state == "disabled" ? "normal" : state) : state;
+            tex = Skin.Tex($"{kind}_{st}", Look) ?? Skin.Tex($"{kind}_normal", Look);
+            m = kind == "fill" ? 16 : 12;
+            if (state == "disabled" && kind == "fill") tex = Skin.Tex("btn_disabled", Look);
+        }
+        else if (w <= 240 && h <= 240 && w / h is > 0.6f and < 1.6f)
+        {
+            tex = Skin.Tex(state is "hover" or "active" ? "sqr_hover" : "sqr_normal", Look);
+            m = 34;
+            if (Fill.A > 0) RenderingServer.CanvasItemAddRect(ci, rect.Grow(-6), Fill with { A = Fill.A * 0.6f });
+        }
+        else
+        {
+            tex = Skin.Tex("frame", Look);
+            m = 30;
+            if (Fill.A > 0) RenderingServer.CanvasItemAddRect(ci, rect.Grow(-7), Fill);
+        }
+        if (tex == null) return false;
+        float mm = Mathf.Min(m, Mathf.Min(w, h) / 2f - 1);
+        Color mod = state == "disabled" ? new Color(1, 1, 1, 0.55f) : Colors.White;
+        RenderingServer.CanvasItemAddNinePatch(ci, rect, new Rect2(Vector2.Zero, tex.GetSize()), tex.GetRid(),
+            new Vector2(mm, mm), new Vector2(mm, mm), RenderingServer.NinePatchAxisMode.Stretch, RenderingServer.NinePatchAxisMode.Stretch, true, mod);
+        return true;
+    }
+
+    /// <summary>The accent and left bars still mark headers and selected rows over the pack's frames.</summary>
+    private void DrawBars(Rid ci, Rect2 rect)
+    {
+        if (LeftBar.A > 0) RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 4, rect.Position.Y + 8, 3, rect.Size.Y - 16), LeftBar);
+        if (Accent.A > 0)
+            RenderingServer.CanvasItemAddRect(ci, new Rect2(rect.Position.X + 18, rect.Position.Y + 3, Mathf.Min(AccentLength, rect.Size.X - 36), AccentThickness), Accent);
     }
 }

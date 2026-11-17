@@ -93,6 +93,19 @@ public static class HudTheme
             t.SetIcon("unchecked_disabled", type, CheckIcon(false, true));
             t.SetIcon("checked_disabled", type, CheckIcon(true, true));
         }
+        if (Skin.Holo && Skin.Tex("check_on") is { } on && Skin.Tex("check_off") is { } off)
+        {
+            // The hologram pack's tick boxes (Skin.cs).
+            foreach (string type in new[] { "CheckBox", "CheckButton" })
+            {
+                t.SetIcon("unchecked", type, off);
+                t.SetIcon("checked", type, on);
+                t.SetIcon("unchecked_disabled", type, Skin.Tex("check_disabled") ?? off);
+                t.SetIcon("checked_disabled", type, Skin.Tex("check_disabled") ?? on);
+            }
+            t.SetStylebox("background", "ProgressBar", Skin.Box("bar_bg", 10));
+            t.SetStylebox("fill", "ProgressBar", Skin.Box("bar_fg", 10));
+        }
         t.SetConstant("h_separation", "CheckBox", 10);
         var track = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.5f), ContentMarginTop = 3, ContentMarginBottom = 3 };
         t.SetStylebox("slider", "HSlider", track);
