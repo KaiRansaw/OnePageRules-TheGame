@@ -103,9 +103,8 @@ public partial class LabHome : PanelContainer
         body.AddThemeConstantOverride("separation", 0);
         col.AddChild(body);
         _nav = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
-        _nav.AddThemeConstantOverride("separation", 2);
-        body.AddChild(_nav);
-        body.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 0) });
+        _nav.AddThemeConstantOverride("separation", 6);
+        body.AddChild(new PanelContainer().With(p => p.AddChild(_nav)));
         var mainPad = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         mainPad.AddThemeConstantOverride("margin_left", 28);
         body.AddChild(mainPad);
@@ -144,13 +143,7 @@ public partial class LabHome : PanelContainer
     {
         bool on = key == _section;
         var b = new Button { Name = "Nav_" + key, Text = label.ToUpperInvariant(), Alignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 50), FocusMode = FocusModeEnum.All };
-        var box = new StyleBoxFlat { BgColor = on ? new Color(HudKit.Lime, 0.14f) : Colors.Transparent, BorderColor = on ? HudKit.Lime : Colors.Transparent, BorderWidthLeft = 4, ContentMarginLeft = 18 };
-        b.AddThemeStyleboxOverride("normal", box);
-        var hover = (StyleBoxFlat)box.Duplicate();
-        hover.BgColor = new Color(HudKit.Lime, on ? 0.14f : 0.08f);
-        b.AddThemeStyleboxOverride("hover", hover);
-        b.AddThemeStyleboxOverride("pressed", box);
-        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        HudKit.RowStyle(b, on);
         b.AddThemeFontOverride("font", HudKit.Tracked(HudKit.Bold, 2));
         b.AddThemeFontSizeOverride("font_size", 20);
         b.AddThemeColorOverride("font_color", on ? HudKit.Fg : HudKit.Dim);

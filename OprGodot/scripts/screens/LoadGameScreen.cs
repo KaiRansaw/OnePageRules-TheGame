@@ -58,7 +58,7 @@ public partial class LoadGameScreen : Control
         _list = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _list.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(_list);
-        body.AddChild(scroll);
+        body.AddChild(new PanelContainer().With(p => p.AddChild(scroll)));
 
         var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         right.AddThemeConstantOverride("separation", 12);
@@ -67,7 +67,7 @@ public partial class LoadGameScreen : Control
         _details = new VBoxContainer();
         _details.AddThemeConstantOverride("separation", 6);
         right.AddChild(_details);
-        body.AddChild(right);
+        body.AddChild(new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill }.With(p => p.AddChild(right)));
 
         _error = new Label { ThemeTypeVariation = "DimLabel", AutowrapMode = TextServer.AutowrapMode.WordSmart };
         _error.AddThemeColorOverride("font_color", Palette.WoundsRed);
@@ -229,7 +229,7 @@ public partial class SavePreview : Control
 
     public override void _Draw()
     {
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.03f, 0.05f, 0.055f));
+        DrawRect(new Rect2(Vector2.Zero, Size), new Color(0, 0, 0, 0.25f));   // a light shade, so the panel round it shows through
         if (Save is not { } s) { DrawString(HudKit.Semi, new Vector2(20, 34), "Pick a save to see its board.", HorizontalAlignment.Left, -1, 16, HudKit.Dim); return; }
         float tw = s.TableW, th = s.TableH;
         float scale = Mathf.Max(0.1f, Mathf.Min(Size.X / tw, Size.Y / th));

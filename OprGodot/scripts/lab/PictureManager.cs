@@ -155,13 +155,7 @@ public partial class PictureManager : PanelContainer
     {
         bool on = s.Key == _slot.Key, set = MenuPictures.Get(s) != null;
         var b = new Button { Name = "Slot_" + MenuPictures.SafeName(s.Key), Alignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 34), FocusMode = FocusModeEnum.None, TooltipText = s.Label };
-        var box = new StyleBoxFlat { BgColor = on ? new Color(HudKit.Lime, 0.16f) : Colors.Transparent, BorderColor = on ? HudKit.Lime : Colors.Transparent, BorderWidthLeft = 4, ContentMarginLeft = 18, ContentMarginRight = 12 };
-        b.AddThemeStyleboxOverride("normal", box);
-        var hover = (StyleBoxFlat)box.Duplicate();
-        hover.BgColor = new Color(HudKit.Lime, 0.1f);
-        b.AddThemeStyleboxOverride("hover", hover);
-        b.AddThemeStyleboxOverride("pressed", box);
-        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        HudKit.RowStyle(b, on);
         b.AddThemeColorOverride("font_color", on ? HudKit.Fg : HudKit.Dim);
         b.AddThemeFontSizeOverride("font_size", 17);
         b.Text = s.Kind == MenuPictures.EKind.Backdrop ? MenuPictures.FamilyName(s.Family) : s.Label;

@@ -48,7 +48,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
 
         // The tools in one strip along the bottom.
         var strip = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
-        strip.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.02f, 0.03f, 0.035f, 0.9f), BorderColor = HudKit.Edge, BorderWidthTop = 1, ContentMarginTop = 10, ContentMarginBottom = 10 });
+        strip.AddThemeStyleboxOverride("panel", new ChamferBox { Fill = new Color(0.02f, 0.03f, 0.035f, 0.9f), Border = HudKit.Edge, Cut = 0, Corners = ChamferBox.ECorners.None, ContentMarginTop = 10, ContentMarginBottom = 10 });
         strip.SetAnchorsPreset(LayoutPreset.BottomWide);
         strip.GrowVertical = GrowDirection.Begin;
         AddChild(strip);

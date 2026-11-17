@@ -121,15 +121,16 @@ public partial class GameScreen : Control, ILooked, IBackGuard, IOwnBackdrop
             Name = "Game_" + system, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true,
             TooltipText = GameBlurb(system) + " Click to pick a mode.",
         };
-        var box = new ChamferBox { Fill = Palette.Panel, Border = Palette.Accent, BorderWidth = 2, Cut = 0, Corners = ChamferBox.ECorners.None };
+        var box = new ChamferBox { Fill = HudKit.Glass, Border = HudKit.Edge, BorderWidth = 2, Cut = 12 };
         b.AddThemeStyleboxOverride("normal", box);
-        b.AddThemeStyleboxOverride("hover", box.With(x => x.Border = HudKit.Lime));
+        b.AddThemeStyleboxOverride("hover", box.With(x => x.Border = HudKit.EdgeHot));
         b.AddThemeStyleboxOverride("pressed", box.With(x => x.Border = HudKit.Lime));
         b.AddThemeStyleboxOverride("focus", box.With(x => x.Border = HudKit.Lime));
 
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         col.SetAnchorsPreset(LayoutPreset.FullRect);
-        col.OffsetLeft = 2; col.OffsetTop = 2; col.OffsetRight = -2; col.OffsetBottom = -2;
+        // Inset so the theme's frame line shows all the way round the picture.
+        col.OffsetLeft = 6; col.OffsetTop = 6; col.OffsetRight = -6; col.OffsetBottom = -6;
         col.AddThemeConstantOverride("separation", 0);
         Control art = MenuArt.View(FdgRaylib.Pictures.MenuPictures.GameTile(system));
         art.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -149,7 +150,7 @@ public partial class GameScreen : Control, ILooked, IBackGuard, IOwnBackdrop
         col.AddChild(art);
 
         var bar = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-        bar.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Panel, BorderColor = Palette.Accent, BorderWidthTop = 2, ContentMarginTop = big ? 14 : 10, ContentMarginBottom = big ? 16 : 10, ContentMarginLeft = 16, ContentMarginRight = 16 });
+        bar.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = HudKit.Glass with { A = 0.92f }, BorderColor = HudKit.Edge, BorderWidthTop = 1, ContentMarginTop = big ? 14 : 10, ContentMarginBottom = big ? 16 : 10, ContentMarginLeft = 16, ContentMarginRight = 16 });
         var words = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         words.AddThemeConstantOverride("separation", 0);
         words.AddChild(HudKit.Text(GameSystemInfo.DisplayName(system), big ? 40 : 28, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center));

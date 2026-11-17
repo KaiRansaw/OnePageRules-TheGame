@@ -15,6 +15,21 @@ public static class HudKit
     public static Color Edge => Looks.Current.Edge;
     public static Color EdgeHot => Looks.Current.EdgeHot;
     public static Color Lime => Palette.Lime;
+
+    /// <summary>
+    /// A side-menu or list row in the same framed style as every other button (so the UI theme's art applies): the
+    /// plain button look when off, the selected look (go-coloured line and fill, a bar down the left) when on.
+    /// </summary>
+    public static void RowStyle(Button b, bool on, int leftPad = 18)
+    {
+        ChamferBox normal = on
+            ? new ChamferBox { Fill = new Color(Lime, 0.18f), Border = Lime, Cut = 8, LeftBar = Lime, ContentMarginLeft = leftPad, ContentMarginRight = 12, ContentMarginTop = 4, ContentMarginBottom = 4 }
+            : new ChamferBox { Fill = GlassLight, Border = Edge, Cut = 8, ContentMarginLeft = leftPad, ContentMarginRight = 12, ContentMarginTop = 4, ContentMarginBottom = 4 };
+        b.AddThemeStyleboxOverride("normal", normal);
+        b.AddThemeStyleboxOverride("hover", on ? normal : normal.With(x => { x.Border = EdgeHot; x.Fill = x.Fill.Lightened(0.08f); }));
+        b.AddThemeStyleboxOverride("pressed", normal);
+        b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+    }
     public static Color Teal => Palette.AccentHot;
     public static Color Fg => Palette.Text;
     public static Color Dim => Palette.TextDim;
