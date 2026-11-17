@@ -33,7 +33,8 @@ public partial class ArmyPicker : PanelContainer
     public Action<EGameSystem>? GameChanged { get; init; }
 
     private GridContainer? _first;
-    private static int Columns => Math.Clamp(Mathf.RoundToInt(4f / HudKit.PictureSize.Scale), 2, 7);
+    // One column fewer than before (4 -> 3 at the normal card size) - the info panel takes the right side (2026-11-17).
+    private static int Columns => Math.Clamp(Mathf.RoundToInt(4f / HudKit.PictureSize.Scale) - 1, 2, 6);
     private readonly List<(string Name, Button Tile, Control Group, Control Header)> _tiles = new();
     private Label _info = null!;
     private Button _commit = null!;
@@ -119,6 +120,8 @@ public partial class ArmyPicker : PanelContainer
         _commit.TooltipText = "Use the picked army (or double-click a tile).";
         _commit.Pressed += Commit;
 
+        _layout = layout;
+        StyleInfo();
         Select(Selected);
         if (Selected != null && _tiles.FirstOrDefault(t => t.Name == Selected).Tile is { } sel)
             CallDeferred(nameof(ScrollTo), sel);
@@ -185,9 +188,141 @@ public partial class ArmyPicker : PanelContainer
             if (t.Tile.GetNodeOrNull<Label>("%ArmyName") is { } nm) nm.AddThemeColorOverride("font_color", on ? HudKit.Lime : HudKit.Fg);
         }
         if (_info == null) return;
+        ShowInfo(army);
         _commit.Disabled = army == null;
         _info.Text = army == null ? "Pick an army" : army + (Describe?.Invoke(army) is { Length: > 0 } more ? "  -  " + more : "");
         _info.AddThemeColorOverride("font_color", army == null ? HudKit.Dim : HudKit.Fg);
+    }
+
+    // ================================================================== the info panel (option C, Kai 2026-11-17)
+
+    private Control? _layout;
+    private int _infoAsk;
+
+    private void StyleInfo()
+    {
+        if (_layout == null) return;
+        var name = _layout.GetNode<Label>("%InfoName");
+        name.AddThemeFontOverride("font", HudKit.Exo(800));
+        name.AddThemeFontSizeOverride("font_size", 34);
+        name.AddThemeColorOverride("font_color", HudKit.Fg);
+        name.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
+        name.AddThemeConstantOverride("shadow_offset_y", 2);
+        var line = _layout.GetNode<Label>("%InfoLine");
+        line.AddThemeFontOverride("font", HudKit.Semi);
+        line.AddThemeFontSizeOverride("font_size", 17);
+        line.AddThemeColorOverride("font_color", HudKit.Lime);
+        line.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
+        line.AddThemeConstantOverride("shadow_offset_y", 2);
+        var about = _layout.GetNode<Label>("%InfoAbout");
+        about.AddThemeFontOverride("font", HudKit.Medium);
+        about.AddThemeFontSizeOverride("font_size", 17);
+        about.AddThemeColorOverride("font_color", HudKit.Fg with { A = 0.9f });
+        foreach (string head in new[] { "%SignatureHead", "%RulesHead" })
+        {
+            var l = _layout.GetNode<Label>(head);
+            l.AddThemeFontOverride("font", HudKit.Tracked(HudKit.Bold, 2));
+            l.AddThemeFontSizeOverride("font_size", 15);
+            l.AddThemeColorOverride("font_color", Palette.Header);
+        }
+    }
+
+    /// <summary>Fills the right-hand panel for the clicked army: its picture, Army Forge's description, three signature
+    /// units and its army rule written out. Nothing picked = a line saying to click one.</summary>
+    private async void ShowInfo(string? army)
+    {
+        if (_layout == null) return;
+        int ask = ++_infoAsk;
+        var art = _layout.GetNode<Control>("%InfoArt");
+        foreach (Node n in art.GetChildren()) { art.RemoveChild(n); n.QueueFree(); }
+        var signature = _layout.GetNode<HBoxContainer>("%Signature");
+        var rules = _layout.GetNode<VBoxContainer>("%Rules");
+        foreach (Node n in signature.GetChildren()) { signature.RemoveChild(n); n.QueueFree(); }
+        foreach (Node n in rules.GetChildren()) { rules.RemoveChild(n); n.QueueFree(); }
+        var name = _layout.GetNode<Label>("%InfoName");
+        var line = _layout.GetNode<Label>("%InfoLine");
+        var about = _layout.GetNode<Label>("%InfoAbout");
+        foreach (string n in new[] { "%SignatureHead", "%RulesHead" }) _layout.GetNode<Control>(n).Visible = false;
+        if (army == null)
+        {
+            name.Text = "";
+            line.Text = "";
+            about.Text = "Click an army to read about it.";
+            return;
+        }
+
+        // The picture and name show at once; the book's facts follow when the library has loaded.
+        Control pic = MenuArt.View(MenuPictures.Army(System, army), System);
+        pic.MouseFilter = MouseFilterEnum.Ignore;
+        pic.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        art.AddChild(pic);
+        var shade = new TextureRect
+        {
+            Texture = new GradientTexture2D { Gradient = new Gradient { Colors = new[] { new Color(0, 0, 0, 0), new Color(0, 0, 0, 0.85f) }, Offsets = new[] { 0.35f, 1f } },
+                FillFrom = Vector2.Zero, FillTo = new Vector2(0, 1), Width = 8, Height = 128 },
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore,
+        };
+        shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        art.AddChild(shade);
+        name.Text = army.ToUpperInvariant();
+        line.Text = ArmyGroups.GroupOf(System, army);
+        about.Text = "";
+
+        ArmyInfo.Info? data;
+        try { data = await ArmyInfo.GetAsync(System, army); }
+        catch (Exception) { data = null; }
+        if (ask != _infoAsk || !IsInstanceValid(this) || !IsInsideTree() || data == null) return;
+
+        var bits = new List<string> { data.Group, $"{data.Units} units" };
+        if (data.Spells > 0) bits.Add($"{data.Spells} spells");
+        if (Counts != null) { int c = Counts.TryGetValue(army, out int k) ? k : 0; bits.Add(c == 1 ? "1 saved list" : $"{c} saved lists"); }
+        line.Text = string.Join("  -  ", bits);
+        about.Text = data.About.Length > 0 ? data.About : "Army Forge has no description for this army.";
+
+        _layout.GetNode<Control>("%SignatureHead").Visible = data.Signature.Count > 0;
+        foreach (ArmyInfo.Unit u in data.Signature) signature.AddChild(SignatureCard(army, u));
+        var rulesHead = _layout.GetNode<Label>("%RulesHead");
+        rulesHead.Visible = data.ArmyRules.Count > 0;
+        rulesHead.Text = data.ArmyRules.Count > 1 ? "ARMY RULES" : "ARMY RULE";
+        foreach (ArmyInfo.Rule r in data.ArmyRules)
+        {
+            var box = new VBoxContainer();
+            box.AddThemeConstantOverride("separation", 2);
+            box.AddChild(HudKit.Text(r.Name, 19, Palette.RuleGold, HudKit.Bold));
+            var text = HudKit.Text(r.Text, 16, HudKit.Fg with { A = 0.85f }, HudKit.Medium);
+            text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            text.CustomMinimumSize = new Vector2(460, 0);
+            box.AddChild(text);
+            rules.AddChild(box);
+        }
+    }
+
+    /// <summary>One signature unit: its picture, name and points, in the theme's panel.</summary>
+    private static Control SignatureCard(string army, ArmyInfo.Unit u)
+    {
+        var card = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = $"{u.Name} - {u.Category}" };
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 4);
+        Control pic;
+        if (HudKit.UnitPicture(army, u.Name) is { } tex)
+            pic = new TextureRect { Texture = tex, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered };
+        else
+        {
+            var holder = new CenterContainer();
+            holder.AddChild(HudKit.Icon("person", 40, HudKit.Teal));
+            pic = holder;
+        }
+        pic.CustomMinimumSize = new Vector2(0, 86);
+        pic.ClipContents = true;
+        pic.MouseFilter = MouseFilterEnum.Ignore;
+        col.AddChild(pic);
+        var nm = HudKit.Text(u.Name, 16, HudKit.Fg, HudKit.Bold);
+        nm.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        nm.CustomMinimumSize = new Vector2(120, 0);
+        col.AddChild(nm);
+        col.AddChild(HudKit.Text($"{u.Points} pts", 15, HudKit.Lime, HudKit.Semi));
+        card.AddChild(col);
+        return card;
     }
 
     private void Filter(string q)

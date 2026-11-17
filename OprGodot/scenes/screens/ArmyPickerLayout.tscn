@@ -48,20 +48,109 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ListPanel" type="PanelContainer" parent="Column"]
+[node name="Main" type="HBoxContainer" parent="Column"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 14
 
-[node name="Scroll" type="ScrollContainer" parent="Column/ListPanel"]
+[node name="ListPanel" type="PanelContainer" parent="Column/Main"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Column/Main/ListPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="Body" type="VBoxContainer" parent="Column/ListPanel/Scroll"]
+[node name="Body" type="VBoxContainer" parent="Column/Main/ListPanel/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
+
+[node name="InfoPanel" type="PanelContainer" parent="Column/Main"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(540, 0)
+layout_mode = 2
+
+[node name="InfoScroll" type="ScrollContainer" parent="Column/Main/InfoPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="InfoBody" type="VBoxContainer" parent="Column/Main/InfoPanel/InfoScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="InfoPicture" type="Control" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(0, 230)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="InfoArt" type="Control" parent="Column/Main/InfoPanel/InfoScroll/InfoBody/InfoPicture"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="InfoTitle" type="VBoxContainer" parent="Column/Main/InfoPanel/InfoScroll/InfoBody/InfoPicture"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -76.0
+offset_right = -16.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = -2
+
+[node name="InfoName" type="Label" parent="Column/Main/InfoPanel/InfoScroll/InfoBody/InfoPicture/InfoTitle"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ALIEN HIVES"
+
+[node name="InfoLine" type="Label" parent="Column/Main/InfoPanel/InfoScroll/InfoBody/InfoPicture/InfoTitle"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Aliens  -  41 units  -  6 spells"
+
+[node name="InfoAbout" type="Label" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+text = "Army Forge's description of the army."
+autowrap_mode = 3
+
+[node name="SignatureHead" type="Label" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "SIGNATURE UNITS"
+
+[node name="Signature" type="HBoxContainer" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RulesHead" type="Label" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ARMY RULE"
+
+[node name="Rules" type="VBoxContainer" parent="Column/Main/InfoPanel/InfoScroll/InfoBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
 
 [node name="BottomPanel" type="PanelContainer" parent="Column"]
 layout_mode = 2

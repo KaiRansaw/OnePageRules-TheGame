@@ -16,22 +16,23 @@ public static class ArmyGroups
 
     public sealed record Group(string Name, IReadOnlyList<string> Books);
 
-    private static Dictionary<string, List<(string Name, string Group)>>? _data;
+    private static Dictionary<string, List<(string Name, string Group, string About)>>? _data;
     private static readonly object Gate = new();
 
-    private static Dictionary<string, List<(string Name, string Group)>> Data()
+    private static Dictionary<string, List<(string Name, string Group, string About)>> Data()
     {
         lock (Gate)
         {
             if (_data != null) return _data;
-            _data = new Dictionary<string, List<(string, string)>>(StringComparer.OrdinalIgnoreCase);
+            _data = new Dictionary<string, List<(string, string, string)>>(StringComparer.OrdinalIgnoreCase);
             string path = Path.Combine(AppAssets.AssetsFolder, "Books", "race-groups.json");
             try
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(path));
                 foreach (JsonProperty sys in doc.RootElement.GetProperty("systems").EnumerateObject())
                     _data[sys.Name] = sys.Value.EnumerateArray()
-                        .Select(b => (b.GetProperty("name").GetString() ?? "", b.GetProperty("group").GetString() ?? Unknown)).ToList();
+                        .Select(b => (b.GetProperty("name").GetString() ?? "", b.GetProperty("group").GetString() ?? Unknown,
+                            b.TryGetProperty("about", out JsonElement a) ? a.GetString() ?? "" : "")).ToList();
             }
             catch (Exception e) when (e is IOException or JsonException or KeyNotFoundException or UnauthorizedAccessException) { }
             return _data;
@@ -42,6 +43,14 @@ public static class ArmyGroups
     public static string GroupOf(EGameSystem system, string book) =>
         Data().TryGetValue(GameSystemInfo.Slug(system), out var list) && list.FirstOrDefault(b => b.Name == book) is { Name: not null } hit && hit.Name.Length > 0
             ? hit.Group : Unknown;
+
+    /// <summary>
+    /// Army Forge's description of the army ("background", ASCII-folded by the fetch script); "" when Army Forge has none
+    /// (a few books, e.g. Wormhole Daemons) or the book isn't listed.
+    /// </summary>
+    public static string AboutOf(EGameSystem system, string book) =>
+        Data().TryGetValue(GameSystemInfo.Slug(system), out var list) && list.FirstOrDefault(b => b.Name == book) is { Name: { Length: > 0 } } hit
+            ? hit.About : "";
 
     /// <summary>
     /// The given books folded into Army Forge's groups: groups in name order, books in Army Forge's order inside each
