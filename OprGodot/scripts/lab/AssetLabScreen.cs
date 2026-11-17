@@ -7,7 +7,8 @@ using OprGodot.Hud;
 namespace OprGodot.Lab;
 
 /// <summary>
-/// The Asset Lab (Kai, 2026-11-11: "a Godot environment to test assets and how they look in game").
+/// The Asset Lab (Kai, 2026-11-11: "a Godot environment to test assets and how they look in game"). Since 2026-11-16
+/// it opens on a home page of job cards (<see cref="LabHome"/>); this screen's own panels are the "Browse models" viewer.
 ///
 /// <para>
 /// Open any 3D model or picture - from the UnitModels folder, or dragged onto the window from anywhere - and see it
@@ -24,7 +25,7 @@ namespace OprGodot.Lab;
 /// </list>
 /// A file that changes on disk (re-exported from Blender) reloads by itself.
 /// </summary>
-public partial class AssetLabScreen : Control, IOwnBackdrop
+public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
 {
     private const float TableW = 72, TableD = 48;
 
@@ -76,6 +77,32 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         ApplyCamera();
         if (_list.FirstOrDefault(UnitModelPaths.IsModel) is { } first) Open(first);
         else ShowNothing();
+        // The Lab opens on its home page (Kai, 2026-11-16); the 3D viewer is one of its sections.
+        _home = new LabHome(this);
+        AddChild(_home);
+    }
+
+    private LabHome _home = null!;
+
+    /// <summary>The home page over the viewer.</summary>
+    public void ShowHome() { _home.Visible = true; MoveChild(_home, GetChildCount() - 1); }
+
+    /// <summary>Closes the home page onto the 3D viewer, with the file filter set ("" = everything).</summary>
+    public void ShowViewer(string filter)
+    {
+        _home.Visible = false;
+        _filter.Text = filter;
+        _list.Clear();
+        Rescan();
+        if (filter.Length > 0 && _list.FirstOrDefault(UnitModelPaths.IsModel) is { } first) Open(first);
+    }
+
+    /// <summary>Esc in the viewer goes back to the home page first.</summary>
+    public bool AllowBack()
+    {
+        if (_home.Visible) return true;
+        ShowHome();
+        return false;
     }
 
     public override void _ExitTree()
@@ -141,9 +168,13 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         var back = new Button { Name = "Back", Text = "Back", ThemeTypeVariation = "BackButton", CustomMinimumSize = new Vector2(100, 40), TooltipText = "Back to the main menu (Esc)." };
         back.Pressed += App.I.Back;
         head.AddChild(back);
+        // Kai, 2026-11-16: the downloads and tools moved to the Lab's home page; this is the 3D viewer.
+        var home = new Button { Name = "LabHome", Text = "Lab home", CustomMinimumSize = new Vector2(120, 40), TooltipText = "The Asset Lab's home page: downloads, pictures, terrain, storage." };
+        home.Pressed += ShowHome;
+        head.AddChild(home);
         var title = new VBoxContainer();
         title.AddThemeConstantOverride("separation", -6);
-        title.AddChild(HudKit.Text("ASSET LAB", 34, HudKit.Fg, HudKit.Exo(800)));
+        title.AddChild(HudKit.Text("BROWSE MODELS", 30, HudKit.Fg, HudKit.Exo(800)));
         title.AddChild(HudKit.Text("Models and pictures on the real table", 15, HudKit.Dim, HudKit.Semi));
         head.AddChild(title);
         left.AddChild(head);
@@ -165,16 +196,6 @@ public partial class AssetLabScreen : Control, IOwnBackdrop
         fileRow.AddChild(Btn("OpenFolder", "Open folder", "Open the UnitModels folder in Windows, to add or rename files.", () => OS.ShellOpen(_root)));
         fileRow.AddChild(Btn("Rescan", "Refresh", "Look for new files now (it also checks by itself every couple of seconds).", Rescan));
         left.AddChild(fileRow);
-        left.AddChild(Btn("ImportStl", "Import printable model...", "Bring in a 3D-printing model (.stl) and its base: made light for the table, split into areas you can colour in Army Forge, saved to a unit. Dropping an .stl on the window opens this too.", () => OpenStlImport()));
-        var dl = Btn("DownloadModels", "Download models...", "Fetch models for an army from Tabletop Simulator - 40k (ForceOrg) for Grimdark Future, Age of Sigmar (Stormvault) for Age of Fantasy - saved under each OPR unit's name.", () => OpenDownloads());
-        left.AddChild(dl);
-        left.AddChild(Btn("MakePortraits", "Portraits from models...", "Photograph downloaded 3D models as unit portraits, a whole army at once. A model's portrait is used for that version ahead of the official picture. (One version at a time: Army Forge -> Choose looks -> Make portrait.)", () => OpenPortraits()));
-        left.AddChild(Btn("FramePictures", "Frame pictures...", "Move and zoom each unit's picture so the part you want shows on the army cards, army list and unit card.", () => OpenFraming()));
-        left.AddChild(Btn("OfficialPictures", "Official pictures...", "Download OPR's own picture of every unit from Army Forge and use it as the unit's portrait on the army lists and unit cards.", () => OpenOfficialPictures()));
-        left.AddChild(Btn("ReviewFacing", "Review facing...", "Go through every model one at a time and turn the ones that don't face the right way.",
-            () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview, r => r.InitialFilter = _filter.Text)));
-        left.AddChild(Btn("MatchModels", "Match models...", "Give the catalogue models no unit uses yet to an OPR unit by hand, and take wrong matches away.",
-            () => App.I.Open<MatchModelsScreen>(Scenes.MatchModels, m => m.StartBook = _filter.Text.Trim().Length > 0 ? _filter.Text.Trim() : null)));
         _hint = HudKit.Text("Drag a .glb, .gltf, .obj (with its .mtl / .png) or a picture onto the window to copy it in and open it. An .stl opens Import a printable model.", 14, HudKit.Dim, HudKit.Semi);
         _hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         left.AddChild(_hint);

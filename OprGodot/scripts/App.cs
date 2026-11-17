@@ -20,6 +20,8 @@ public partial class App : Node
 
     private Control? _host;
     private readonly Stack<Control> _screens = new();
+    /// <summary>The look each open screen was built in, so Back puts it back (Hud.Looks).</summary>
+    private readonly Dictionary<Control, Hud.Looks.ELook> _looks = new();
 
     public override void _EnterTree() => I = this;
 
@@ -78,6 +80,12 @@ public partial class App : Node
         if (_host == null) throw new InvalidOperationException("App.Attach was not called by the main scene.");
         var screen = GD.Load<PackedScene>(scenePath).Instantiate<T>();
         init?.Invoke(screen);
+        // A screen that belongs to a system is built in its look; the rest keep the look they were opened in
+        // (the main menu and the tools are Grimdark). Set before AddChild - screens read colours as they build.
+        Hud.Looks.ELook look = screen is Hud.ILooked l ? l.Look
+            : screen is MainMenuScreen ? Hud.Looks.ELook.Grimdark : Hud.Looks.Current.Id;
+        Hud.Looks.Use(look, GetTree());
+        _looks[screen] = look;
         if (screen is not IOwnBackdrop)
         {
             // Every other screen sits on a dark veil over the 3D table, so text reads.
@@ -93,6 +101,13 @@ public partial class App : Node
         return screen;
     }
 
+    /// <summary>A screen whose system changed while open (the Army Forge's game picker): rebuild colours in that look.</summary>
+    public void SetLook(Control screen, Hud.Looks.ELook look)
+    {
+        _looks[screen] = look;
+        Hud.Looks.Use(look, GetTree());
+    }
+
     /// <summary>Opens the placeholder for a screen not ported yet, saying which one and when it comes.</summary>
     public void OpenNotYet(string screen, string detail) =>
         Open<ComingSoonScreen>(Scenes.ComingSoon, s => s.Setup(screen, detail));
@@ -103,14 +118,16 @@ public partial class App : Node
         if (_screens.Count <= 1) return; // the main menu has no Back
         if (_screens.Peek() is IBackGuard guard && !guard.AllowBack()) return;
         Control leaving = _screens.Pop();
+        _looks.Remove(leaving);
         Reveal(_screens.Peek());
         if (ScriptedRun.IsRequested) leaving.QueueFree();
         else Hud.UiJuice.ScreenOut(leaving, leaving.QueueFree);
     }
 
     /// <summary>Shows a screen again that was under the one closing, with the same fade-in a new one gets.</summary>
-    private static void Reveal(Control screen)
+    private void Reveal(Control screen)
     {
+        if (_looks.TryGetValue(screen, out var look)) Hud.Looks.Use(look, GetTree());
         screen.Visible = true;
         if (!ScriptedRun.IsRequested) Hud.UiJuice.ScreenIn(screen, 12f);
     }
@@ -134,13 +151,13 @@ public partial class App : Node
     public void BackTo<T>() where T : Control
     {
         if (!_screens.Any(s => s is T)) { ToMainMenu(); return; }
-        while (_screens.Count > 1 && _screens.Peek() is not T) _screens.Pop().QueueFree();
+        while (_screens.Count > 1 && _screens.Peek() is not T) { _looks.Remove(_screens.Peek()); _screens.Pop().QueueFree(); }
         Reveal(_screens.Peek());
     }
 
     public void ToMainMenu()
     {
-        while (_screens.Count > 1) _screens.Pop().QueueFree();
+        while (_screens.Count > 1) { _looks.Remove(_screens.Peek()); _screens.Pop().QueueFree(); }
         if (_screens.TryPeek(out Control? menu)) Reveal(menu);
     }
 

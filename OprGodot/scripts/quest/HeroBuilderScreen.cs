@@ -16,10 +16,11 @@ namespace OprGodot.Quest;
 /// the sheet in step 1), and Back going to the Quest game's screen. Logic: <see cref="HeroEditor"/>; drawing here is
 /// rental.
 /// </summary>
-public partial class HeroBuilderScreen : Control, IBackGuard
+public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
 {
     private enum View { List, Edit, Shop }
 
+    public Hud.Looks.ELook Look => Hud.Looks.For(System);
     public EGameSystem System { get; set; } = EGameSystem.GFStarQuest;
 
     /// <summary>
@@ -479,36 +480,39 @@ public partial class HeroBuilderScreen : Control, IBackGuard
 
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         body.AddThemeConstantOverride("separation", 12);
-        var facCol = new VBoxContainer { CustomMinimumSize = new Vector2(230, 0) };
-        facCol.AddThemeConstantOverride("separation", 4);
-        var search = new LineEdit { Name = "HeroSearch", PlaceholderText = "Search factions or heroes...", Text = _filter };
+        // The faction: its picture tile, which opens the army picture grid (Kai, 2026-11-16 - the same grid as everywhere an
+        // army is picked, in Army Forge's groups and order). The search box finds base heroes inside it.
+        var facCol = new VBoxContainer { CustomMinimumSize = new Vector2(300, 0) };
+        facCol.AddThemeConstantOverride("separation", 8);
+        string f = _filter.Trim();
+        _browse ??= _e.Faction ?? _e.Data.Factions.FirstOrDefault();
+        facCol.AddChild(HudKit.Heading("Faction", 15));
+        var facTile = new Button { Name = "HeroFaction", CustomMinimumSize = new Vector2(0, 120), ClipContents = true, FocusMode = FocusModeEnum.None,
+            TooltipText = "Pick the faction from the army picture grid." };
+        if (_browse != null)
+        {
+            Control art = MenuArt.View(FdgRaylib.Pictures.MenuPictures.Army(System, _browse.Faction), System);
+            art.SetAnchorsPreset(LayoutPreset.FullRect);
+            art.OffsetLeft = art.OffsetTop = 1; art.OffsetRight = art.OffsetBottom = -1;
+            facTile.AddChild(art);
+            var shade = new ColorRect { Color = new Color(0, 0, 0, 0.35f), MouseFilter = MouseFilterEnum.Ignore };
+            shade.SetAnchorsPreset(LayoutPreset.FullRect);
+            facTile.AddChild(shade);
+            var nm = HudKit.Text(_browse.Faction, 22, HudKit.Fg, HudKit.Bold);
+            nm.SetAnchorsPreset(LayoutPreset.BottomLeft);
+            nm.OffsetLeft = 12; nm.OffsetTop = -36; nm.MouseFilter = MouseFilterEnum.Ignore;
+            facTile.AddChild(nm);
+        }
+        facTile.Pressed += OpenFactionGrid;
+        facCol.AddChild(facTile);
+        facCol.AddChild(Ui.Button("Choose faction...", OpenFactionGrid, "The army picture grid, in Army Forge's groups and order.").Also(x => x.Name = "ChooseFaction"));
+        var search = new LineEdit { Name = "HeroSearch", PlaceholderText = "Search heroes...", Text = _filter };
         search.TextChanged += t => { _filter = t; Callable.From(RebuildKeepSearch).CallDeferred(); };
         facCol.AddChild(search);
-        var facList = new VBoxContainer();
-        facList.AddThemeConstantOverride("separation", 1);
-        string f = _filter.Trim();
-        foreach (string group in _e.Data.FactionGroups)
-        {
-            var factions = _e.Data.Factions.Where(fc => _e.Data.GroupOf(fc) == group && HeroEditor.Matching(fc, f).Count > 0).ToList();
-            if (factions.Count == 0) continue;
-            facList.AddChild(HudKit.Text(group.ToUpperInvariant(), 12, Palette.Header, HudKit.Tracked(HudKit.Bold, 2)));
-            foreach (SqFaction fac in factions)
-            {
-                var fb = new Button { Name = ForgeWidgets.SafeName("Fac_" + fac.Faction), Text = fac.Faction, Flat = true, Alignment = HorizontalAlignment.Left, FocusMode = FocusModeEnum.None };
-                if (_browse == fac) fb.AddThemeColorOverride("font_color", Palette.Lime);
-                fb.Pressed += () => { _browse = fac; Rebuild(); };
-                facList.AddChild(fb);
-            }
-        }
-        var fs = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        facList.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        fs.AddChild(facList);
-        facCol.AddChild(fs);
         body.AddChild(facCol);
 
         var heroes = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         heroes.AddThemeConstantOverride("separation", 8);
-        _browse ??= _e.Faction ?? _e.Data.Factions.FirstOrDefault(fc => HeroEditor.Matching(fc, f).Count > 0);
         if (_browse == null) heroes.AddChild(HudKit.Text("Pick a faction on the left.", 15, HudKit.Dim, HudKit.Semi));
         else
         {
@@ -531,6 +535,17 @@ public partial class HeroBuilderScreen : Control, IBackGuard
         body.AddChild(heroes);
         col.AddChild(body);
         return col;
+    }
+
+    private void OpenFactionGrid()
+    {
+        ArmyPicker.Show(this, new ArmyPicker
+        {
+            System = System, Title = "Choose a faction", Crumb = $"Hero Builder  >  {GameSystemInfo.DisplayName(System)}", CommitText = "SEE ITS HEROES",
+            Armies = _e.Data.Factions.Select(x => x.Faction).ToList(), Selected = _browse?.Faction,
+            Describe = a => _e.Data.Factions.FirstOrDefault(x => x.Faction == a) is { } fac ? $"{fac.Heroes.Count} base heroes" : "",
+            Picked = a => { if (_e.Data.Factions.FirstOrDefault(x => x.Faction == a) is { } fac) { _browse = fac; _filter = ""; Rebuild(); } },
+        });
     }
 
     private void RebuildKeepSearch()

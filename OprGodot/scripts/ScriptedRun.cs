@@ -288,6 +288,11 @@ public partial class ScriptedRun : Node
                 _wait = 120;
                 return;
             }
+            // "pic:<slot key>|<file>" picks a slot in the picture manager (Asset Lab -> Your pictures) and gives it a picture;
+            // "pic:<slot key>" only picks it. "viewer" closes the Lab's home page onto the 3D viewer.
+            if (name.StartsWith("pic:") && Find<Lab.PictureManager>(GetTree().Root) is { } pm)
+            { var parts = name[4..].Split('|'); pm.Drive(parts[0], parts.Length > 1 ? parts[1] : null); _wait = 20; return; }
+            if (name == "viewer" && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lv) { lv.ShowViewer(""); return; }
             // "match:<command>" drives Match models (see MatchModelsScreen.Drive): "match:fac:Tyranids", "match:use"...
             if (name.StartsWith("match:") && Find<Lab.MatchModelsScreen>(GetTree().Root) is { } match)
             {
@@ -356,6 +361,9 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("reportcard") && Find<Battle.BattleScreen>(GetTree().Root) is { } rb)
             { GD.Print($"ScriptedRun: report card {(rb.DriveReportCard(name == "reportcardpin") ? "shown" : "- no fight yet")}"); return; }
             if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }  // also "clickdrag:x;z|x2;z2"
+            // A mode button ("AgeOfFantasy_Horde") lives in its game's pop-up box on the game screen (2026-11-16): open it.
+            if (FindButton(GetTree().Root, name) == null && name.Split('_') is [var sys, _] && Enum.TryParse(sys, out FDG.EGameSystem game)
+                && Find<GameScreen>(GetTree().Root) is { Visible: true } gs) gs.OpenModes(game);
             if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
             return;

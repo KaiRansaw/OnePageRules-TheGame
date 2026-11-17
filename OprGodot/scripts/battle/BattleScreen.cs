@@ -16,9 +16,10 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
 {
     public GameSession Session { get; set; } = null!;
+    public OprGodot.Hud.Looks.ELook Look => OprGodot.Hud.Looks.For(Session.Lobby.Vm.GameSystem);
 
     private BattleTable _table = null!;
     private Control _hud = null!;

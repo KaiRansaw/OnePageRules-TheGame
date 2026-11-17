@@ -95,7 +95,10 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 if (Campaign is { } build && !BeginCampaign(build)) return;
             }
             catch (Exception e) { Status("Could not read the army books: " + e.Message, Palette.WoundsRed); return; }
+            UseLook();
             Rebuild();
+            // A fresh Forge (not opening a file, not a campaign) starts on the army grid (Kai, 2026-11-16).
+            if (OpenPath == null && Campaign == null && !ScriptedRun.IsRequested) OpenArmyGrid();
         }
             }
 
@@ -185,11 +188,8 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var books = s.BooksInSystem;
         if (s.List.Units.Count == 0)
         {
-            var faction = new OptionButton { Name = "Faction", FocusMode = FocusModeEnum.None, TooltipText = "The army book to build from. Locked once a unit is in." };
-            foreach (BookFile b in books) faction.AddItem(b.Name);
-            faction.Selected = Math.Max(0, books.FindIndex(b => b.Name == s.Book.Name));
-            faction.ItemSelected += i => { s.ChooseBook(books[(int)i]); s.List.PointsLimit = build.Numbers.Treasury; Status(""); Rebuild(); };
-            _top.AddChild(faction);
+            _top.AddChild(FactionButton("The army book to build from. Locked once a unit is in.",
+                book => { s.ChooseBook(book); s.List.PointsLimit = build.Numbers.Treasury; Status(""); Rebuild(); }, games: false));
         }
         else _top.AddChild(HudKit.Text(s.Book.Name, 17, HudKit.Fg, HudKit.Bold).Also(l => l.TooltipText = "Locked while the army has units - remove them to pick another faction."));
         var name = new LineEdit { Name = "ArmyName", PlaceholderText = "army name", Text = s.List.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
@@ -208,6 +208,51 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         use.Disabled = why != null;
         _top.AddChild(use);
         if (why != null) Status(why, Palette.HitsYellow);
+    }
+
+    // ================================================================== the army picture grid (Kai, 2026-11-16)
+
+    private FDG.EGameSystem CurrentGame => FDG.GameSystemInfo.FromSlug(_s!.System) ?? FDG.EGameSystem.GrimdarkFuture;
+
+    /// <summary>The Forge is drawn in its game's look (Grimdark or Fantasy) - switched when the game changes.</summary>
+    private void UseLook()
+    {
+        if (_s == null) return;
+        Looks.ELook want = Looks.For(CurrentGame);
+        if (Looks.Current.Id != want) App.I.SetLook(this, want);
+    }
+
+    /// <summary>The faction in the top bar: a button showing the book, opening the army picture grid.</summary>
+    private Button FactionButton(string tip, Action<BookFile> choose, bool games)
+    {
+        var s = _s!;
+        var b = new Button { Name = "Faction", Text = s.Book.Name + "   v", FocusMode = FocusModeEnum.None, TooltipText = tip, CustomMinimumSize = new Vector2(240, 0) };
+        b.Pressed += () => OpenArmyGrid(choose, games);
+        return b;
+    }
+
+    /// <summary>Opens the army picture grid for the Forge's game (with game tabs when the game can change).</summary>
+    public void OpenArmyGrid(Action<BookFile>? choose = null, bool games = true)
+    {
+        var s = _s!;
+        choose ??= book => Guarded(() => { s.ChooseBook(book); Status(""); Rebuild(); }, null);
+        var systems = games && Campaign == null
+            ? s.Systems.Select(FDG.GameSystemInfo.FromSlug).OfType<FDG.EGameSystem>().ToList() : null;
+        ArmyPicker.Show(this, new ArmyPicker
+        {
+            System = CurrentGame, Title = "Choose an Army", Crumb = "Army Forge  >  " + FDG.GameSystemInfo.DisplayName(CurrentGame),
+            CommitText = "BUILD THIS ARMY", Armies = s.BooksInSystem.Select(x => x.Name).ToList(), Selected = s.Book.Name,
+            Games = systems,
+            GameChanged = g => Guarded(() =>
+            {
+                s.ChooseSystem(FDG.GameSystemInfo.Slug(g));
+                Status("");
+                UseLook();
+                Rebuild();
+                OpenArmyGrid(choose, games);
+            }, null),
+            Picked = name => { if (s.BooksInSystem.FirstOrDefault(x => x.Name == name) is { } book) choose(book); },
+        });
     }
 
     private Control BuildMain()
@@ -242,15 +287,11 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         var game = new OptionButton { Name = "Game", FocusMode = FocusModeEnum.None, TooltipText = "Which game. Each game has its own army books and unit stats." };
         foreach (string slug in s.Systems) game.AddItem(ForgeSession.SystemName(slug));
         game.Selected = Math.Max(0, s.Systems.IndexOf(s.System));
-        game.ItemSelected += i => Guarded(() => { s.ChooseSystem(s.Systems[(int)i]); Status(""); Rebuild(); }, () => game.Selected = s.Systems.IndexOf(s.System));
+        game.ItemSelected += i => Guarded(() => { s.ChooseSystem(s.Systems[(int)i]); Status(""); UseLook(); Rebuild(); }, () => game.Selected = s.Systems.IndexOf(s.System));
         _top.AddChild(game);
 
-        var books = s.BooksInSystem;
-        var faction = new OptionButton { Name = "Faction", FocusMode = FocusModeEnum.None, TooltipText = "The army book to build from." };
-        foreach (BookFile b in books) faction.AddItem(b.Name);
-        faction.Selected = Math.Max(0, books.FindIndex(b => b.Name == s.Book.Name));
-        faction.ItemSelected += i => Guarded(() => { s.ChooseBook(books[(int)i]); Status(""); Rebuild(); }, () => faction.Selected = books.FindIndex(b => b.Name == s.Book.Name));
-        _top.AddChild(faction);
+        _top.AddChild(FactionButton("The army book to build from. Opens the army picture grid.",
+            book => Guarded(() => { s.ChooseBook(book); Status(""); Rebuild(); }, null), games: true));
 
         var name = new LineEdit { Name = "ArmyName", PlaceholderText = "army name", Text = s.List.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
         name.TextChanged += txt => s.List.Name = txt;

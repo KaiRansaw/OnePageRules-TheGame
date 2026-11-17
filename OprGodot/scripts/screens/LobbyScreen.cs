@@ -22,9 +22,10 @@ namespace OprGodot;
 /// option - book wording for rules), the 2x2 seat cards in the middle, and on the right the map preview, the
 /// clicked seat's army list and LAUNCH. All the non-drawing work is <see cref="LobbySession"/> (FdgApp).
 /// </summary>
-public partial class LobbyScreen : Control
+public partial class LobbyScreen : Control, Hud.ILooked
 {
     public LobbySession Session { get; set; } = null!;
+    public Hud.Looks.ELook Look => Hud.Looks.For(Session.Vm.GameSystem);
     private ILobbyViewModel Vm => Session.Vm;
 
     private Label _title = null!, _sub = null!, _blockers = null!, _seatHeading = null!, _previewNote = null!;
@@ -603,7 +604,20 @@ public partial class LobbyScreen : Control
         band.AddThemeStyleboxOverride("panel", new ChamferBox { Fill = colour with { A = 0.55f }, Border = Colors.Transparent, BorderWidth = 0, Cut = 6, ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 3, ContentMarginBottom = 3 });
         band.AddChild(HudKit.Text(info.ArmyListSummary.IsAssigned ? info.ArmyListSummary.FactionName : "No army yet", 16, Colors.White, HudKit.Bold));
         band.MouseFilter = MouseFilterEnum.Ignore;
-        col.AddChild(band);
+        if (info.ArmyListSummary.IsAssigned && info.ArmyListSummary.FactionName is { Length: > 0 } bandArmy)
+        {
+            // A strip of the army's picture behind the band (Kai, 2026-11-16, "Menu Art & Themes Mockup": yes).
+            var strip = new Control { CustomMinimumSize = new Vector2(0, 58), ClipContents = true, MouseFilter = MouseFilterEnum.Ignore };
+            Control art = MenuArt.View(FdgRaylib.Pictures.MenuPictures.Army(Vm.GameSystem, bandArmy), Vm.GameSystem);
+            art.SetAnchorsPreset(LayoutPreset.FullRect);
+            strip.AddChild(art);
+            band.SetAnchorsPreset(LayoutPreset.BottomLeft);
+            band.GrowVertical = GrowDirection.Begin;
+            band.OffsetBottom = -4; band.OffsetLeft = 4;
+            strip.AddChild(band);
+            col.AddChild(strip);
+        }
+        else col.AddChild(band);
 
         // SEAT n, Player / Bot, Remove.
         var head = new HBoxContainer();
@@ -1002,7 +1016,8 @@ public partial class LobbyScreen : Control
     {
         if (Session.TakeLaunchedGame() is not { } game) return;
         var session = FdgRaylib.Game.GameSession.Start(game, Session, Battle.BattleResolvers.Register);
-        App.I.Open<Battle.BattleScreen>(Scenes.Battle, s => s.Session = session);
+        // The versus loading screen goes up first, then the table loads under it (Kai, 2026-11-16).
+        VersusScreen.Show(GetTree(), session, Session, () => App.I.Open<Battle.BattleScreen>(Scenes.Battle, s => s.Session = session));
     }
 }
 

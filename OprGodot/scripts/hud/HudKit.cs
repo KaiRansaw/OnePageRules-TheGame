@@ -9,32 +9,37 @@ namespace OprGodot.Hud;
 /// </summary>
 public static class HudKit
 {
-    // ---- Colours: the teal-slate + lime palette, pushed a little darker and glassier for over-the-table use.
-    public static readonly Color Glass = new(0.045f, 0.07f, 0.08f, 0.86f);
-    public static readonly Color GlassLight = new(0.08f, 0.12f, 0.135f, 0.92f);
-    public static readonly Color Edge = new(0.25f, 0.36f, 0.39f, 0.95f);
-    public static readonly Color EdgeHot = new(0.40f, 0.78f, 0.70f, 1f);
-    public static readonly Color Lime = Palette.Lime;
-    public static readonly Color Teal = Palette.AccentHot;
-    public static readonly Color Fg = Palette.Text;
-    public static readonly Color Dim = Palette.TextDim;
+    // ---- Colours: read from the current look (Hud.Looks) - Grimdark's teal-slate + lime, or Fantasy's red + gold.
+    public static Color Glass => Looks.Current.Glass;
+    public static Color GlassLight => Looks.Current.GlassLight;
+    public static Color Edge => Looks.Current.Edge;
+    public static Color EdgeHot => Looks.Current.EdgeHot;
+    public static Color Lime => Palette.Lime;
+    public static Color Teal => Palette.AccentHot;
+    public static Color Fg => Palette.Text;
+    public static Color Dim => Palette.TextDim;
     public static readonly Color Enemy = new(0.93f, 0.36f, 0.30f);
     public static readonly Color Friendly = new(0.30f, 0.80f, 0.95f);
     public static readonly Color Gold = Palette.HeroGold;
 
-    // ---- Fonts
+    // ---- Fonts (per look: Rajdhani + Exo 2, or Cinzel + Alegreya Sans)
     private static FontFile? _bold, _semi, _med, _exo;
-    public static FontFile Bold => _bold ??= GD.Load<FontFile>("res://fonts/Rajdhani-Bold.ttf");
-    public static FontFile Semi => _semi ??= GD.Load<FontFile>("res://fonts/Rajdhani-SemiBold.ttf");
-    public static FontFile Medium => _med ??= GD.Load<FontFile>("res://fonts/Rajdhani-Medium.ttf");
+    public static FontFile Bold => _bold ??= GD.Load<FontFile>(Looks.Current.BoldFont);
+    public static FontFile Semi => _semi ??= GD.Load<FontFile>(Looks.Current.SemiFont);
+    public static FontFile Medium => _med ??= GD.Load<FontFile>(Looks.Current.MediumFont);
     public static Font Exo(int weight)
     {
-        _exo ??= GD.Load<FontFile>("res://fonts/Exo2.ttf");
+        _exo ??= GD.Load<FontFile>(Looks.Current.TitleFont);
+        if (Looks.Current.Id == Looks.ELook.Fantasy) return _exo;
         return new FontVariation { BaseFont = _exo, VariationOpentype = new Godot.Collections.Dictionary { { "wght", weight } } };
     }
-    /// <summary>Wide-tracked caps for headings ("ACTIVE UNIT").</summary>
-    public static Font Tracked(FontFile f, int spacing) => new FontVariation { BaseFont = f, SpacingGlyph = spacing };
+    /// <summary>Wide-tracked caps for headings ("ACTIVE UNIT"). Cinzel is already wide, so it gets less.</summary>
+    public static Font Tracked(FontFile f, int spacing) => new FontVariation
+        { BaseFont = f, SpacingGlyph = Looks.Current.Id == Looks.ELook.Fantasy ? Math.Max(0, spacing / 2) : spacing };
 
+    /// <summary>Is this the look's heading face (Bold, tracked Bold, or the title font)? Cinzel sizes are scaled down.</summary>
+    private static bool IsHeadingFont(Font? f) => f != null && (f == _bold || f == _exo || (f is FontVariation v && (v.BaseFont == _bold || v.BaseFont == _exo)));
+    internal static void ForgetFonts() { _bold = _semi = _med = _exo = null; }
     // ---- Boxes
     public static ChamferBox PanelBox(float cut = 12) => new() { Fill = Glass, Border = Edge, Cut = cut };
     public static ChamferBox HeaderBox() => new()
@@ -53,6 +58,7 @@ public static class HudKit
 
     public static Label Text(string s, int size, Color? colour = null, Font? font = null, HorizontalAlignment align = HorizontalAlignment.Left)
     {
+        if (Looks.Current.HeadingScale != 1f && IsHeadingFont(font)) size = Mathf.RoundToInt(size * Looks.Current.HeadingScale);
         var l = new Label { Text = s, HorizontalAlignment = align };
         l.AddThemeFontOverride("font", font ?? Medium);
         l.AddThemeFontSizeOverride("font_size", size);

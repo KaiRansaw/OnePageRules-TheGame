@@ -80,7 +80,27 @@ public partial class LobbyScreen
 
     // ================================================================== Choose Army
 
+    /// <summary>
+    /// Choose Army starts on the army picture grid (Kai, 2026-11-16): every army of this game with how many saved lists
+    /// you have for it (none = greyed, still clickable). Picking one opens the list table below, showing that army.
+    /// </summary>
     private void OpenArmyPicker(LobbyPlayerInfoSummary info)
+    {
+        IReadOnlyList<ArmyCatalogEntry> armies = Session.Armies();
+        var counts = armies.Where(a => a.Faction.Length > 0).GroupBy(a => a.Faction).ToDictionary(g => g.Key, g => g.Count());
+        var names = FdgRaylib.Pictures.BookIndex.Books(Vm.GameSystem).Select(b => b.Name).Concat(counts.Keys).Distinct().ToList();
+        string? current = info.ArmyListSummary.IsAssigned ? info.ArmyListSummary.FactionName : null;
+        ArmyPicker.Show(this, new ArmyPicker
+        {
+            System = Vm.GameSystem, Title = $"Choose army - {info.PlayerName}",
+            Crumb = $"Lobby  >  {GameSystemInfo.DisplayName(Vm.GameSystem)}" + (GameSystemInfo.IsQuest(Vm.GameSystem) ? "" : $"  -  {Vm.ArmyPoints} pts"),
+            CommitText = "SEE MY LISTS", Armies = names, Counts = counts, Selected = current,
+            Describe = a => counts.TryGetValue(a, out int n) && n > 0 ? (n == 1 ? "1 saved list" : $"{n} saved lists") : "no saved lists yet - Import one, or Roll makes one up",
+            Picked = a => OpenListPicker(info, a),
+        });
+    }
+
+    private void OpenListPicker(LobbyPlayerInfoSummary info, string? onlyFaction)
     {
         IReadOnlyList<ArmyCatalogEntry> armies = Session.Armies();
         string currentKey = LobbySession.ArmyKey(info.ArmyListSummary);
@@ -96,6 +116,8 @@ public partial class LobbyScreen
         factions.AddRange(armies.Select(a => a.Faction).Where(f => f.Length > 0).Distinct().OrderBy(f => f, StringComparer.OrdinalIgnoreCase));
         var faction = new OptionButton { Name = "ArmyFaction", CustomMinimumSize = new Vector2(240, 0), TooltipText = "Only this faction's lists." };
         foreach (string f in factions) faction.AddItem(f.Length == 0 ? "All factions" : f);
+        if (onlyFaction != null && !factions.Contains(onlyFaction)) { factions.Add(onlyFaction); faction.AddItem(onlyFaction); }
+        if (onlyFaction != null) faction.Selected = factions.IndexOf(onlyFaction);
         filters.AddChild(faction);
         var sort = new OptionButton { Name = "ArmySort", CustomMinimumSize = new Vector2(170, 0), TooltipText = "Order of the lists. Lists over the points limit always come last." };
         foreach (string s in new[] { "Name", "Points - low first", "Points - high first" }) sort.AddItem(s);

@@ -6,9 +6,10 @@ using OprGodot.Hud;
 namespace OprGodot;
 
 /// <summary>
-/// S01 Main Menu (Kai, 2026-11-07, "Main Menu Mockup" Option A) in the tactical look (2026-11-10): the title
-/// and the two game tiles - Grimdark Future and Age of Fantasy - down the left over the slowly turning 3D
-/// table, the tools as icon buttons along the bottom.
+/// S01 Main Menu. Since 2026-11-16 ("Menu Art &amp; Themes Mockup", round 3, Kai): both games side by side - Grimdark
+/// Future on the left half, Age of Fantasy on the right, each with Kai's backdrop picture (Asset Lab -> Your pictures)
+/// in its own look, or the turning 3D table washed in its colour while none is set. Title top centre, the tools in one
+/// strip along the bottom. Was (2026-11-07 Option A): two tiles down the left over the 3D table.
 /// </summary>
 public partial class MainMenuScreen : Control, IOwnBackdrop
 {
@@ -21,38 +22,45 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
 
     public override void _Ready()
     {
-        // Darken the left of the picture so the menu reads, and the bottom for the tools.
-        AddChild(Shade(new Color(0.01f, 0.015f, 0.02f, 0.97f), new Color(0.01f, 0.015f, 0.02f, 0f), true, 0, 0, 0.72f, 1));
-        AddChild(Shade(new Color(0.01f, 0.015f, 0.02f, 0f), new Color(0.01f, 0.015f, 0.02f, 0.9f), false, 0, 0.62f, 1, 1));
+        // Both games side by side (Kai, 2026-11-16, "Menu Art & Themes Mockup" round 3): each half its own picture in its
+        // own look - Grimdark Future left, Age of Fantasy right. Click a half for its game screen.
+        var halves = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        halves.SetAnchorsPreset(LayoutPreset.FullRect);
+        halves.AddThemeConstantOverride("separation", 0);
+        AddChild(halves);
+        _gfTile = Half(GameScreen.EFamily.GrimdarkFuture);
+        _aofTile = Half(GameScreen.EFamily.AgeOfFantasy);
+        halves.AddChild(_gfTile);
+        halves.AddChild(_aofTile);
+        _gfTile.FocusNeighborRight = _gfTile.GetPathTo(_aofTile);
+        _aofTile.FocusNeighborLeft = _aofTile.GetPathTo(_gfTile);
 
-        var col = new VBoxContainer();
-        col.AddThemeConstantOverride("separation", 0);
-        col.AddChild(HudKit.Text("ONEPAGERULES", 26, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 12)));
-        col.AddChild(HudKit.Text("THE GAME", 104, HudKit.Fg, HudKit.Exo(800)));
-        col.AddChild(HudKit.Gap(0, 6));
-        var rule = new HBoxContainer();
-        rule.AddThemeConstantOverride("separation", 6);
-        rule.AddChild(new ColorRect { Color = HudKit.Lime, CustomMinimumSize = new Vector2(60, 3) });
-        rule.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(420, 1), SizeFlagsVertical = SizeFlags.ShrinkCenter });
-        col.AddChild(rule);
-        col.AddChild(HudKit.Gap(0, 34));
-        col.AddChild(HudKit.Heading("Choose a game", 18));
-        col.AddChild(HudKit.Gap(0, 12));
-        _gfTile = GameTile(GameScreen.EFamily.GrimdarkFuture, "fire-ray");
-        col.AddChild(_gfTile);
-        col.AddChild(HudKit.Gap(0, 14));
-        _aofTile = GameTile(GameScreen.EFamily.AgeOfFantasy, "sword-clash");
-        col.AddChild(_aofTile);
-        HudKit.Place(this, col, LayoutPreset.CenterLeft, new Vector2(110, -40));
+        // The title, top centre, on a dark plate so it reads over any picture.
+        var titleBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        titleBox.AddThemeConstantOverride("separation", -6);
+        titleBox.AddChild(HudKit.Text("ONEPAGERULES", 22, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 12), HorizontalAlignment.Center));
+        titleBox.AddChild(HudKit.Text("THE GAME", 64, HudKit.Fg, HudKit.Exo(800), HorizontalAlignment.Center));
+        var plate = HudKit.Panel(new ChamferBox { Fill = new Color(0.01f, 0.015f, 0.02f, 0.78f), Border = HudKit.Edge, Cut = 14, ContentMarginLeft = 40, ContentMarginRight = 40, ContentMarginTop = 10, ContentMarginBottom = 14 }, titleBox);
+        plate.MouseFilter = MouseFilterEnum.Ignore;
+        var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        col.AddChild(plate);
+        HudKit.Place(this, col, LayoutPreset.CenterTop, new Vector2(0, 28));
 
-        var tools = new HBoxContainer();
+        // The tools in one strip along the bottom.
+        var strip = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
+        strip.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.02f, 0.03f, 0.035f, 0.9f), BorderColor = HudKit.Edge, BorderWidthTop = 1, ContentMarginTop = 10, ContentMarginBottom = 10 });
+        strip.SetAnchorsPreset(LayoutPreset.BottomWide);
+        strip.GrowVertical = GrowDirection.Begin;
+        AddChild(strip);
+        var tools = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         tools.AddThemeConstantOverride("separation", 10);
+        strip.AddChild(tools);
         tools.AddChild(Tool("LoadGame", "open-book", "Load Game", "Resume a game you saved.", () => App.I.Open<LoadGameScreen>(Scenes.LoadGame)));
         tools.AddChild(Tool("JoinGame", "radar-sweep", "Join a Game", "Join a friend's game over Tailscale.", OpenJoin));
         tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Build an army from the army books, pick each model's look, or import a list from the Army Forge website.",
             () => App.I.Open<Forge.ArmyForgeScreen>(Scenes.ArmyForge)));
         tools.AddChild(Tool("MapMaker", "position-marker", "Map Maker", "Make and edit your own maps.", () => App.I.Open<Maps.MapMakerScreen>(Scenes.MapMaker)));
-        tools.AddChild(Tool("AssetLab", "stack", "Asset Lab", "Look at 3D models and pictures on the real table, at true scale, and set how each one stands.",
+        tools.AddChild(Tool("AssetLab", "stack", "Asset Lab", "3D models, unit pictures, your menu pictures and terrain - downloads and checks.",
             () => App.I.Open<Lab.AssetLabScreen>(Scenes.AssetLab)));
         _tools = tools;
         _update = UpdateButton(false);
@@ -60,36 +68,61 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         tools.AddChild(Tool("Settings", "cog", "Settings", "Your name, display, gameplay, camera and sound settings.", () => App.I.Open<SettingsScreen>(Scenes.Settings)));
         tools.AddChild(Tool("Credits", "scroll-unfurled", "Credits", "Who made the rules, icons, fonts and tools this game uses.", () => App.I.Open<CreditsScreen>(Scenes.Credits)));
         tools.AddChild(Tool("CloseGame", "stop-sign", "Quit", "Close the game.", App.I.Quit, Palette.WoundsRed));
-        HudKit.Place(this, tools, LayoutPreset.BottomLeft, new Vector2(110, -64));
 
+        // Build number, the update line and the auto-update switch: top right, clear of both halves' names.
         var foot = new VBoxContainer();
         foot.AddThemeConstantOverride("separation", 0);
+        _offSwitch = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        foot.AddChild(_offSwitch);
+        foot.AddChild(HudKit.Gap(0, 4));
         var build = HudKit.Text($"Godot preview  -  {AppVersion.BuildLabel}", 15, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Right);
         build.Name = "Build";
         foot.AddChild(build);
         _updateLine = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Right);
         _updateLine.Name = "UpdateLine";
         foot.AddChild(_updateLine);
-        _offSwitch = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        foot.AddChild(_offSwitch);
-        foot.AddChild(HudKit.Gap(0, 6));
         foot.AddChild(HudKit.Text("Fan-made. Not an official OnePageRules product. Game rules and army data (c) OnePageRules.", 13, HudKit.Dim with { A = 0.7f }, HudKit.Medium, HorizontalAlignment.Right));
-        HudKit.Place(this, foot, LayoutPreset.BottomRight, new Vector2(-28, -16));
+        HudKit.Place(this, foot, LayoutPreset.TopRight, new Vector2(-24, 20));
 
         ShowOffSwitch();
 
         // The feel (2026-11-15): every button here lifts, brightens, clicks, and can be reached with the keyboard or a
-        // controller - arrows / d-pad move, Enter / A presses. Down from the bottom tile goes to the tools row.
+        // controller - arrows / d-pad move, Enter / A presses. Down from either half goes to the tools strip.
         UiJuice.Attach(this);
-        _aofTile.FocusNeighborBottom = _aofTile.GetPathTo(tools.GetChild(0));
-        foreach (Node t in tools.GetChildren()) ((Control)t).FocusNeighborTop = ((Control)t).GetPathTo(_aofTile);
+        foreach (Button half in new[] { _gfTile, _aofTile }) half.FocusNeighborBottom = half.GetPathTo(tools.GetChild(0));
+        foreach (Node t in tools.GetChildren()) ((Control)t).FocusNeighborTop = ((Control)t).GetPathTo(_gfTile);
         GetViewport().GuiFocusChanged += c => { if (IsInstanceValid(this) && IsAncestorOf(c)) _lastFocus = c; };
-        VisibilityChanged += () => { if (Visible && UiJuice.KeyboardMode) (_lastFocus ?? _gfTile).CallDeferred(Control.MethodName.GrabFocus); };
+        VisibilityChanged += () =>
+        {
+            if (!Visible) return;
+            // Pictures set in the Asset Lab show as soon as you come back.
+            if (_picturesVersion != FdgRaylib.Pictures.MenuPictures.Version) RefreshHalves();
+            if (UiJuice.KeyboardMode) (_lastFocus ?? _gfTile).CallDeferred(Control.MethodName.GrabFocus);
+        };
+        _picturesVersion = FdgRaylib.Pictures.MenuPictures.Version;
         if (!ScriptedRun.IsRequested) Arrive(col, tools, foot);
         // Checks quietly on opening (Kai, 2026-11-12); the button lights up when there is something new. Not at all when
         // auto update detection is turned off (Kai, 2026-11-14).
         if (Offline) ShowDisconnected();
         else if (!ScriptedRun.IsRequested || OS.GetCmdlineUserArgs().Contains("--check-update")) _ = CheckForUpdate();
+    }
+
+    private int _picturesVersion;
+
+    private void RefreshHalves()
+    {
+        _picturesVersion = FdgRaylib.Pictures.MenuPictures.Version;
+        foreach (Button half in new[] { _gfTile, _aofTile })
+        {
+            var family = half == _gfTile ? GameScreen.EFamily.GrimdarkFuture : GameScreen.EFamily.AgeOfFantasy;
+            Node art = half.GetNode("Art");
+            int at = art.GetIndex();
+            half.RemoveChild(art);
+            art.QueueFree();
+            Control fresh = HalfArt(family);
+            half.AddChild(fresh);
+            half.MoveChild(fresh, at);
+        }
     }
 
     private Button _gfTile = null!, _aofTile = null!;
@@ -350,35 +383,79 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         return rect;
     }
 
-    /// <summary>A big game tile: icon, family name, its three games underneath.</summary>
-    private static Button GameTile(GameScreen.EFamily family, string icon)
+    private static FdgRaylib.Pictures.MenuPictures.EFamily PicFamily(GameScreen.EFamily f) =>
+        f == GameScreen.EFamily.AgeOfFantasy ? FdgRaylib.Pictures.MenuPictures.EFamily.AgeOfFantasy : FdgRaylib.Pictures.MenuPictures.EFamily.GrimdarkFuture;
+
+    /// <summary>
+    /// Kai's backdrop picture for this half. With none set, the turning 3D table shows through, washed in the half's
+    /// colour so the two halves still read as two games.
+    /// </summary>
+    private static Control HalfArt(GameScreen.EFamily family)
+    {
+        var slot = FdgRaylib.Pictures.MenuPictures.Backdrop(PicFamily(family));
+        Control art;
+        if (MenuArt.Texture(slot) is { } tex)
+        {
+            var e = FdgRaylib.Pictures.MenuPictures.Get(slot)!;
+            art = new PictureView { Picture = tex, FocusX = e.FocusX, FocusY = e.FocusY, Zoom = e.Zoom };
+        }
+        else
+        {
+            Color wash = Looks.Get(Looks.For(family)).Accent;
+            art = new ColorRect { Color = wash with { A = 0.28f }, MouseFilter = MouseFilterEnum.Ignore };
+        }
+        art.Name = "Art";
+        art.MouseFilter = MouseFilterEnum.Ignore;
+        art.SetAnchorsPreset(LayoutPreset.FullRect);
+        return art;
+    }
+
+    /// <summary>One half of the main menu: its picture, a shade at the bottom, its name and three games - in its own look.</summary>
+    private static Button Half(GameScreen.EFamily family) => Looks.With(Looks.For(family), () =>
     {
         var b = new Button
         {
-            Name = family.ToString(), ThemeTypeVariation = "TileButton", CustomMinimumSize = new Vector2(640, 118),
+            Name = family.ToString(), SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true,
             TooltipText = family == GameScreen.EFamily.GrimdarkFuture
                 ? "Sci-fi: Grimdark Future, GF: Firefight and GF: Star Quest."
                 : "Fantasy: Age of Fantasy, AoF: Skirmish and AoF: Quest.",
         };
-        var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        row.SetAnchorsPreset(LayoutPreset.FullRect);
-        row.OffsetLeft = 26; row.OffsetRight = -22;
-        row.AddThemeConstantOverride("separation", 22);
-        var ic = HudKit.Icon(icon, 64, HudKit.Teal);
-        ic.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        row.AddChild(ic);
-        var v = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
-        v.AddThemeConstantOverride("separation", -4);
-        v.AddChild(HudKit.Text(GameScreen.FamilyName(family).ToUpperInvariant(), 44, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 3)));
-        v.AddChild(HudKit.Text(GameScreen.FamilyBlurb(family), 19, HudKit.Dim, HudKit.Semi));
-        row.AddChild(v);
-        var arrow = HudKit.Text(">", 40, HudKit.Lime, HudKit.Bold);
-        arrow.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        row.AddChild(arrow);
-        b.AddChild(row);
+        var clear = new StyleBoxEmpty();
+        foreach (string st in new[] { "normal", "pressed", "disabled", "focus" }) b.AddThemeStyleboxOverride(st, clear);
+        // Hover / focus: an outline in the half's go colour.
+        var outline = new StyleBoxFlat { BgColor = Colors.Transparent, BorderColor = HudKit.Lime, DrawCenter = false };
+        outline.SetBorderWidthAll(4);
+        b.AddThemeStyleboxOverride("hover", outline);
+        b.AddThemeStyleboxOverride("focus", outline);
+
+        b.AddChild(HalfArt(family));
+        // A shade from the bottom up, in the half's own panel colour, so the name reads; a lighter veil over the rest.
+        var shade = new TextureRect
+        {
+            Texture = new GradientTexture2D
+            {
+                Gradient = new Gradient { Colors = new[] { Palette.Ink with { A = 0.15f }, Palette.Ink with { A = 0.95f } }, Offsets = new[] { 0.45f, 0.92f } },
+                FillFrom = Vector2.Zero, FillTo = new Vector2(0, 1), Width = 8, Height = 256,
+            },
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore,
+        };
+        shade.SetAnchorsPreset(LayoutPreset.FullRect);
+        b.AddChild(shade);
+
+        var v = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.End };
+        v.SetAnchorsPreset(LayoutPreset.FullRect);
+        v.OffsetBottom = -170;
+        v.AddThemeConstantOverride("separation", 2);
+        var name = HudKit.Text(GameScreen.FamilyName(family).ToUpperInvariant(), 64, HudKit.Fg, HudKit.Exo(800), HorizontalAlignment.Center);
+        name.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.85f));
+        name.AddThemeConstantOverride("shadow_offset_y", 3);
+        v.AddChild(name);
+        string games = family == GameScreen.EFamily.GrimdarkFuture ? "Grimdark Future  -  Firefight  -  Star Quest" : "Age of Fantasy  -  Skirmish  -  Quest";
+        v.AddChild(HudKit.Text(games, 22, HudKit.Lime, HudKit.Semi, HorizontalAlignment.Center));
+        b.AddChild(v);
         b.Pressed += () => App.I.Open<GameScreen>(Scenes.GameScreen, s => s.Family = family);
         return b;
-    }
+    });
 
     private static Button Tool(string name, string icon, string label, string tip, Action onPressed, Color? tint = null)
     {

@@ -14,9 +14,10 @@ namespace OprGodot.Campaign;
 /// turn; each of the player's battles gets a card and then goes through Mission Setup; a finished turn shows its report.
 /// All the rules are <see cref="MapCampaignSession"/> (FdgApp) and <c>FDG.Campaign.Map</c> (engine).
 /// </summary>
-public partial class MapCampaignScreen : Control
+public partial class MapCampaignScreen : Control, Hud.ILooked
 {
     public string CampaignPath { get; set; } = "";
+    public Hud.Looks.ELook Look => Hud.Looks.For(System);
     public EGameSystem System { get; set; } = EGameSystem.GrimdarkFuture;
 
     private MapCampaignSession? _s;

@@ -28,10 +28,11 @@ namespace OprGodot.Campaign;
 /// </list>
 /// PLAY NEXT MISSION opens Mission Setup (E). The rules and bookkeeping are <see cref="ArmyCampaignSession"/> (FdgApp).
 /// </summary>
-public partial class ArmyCampaignsScreen : Control, IBackGuard
+public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
 {
     private enum View { List, New, Camp, Recruit, Journal }
 
+    public Hud.Looks.ELook Look => Hud.Looks.For(System);
     public EGameSystem System { get; set; } = EGameSystem.GrimdarkFuture;
 
     /// <summary>#467 - opened from a campaign map's Camp button: straight into that campaign's Camp, and Back returns to

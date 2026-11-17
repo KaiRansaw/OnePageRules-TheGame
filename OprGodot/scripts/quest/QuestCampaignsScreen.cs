@@ -27,10 +27,11 @@ namespace OprGodot.Quest;
 /// Mission mode with the party and the chapter's enemy filled in; the result comes back here.
 /// All the rules and bookkeeping are <see cref="QuestCampaignSession"/> (FdgApp).
 /// </summary>
-public partial class QuestCampaignsScreen : Control, IBackGuard
+public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
 {
     private enum View { List, New, Structure, Journal }
 
+    public Hud.Looks.ELook Look => Hud.Looks.For(System);
     public EGameSystem System { get; set; } = EGameSystem.GFStarQuest;
 
     private QuestCampaignSession _s = null!;

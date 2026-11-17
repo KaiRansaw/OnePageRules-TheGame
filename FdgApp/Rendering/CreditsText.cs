@@ -35,6 +35,8 @@ public static class CreditsText
         {
             new Entry("Rajdhani", "Indian Type Foundry", "SIL Open Font License 1.1"),
             new Entry("Exo 2", "Natanael Gama", "SIL Open Font License 1.1"),
+            new Entry("Cinzel", "Natanael Gama (The Cinzel Project Authors)", "SIL Open Font License 1.1"),
+            new Entry("Alegreya Sans", "Juan Pablo del Peral, Huerta Tipografica", "SIL Open Font License 1.1"),
             new Entry("DejaVu Sans", "DejaVu fonts team", "Bitstream Vera / public domain"),
         }),
         new Section("Built with", new[]
