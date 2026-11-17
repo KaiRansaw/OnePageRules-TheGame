@@ -76,6 +76,13 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         _status = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi);
         _root.AddChild(_status);
 
+        // Kai's frame (ArmyForge.tscn -> Frame), when the scene has one: the top bar, the body and the status line each
+        // go in their box. Without it the column above stays.
+        bool all = ScreenFrame.TryPlace(this, "TopBar", _top, new ScreenFrame.Anchors(0, 0, 1, 0));
+        all &= ScreenFrame.TryPlace(this, "Body", _body, new ScreenFrame.Anchors(0, 0, 1, 1));
+        all &= ScreenFrame.TryPlace(this, "Status", _status, new ScreenFrame.Anchors(0, 1, 1, 1));
+        if (all) margin.QueueFree();
+
         var wait = HudKit.Text("Reading the army books...", 22, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
         wait.SetAnchorsPreset(LayoutPreset.Center);
         _body.AddChild(wait);

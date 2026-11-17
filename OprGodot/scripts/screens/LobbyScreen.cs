@@ -105,7 +105,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
         _previewNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _previewNote.CustomMinimumSize = new Vector2(10, 0);
         previewBox.AddChild(_previewNote);
-        right.AddChild(new PanelContainer { ThemeTypeVariation = "CardPanel" }.With(p => p.AddChild(previewBox)));
+        var previewPanel = new PanelContainer { ThemeTypeVariation = "CardPanel" }.With(p => p.AddChild(previewBox));
+        right.AddChild(previewPanel);
 
         var armyBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         armyBox.AddThemeConstantOverride("separation", 6);
@@ -117,17 +118,44 @@ public partial class LobbyScreen : Control, Hud.ILooked
         _armyRows.AddThemeConstantOverride("separation", 4);
         scroll.AddChild(_armyRows);
         armyBox.AddChild(scroll);
-        right.AddChild(new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill }.With(p => p.AddChild(armyBox)));
+        var armyPanel = new PanelContainer { SizeFlagsVertical = SizeFlags.ExpandFill }.With(p => p.AddChild(armyBox));
+        right.AddChild(armyPanel);
 
+        var launchBox = new VBoxContainer();
+        launchBox.AddThemeConstantOverride("separation", 10);
+        right.AddChild(launchBox);
         _blockers = HudKit.Text("", 15, Palette.WoundsRed, HudKit.Semi);
         _blockers.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _blockers.CustomMinimumSize = new Vector2(10, 0);
-        right.AddChild(_blockers);
+        launchBox.AddChild(_blockers);
         _launch = new Button { Name = "Launch", Text = "LAUNCH", ThemeTypeVariation = "CommitButton", CustomMinimumSize = new Vector2(0, 72) };
         _launch.AddThemeFontSizeOverride("font_size", 30);
         _launch.Pressed += OnLaunch;
-        right.AddChild(_launch);
+        launchBox.AddChild(_launch);
         body.AddChild(right);
+
+        // Kai's frame (Lobby.tscn -> Frame), when the scene has one: each panel goes in its box and the code's
+        // columns are dropped. Without it (or for a panel without a box) the columns above stay.
+        if (ScreenFrame.Framed(this))
+        {
+            bool all = true;
+            all &= ScreenFrame.TryPlace(this, "Header", header, new ScreenFrame.Anchors(0, 0, 1, 0));
+            all &= ScreenFrame.TryPlace(this, "SettingsTabs", _tabs, new ScreenFrame.Anchors(0, 0, 0, 1));
+            all &= ScreenFrame.TryPlace(this, "Seats", mid, new ScreenFrame.Anchors(0, 0, 1, 1));
+            all &= ScreenFrame.TryPlace(this, "MapPreview", previewPanel, new ScreenFrame.Anchors(1, 0, 1, 0));
+            all &= ScreenFrame.TryPlace(this, "SeatArmy", armyPanel, new ScreenFrame.Anchors(1, 0, 1, 1));
+            all &= ScreenFrame.TryPlace(this, "Launch", launchBox, new ScreenFrame.Anchors(1, 1, 1, 1));
+            if (all) margin.QueueFree();
+        }
+        else
+        {
+            ScreenFrame.TryPlace(this, "Header", header, new ScreenFrame.Anchors(0, 0, 1, 0));
+            ScreenFrame.TryPlace(this, "SettingsTabs", _tabs, new ScreenFrame.Anchors(0, 0, 0, 1));
+            ScreenFrame.TryPlace(this, "Seats", mid, new ScreenFrame.Anchors(0, 0, 1, 1));
+            ScreenFrame.TryPlace(this, "MapPreview", previewPanel, new ScreenFrame.Anchors(1, 0, 1, 0));
+            ScreenFrame.TryPlace(this, "SeatArmy", armyPanel, new ScreenFrame.Anchors(1, 0, 1, 1));
+            ScreenFrame.TryPlace(this, "Launch", launchBox, new ScreenFrame.Anchors(1, 1, 1, 1));
+        }
 
         // A Quest campaign mission (PLAY NEXT MISSION): the party, the chapter's enemy, the locked facts.
         if (FdgRaylib.Quest.QuestCampaignSession.Pending is { } launch && Session.Campaign == null && Vm.HasHostPrivileges)
@@ -923,7 +951,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
         int toughN = tough != null && int.TryParse(tough[6..^1], out int t) ? t : 1;
         var h = new HBoxContainer();
         h.AddThemeConstantOverride("separation", 10);
-        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), 44, team, look: FdgRaylib.Models3D.UnitPortraits.LookOf(u.ModelLooks), owner: seatId));
+        h.AddChild(HudKit.Portrait(faction, u.Name, HudKit.KindIcon(u.Name, hero, u.Weapons.Any(w => w.RangeInches > 0), toughN), (int)HudKit.PictureSize.LobbyList, team, look: FdgRaylib.Models3D.UnitPortraits.LookOf(u.ModelLooks), owner: seatId));
         var v = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         v.AddThemeConstantOverride("separation", 0);
         var top = new HBoxContainer();

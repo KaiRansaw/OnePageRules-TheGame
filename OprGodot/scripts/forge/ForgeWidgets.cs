@@ -38,7 +38,7 @@ internal static class ForgeWidgets
 
     public static Control Card(string faction, string name, string unit, int pts, string tag, bool selected, Action click, Action? doubleClick, string? look = null)
     {
-        var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(150, 0), FocusMode = FocusModeEnum.None, ToggleMode = false, TooltipText = unit };
+        var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(100, 0), FocusMode = FocusModeEnum.None, ToggleMode = false, TooltipText = unit };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
         if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
@@ -50,12 +50,13 @@ internal static class ForgeWidgets
         row.AddChild(HudKit.Banner(faction, unit, "person", w, h, HudKit.Friendly, look: look));
         var txt = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
         txt.AddThemeConstantOverride("separation", -4);
-        var n = HudKit.OverPicture(HudKit.Text(unit, 16, selected ? HudKit.Lime : HudKit.Fg, HudKit.Bold));
+        float sc = HudKit.PictureSize.Scale;
+        var n = HudKit.OverPicture(HudKit.Text(unit, Mathf.RoundToInt(15 * Math.Max(0.85f, sc)), selected ? HudKit.Lime : HudKit.Fg, HudKit.Bold));
         n.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-        n.CustomMinimumSize = new Vector2(120, 0);
+        n.CustomMinimumSize = new Vector2(100 * sc, 0);
         n.MouseFilter = MouseFilterEnum.Ignore;
         txt.AddChild(n);
-        var p = HudKit.OverPicture(HudKit.Text(tag.Length > 0 ? $"{pts} pts - {tag}" : $"{pts} pts", 14, tag == "!" ? Palette.WoundsRed : HudKit.Dim, HudKit.Semi));
+        var p = HudKit.OverPicture(HudKit.Text(tag.Length > 0 ? $"{pts} pts - {tag}" : $"{pts} pts", Mathf.RoundToInt(13 * Math.Max(0.85f, sc)), tag == "!" ? Palette.WoundsRed : HudKit.Dim, HudKit.Semi));
         p.MouseFilter = MouseFilterEnum.Ignore;
         txt.AddChild(p);
         row.AddChild(txt);
@@ -63,7 +64,7 @@ internal static class ForgeWidgets
         pad.MouseFilter = MouseFilterEnum.Ignore;
         pad.SetAnchorsPreset(LayoutPreset.FullRect);
         b.AddChild(pad);
-        b.CustomMinimumSize = new Vector2(w + 150, h + 12);
+        b.CustomMinimumSize = new Vector2(w + 110 * sc, h + 10);
         b.Pressed += click;
         if (doubleClick != null)
             b.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, DoubleClick: true }) doubleClick(); };

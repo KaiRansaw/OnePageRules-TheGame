@@ -33,6 +33,7 @@ public partial class ArmyPicker : PanelContainer
     public Action<EGameSystem>? GameChanged { get; init; }
 
     private GridContainer? _first;
+    private static int Columns => Math.Clamp(Mathf.RoundToInt(4f / HudKit.PictureSize.Scale), 2, 7);
     private readonly List<(string Name, Button Tile, Control Group, Control Header)> _tiles = new();
     private Label _info = null!;
     private Button _commit = null!;
@@ -104,7 +105,8 @@ public partial class ArmyPicker : PanelContainer
         {
             var head = HudKit.Heading(g.Name, 16);
             body.AddChild(head);
-            var grid = new GridContainer { Columns = 3, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            // 4 across at the normal card size (Kai, 2026-11-17); the Card size slider makes tiles bigger or smaller.
+            var grid = new GridContainer { Columns = Columns, SizeFlagsHorizontal = SizeFlags.ExpandFill };
             grid.AddThemeConstantOverride("h_separation", 12);
             grid.AddThemeConstantOverride("v_separation", 12);
             body.AddChild(grid);
@@ -152,7 +154,7 @@ public partial class ArmyPicker : PanelContainer
         int? count = Counts == null ? null : Counts.TryGetValue(army, out int n) ? n : 0;
         var b = new Button
         {
-            Name = "Army_" + Forge.ForgeWidgets.SafeName(army), CustomMinimumSize = new Vector2(0, 112), SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Name = "Army_" + Forge.ForgeWidgets.SafeName(army), CustomMinimumSize = new Vector2(0, 96 * HudKit.PictureSize.Scale), SizeFlagsHorizontal = SizeFlags.ExpandFill,
             ClipContents = true, FocusMode = FocusModeEnum.All, TooltipText = army,
         };
         var box = new ChamferBox { Fill = Palette.Panel, Border = HudKit.Edge, Cut = 10, BorderWidth = 1 };
@@ -179,7 +181,7 @@ public partial class ArmyPicker : PanelContainer
         fade.SetAnchorsPreset(LayoutPreset.FullRect);
         fade.OffsetLeft = 1; fade.OffsetTop = 1; fade.OffsetRight = -1; fade.OffsetBottom = -1;
         b.AddChild(fade);
-        var name = HudKit.Text(army, 24, HudKit.Fg, HudKit.Bold);
+        var name = HudKit.Text(army, Mathf.RoundToInt(21 * Math.Max(0.85f, HudKit.PictureSize.Scale)), HudKit.Fg, HudKit.Bold);
         name.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.9f));
         name.AddThemeConstantOverride("shadow_offset_y", 2);
         name.MouseFilter = MouseFilterEnum.Ignore;

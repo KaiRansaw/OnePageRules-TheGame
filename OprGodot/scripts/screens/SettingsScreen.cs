@@ -75,6 +75,16 @@ public partial class SettingsScreen : Control
                 Config.StartFullscreen = on;
                 DisplayServer.WindowSetMode(on ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
             }));
+        // Card size (Kai, 2026-11-17): Army Forge cards, the army picture grid, lobby army-list portraits.
+        var cards = new HSlider { Name = "CardSize", MinValue = 50, MaxValue = 150, Step = 5, Value = View.CardSize, CustomMinimumSize = new Vector2(260, 0), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        var cardsLabel = Hud.HudKit.Text($"{View.CardSize} %", 16, Hud.HudKit.Fg, Hud.HudKit.Semi);
+        cards.ValueChanged += v => { View.CardSize = (int)v; cardsLabel.Text = $"{(int)v} %"; };
+        cards.DragEnded += _ => FdgRaylib.Config.UserConfig.Save();
+        var cardRow = new HBoxContainer();
+        cardRow.AddThemeConstantOverride("separation", 12);
+        cardRow.AddChild(cards);
+        cardRow.AddChild(cardsLabel);
+        rows.AddChild(Row("Card size", "How big unit cards and army tiles are: the Army Forge cards, the army picture grid (4 across at 100 %) and the lobby's army-list portraits. Smaller = more on screen. Applies next time those screens open.", cardRow));
         // UI themes from art packs (Kai, 2026-11-16) - Classic is the drawn look; each pack is one entry in Hud.Skin.All.
         var themes = new OptionButton { Name = "UiTheme" };
         var ids = new List<string> { "classic" };

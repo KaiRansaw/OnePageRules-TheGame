@@ -543,7 +543,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         t.AddChild(_turnLine);
         roundRow.AddChild(t);
         var roundBox = HudKit.Panel(Tight(10).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 12; x.ContentMarginRight = 12; }), roundRow);
-        HudKit.Place(_hud, roundBox, LayoutPreset.TopLeft, new Vector2(Pad, Pad));
+        ScreenFrame.Place(this, "RoundBox", roundBox, LayoutPreset.TopLeft, new Vector2(Pad, Pad), _hud);
 
         // Top-centre: what the game wants right now.
         var promptRow = new HBoxContainer();
@@ -553,7 +553,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         promptRow.AddChild(_prompt);
         promptRow.AddChild(_promptHint);
         var promptBox = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.9f }; x.Border = HudKit.Lime with { A = 0.55f }; x.ContentMarginLeft = 16; x.ContentMarginRight = 16; }), promptRow);
-        HudKit.Place(_hud, promptBox, LayoutPreset.CenterTop, new Vector2(0, Pad));
+        ScreenFrame.Place(this, "Prompt", promptBox, LayoutPreset.CenterTop, new Vector2(0, Pad), _hud);
 
         // Top-right: Top view, Report, Armies, Menu.
         var menu = new HBoxContainer();
@@ -571,7 +571,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
             b.Pressed += act;
             menu.AddChild(b);
         }
-        HudKit.Place(_hud, menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad));
+        ScreenFrame.Place(this, "TopButtons", menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad), _hud);
 
         // Bottom-left: the selected unit, and beside it the four actions - two panels, so the actions keep their own
         // size when the card is tall (Kai, 2026-11-14: the menu next to the card "needs to be a set size").
@@ -581,13 +581,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         var cardScroll = new ScrollContainer { CustomMinimumSize = new Vector2(316, CardHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         cardScroll.AddChild(_unitCard);
         _unitBlock = HudKit.Panel(Tight(12).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), cardScroll);
-        HudKit.Place(_hud, _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad));
+        ScreenFrame.Place(this, "UnitCard", _unitBlock, LayoutPreset.BottomLeft, new Vector2(Pad, -Pad), _hud);
         var areaScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, ActionHeight), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var area = Decisions.BuildActionArea();
         area.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         areaScroll.AddChild(area);
         _actionBlock = HudKit.Panel(Tight(12).With(x => { x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), areaScroll);
-        HudKit.Place(_hud, _actionBlock, LayoutPreset.BottomLeft, new Vector2(Pad + 340, -Pad));
+        ScreenFrame.Place(this, "Actions", _actionBlock, LayoutPreset.BottomLeft, new Vector2(Pad + 340, -Pad), _hud);
         _confirmBox = HudKit.Place(_hud, Decisions.BuildConfirmBox(), LayoutPreset.CenterBottom, new Vector2(0, -170));
 
         // Bottom-right: mission panel over the battle report.
@@ -608,7 +608,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         _reportRows.AddThemeConstantOverride("separation", 1);
         rep.AddChild(_reportRows);
         stack.AddChild(HudKit.Panel(Tight(10).With(x => x.Fill = x.Fill with { A = 0.8f }), rep));
-        HudKit.Place(_hud, stack, LayoutPreset.BottomRight, new Vector2(-Pad, -Pad));
+        ScreenFrame.Place(this, "MissionAndReport", stack, LayoutPreset.BottomRight, new Vector2(-Pad, -Pad), _hud);
 
         // Left: the army list, between the round box and the unit block.
         var list = new VBoxContainer { CustomMinimumSize = new Vector2(286, 0) };
@@ -633,7 +633,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         scroll.AddChild(_armyRows);
         list.AddChild(scroll);
         var listBox = HudKit.Panel(Tight(10).With(x => x.ContentMarginRight = 4), list);
-        HudKit.Place(_hud, listBox, LayoutPreset.TopLeft, new Vector2(Pad, 92));
+        ScreenFrame.Place(this, "ArmyList", listBox, LayoutPreset.TopLeft, new Vector2(Pad, 92), _hud);
         _armyScroll = scroll;
         _armyBox = listBox;
         _roundBox = roundBox;
@@ -712,7 +712,30 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         RefreshReport(); PerfProbe.Stop("hud.report", tp); tp = PerfProbe.Start();
         RefreshMission(progress); PerfProbe.Stop("hud.mission", tp); tp = PerfProbe.Start();
 
-        // Army list fills the space between the round box and the unit block.
+        if (ScreenFrame.Framed(this)) LayoutFromFrame();
+        else LayoutByCode();
+        // The confirm box stays where the code puts it: centred above the bottom edge, clear of the action buttons.
+        Vector2 screen = GetViewportRect().Size;
+        Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
+        _confirmBox.Size = cmin;
+        float cx = Mathf.Max((screen.X - cmin.X) / 2, _actionBlock.GetGlobalRect().End.X + 16);
+        _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
+
+        PerfProbe.Stop("hud.layout", tp);
+        if (Session.EndedText != null && _gameOver == null) ShowGameOver();
+    }
+
+    /// <summary>Kai's frame (Battle.tscn -> Frame) decides where panels are: the army list's scroll takes its box's height.</summary>
+    private void LayoutFromFrame()
+    {
+        if (ScreenFrame.Slot(this, "ArmyList") is not { } slot) return;
+        float want = Mathf.Max(80, slot.Size.Y - 60);
+        if (Mathf.Abs(_armyScroll.CustomMinimumSize.Y - want) > 1) _armyScroll.CustomMinimumSize = new Vector2(0, want);
+    }
+
+    /// <summary>The placement written in code (no frame): the army list between the round box and the unit block.</summary>
+    private void LayoutByCode()
+    {
         float top = _roundBox.GetRect().End.Y + 8, bottom = _unitBlock.GetRect().Position.Y - 8;
         _armyBox.Position = new Vector2(Pad, top);
         float want = Mathf.Max(80, bottom - top - 40);
@@ -730,14 +753,6 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Vector2 amin = _actionBlock.GetCombinedMinimumSize();
         if (_actionBlock.Size != amin) _actionBlock.Size = amin;
         _actionBlock.Position = new Vector2(_unitBlock.GetRect().End.X + 6, screen.Y - Pad - amin.Y);
-        Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
-        _confirmBox.Size = cmin;
-        // Centred above the bottom edge, but never over the choice buttons beside the card (they grow to the right).
-        float cx = Mathf.Max((screen.X - cmin.X) / 2, _actionBlock.GetRect().End.X + 16);
-        _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
-
-        PerfProbe.Stop("hud.layout", tp);
-        if (Session.EndedText != null && _gameOver == null) ShowGameOver();
     }
 
     private IUnit? _lastActivating;

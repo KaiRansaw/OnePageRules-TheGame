@@ -204,6 +204,9 @@ public sealed class ViewPreferences
     /// <summary>Godot build: the UI theme - "classic" (the drawn cut-corner panels) or an art pack's id ("hologram",
     /// "minimal"; OprGodot Hud.Skin.All). Kai is trying packs (2026-11-16); Settings -> Display -> UI theme.</summary>
     public string UiSkin { get; set; } = "minimal";
+    /// <summary>Godot build: how big unit and army cards are (Kai, 2026-11-17), 50-150 %. 100 % = Army Forge cards about
+    /// two-thirds of their old size, the army picture grid 4 across, and lobby army-list portraits bigger than before.</summary>
+    public int CardSize { get; set; } = 100;
     /// <summary>The newest UI theme this copy has switched to by itself: a build that adds a theme puts it on once (Kai is
     /// trying them one after another); picking another in Settings sticks until the next new theme arrives.</summary>
     public string UiSkinOffered { get; set; } = "";

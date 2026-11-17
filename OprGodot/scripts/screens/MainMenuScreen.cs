@@ -44,7 +44,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         plate.MouseFilter = MouseFilterEnum.Ignore;
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         col.AddChild(plate);
-        HudKit.Place(this, col, LayoutPreset.CenterTop, new Vector2(0, 28));
+        ScreenFrame.Place(this, "Title", col, LayoutPreset.CenterTop, new Vector2(0, 28));
 
         // The tools in one strip along the bottom.
         var strip = new PanelContainer { MouseFilter = MouseFilterEnum.Stop };
@@ -52,6 +52,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         strip.SetAnchorsPreset(LayoutPreset.BottomWide);
         strip.GrowVertical = GrowDirection.Begin;
         AddChild(strip);
+        ScreenFrame.TryPlace(this, "Tools", strip, new ScreenFrame.Anchors(0, 1, 1, 1));
         var tools = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         tools.AddThemeConstantOverride("separation", 10);
         strip.AddChild(tools);
@@ -82,9 +83,11 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         _updateLine.Name = "UpdateLine";
         foot.AddChild(_updateLine);
         foot.AddChild(HudKit.Text("Fan-made. Not an official OnePageRules product. Game rules and army data (c) OnePageRules.", 13, HudKit.Dim with { A = 0.7f }, HudKit.Medium, HorizontalAlignment.Right));
-        HudKit.Place(this, foot, LayoutPreset.TopRight, new Vector2(-24, 20));
+        ScreenFrame.Place(this, "BuildInfo", foot, LayoutPreset.TopRight, new Vector2(-24, 20));
 
         ShowOffSwitch();
+        // The frame's boxes sit over the two halves, not under them.
+        if (GetNodeOrNull<Control>("Frame") is { } frame) MoveChild(frame, -1);
 
         // The feel (2026-11-15): every button here lifts, brightens, clicks, and can be reached with the keyboard or a
         // controller - arrows / d-pad move, Enter / A presses. Down from either half goes to the tools strip.

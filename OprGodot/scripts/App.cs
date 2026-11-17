@@ -20,6 +20,8 @@ public partial class App : Node
 
     private Control? _host;
     private readonly Stack<Control> _screens = new();
+    /// <summary>The screen on display.</summary>
+    public Control? TopScreen => _screens.Count > 0 ? _screens.Peek() : null;
     /// <summary>The look each open screen was built in, so Back puts it back (Hud.Looks).</summary>
     private readonly Dictionary<Control, Hud.Looks.ELook> _looks = new();
 

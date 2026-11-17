@@ -290,6 +290,9 @@ public partial class ScriptedRun : Node
             }
             // "pic:<slot key>|<file>" picks a slot in the picture manager (Asset Lab -> Your pictures) and gives it a picture;
             // "pic:<slot key>" only picks it. "viewer" closes the Lab's home page onto the 3D viewer.
+            // "framegen:<file>" writes the screen-on-display's Frame boxes (.tscn text) from where its panels are now.
+            if (name.StartsWith("framegen:") && App.I.TopScreen is { } fs)
+            { System.IO.File.WriteAllText(name[9..], Hud.ScreenFrame.Generate(fs)); GD.Print("ScriptedRun: frame written - " + name[9..]); return; }
             if (name.StartsWith("pic:") && Find<Lab.PictureManager>(GetTree().Root) is { } pm)
             { var parts = name[4..].Split('|'); pm.Drive(parts[0], parts.Length > 1 ? parts[1] : null); _wait = 20; return; }
             if (name == "viewer" && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lv) { lv.ShowViewer(""); return; }

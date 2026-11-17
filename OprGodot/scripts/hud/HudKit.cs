@@ -322,7 +322,12 @@ public static class HudKit
     /// </summary>
     public static class PictureSize
     {
-        public const float ForgeCard = 100;
+        /// <summary>Settings -> Display -> Card size (50-150 %), as a factor.</summary>
+        public static float Scale => Math.Clamp(FdgRaylib.Config.UserConfig.Current.View.CardSize, 50, 150) / 100f;
+        /// <summary>Army Forge card picture height: 100 px before 2026-11-17; Kai wanted about 1.5x as many cards on screen.</summary>
+        public static float ForgeCard => 68 * Scale;
+        /// <summary>Lobby army-list portraits (Kai: larger - they were 44).</summary>
+        public static float LobbyList => 64 * Scale;
         public const float ArmyList = 70;
         public const float UnitCard = 220;
         /// <summary>The same card shown as a hover / pinned tip over the table - smaller, so it doesn't cover the fight.</summary>
