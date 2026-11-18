@@ -13,8 +13,8 @@ namespace OprGodot.Battle;
 /// table and the Map Maker so both show the same thing.
 ///
 /// <para>Outlines come in world units (table inches) on the XZ plane: <c>Vector2(x, z)</c> of the world, as
-/// <see cref="BattleTable.Prism"/> takes them. Every look draws a base over the exact footprint first, so the edge the
-/// rules use is always visible; the models stand on it. Randomness is seeded per piece
+/// <see cref="BattleTable.Prism"/> takes them. Every look draws a thin line round the exact footprint, so the edge the
+/// rules use is always visible; the models stand straight on the mat (no solid base since 2026-11-18, Kai). Randomness is seeded per piece
 /// (<see cref="TerrainLooks.SeedFor"/>), so every machine draws the same trees in the same places.</para>
 /// </summary>
 public static partial class TerrainDresser
@@ -178,10 +178,31 @@ public static partial class TerrainDresser
 
     // ------------------------------------------------------------------ layouts
 
+    /// <summary>
+    /// Kai, 2026-11-18: no base under terrain - the models stand straight on the mat. What is left of the old solid base
+    /// is a thin line round the footprint, so the edge the rules use can still be seen.
+    /// </summary>
     private static void Base(Node3D root, Vector2[] poly, Color c)
     {
-        if (BattleTable.Prism(poly, BaseHeight) is { } mesh)
-            TableLook.Mesh(root, mesh, TableLook.Mat(c, 0.95f), Vector3.Zero);
+        if (poly.Length < 2) return;
+        const float Width = 0.12f, Lift = 0.025f;
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        for (int i = 0; i < poly.Length; i++)
+        {
+            Vector2 a = poly[i], b = poly[(i + 1) % poly.Length];
+            Vector2 dir = (b - a).Normalized();
+            if (!dir.IsFinite() || dir == Vector2.Zero) continue;
+            Vector2 n = new Vector2(-dir.Y, dir.X) * (Width / 2);
+            Vector3 P(Vector2 v) => new(v.X, Lift, v.Y);
+            Vector3 a0 = P(a - n), a1 = P(a + n), b0 = P(b - n), b1 = P(b + n);
+            st.AddVertex(a0); st.AddVertex(b0); st.AddVertex(b1);
+            st.AddVertex(a0); st.AddVertex(b1); st.AddVertex(a1);
+        }
+        var mat = TableLook.Mat(c.Lightened(0.25f), 0.95f);
+        mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        TableLook.Mesh(root, st.Commit(), mat, Vector3.Zero);
     }
 
     private static void Surface(Node3D root, Vector2[] poly, Color c, bool lava)

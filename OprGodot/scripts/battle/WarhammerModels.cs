@@ -56,6 +56,13 @@ public static class WarhammerModels
         s.UpAxis = up;
         s.SaveEdit(file);
         Ups[file] = up;
+        Templates.Remove(file); // trimmed the old way up - load it again
+    }
+
+    /// <summary>Forget a loaded model so the next draw loads it again (its base setting changed).</summary>
+    public static void Forget(string file)
+    {
+        Templates.Remove(file);
     }
 
     /// <summary>
@@ -127,6 +134,8 @@ public static class WarhammerModels
     {
         if (Templates.TryGetValue(file, out Node3D? have)) return have;
         Node3D? model = File.Exists(file) ? AssetLoader.Load(file).Model : null;
+        // Kai, 2026-11-18: no sculpted scenic bases under terrain (the woods' dark disc) - see TerrainBaseTrim.
+        if (model != null) TerrainBaseTrim.Apply(model, UpOf(file), Library?.Entries.FirstOrDefault(e => e.File == file)?.Match.CutBase);
         Templates[file] = model;
         return model;
     }

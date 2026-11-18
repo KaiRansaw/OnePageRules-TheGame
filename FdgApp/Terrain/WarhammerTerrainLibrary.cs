@@ -37,6 +37,9 @@ public sealed class WarhammerTerrainLibrary
         [JsonProperty("w")] public float W { get; set; }
         [JsonProperty("d")] public float D { get; set; }
         [JsonProperty("h")] public float H { get; set; }
+        /// <summary>The model's sculpted scenic base (Kai, 2026-11-18): null = the game decides (cuts a thin slab with the
+        /// piece standing on it), true = always cut it off, false = keep it.</summary>
+        [JsonProperty("cutBase", NullValueHandling = NullValueHandling.Ignore)] public bool? CutBase { get; set; }
     }
 
     /// <summary>A downloaded piece with its match.</summary>

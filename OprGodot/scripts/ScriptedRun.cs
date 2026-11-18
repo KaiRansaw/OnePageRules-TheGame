@@ -66,6 +66,20 @@ public partial class ScriptedRun : Node
         _perfProcess.Clear(); _perfDraw = _perfObjects = _perfNodes = _perfMem = _perfFrames = _perfWall = 0;
     }
 
+    private async void TrimShot(string name)
+    {
+        string[] parts = name[9..].Split('|');
+        Battle.TerrainBaseTrim.Verbose = true;
+        var studio = new Lab.PortraitShot.Studio(512);
+        AddChild(studio);
+        for (int f = 0; f < 2; f++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        bool shown = studio.Show(parts[0], out string? why, trimTerrainBase: parts.Length < 3);
+        studio.Aim(new Lab.PortraitShot.Angle("T", "Terrain", 30, 32, 1f, 1f));
+        for (int f = 0; f < 4; f++) await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        studio.Grab(512).SavePng(parts[1]);
+        GD.Print($"ScriptedRun: trimshot {(shown ? "shot" : "failed: " + why)} -> {parts[1]}");
+    }
+
     public override void _Process(double delta)
     {
         if (_perfLeft > 0) { SamplePerf(delta); return; }
@@ -360,6 +374,8 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
                 return;
             }
+            // "trimshot:<model file>|<png>" pictures a terrain model with its scenic base cut off (TerrainBaseTrim checks).
+            if (name.StartsWith("trimshot:")) { TrimShot(name); return; } // follow with wait:N
             // "selectunit:Hive Guardians" selects the first unit with that name, so its card shows (screenshot checks).
             if (name.StartsWith("selectunit:"))
             {
@@ -400,7 +416,16 @@ public partial class ScriptedRun : Node
             // A mode button ("AgeOfFantasy_Horde") lives in its game's pop-up box on the game screen (2026-11-16): open it.
             if (FindButton(GetTree().Root, name) == null && name.Split('_') is [var sys, _] && Enum.TryParse(sys, out FDG.EGameSystem game)
                 && Find<GameScreen>(GetTree().Root) is { Visible: true } gs) gs.OpenModes(game);
-            if (FindButton(GetTree().Root, name) is { } button) button.EmitSignal(BaseButton.SignalName.Pressed);
+            // "Name#3" presses the third button with that name (cards repeat their buttons' names).
+            int nth = 1;
+            if (name.LastIndexOf('#') is int hash and > 0 && int.TryParse(name[(hash + 1)..], out int k)) { nth = k; name = name[..hash]; }
+            var matches = new List<BaseButton>();
+            CollectButtons(GetTree().Root, name, matches);
+            if (matches.Count >= nth && matches[nth - 1] is { } button)
+            {
+                if (button.ToggleMode) button.ButtonPressed = !button.ButtonPressed; // a tick box: flip it (fires Toggled)
+                else button.EmitSignal(BaseButton.SignalName.Pressed);
+            }
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
             return;
         }
@@ -649,6 +674,12 @@ public partial class ScriptedRun : Node
         foreach (Node child in node.GetChildren())
             if (OpenTab(child, name)) return true;
         return false;
+    }
+
+    private static void CollectButtons(Node node, string name, List<BaseButton> into)
+    {
+        if (node is BaseButton b && b.Name == name && b.IsVisibleInTree()) into.Add(b);
+        foreach (Node child in node.GetChildren()) CollectButtons(child, name, into);
     }
 
     private static BaseButton? FindButton(Node node, string name)

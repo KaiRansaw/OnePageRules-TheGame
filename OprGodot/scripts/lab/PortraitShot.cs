@@ -85,7 +85,7 @@ public static partial class PortraitShot
         }
 
         /// <summary>Stands a loaded model on the stage with its saved settings; false (with the reason) when it can't.</summary>
-        public bool Show(string file, out string? why)
+        public bool Show(string file, out string? why, bool trimTerrainBase = false, bool? forceCut = null)
         {
             why = null;
             foreach (Node c in _stage.GetChildren()) { _stage.RemoveChild(c); c.QueueFree(); }
@@ -98,6 +98,8 @@ public static partial class PortraitShot
             var pivot = new Node3D();
             holder.AddChild(pivot);
             var body = (Node3D)a.Model.Duplicate();
+            // Terrain pictures match the table: no sculpted scenic base (Battle.TerrainBaseTrim, 2026-11-18).
+            if (trimTerrainBase) Battle.TerrainBaseTrim.Apply(body, s.UpAxis, forceCut);
             pivot.AddChild(body);
             (_, _box) = ModelPlacement.Place(pivot, body, s);
             return true;

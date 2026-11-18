@@ -30,11 +30,12 @@ public partial class MatchTerrainScreen : Control
     private bool _picturesRunning;
     private int _picturesDone, _picturesTotal;
 
-    private sealed record Card(VBoxContainer Root, Control Frame, TextureRect Picture, Label Size, OptionButton Kind, CheckBox Hide);
+    private sealed record Card(VBoxContainer Root, Control Frame, TextureRect Picture, Label Size, OptionButton Kind, CheckBox Hide, CheckBox Pick);
+    private TerrainPreview _preview = null!;
 
-    // Kai, 2026-11-18: "select multiple terrain pieces, and mark them all as a kind of terrain". Click a picture to
-    // pick it (click again to drop it), Shift+click picks everything between, and the bar above sets the kind for
-    // every picked piece at once.
+    // Kai, 2026-11-18: "select multiple terrain pieces, and mark them all as a kind of terrain" - then "instead of
+    // clicking on each model, a tickable box". Tick a card's box to pick it, Shift+tick picks everything between, and
+    // the bar above sets the kind for every picked piece at once. One ticked piece shows in the preview.
     private readonly HashSet<int> _picked = new();
     private int? _lastClicked;
     private HBoxContainer _bulk = null!;
@@ -79,7 +80,7 @@ public partial class MatchTerrainScreen : Control
         head.AddChild(sheetToggle);
         col.AddChild(head);
 
-        var help = ForgeWidgets.Wrapped("Click pictures to pick several pieces (Shift+click picks a run of them), then set their kind all at once from the bar. " +
+        var help = ForgeWidgets.Wrapped("Tick pieces to pick them (Shift+tick picks a run), then set their kind all at once from the bar; one ticked piece shows in the preview. " +
             "Pick what each piece is - its kind gives it that kind's rules on a map (Ruins: cover + unstable, Building: impassable + blocks sight...). " +
             "Decoration has no rules. Hide pieces you don't want in the Map Maker. A kind already filled in is a guess from the piece's Warhammer keywords - check it. " +
             "Pictures and sizes are made the first time (it takes a few minutes); everything saves as you go.", 14, HudKit.Dim);
@@ -97,11 +98,16 @@ public partial class MatchTerrainScreen : Control
         var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         body.AddThemeConstantOverride("separation", 14);
         body.AddChild(scroll);
+        var sideCol = new VBoxContainer { CustomMinimumSize = new Vector2(410, 0), Name = "Side" };
+        sideCol.AddThemeConstantOverride("separation", 10);
+        _preview = new TerrainPreview { Name = "Preview" };
+        sideCol.AddChild(_preview);
         Control sheet = CheatSheet();
         sheet.Visible = _sheetOpen;
-        body.AddChild(sheet);
-        sheetToggle.Toggled += on => { _sheetOpen = sheet.Visible = on; _grid.Columns = on ? 5 : 7; };
-        _grid.Columns = _sheetOpen ? 5 : 7;
+        sideCol.AddChild(sheet);
+        body.AddChild(sideCol);
+        sheetToggle.Toggled += on => _sheetOpen = sheet.Visible = on;
+        _grid.Columns = 5;
         col.AddChild(body);
 
         var margin = new MarginContainer();
@@ -158,19 +164,25 @@ public partial class MatchTerrainScreen : Control
         _bulkCount.Text = n == 0 ? "None picked" : $"{n} picked";
         foreach (Node c in _bulk.GetChildren())
             if (c is BaseButton b && b.Name != "PickAll") b.Disabled = n == 0;
-        foreach (var (id, card) in _cards) card.Frame.SelfModulate = _picked.Contains(id) ? HudKit.Lime : Colors.White;
+        foreach (var (id, card) in _cards)
+        {
+            card.Frame.SelfModulate = _picked.Contains(id) ? HudKit.Lime : Colors.White;
+            card.Pick.SetPressedNoSignal(_picked.Contains(id));
+        }
+        _preview?.ShowPiece(n == 1 ? _lib?.ById(_picked.First()) : null, n);
     }
 
-    private void OnPictureClicked(int id)
+    private void OnTicked(int id, bool on)
     {
         bool shift = Input.IsKeyPressed(Key.Shift);
-        if (shift && _lastClicked is { } from && _cards.ContainsKey(from))
+        if (shift && on && _lastClicked is { } from && _cards.ContainsKey(from))
         {
             var order = _cards.Keys.ToList(); // card order = grid order
             int a = order.IndexOf(from), b = order.IndexOf(id);
             for (int i = Math.Min(a, b); i <= Math.Max(a, b); i++) _picked.Add(order[i]);
         }
-        else if (!_picked.Remove(id)) _picked.Add(id);
+        else if (on) _picked.Add(id);
+        else _picked.Remove(id);
         _lastClicked = id;
         RefreshBulk();
     }
@@ -290,14 +302,11 @@ public partial class MatchTerrainScreen : Control
         var pic = new TextureRect { CustomMinimumSize = new Vector2(200, 170), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             TooltipText = $"{e.OriginalName}\n{e.SetName}" + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") };
         if (LoadThumb(e.Id) is { } tex) pic.Texture = tex;
-        pic.TooltipText += "\n(click to pick, Shift+click for a run)";
-        pic.MouseFilter = MouseFilterEnum.Stop;
-        pic.MouseDefaultCursorShape = CursorShape.PointingHand;
-        pic.GuiInput += ev =>
-        {
-            if (ev is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OnPictureClicked(e.Id); pic.AcceptEvent(); }
-        };
         var frame = HudKit.Panel(HudKit.PanelBox(8), pic);
+        var pick = new CheckBox { Name = "Pick", Text = "Pick", FocusMode = FocusModeEnum.None, ButtonPressed = _picked.Contains(e.Id),
+            TooltipText = "Tick to mark it along with the others (Shift+tick picks every piece between). One ticked piece shows in the preview." };
+        pick.Toggled += on => OnTicked(e.Id, on);
+        card.AddChild(pick);
         card.AddChild(frame);
 
         var name = new LineEdit { Name = "Name", Text = e.Name, MaxLength = 40, TooltipText = "What it is called on the map (plain letters)." };
@@ -344,7 +353,24 @@ public partial class MatchTerrainScreen : Control
             MakePictures();
         };
         card.AddChild(up);
-        _cards[e.Id] = new Card(card, frame, pic, size, kind, hide);
+        // Kai, 2026-11-18: the sculpted scenic base some models stand on (the woods' dark disc) - cut off by default
+        // when the game finds one (TerrainBaseTrim); this overrides it for the pieces it gets wrong.
+        var baseCut = new OptionButton { Name = "Base", FocusMode = FocusModeEnum.None, TooltipText = "The round base some models were sculpted on. Auto: cut off when the game finds one." };
+        foreach (string label in new[] { "Base: auto", "Base: cut off", "Base: keep" }) baseCut.AddItem(label);
+        baseCut.Selected = e.Match.CutBase switch { true => 1, false => 2, _ => 0 };
+        baseCut.ItemSelected += i =>
+        {
+            e.Match.CutBase = i switch { 1 => true, 2 => false, _ => null };
+            WarhammerModels.Forget(e.File);
+            try { File.Delete(ThumbFor(e.Id)); } catch (IOException) { }
+            pic.Texture = null;
+            Changed(e);
+            SaveNow();
+            MakePictures();
+            RefreshBulk();
+        };
+        card.AddChild(baseCut);
+        _cards[e.Id] = new Card(card, frame, pic, size, kind, hide, pick);
         if (_picked.Contains(e.Id)) frame.SelfModulate = HudKit.Lime;
         return card;
     }
@@ -429,7 +455,7 @@ public partial class MatchTerrainScreen : Control
         foreach (var e in todo)
         {
             if (!IsInsideTree()) return;
-            if (_studio.Show(e.File, out _))
+            if (_studio.Show(e.File, out _, trimTerrainBase: e.Match.CutBase != false, forceCut: e.Match.CutBase))
             {
                 if (!e.Measured)
                 {
