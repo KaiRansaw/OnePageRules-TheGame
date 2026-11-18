@@ -184,10 +184,8 @@ public static class ForgeRules
 
     private const float MmPerInch = 25.4f;
 
-    public static string BaseSummary(BaseFileEntry b) =>
-        b.Shape == EBaseShapeKind.Rectangle
-            ? $"{Mm(b.WidthInches)} x {Mm(b.HeightInches)}mm"
-            : $"{Mm(b.DiameterInches)}mm";
+    // Every base plays round (Kai, 2026-11-18) - an old list's rectangle reads as its long side.
+    public static string BaseSummary(BaseFileEntry b) => $"{Mm(b.RoundDiameterInches)}mm round";
 
     private static int Mm(float inches) => (int)MathF.Round(inches * MmPerInch);
 
