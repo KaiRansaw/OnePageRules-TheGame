@@ -195,8 +195,60 @@ public sealed class ConsolidateDecision : Decision<List<ModelMoveEntry>>
     public override string Prompt => Wipeout
         ? $"{Unit.Name} won the fight - it may move up to {_r.MaxDistanceInches:0.#}\""
         : $"{Unit.Name} must move back {_r.MaxDistanceInches:0.#}\" from the melee";
-    public override string Hint => _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
-        : _note.Length > 0 ? _note : "Point where to go and click.";
+    public override string Hint => _arranged != null
+        ? (_pending is { Valid: false } bad ? $"Can't move like that: {bad.Problem}. Drag the models into place, then Space."
+           : "Drag any of the unit's models to move it on its own. Space to confirm, right-click to start again.")
+        : _pending != null ? "Space to confirm - click elsewhere to change it - right-click to clear."
+        : _note.Length > 0 ? _note : "Point where to go and click - or drag one of the unit's models to move just that one.";
+
+    // Kai, 2026-11-17: the 3" move after a fight wouldn't let him move one model. The same drag-and-drop as a normal move:
+    // drag one of the unit's models (Ctrl adds more) and only those move, each held to the 3" (or 1").
+    private readonly HashSet<ModelID> _picked = new();
+    private Dictionary<ModelID, (float X, float Z)>? _arranged;
+    private Vector2 _grabAt;
+    private Dictionary<ModelID, (float X, float Z)>? _grabBase;
+
+    private (float X, float Z) EndOf(IModel m)
+    {
+        if (_arranged != null && _arranged.TryGetValue(m.ID, out var a)) return a;
+        if (_pending != null) foreach (var e in _pending.Ends) if (e.Id.Equals(m.ID)) return (e.X, e.Z);
+        return (m.Position.x, m.Position.z);
+    }
+
+    public override Vector2? DraggableAt(int i) => Unit.Models.Where(m => m.GetIsAlive()).ElementAtOrDefault(i) is { } m ? new Vector2(EndOf(m).X, EndOf(m).Z) : null;
+
+    public override bool TableGrab(BattleScreen s, Vector2 at)
+    {
+        if (Done || s.Table.TableAt(at) is not { } tp) return false;
+        var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        int i = NearestOnScreen(s, at, living.Select(m => (EndOf(m).X, EndOf(m).Z, m.BaseRadiusInches)).ToList());
+        if (i < 0) return false;
+        IModel own = living[i];
+        if (!_picked.Contains(own.ID)) { if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear(); _picked.Add(own.ID); }
+        else if (Input.IsKeyPressed(Key.Ctrl)) _picked.Remove(own.ID);
+        _arranged ??= living.ToDictionary(m => m.ID, EndOf);
+        _grabAt = tp;
+        _grabBase = new Dictionary<ModelID, (float X, float Z)>(_arranged);
+        DrawPicked(s);
+        Version++;
+        return true;
+    }
+
+    public override void TableDrag(BattleScreen s, Vector2 at)
+    {
+        if (_grabBase == null || _picked.Count == 0 || s.Table.TableAt(at) is not { } tp) return;
+        _arranged = MovePlanner.Dragged(_r, _grabBase, _picked, tp.X - _grabAt.X, tp.Y - _grabAt.Y);
+        _pending = MovePlanner.Arranged(_r, s.Session.Table, _arranged);
+        Draw(s, _pending, true);
+        DrawPicked(s);
+        Version++;
+    }
+
+    public override void TableDrop(BattleScreen s, Vector2 at, bool moved) { _grabBase = null; DrawPicked(s); Version++; }
+
+    private void DrawPicked(BattleScreen s) =>
+        s.Table.SetGhosts("picked", Unit.Models.Where(m => m.GetIsAlive() && _picked.Contains(m.ID))
+            .Select(m => { var (x, z) = EndOf(m); return new BattleTable.Ghost(x, z, Mathf.Max(0.5f, m.BaseRadiusInches) + 0.25f, HudKit.Lime, Ring: true); }).ToList());
 
     /// <summary>The engine's own choice (the official bot's), for "Let the game do it" and the test driver.</summary>
     private List<ModelMoveEntry> BotMove() =>
@@ -220,13 +272,19 @@ public sealed class ConsolidateDecision : Decision<List<ModelMoveEntry>>
     public override void Confirm()
     {
         if (_pending is not { } p) return;
+        if (!p.Valid) { _s?.Toast($"Can't move like that: {p.Problem}."); return; }
         _s?.Table.ClearGhosts("move");
+        _s?.Table.ClearGhosts("picked");
         Complete(p.Moves);
     }
-    public override void ClearPending() { _pending = null; _lastHover = new(-9999, -9999); _s?.Table.ClearGhosts("move"); Version++; }
+    public override void ClearPending()
+    {
+        _pending = null; _arranged = null; _picked.Clear(); _lastHover = new(-9999, -9999);
+        _s?.Table.ClearGhosts("move"); _s?.Table.ClearGhosts("picked"); Version++;
+    }
 
     public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); }
-    public override void Closed(BattleScreen s) => s.Table.ClearGhosts("move");
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("picked"); }
 
     private MovePlanner.Plan? PlanFor(BattleScreen s, Vector2 at) =>
         s.Table.TableAt(at) is { } p ? MovePlanner.Consolidate(_r, s.Session.Table, p.X, p.Y) : null;
@@ -240,7 +298,7 @@ public sealed class ConsolidateDecision : Decision<List<ModelMoveEntry>>
 
     public override void TableHover(BattleScreen s, Vector2 at)
     {
-        if (_pending != null || at.DistanceTo(_lastHover) < 2) return;
+        if (_pending != null || _arranged != null || at.DistanceTo(_lastHover) < 2) return;
         _lastHover = at;
         if (PlanFor(s, at) is not { } plan || plan.Valid && plan.Distance < 0.05f) { s.Table.ClearGhosts("move"); _note = ""; Version++; return; }
         Draw(s, plan, false);
@@ -250,6 +308,7 @@ public sealed class ConsolidateDecision : Decision<List<ModelMoveEntry>>
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
+        if (_arranged != null) return true; // moving models one at a time: they are dragged, not sent by a click
         if (PlanFor(s, at) is not { } plan) return true;
         if (!plan.Valid || plan.Distance < 0.05f) { s.Toast(plan.Valid ? "That is where the unit already is." : $"Can't move there: {plan.Problem}."); return true; }
         _pending = plan;

@@ -173,9 +173,21 @@ public static class MovePlanner
     /// <paramref name="ends"/> goes straight from where it stands to its end; the rest stay. The distance is the longest
     /// single model's. Checked with the same validation as a whole-unit move.
     /// </summary>
-    public static Plan Arranged(DefineMovementPathRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends)
+    public static Plan Arranged(DefineMovementPathRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends) =>
+        Arranged(For(request, table), ends);
+
+    /// <summary>The same for the move after a melee (Kai, 2026-11-17: the 3" move wouldn't let him move one model).</summary>
+    public static Plan Arranged(ConsolidationMoveRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends) =>
+        Arranged(For(request, table), ends);
+
+    /// <summary>Drag-and-drop for the move after a melee: like <see cref="Dragged(DefineMovementPathRequest, IReadOnlyDictionary{ModelID, ValueTuple{float, float}}, IReadOnlyCollection{ModelID}, float, float, float?)"/>,
+    /// every model held to the request's 3" (or 1") from where it started.</summary>
+    public static Dictionary<ModelID, (float X, float Z)> Dragged(ConsolidationMoveRequest request,
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz) =>
+        Dragged(request.UnitDataBinding, ends, picked, dx, dz, _ => request.MaxDistanceInches);
+
+    private static Plan Arranged(Mover mover, IReadOnlyDictionary<ModelID, (float X, float Z)> ends)
     {
-        Mover mover = For(request, table);
         var moves = new List<ModelMoveEntry>();
         var shown = new List<(ModelID, float, float, float)>();
         float longest = 0;
@@ -257,13 +269,17 @@ public static class MovePlanner
     /// the player confirms, through <see cref="Arranged"/>'s plan. Returns the new arrangement.
     /// </summary>
     public static Dictionary<ModelID, (float X, float Z)> Dragged(DefineMovementPathRequest request,
-        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, float? cap = null)
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, float? cap = null) =>
+        Dragged(request.UnitDataBinding, ends, picked, dx, dz, id => Math.Min(cap ?? float.MaxValue, request.PlayerBudgetFor(id).maxDistance));
+
+    private static Dictionary<ModelID, (float X, float Z)> Dragged(DataBinding<UnitData> unit,
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, Func<ModelID, float> reach)
     {
-        var living = request.UnitDataBinding.GetValue().ModelBindings.Select(b => b.GetValue()).Where(m => m.GetIsAlive()).ToList();
+        var living = unit.GetValue().ModelBindings.Select(b => b.GetValue()).Where(m => m.GetIsAlive()).ToList();
         var d = living.ToDictionary(m => m.ID, m => ends.TryGetValue(m.ID, out var e) ? e : (m.Position.x, m.Position.z));
         foreach (ModelData m in living.Where(m => picked.Contains(m.ID)))
         {
-            float limit = Math.Min(cap ?? float.MaxValue, request.PlayerBudgetFor(m.ID).maxDistance) - 0.01f;
+            float limit = reach(m.ID) - 0.01f;
             var (sx, sz) = d[m.ID];
             float tx = sx + dx, tz = sz + dz;
             float len = Dist(m.Position.x, m.Position.z, tx, tz);

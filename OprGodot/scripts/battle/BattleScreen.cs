@@ -519,8 +519,23 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
     public string? RuleText(string name)
     {
         string slug = Session.Table.Progress is { } p ? FDG.GameSystemInfo.Slug(p.GameSystem) : "";
-        return FDG.Rules.Dispatch.OfficialRuleText.Text(name, slug);
+        return FDG.Rules.Dispatch.OfficialRuleText.TextOrGrantedBy(name, slug, GrantersOf(name));
     }
+
+    /// <summary>The rules on the table that hand out <paramref name="name"/> (a Director's Precision Shooter Aura gives
+    /// Precision Shooter) - for a rule the book only describes through the rule that gives it (Kai, 2026-11-17).</summary>
+    private IEnumerable<string> GrantersOf(string name)
+    {
+        if (_granters.TryGetValue(name, out List<string>? known)) return known;
+        var found = Session.Table.Units.Objects
+            .SelectMany(u => u.RuleDefinitions.Concat(u.Models.SelectMany(m => m.RuleDefinitions)))
+            .Select(r => r.Definition).DistinctBy(d => d.Name)
+            .Where(d => FdgRaylib.Rendering.RuleGlossary.GrantedBy(d).Contains(name, StringComparer.OrdinalIgnoreCase))
+            .Select(d => d.Name).ToList();
+        return _granters[name] = found;
+    }
+
+    private readonly Dictionary<string, List<string>> _granters = new(StringComparer.OrdinalIgnoreCase);
 
     private void BuildHud()
     {
@@ -803,7 +818,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         // The open decision's choices first, then the units it can't take, then the rest.
         int Order(IUnit u) => Decisions.ListMark(u) is { } m ? (m.Pickable ? 0 : 1) : 2;
         ready = ready.OrderBy(Order).ToList();
-        string sig = string.Join("|", mine.Select(u => $"{u.ID.ID}:{Alive(u)}:{Done(u)}:{LeftOf(u)}:{u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{Decisions.ListMark(u)}"))
+        string sig = string.Join("|", mine.Select(u => $"{u.ID.ID}:{Alive(u)}:{Done(u)}:{LeftOf(u)}:{WoundsLeft(u)}:{u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{Decisions.ListMark(u)}"))
             + (_selected?.ID.ID.ToString() ?? "") + (progress.ActivatingUnit?.ID.ID.ToString() ?? "") + _showEnemy + setup;
         if (sig == _armySig) return;
         _armySig = sig;
@@ -848,13 +863,31 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         bool active = Session.Table.Progress.ActivatingUnit?.ID.Equals(u.ID) == true;
         bool shaken = u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
         UnitMark? mark = Decisions.ListMark(u);
-        return $"{u.ID.ID}|{u.Name}|{done}|{selected}|{active}|{shaken}|{LeftOf(u)}|{mark?.Pickable}|{mark?.Reason}|{HudKit.LookOf(u)}"
+        return $"{u.ID.ID}|{u.Name}|{done}|{selected}|{active}|{shaken}|{LeftOf(u)}|{WoundsLeft(u)}|{mark?.Pickable}|{mark?.Reason}|{HudKit.LookOf(u)}"
             + $"|{Session.SeatOf(u.PlayerID)?.Faction}|{_table.SeatColour(u.PlayerID).ToHtml()}";
     }
 
     private static bool Alive(IUnit u) => u.Models.Any(m => m.RemainingWounds > 0);
 
     /// <summary>Models left, or wounds left for a single model.</summary>
+    /// <summary>A multi-model unit's wounds left of its full total (Kai, 2026-11-17: "I want to know how many wounds a
+    /// multi model unit has left"), or null when every model has a single wound (then models left IS wounds left).</summary>
+    private static (int Left, int Max)? WoundsLeft(IUnit u)
+    {
+        if (u.Models.Count <= 1) return null;
+        float max = u.Models.Sum(m => m.TotalWounds);
+        if (max <= u.Models.Count + 0.01f) return null;
+        return ((int)MathF.Ceiling(u.Models.Sum(m => Math.Max(0f, m.RemainingWounds))), (int)MathF.Round(max));
+    }
+
+    /// <summary>"3/4" for models, plus "  7/12W" when the models have more than one wound each.</summary>
+    private static string CountText(IUnit u)
+    {
+        var (left, max, wounds) = LeftOf(u);
+        if (wounds) return $"{left}/{max}W";
+        return WoundsLeft(u) is { } w ? $"{left}/{max}  {w.Left}/{w.Max}W" : $"{left}/{max}";
+    }
+
     private static (int Left, int Max, bool Wounds) LeftOf(IUnit u) => u.Models.Count == 1
         ? ((int)MathF.Ceiling(u.Models[0].RemainingWounds), (int)u.Models[0].TotalWounds, true)
         : (u.Models.Count(m => m.RemainingWounds > 0), u.Models.Count, false);
@@ -884,7 +917,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         top.AddChild(name);
         if (shaken) top.AddChild(HudKit.Icon("broken-shield", 15, Palette.WoundsRed));
         if (hero) top.AddChild(HudKit.Icon("flying-flag", 15, HudKit.Gold with { A = a }));
-        top.AddChild(HudKit.Text(wounds ? $"{left}/{max}W" : $"{left}/{max}", 13, HudKit.Dim with { A = a }, HudKit.Semi));
+        top.AddChild(HudKit.Text(CountText(u), 13, HudKit.Dim with { A = a }, HudKit.Semi));
         v.AddChild(top);
         v.AddChild(SegBar(left, max, a));
         UnitMark? mark = Decisions.ListMark(u);
@@ -932,7 +965,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
     {
         IUnit? show = _selected ?? (activating != null && Session.IsMine(activating.PlayerID) ? activating : null)
                       ?? MyUnits().FirstOrDefault(Alive);
-        string sig = show == null ? "" : $"{show.ID.ID}:{LeftOf(show)}:{show.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{UnitActivation.HasActivated(Session.Table.Progress, show)}";
+        string sig = show == null ? "" : $"{show.ID.ID}:{LeftOf(show)}:{WoundsLeft(show)}:{show.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{UnitActivation.HasActivated(Session.Table.Progress, show)}";
         if (sig == _cardSig) return;
         _cardSig = sig;
         foreach (Node c in _unitCard.GetChildren()) c.QueueFree();
@@ -992,6 +1025,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         stats.AddChild(Stat("QUA", $"{u.Quality}+", "targeting"));
         stats.AddChild(Stat("DEF", $"{u.Defense}+", "shield"));
         stats.AddChild(Stat(wounds ? "WOUNDS" : "MODELS", $"{left}/{max}", "rally-the-troops"));
+        if (WoundsLeft(u) is { } wl) stats.AddChild(Stat("WOUNDS", $"{wl.Left}/{wl.Max}", "skull-crack"));
         col.AddChild(stats);
 
         var grid = new GridContainer { Columns = 4 };
@@ -1379,7 +1413,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         panel.Closed += () => _pinnedBlocks.Remove(key);
         _hud.AddChild(panel);
         Vector2 mouse = GetViewport().GetMousePosition();
-        panel.Position = new Vector2(Mathf.Max(10, mouse.X - 460), Mathf.Clamp(mouse.Y - 200, 10, GetViewportRect().Size.Y - 420));
+        panel.Position = new Vector2(Mathf.Max(10, mouse.X - 460), Mathf.Clamp(mouse.Y - 200, 10, GetViewportRect().Size.Y - 420 - PopoutFloor));
         _pinnedBlocks[key] = panel;
         HideBlockCard();
     }
@@ -1440,15 +1474,42 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
             {
                 v.AddChild(Wrapped(string.Concat(l.Title.Select(p => p.Text)), 13, l.Attack != null ? SideOf(l.Attacker) : HudKit.Fg, HudKit.Bold));
                 foreach (BattleReport.Roll r in l.Rolls)
-                    v.AddChild(Wrapped($"  {r.Who}: {r.Label} ({r.Threshold}+)  "
-                        + (r.Faces.Count > 0 ? string.Join(" ", r.Faces) + "  -  " : "") + r.Result
-                        + (r.Modifiers.Count > 0 ? "  [" + string.Join(", ", r.Modifiers) + "]" : ""), 13, HudKit.Dim, HudKit.Medium));
+                    v.AddChild(DiceLine(r));
                 foreach (string d in l.Details) v.AddChild(Wrapped("  " + d, 13, HudKit.Dim, HudKit.Medium));
             }
         }
         string foot = pinned ? "" : dice || !anyDice ? "Right-click the block to keep this open." : "Hold Alt to see every die. Right-click the block to keep this open.";
         if (foot.Length > 0) v.AddChild(HudKit.Text(foot, 12, HudKit.Dim with { A = 0.75f }, HudKit.Medium));
         return v;
+    }
+
+    /// <summary>One roll in the "every die" list, the dice that succeeded in green (Kai, 2026-11-17).</summary>
+    private static RichTextLabel DiceLine(BattleReport.Roll r)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(Esc($"  {r.Who}: {r.Label} ({r.Threshold}+)  "));
+        if (r.Faces.Count > 0)
+        {
+            IReadOnlyList<bool> ok = r.Succeeded();
+            string green = Hex(HudKit.Lime), dim = Hex(HudKit.Dim.Darkened(0.35f));
+            for (int i = 0; i < r.Faces.Count; i++)
+                sb.Append(ok[i] ? $"[b][color=#{green}]{r.Faces[i]}[/color][/b] " : $"[color=#{dim}]{r.Faces[i]}[/color] ");
+            sb.Append(" -  ");
+        }
+        sb.Append(Esc(r.Result));
+        if (r.Modifiers.Count > 0) sb.Append(Esc("  [" + string.Join(", ", r.Modifiers) + "]"));
+        var rich = new RichTextLabel
+        {
+            BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            CustomMinimumSize = new Vector2(420, 0), MouseFilter = MouseFilterEnum.Ignore,
+        };
+        rich.AddThemeFontOverride("normal_font", HudKit.Medium);
+        rich.AddThemeFontOverride("bold_font", HudKit.Bold);
+        rich.AddThemeFontSizeOverride("normal_font_size", 13);
+        rich.AddThemeFontSizeOverride("bold_font_size", 14);
+        rich.AddThemeColorOverride("default_color", HudKit.Dim);
+        rich.Text = sb.ToString();
+        return rich;
     }
 
     /// <summary>One number in an attack's chain: the number big, what it counts small under it; the last one red when it hurt.</summary>
@@ -1480,13 +1541,18 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         return l;
     }
 
+    /// <summary>How far above the bottom of the screen a report pop-out's bottom edge stays.</summary>
+    private const float PopoutFloor = 220;
+
     private void PlaceBlockCard()
     {
         if (_blockCard == null || !IsInstanceValid(_blockCard)) return;
         Vector2 mouse = GetViewport().GetMousePosition(), size = _blockCard.Size, screen = GetViewportRect().Size;
         Vector2 at = new(mouse.X - size.X - 30, mouse.Y - size.Y / 2);
         if (at.X < 10) at.X = mouse.X + 30;
-        at.Y = Mathf.Clamp(at.Y, 10, screen.Y - size.Y - 10);
+        // Kai, 2026-11-17: it sat at the very bottom of the screen (the report is down there). Keep its bottom edge clear
+        // of the bottom strip, so it opens higher up.
+        at.Y = Mathf.Clamp(at.Y, 10, Mathf.Max(10, screen.Y - size.Y - PopoutFloor));
         _blockCard.Position = at;
     }
 
@@ -1561,8 +1627,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         else if (meta.StartsWith("r:"))
         {
             string name = meta[2..].Replace("[lb]", "[");
-            string slug = Session.Table.Progress is { } p ? FDG.GameSystemInfo.Slug(p.GameSystem) : "";
-            body = TipText(name, FDG.Rules.Dispatch.OfficialRuleText.Text(name, slug) ?? "No book wording found for this rule.");
+            body = TipText(name, RuleText(name) ?? "No book wording found for this rule.");
         }
         else if (meta.StartsWith("t:"))
         {
@@ -1716,7 +1781,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
             foreach (IUnit u in Session.Table.Units.Objects.Where(u => u.PlayerID.Equals(seat.Id)))
             {
                 var (left, max, wounds) = LeftOf(u);
-                v.AddChild(HudKit.Text($"{u.Name}  -  Q{u.Quality}+ D{u.Defense}+  -  {(wounds ? $"{left}/{max} wounds" : $"{left}/{max} models")}", 14,
+                v.AddChild(HudKit.Text($"{u.Name}  -  Q{u.Quality}+ D{u.Defense}+  -  {(wounds ? $"{left}/{max} wounds" : $"{left}/{max} models" + (WoundsLeft(u) is { } wl ? $", {wl.Left}/{wl.Max} wounds" : ""))}", 14,
                     Alive(u) ? HudKit.Fg : HudKit.Dim, HudKit.Semi));
             }
         }

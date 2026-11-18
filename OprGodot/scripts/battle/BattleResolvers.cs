@@ -57,8 +57,8 @@ public static class BattleResolvers
         registry.RegisterResolver(unitPick);
         registry.RegisterResolver(new Ask<SelectionRequest<ModelData>, DataBinding<ModelData>>(r => new ModelPickDecision(r)));
         registry.RegisterResolver(new Ask<ChooseActionRequest, string>(r => new ActionDecision(r)));
-        registry.RegisterResolver(new Ask<StringSelectionRequest, string>(r =>
-            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickOne(r, m) : new StringListDecision(r)));
+        registry.RegisterResolver(new MeleeWeaponsOrAsk(new Ask<StringSelectionRequest, string>(r =>
+            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickOne(r, m) : new StringListDecision(r))));
         registry.RegisterResolver(new Ask<YesNoRequest, bool>(r => new YesNoDecision(r)));
         registry.RegisterResolver(new Ask<DefineMovementPathRequest, CancellableResult<List<ModelMoveEntry>>>(r => new MoveDecision(r)));
         registry.RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(
@@ -89,6 +89,26 @@ public static class BattleResolvers
 
     /// <summary>One request type -> one kind of decision, posted to the inbox.</summary>
     /// <summary>The round-start concede check, answered from the Mission panel's Concede button.</summary>
+    /// <summary>
+    /// Kai, 2026-11-17: "in melee, it asks what weapon to swing with. don't ask anymore, because all melee weapons go at
+    /// the same target." Every melee weapon strikes the one target, so the next weapon in the engine's own order
+    /// (Deadly first, then by name) is answered at once. Still asked when a once-per-game (Limited) weapon could be held
+    /// back - that one is a real choice.
+    /// </summary>
+    private sealed class MeleeWeaponsOrAsk : IStageResolver<StringSelectionRequest, string>
+    {
+        private readonly IStageResolver<StringSelectionRequest, string> _ask;
+        public MeleeWeaponsOrAsk(IStageResolver<StringSelectionRequest, string> ask) => _ask = ask;
+
+        public Task<string> Resolve(StringSelectionRequest r)
+        {
+            bool meleeWeapon = r.DisplayName == "Choosing a Melee Weapon";
+            if (meleeWeapon && r.ValidOptions.Count > 0 && !r.ValidOptions.Any(FDG.Stages.ChooseMeleeWeaponStage.IsHoldBackChoice))
+                return Task.FromResult(r.ValidOptions[0]);
+            return _ask.Resolve(r);
+        }
+    }
+
     private sealed class ConcedeFromButton : IStageResolver<ConcedeCheckRequest, bool>
     {
         public Task<bool> Resolve(ConcedeCheckRequest request) => Task.FromResult(Concede.Has(request.TargetPlayerID));

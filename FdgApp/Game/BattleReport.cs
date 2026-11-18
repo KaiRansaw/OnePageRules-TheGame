@@ -31,7 +31,23 @@ public sealed class BattleReport : IPresentationSink
 
     /// <summary>One die batch of an attack, as the hover shows it.</summary>
     public sealed record Roll(string Who, UnitID? WhoUnit, string Label, int Threshold, string Result, IReadOnlyList<int> Faces,
-        IReadOnlyList<string> Modifiers);
+        IReadOnlyList<string> Modifiers, float Successes = -1)
+    {
+        /// <summary>
+        /// Which of <see cref="Faces"/> (highest first) succeeded, for colouring them (Kai, 2026-11-17: "highlight the dice
+        /// that succeeded in green"). A face at or above the threshold succeeds - the engine's own rule for the beat - and
+        /// when that disagrees with the engine's count (a modifier it folded into the count, not the threshold) the
+        /// engine's count wins: that many of the highest faces.
+        /// </summary>
+        public IReadOnlyList<bool> Succeeded()
+        {
+            var byFace = Faces.Select(f => f >= Threshold).ToList();
+            if (Successes < 0) return byFace;
+            int want = (int)MathF.Round(Successes);
+            if (want == byFace.Count(x => x) || want > Faces.Count) return byFace;
+            return Faces.Select((_, i) => i < want).ToList();
+        }
+    }
 
     public sealed record Line(
         int Id, Kind Kind, int? Round,
@@ -470,7 +486,8 @@ public sealed class BattleReport : IPresentationSink
             ? $"about {Num(d.Successes)} of {Num(d.Total)} (average)"
             : d.ResultSummary ?? $"{Num(d.Successes)} of {Num(d.Total)} succeed";
         return new Roll(who, unit, d.Label, d.SuccessThreshold, result, faces,
-            (IReadOnlyList<string>?)d.ModifierTags ?? Array.Empty<string>());
+            (IReadOnlyList<string>?)d.ModifierTags ?? Array.Empty<string>(),
+            d.Mode == ERandomnessType.Realistic ? d.Successes : -1);
     }
 
     private static string Side(string name, IUnit? unit) => name.Length > 0 ? name : unit?.Name ?? "Unknown";

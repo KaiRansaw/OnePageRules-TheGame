@@ -82,6 +82,18 @@ public sealed class RuleGlossary
             if (official is not null) byName[name] = official;
         }
 
+        // A rule OPR only hands out through another rule (Precision Shooter, from Precision Shooter Aura) has no wording
+        // of its own; the granting rule's wording is the book's only description of it - shown, and said where from.
+        // Before the book's own definitions, which still win when a book defines the rule itself.
+        foreach (string name in byName.Keys.ToList())
+        {
+            if (OfficialRuleText.Text(name, gameSystem) is not null) continue;
+            var sources = grants.Where(g => g.Value.Contains(name, StringComparer.OrdinalIgnoreCase)).Select(g => g.Key).ToList();
+            if (definitions is not null)
+                sources.AddRange(definitions.Where(d => GrantedBy(d).Contains(name, StringComparer.OrdinalIgnoreCase)).Select(d => d.Name));
+            if (OfficialRuleText.TextOrGrantedBy(name, gameSystem, sources) is { } via) byName[name] = via;
+        }
+
         // Last, and therefore highest: the book's OWN definition of a name. This is also OPR's text -
         // the importer takes it from the same place - but it is the more specific of the two, because
         // OPR does occasionally reword a rule for one book, and the per-system table above cannot hold
