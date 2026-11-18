@@ -36,7 +36,22 @@ public class BotVsBotLaunchTests
         for (int i = 0; i < 100 && game == null; i++) { await Task.Delay(100); game = session.TakeLaunchedGame(); }
         Assert.That(game, Is.Not.Null, "a spectator game reaches the front end");
         Assert.That(game!.LocalPlayerIDs, Is.Empty);
-        Assert.DoesNotThrow(() => FdgRaylib.Game.GameSession.Start(game, session, _ => { }), "the table can be opened to watch");
-        (session.Vm as FDG.Network.Connection.Lobby.LobbyViewModel_Host)?.StopGame();
+        FdgRaylib.Game.GameSession? watch = null;
+        Assert.DoesNotThrow(() => watch = FdgRaylib.Game.GameSession.Start(game, session, _ => { }), "the table can be opened to watch");
+
+        // Kai, 2026-11-18: the watch-only report said only "Held, nothing else" - no beats reached a screen with no seat.
+        for (int i = 0; i < 300 && !watch!.Report.Snapshot().Any(l => l.Kind == FdgRaylib.Game.BattleReport.Kind.Move); i++) await Task.Delay(100);
+        Assert.That(watch!.Report.Snapshot().Any(l => l.Kind == FdgRaylib.Game.BattleReport.Kind.Move), Is.True,
+            "the watching screen hears what the bots do (moves, shots)");
+
+        // Pause: the game stops at its next beat.
+        var host = (FDG.Network.Connection.Lobby.LobbyViewModel_Host)session.Vm;
+        host.GamePaused = true;
+        await Task.Delay(2500);
+        int before = watch.Report.Version;
+        await Task.Delay(3000);
+        Assert.That(watch.Report.Version, Is.EqualTo(before), "nothing new while paused");
+        host.GamePaused = false;
+        host.StopGame();
     }
 }

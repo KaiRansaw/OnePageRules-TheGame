@@ -275,6 +275,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                 _yaw -= 5; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when Watching:
+                TogglePause(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.V }:
                 ToggleRulesView(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.L }:
@@ -537,6 +539,25 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
 
     private readonly Dictionary<string, List<string>> _granters = new(StringComparer.OrdinalIgnoreCase);
 
+    private Button? _pause;
+
+    /// <summary>Every seat is a bot and this computer hosts it: the screen only watches, and may pause the game.</summary>
+    private bool Watching => Session.LocalPlayer == null && Session.Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host;
+
+    private void TogglePause()
+    {
+        if (Session.Lobby.Vm is not FDG.Network.Connection.Lobby.LobbyViewModel_Host host) return;
+        host.GamePaused = !host.GamePaused;
+        if (_pause != null)
+        {
+            // Rental: the label says what pressing it does next.
+            foreach (Node n in _pause.FindChildren("*", "Label", true, false))
+                if (n is Label l && (l.Text.Equals("Pause", StringComparison.OrdinalIgnoreCase) || l.Text.Equals("Resume", StringComparison.OrdinalIgnoreCase)))
+                    l.Text = l.Text == l.Text.ToUpperInvariant() ? (host.GamePaused ? "RESUME" : "PAUSE") : (host.GamePaused ? "Resume" : "Pause");
+        }
+        Toast(host.GamePaused ? "Paused - the game stops at its next move. P or Resume to carry on." : "Resumed.");
+    }
+
     private void BuildHud()
     {
         // Top-left: round, objectives held, whose turn.
@@ -596,6 +617,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
             var b = HudKit.ActionButton(name, icon, label, key, HudKit.Teal, 56, labelSize: 11);
             b.Pressed += act;
             menu.AddChild(b);
+        }
+        // Kai, 2026-11-18: a pause for bot vs bot - only when this screen is watching (no seat of its own) and hosts.
+        if (Watching)
+        {
+            _pause = HudKit.ActionButton("Pause", "hourglass", "Pause", "P", HudKit.Teal, 56, labelSize: 11);
+            _pause.Pressed += TogglePause;
+            menu.AddChild(_pause);
+            menu.MoveChild(_pause, 0);
         }
         ScreenFrame.Place(this, "TopButtons", menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad), _hud);
 
@@ -711,6 +740,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         if (prompt.Length == 0)
         {
             if (Session.EndedText != null) { prompt = "GAME OVER"; hint = Session.EndedText; }
+            else if (Watching && Session.Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host { GamePaused: true }) { prompt = "PAUSED"; hint = "P or Resume to carry on."; }
             // Kai, 2026-11-18: "Player is Activating Unit Name".
             else if (activating != null && !Session.IsMine(activating.PlayerID)) { prompt = $"{Session.SeatOf(activating.PlayerID)?.Name ?? "Enemy"} IS ACTIVATING"; hint = activating.Name; }
             else if (Session.Registry.LastAutopilotTask is { } auto) { prompt = "AUTOPILOT"; hint = $"The bot plays this part for you for now: {auto}"; }
@@ -1322,10 +1352,26 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                 row.AddChild(HudKit.Text(result, 15, a.ModelsLost > 0 || a.Wounds > 0.01f ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
                 if (a.Routed) row.AddChild(HudKit.Chip("ROUTED", Palette.WoundsRed, true, 11));
                 v.AddChild(row);
+                // Kai, 2026-11-18 (bot vs bot): just the weapons shot, what hit, what the defence saved, and the wounds.
+                if (Watching)
+                {
+                    var nums = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                    nums.AddChild(HudKit.Gap(50));
+                    string saved = a.HasSaves ? $"  -  {a.Saves:0.#} saved" : "";
+                    var text = HudKit.Text($"{a.Weapons}:  {a.Attacks:0.#} attacks  -  {a.Hits:0.#} hit{saved}  -  {a.Wounds:0.#} wound{(Math.Abs(a.Wounds - 1) < 0.01f ? "" : "s")}",
+                        12, HudKit.Dim, HudKit.Medium);
+                    text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                    text.CustomMinimumSize = new Vector2(10, 0);
+                    text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                    nums.AddChild(text);
+                    v.AddChild(nums);
+                }
                 results++;
             }
             else if (l.Kind == BattleReport.Kind.Move && me != null && l.Units.Contains(me.Value))
                 continue;   // the header already says how far it went
+            else if (Watching && !l.Colour.Equals(BattleReport.Bad))
+                continue;   // bot vs bot: only the attacks (and losses), not casts, morale, rolls
             else
             {
                 var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
