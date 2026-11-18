@@ -64,7 +64,8 @@ def main():
     n = int(sys.argv[1]); jobs = int(sys.argv[2]) if len(sys.argv) > 2 else 4
     out = sys.argv[3] if len(sys.argv) > 3 else '/tmp/sweep'
     os.makedirs(out, exist_ok=True)
-    work = [(i, plan, 5000 + i * 13 + k * 101, out) for k, plan in enumerate(PLANS) for i in range(n) if not only or plan[1] in only.split(',')]
+    base = int(os.environ.get('SWEEP_SEED', '5000'))
+    work = [(i, plan, base + i * 13 + k * 101, out) for k, plan in enumerate(PLANS) for i in range(n) if not only or plan[1] in only.split(',')]
     results = []
     with cf.ThreadPoolExecutor(jobs) as ex:
         for res in ex.map(run, work):

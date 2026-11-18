@@ -501,6 +501,22 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         SelectUnit(mine[(i + 1) % mine.Count]); Decisions.UnitPicked(mine[(i + 1) % mine.Count]);
     }
 
+    /// <summary>
+    /// Watching bots (no seat of your own): the two tabs are the two sides, named after their players, instead of an
+    /// empty "your army" (Kai, 2026-11-18).
+    /// </summary>
+    private List<IUnit> WatchedSide(bool second)
+    {
+        var sides = Session.Table.Units.Objects.Select(u => u.PlayerID).Distinct().OrderBy(id => id.ToString()).ToList();
+        if (sides.Count == 0) return new List<IUnit>();
+        for (int i = 0; i < 2 && i < sides.Count; i++)
+        {
+            string name = Session.SeatOf(sides[i])?.Name.ToUpperInvariant() ?? (i == 0 ? "SIDE 1" : "SIDE 2");
+            if (_armyTabs[i] != null && _armyTabs[i].Text != name) _armyTabs[i].Text = name;
+        }
+        return Session.Table.Units.Objects.Where(u => u.PlayerID.Equals(sides[0]) != second).ToList();
+    }
+
     private List<IUnit> MyUnits() => Session.Table.Units.Objects.Where(u => Session.IsMine(u.PlayerID)).ToList();
 
     // ================================================================== HUD build
@@ -843,7 +859,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
 
     private void RefreshArmy(IGameProgress progress)
     {
-        List<IUnit> mine = _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
+        List<IUnit> mine = Watching ? WatchedSide(_showEnemy)
+            : _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
         // Before round 1 the list is the deployment list: still to place first, placed units under a divider.
         bool setup = progress.RoundCount == null;
         Func<IUnit, bool> activated = UnitActivation.Checker(progress); // the pool read once, not once per unit
@@ -1054,8 +1071,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         top.AddChild(names);
         bool done = UnitActivation.HasActivated(Session.Table.Progress, u);
         bool shaken = u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
-        var tag = HudKit.Chip(shaken ? "SHAKEN" : !mine ? "ENEMY" : done ? "ACTIVATED" : "READY",
-            shaken || !mine ? HudKit.Enemy : done ? HudKit.Dim : HudKit.Lime, true, 12);
+        var tag = HudKit.Chip(shaken ? "SHAKEN" : !mine && !Watching ? "ENEMY" : done ? "ACTIVATED" : "READY",
+            shaken || (!mine && !Watching) ? HudKit.Enemy : done ? HudKit.Dim : HudKit.Lime, true, 12);
         tag.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         top.AddChild(tag);
         if (picture == null) col.AddChild(top);

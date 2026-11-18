@@ -506,6 +506,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     // Kai, 2026-11-18: turn points first (round a building), then lay the models out at the end. The whole-unit turns
     // placed before a model was picked stay; every model goes through them, then to its own end.
     private List<(float X, float Z)> _turns = new();
+    // Kai, 2026-11-18: laying models out one by one keeps the way the unit faces - the facing it had (or was turned to)
+    // when the first model was picked - instead of each model ending up facing the way it happened to walk.
+    private FDG.Float2? _unitFacing;
+    private MovePlanner.Plan Faced(MovePlanner.Plan plan) =>
+        _unitFacing is { } f ? plan with { Moves = FacingAim.Turn(plan.Moves, f) } : plan;
     // Kai, 2026-11-17: drag and drop. A model (or the picked ones) follows the pointer, held only to its own move
     // distance; coherency, terrain and enemies are judged when you confirm, and the models at fault go red.
     private Vector2 _grabAt;
@@ -576,6 +581,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _picked.Clear();
         _arranged = null;
         _turns.Clear();
+        _unitFacing = null;
         _pending = null;
         _via.Clear();
         _final = false;
@@ -621,7 +627,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     {
         if (_grabBase == null || _picked.Count == 0 || s.Table.TableAt(at) is not { } tp) return;
         _arranged = MovePlanner.Dragged(_r, _grabBase, _picked, tp.X - _grabAt.X, tp.Y - _grabAt.Y, Cap, _turns);
-        _pending = MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns);
+        _pending = Faced(MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns));
         ClearFaults(s);
         Draw(s, _pending, placed: true, null);
         DrawPicked(s);
@@ -668,7 +674,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private void StartIndividual()
     {
         if (_arranged != null) return;
-        _arranged = Unit.Models.Where(m => m.GetIsAlive()).ToDictionary(m => m.ID, EndOf);
+        var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        _unitFacing = _pending is { Moves.Count: > 0 } before
+            ? FacingAim.Shown(before.Moves[0])
+            : living.FirstOrDefault()?.Facing;
+        _arranged = living.ToDictionary(m => m.ID, EndOf);
         // Keep the route: every turn point but the last (the last is where the unit's formation ended - the models now
         // go from there to wherever they are dragged). A path that ended in contact has no such last point.
         _turns = _final ? _via.ToList() : _via.Take(Math.Max(0, _via.Count - 1)).ToList();
@@ -844,7 +854,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         {
             if (_picked.Count == 0 || at.DistanceTo(_lastHover) < 2 || s.Table.TableAt(at) is not { } hp) return;
             _lastHover = at;
-            var preview = MovePlanner.Arranged(_r, s.Session.Table, SlidePicked(hp), _turns);
+            var preview = Faced(MovePlanner.Arranged(_r, s.Session.Table, SlidePicked(hp), _turns));
             if (_pending != null) Draw(s, _pending, placed: true, preview); else Draw(s, preview, placed: false, null);
             _note = $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." + Danger(preview);
             Version++;
@@ -868,6 +878,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         Vector2 mid = EndCentre(plan);
         if (FacingAim.From(mid.X, mid.Y, p.X, p.Y) is not { } f) return true;
         _pending = plan with { Moves = FacingAim.Turn(plan.Moves, f) };
+        if (Individual) _unitFacing = f;
         Draw(s, _pending, placed: true, null);
         Version++;
         return true;
@@ -890,7 +901,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             if (_picked.Count == 0) { s.Toast("Click one of this unit's models to move it, or Space to confirm."); return true; }
             if (s.Table.TableAt(at) is not { } tp) return true;
             _arranged = SlidePicked(tp);
-            var picked = MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns);
+            var picked = Faced(MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns));
             _pending = picked;
             ClearFaults(s);
             Draw(s, picked, placed: true, null);
@@ -1430,8 +1441,12 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
         .FirstOrDefault(u => u.Models.Any(m => _r.ModelsToPlace.Count > 0 && m.ID.Equals(_r.ModelsToPlace[0].GetValue().ID)))?.Name ?? "the unit";
 
     public override string Prompt => string.IsNullOrWhiteSpace(_r.DisplayName) ? $"Place {UnitName}" : _r.DisplayName;
-    public override string Hint => AimedPlacement.IsReposition(_r)
-        ? "This one can only stay where it is for now."
+    private bool Reposition => AimedPlacement.IsReposition(_r);
+
+    public override string Hint => _faults.Count > 0 && Reposition
+        ? ManualPlacement.Describe(_faults) + " Drag the red models into place, then Space."
+        : Reposition
+        ? $"Drag any model to move it - each up to {_r.MaxDistanceFromStartInches:0.#}\" from where it stands (the faint rings). Ctrl+click or Shift+drag picks several. Space when done."
         : _faults.Count > 0 ? ManualPlacement.Describe(_faults) + " Drag the red models into place, then Space."
         : _pending != null ? "Drag any model to move it (Ctrl+click or Shift+drag picks several) - drag the table to turn the unit - Space when done - right-click to pick it up again."
         : _near.Length > 0 ? _near
@@ -1444,7 +1459,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
         ? new[] { new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Leave every model where it is.", () => Complete(new Selected<List<PlacedObjectEntry<ModelData>>>(AimedPlacement.StayPut(_r)))) }
         : null;
 
-    public override string? ConfirmText => _pending != null ? $"Deploy {UnitName} here?" : null;
+    public override string? ConfirmText => _pending != null ? (Reposition ? $"Move {UnitName} here?" : $"Deploy {UnitName} here?") : null;
     public override void Confirm()
     {
         if (_pending is not { } p) return;
@@ -1477,7 +1492,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
 
     public override bool TableGrab(BattleScreen s, Vector2 at)
     {
-        if (AimedPlacement.IsReposition(_r) || s.Table.TableAt(at) is not { } tp) return false;
+        if (s.Table.TableAt(at) is not { } tp) return false;
         int i = PlacedAt(s, at);
         if (i < 0) return false;
         if (!_picked.Contains(i))
@@ -1497,7 +1512,7 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
         if (_pending == null || s.Table.TableAt(at) is not { } tp) return;
         Vector2 d = tp - _grabAt;
         foreach (var (k, from) in _grabFrom)
-            _pending[k] = _pending[k] with { Position = new Position(from.x + d.X, from.z + d.Y) };
+            _pending[k] = _pending[k] with { Position = HeldToReach(_pending[k], new Position(from.x + d.X, from.z + d.Y)) };
         _faults.Clear();
         Draw(s, _pending, placed: true, null);
     }
@@ -1507,7 +1522,20 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
         if (_pending != null) Draw(s, _pending, placed: true, null);
     }
 
-    public override bool WantsBox => _pending != null && !AimedPlacement.IsReposition(_r);
+    public override bool WantsBox => _pending != null;
+
+    /// <summary>
+    /// A reposition (Kai, 2026-11-18 - Fanatic and the like: "move each model up to N inches") holds each dragged model
+    /// on its own circle round where it stood, so the drag can never ask for more than the rule gives.
+    /// </summary>
+    private Position HeldToReach(PlacedObjectEntry<ModelData> e, Position want)
+    {
+        if (!Reposition) return want;
+        Position home = e.Binding.GetValue().Position;
+        float dx = want.x - home.x, dz = want.z - home.z, len = Mathf.Sqrt(dx * dx + dz * dz);
+        float reach = Mathf.Max(0f, _r.MaxDistanceFromStartInches - 0.01f);
+        return len <= reach || len < 1e-4f ? want : new Position(home.x + dx / len * reach, home.z + dz / len * reach);
+    }
     public override Vector2? DraggableAt(int i) => _pending is { } p && i < p.Count ? new Vector2(p[i].Position.x, p[i].Position.z) : null;
 
     public override void TableBox(BattleScreen s, Vector2 from, Vector2 to)
@@ -1525,9 +1553,10 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     {
         _picked.Clear();
         _faults.Clear();
-        _pending = null;
+        _pending = Reposition ? AimedPlacement.StayPut(_r) : null;
         _lastHover = new(-9999, -9999);
         _s?.Table.ClearGhosts("move");
+        if (_pending != null && _s != null) Draw(_s, _pending, placed: true, null);
         Version++;
     }
 
@@ -1555,10 +1584,19 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
             for (int k = 0; k + 1 < hull.Length; k++) lines.Add(new BattleTable.GhostLine(hull[k], hull[k + 1], Palette.WoundsRed with { A = 0.8f }, 0.16f));
         }
         s.Table.SetGhosts("zone", Array.Empty<BattleTable.Ghost>(), lines);
+        if (Reposition)
+        {
+            // Every model starts where it stands; a faint ring shows how far each may go.
+            s.Table.SetGhosts("reach", _r.ModelsToPlace.Select(b => b.GetValue())
+                .Select(m => new BattleTable.Ghost(m.Position.x, m.Position.z, _r.MaxDistanceFromStartInches + m.BaseRadiusInches,
+                    HudKit.Lime with { A = 0.35f }, Ring: true)).ToList());
+            _pending = AimedPlacement.StayPut(_r);
+            Draw(s, _pending, placed: true, null);
+        }
         Version++;
     }
 
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("zone"); s.Table.ClearGhosts("move"); }
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("zone"); s.Table.ClearGhosts("move"); s.Table.ClearGhosts("reach"); }
 
     public override void AutoPlay(BattleScreen s) =>
         Complete(new FDG.Ai.Resolvers.AiPlaceObjectsResolver<ModelData>(s.Session.Table).Resolve(_r).GetAwaiter().GetResult());
