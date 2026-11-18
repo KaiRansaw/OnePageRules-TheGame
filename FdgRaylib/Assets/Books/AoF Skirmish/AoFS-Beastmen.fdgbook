@@ -4498,6 +4498,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Bestial"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Bestial"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],

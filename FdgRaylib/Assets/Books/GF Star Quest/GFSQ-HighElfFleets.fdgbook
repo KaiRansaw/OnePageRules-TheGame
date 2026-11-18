@@ -8209,30 +8209,13 @@
       "name": "Highborn",
       "passive": [
         {
-          "hookID": "Movement_OnMoveActionDeclared",
+          "hookID": "Shooting_OnRangeCheck",
           "condition": {
-            "kind": "actionTypeIs",
-            "actionType": "Advance"
+            "kind": "always"
           },
           "effect": {
-            "kind": "movementBonus",
-            "actionType": "Advance",
-            "distanceInches": 2,
-            "minResultInches": 0
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Movement_OnMoveActionDeclared",
-          "condition": {
-            "kind": "actionTypeIs",
-            "actionType": "Rush"
-          },
-          "effect": {
-            "kind": "movementBonus",
-            "actionType": "Rush",
-            "distanceInches": 2,
+            "kind": "rangeModifier",
+            "delta": 4,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -8411,44 +8394,14 @@
       "name": "Enhanced Highborn",
       "passive": [
         {
-          "hookID": "Movement_OnMoveActionDeclared",
+          "hookID": "Shooting_OnRangeCheck",
           "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "unitHasRule",
-              "ruleName": "Highborn"
-            },
-            "right": {
-              "kind": "actionTypeIs",
-              "actionType": "Advance"
-            }
+            "kind": "unitHasRule",
+            "ruleName": "Highborn"
           },
           "effect": {
-            "kind": "movementBonus",
-            "actionType": "Advance",
-            "distanceInches": 4,
-            "minResultInches": 0
-          },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Movement_OnMoveActionDeclared",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "unitHasRule",
-              "ruleName": "Highborn"
-            },
-            "right": {
-              "kind": "actionTypeIs",
-              "actionType": "Rush"
-            }
-          },
-          "effect": {
-            "kind": "movementBonus",
-            "actionType": "Rush",
-            "distanceInches": 4,
+            "kind": "rangeModifier",
+            "delta": 4,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -8470,7 +8423,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Charge",
-            "distanceInches": 4,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",

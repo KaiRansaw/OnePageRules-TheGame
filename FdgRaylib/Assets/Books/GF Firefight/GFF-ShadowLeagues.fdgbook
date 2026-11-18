@@ -5480,7 +5480,7 @@
         {
           "hookID": "Shooting_OnRangeCheck",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "rangeModifier",
@@ -5493,7 +5493,7 @@
         {
           "hookID": "Movement_OnChargeDeclared",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "movementBonus",
@@ -5523,7 +5523,7 @@
               "ruleName": "Shadow Operative"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -5543,7 +5543,7 @@
               "ruleName": "Shadow Operative"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -5551,6 +5551,44 @@
             "actionType": "Charge",
             "distanceInches": -4,
             "minResultInches": 6
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Movement_OnChargeDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Shadow Operative"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Shadow Operative"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnRangeCheck",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Shadow Operative"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Shadow Operative"
           },
           "lifetime": "ThisActivation",
           "seat": "Subject"

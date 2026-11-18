@@ -4393,11 +4393,10 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "always"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -4604,17 +4603,35 @@
             "right": {
               "kind": "and",
               "left": {
-                "kind": "attackedFromOverInches",
-                "distanceInches": 9
+                "kind": "always"
               },
               "right": {
-                "kind": "allModelsHaveThisRule"
+                "kind": "mostModelsHaveThisRule"
               }
             }
           },
           "effect": {
             "kind": "reduceArmorPenetration",
             "amount": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Guardian"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Guardian"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -4746,7 +4763,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {

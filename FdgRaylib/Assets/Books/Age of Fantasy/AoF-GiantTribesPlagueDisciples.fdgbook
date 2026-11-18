@@ -3143,7 +3143,7 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -3225,6 +3225,25 @@
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Plaguebound"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Plaguebound"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

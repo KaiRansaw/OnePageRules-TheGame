@@ -6566,7 +6566,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -7095,6 +7095,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Primal"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Primal"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
@@ -7388,7 +7401,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Versatile Attack (Precision)",
@@ -7412,7 +7425,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Counter in Melee",

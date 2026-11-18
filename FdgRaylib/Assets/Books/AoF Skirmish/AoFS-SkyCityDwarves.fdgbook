@@ -3702,6 +3702,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Buccaneer"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Buccaneer"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],

@@ -4357,6 +4357,25 @@
           },
           "lifetime": "ThisActivation",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Activation_OnActivationStart",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Rapid Blink"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Rapid Blink"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
         }
       ],
       "activated": [],

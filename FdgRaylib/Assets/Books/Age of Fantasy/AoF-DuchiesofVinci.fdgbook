@@ -5482,7 +5482,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -6272,8 +6272,9 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "rollModifier",
@@ -6288,7 +6289,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Vinci Tech (Precision)",
@@ -6296,8 +6297,9 @@
         {
           "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "rollModifier",
@@ -6312,7 +6314,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     }
   ],
   "spells": [

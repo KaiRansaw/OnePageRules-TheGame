@@ -63,7 +63,8 @@ public class GroundedAofShippedDataTests
         Assert.That(entry.Seat, Is.EqualTo(ERuleSeat.Subject));
 
         var and = (Condition.And)entry.Condition;
-        Assert.That(and.Left, Is.InstanceOf<Condition.AllModelsHaveThisRule>());
+        // 3.6.0: "a unit where most models have this rule" (Kai's 2026-11-18 rules audit moved it off the 3.5 every-model gate).
+        Assert.That(and.Left, Is.InstanceOf<Condition.MostModelsHaveThisRule>());
         Assert.That(and.Right, Is.InstanceOf<Condition.MostModelsWithinInchesOfTerrain>());
         Assert.That(((Condition.MostModelsWithinInchesOfTerrain)and.Right).DistanceInches, Is.EqualTo(1f));
 

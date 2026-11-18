@@ -5143,8 +5143,9 @@
               }
             },
             "right": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             }
           },
           "effect": {
@@ -5195,6 +5196,19 @@
             "kind": "addExtraWound",
             "onRollValue": 1,
             "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Badlands Hunter"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Badlands Hunter"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

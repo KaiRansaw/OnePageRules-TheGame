@@ -8529,7 +8529,7 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -8557,12 +8557,31 @@
               "ruleName": "Cursed Undead"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Cursed Undead"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Cursed Undead"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

@@ -4572,11 +4572,10 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "always"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -4607,17 +4606,35 @@
             "right": {
               "kind": "and",
               "left": {
-                "kind": "attackedFromOverInches",
-                "distanceInches": 9
+                "kind": "always"
               },
               "right": {
-                "kind": "allModelsHaveThisRule"
+                "kind": "mostModelsHaveThisRule"
               }
             }
           },
           "effect": {
             "kind": "reduceArmorPenetration",
             "amount": 2
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Ossified"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Ossified"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

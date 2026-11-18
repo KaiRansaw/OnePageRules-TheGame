@@ -3414,7 +3414,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -3439,7 +3439,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         },
@@ -3464,7 +3464,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -3489,7 +3489,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         }
@@ -3497,7 +3497,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where all models have this rule is deployed or activated, pick one effect until the unit\u0027s next activation: when shot or charged from over 9 inches away, it either gets \u002B1 to defense rolls, or enemies get -1 to hit rolls against it."
+      "description": "When a unit where most models have this rule is deployed or activated, pick one effect until the unit\u0027s next activation: when shot/charged from over 9 inches/6 inches away, it either gets \u002B1 to defense rolls, or enemies get -1 to hit rolls against it."
     },
     {
       "name": "Versatile Defense (Guard)",
@@ -3507,11 +3507,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -3527,7 +3528,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit gets \u002B1 to defense rolls when shot or charged from over 9 inches away."
+      "description": "This unit gets \u002B1 to defense rolls when shot from over 9 inches away, or charged from over 6 inches away."
     },
     {
       "name": "Versatile Defense (Evasion)",
@@ -3537,11 +3538,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -3557,7 +3559,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
     }
   ],
   "spells": [

@@ -3206,7 +3206,15 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            },
+            "right": {
+              "kind": "always"
+            }
           },
           "effect": {
             "kind": "addExtraWound",
@@ -3400,6 +3408,19 @@
             "kind": "addExtraWound",
             "onRollValue": 1,
             "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Infected"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Infected"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

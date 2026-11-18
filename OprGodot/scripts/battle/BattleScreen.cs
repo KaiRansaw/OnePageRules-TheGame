@@ -643,6 +643,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         areaScroll.AddChild(area);
         _actionBlock = HudKit.Panel(Tight(12).With(x => { x.ContentMarginLeft = 10; x.ContentMarginTop = 8; x.ContentMarginBottom = 8; }), areaScroll);
         ScreenFrame.Place(this, "Actions", _actionBlock, LayoutPreset.BottomLeft, new Vector2(Pad + 340, -Pad), _hud);
+        // Kai, 2026-11-18: watching bots, there is nothing to press - no Actions panel.
+        if (Watching) _actionBlock.Visible = false;
         _confirmBox = HudKit.Place(_hud, Decisions.BuildConfirmBox(), LayoutPreset.CenterBottom, new Vector2(0, -170));
 
         // Bottom-right: mission panel over the battle report.
@@ -777,7 +779,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Vector2 screen = GetViewportRect().Size;
         Vector2 cmin = _confirmBox.GetCombinedMinimumSize();
         _confirmBox.Size = cmin;
-        float cx = Mathf.Max((screen.X - cmin.X) / 2, _actionBlock.GetGlobalRect().End.X + 16);
+        float cx = Mathf.Max((screen.X - cmin.X) / 2, (_actionBlock.Visible ? _actionBlock.GetGlobalRect().End.X : _unitBlock.GetGlobalRect().End.X) + 16);
         _confirmBox.Position = new Vector2(Mathf.Min(cx, screen.X - cmin.X - 16), screen.Y - 170 - cmin.Y);
 
         PerfProbe.Stop("hud.layout", tp);

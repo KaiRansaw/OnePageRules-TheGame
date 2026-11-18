@@ -5645,8 +5645,16 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "unmodifiedRollEquals",
-            "dieValue": 6
+            "kind": "and",
+            "left": {
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            },
+            "right": {
+              "kind": "unmodifiedRollEquals",
+              "dieValue": 6
+            }
           },
           "effect": {
             "kind": "addExtraHit",
@@ -5683,6 +5691,19 @@
             "kind": "addExtraHit",
             "onRollValue": 6,
             "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Lucky"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Lucky"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

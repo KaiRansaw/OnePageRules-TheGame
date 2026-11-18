@@ -4330,6 +4330,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Targeting Visor"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Targeting Visor"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],

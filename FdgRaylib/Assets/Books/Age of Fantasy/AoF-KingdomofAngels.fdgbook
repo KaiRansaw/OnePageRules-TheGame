@@ -6332,7 +6332,24 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isSpell"
+                }
+              },
+              "right": {
+                "kind": "attackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
+              }
+            }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -6349,12 +6366,12 @@
               "kind": "isSpell"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
-            "minRoll": 4
+            "minRoll": 2
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -6378,7 +6395,7 @@
               "ruleName": "Angelic Blessing"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -6402,13 +6419,32 @@
                 "kind": "isSpell"
               },
               "right": {
-                "kind": "allModelsHaveThisRule"
+                "kind": "mostModelsHaveThisRule"
               }
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 4
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Angelic Blessing"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Angelic Blessing"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -6587,7 +6623,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Versatile Attack (Precision)",
@@ -6611,7 +6647,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     }
   ],
   "spells": [

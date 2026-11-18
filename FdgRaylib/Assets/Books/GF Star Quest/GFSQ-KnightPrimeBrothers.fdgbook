@@ -11614,7 +11614,24 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isSpell"
+                }
+              },
+              "right": {
+                "kind": "attackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
+              }
+            }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -11631,12 +11648,12 @@
               "kind": "isSpell"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
-            "minRoll": 4
+            "minRoll": 2
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -11737,7 +11754,7 @@
               "ruleName": "Knightborn"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -11761,13 +11778,32 @@
                 "kind": "isSpell"
               },
               "right": {
-                "kind": "allModelsHaveThisRule"
+                "kind": "mostModelsHaveThisRule"
               }
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 4
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Knightborn"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Knightborn"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

@@ -85,11 +85,11 @@ public class VersatileDefenseShippedDataTests
     }
 
     [Test]
-    public void TheChoice_IsGatedOnEveryModelHavingTheRule()
+    public void TheChoice_IsGatedOnMostModelsHavingTheRule()
     {
         Assert.That(Definition(RuleName).Activated.Select(a => a.AvailableWhen),
-            Has.All.InstanceOf<Condition.AllModelsHaveThisRule>(),
-            "'a unit where ALL models have this rule' - the corpus puts the gate on the CHOICE here, " +
+            Has.All.InstanceOf<Condition.MostModelsHaveThisRule>(),
+            "3.6.0: 'a unit where MOST models have this rule' (was ALL in 3.5) - the corpus puts the gate on the CHOICE here, " +
             "not on the effect, because a unit-held grant satisfies the effect's own gate vacuously.");
     }
 

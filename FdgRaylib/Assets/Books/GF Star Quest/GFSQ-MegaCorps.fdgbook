@@ -5719,7 +5719,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -5875,6 +5875,19 @@
             "kind": "rollModifier",
             "rollKind": "Hit",
             "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Cyber-Eyes"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Cyber-Eyes"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

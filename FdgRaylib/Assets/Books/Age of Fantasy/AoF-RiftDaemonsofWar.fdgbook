@@ -4972,7 +4972,15 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            },
+            "right": {
+              "kind": "always"
+            }
           },
           "effect": {
             "kind": "addExtraWound",
@@ -5213,7 +5221,7 @@
         {
           "hookID": "Shooting_OnUnitDestroyed",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "grantToken",
@@ -5237,7 +5245,7 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             },
             "right": {
               "kind": "tokenPresent",
@@ -5517,8 +5525,9 @@
             "right": {
               "kind": "not",
               "inner": {
-                "kind": "attackedFromOverInches",
-                "distanceInches": 9
+                "kind": "attackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
               }
             }
           },
@@ -5590,7 +5599,7 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             },
             "right": {
               "kind": "tokenPresent",
@@ -5613,7 +5622,7 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             },
             "right": {
               "kind": "tokenPresent",
@@ -5677,7 +5686,7 @@
             }
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "Reckless Piercing"
         }

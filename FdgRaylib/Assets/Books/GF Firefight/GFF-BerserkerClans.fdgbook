@@ -4721,51 +4721,9 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
-              }
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 9
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
-          },
-          "effect": {
-            "kind": "addExtraHit",
-            "onRollValue": 6,
-            "count": 1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Shooting_OnHitRollComplete",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "isMelee"
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 6
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "addExtraHit",
@@ -4802,6 +4760,19 @@
             "kind": "addExtraHit",
             "onRollValue": 6,
             "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Berserker"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Berserker"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

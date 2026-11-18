@@ -2819,8 +2819,9 @@
                 }
               },
               "right": {
-                "kind": "attackedFromOverInches",
-                "distanceInches": 9
+                "kind": "attackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
               }
             }
           },
@@ -2884,6 +2885,25 @@
             "kind": "rollModifier",
             "rollKind": "Save",
             "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Tenacious"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Tenacious"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

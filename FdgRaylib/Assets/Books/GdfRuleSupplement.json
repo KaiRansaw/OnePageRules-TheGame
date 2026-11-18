@@ -150,30 +150,13 @@
     "name": "Highborn",
     "passive": [
       {
-        "hookID": "Movement_OnMoveActionDeclared",
+        "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "actionTypeIs",
-          "actionType": "Advance"
+          "kind": "always"
         },
         "effect": {
-          "kind": "movementBonus",
-          "actionType": "Advance",
-          "distanceInches": 2,
-          "minResultInches": 0
-        },
-        "lifetime": "ThisActivation",
-        "seat": "Actor"
-      },
-      {
-        "hookID": "Movement_OnMoveActionDeclared",
-        "condition": {
-          "kind": "actionTypeIs",
-          "actionType": "Rush"
-        },
-        "effect": {
-          "kind": "movementBonus",
-          "actionType": "Rush",
-          "distanceInches": 2,
+          "kind": "rangeModifier",
+          "delta": 4,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -886,11 +869,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -906,7 +890,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Primeborn",
@@ -916,11 +900,10 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "always"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -945,11 +928,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -965,7 +949,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "This unit gets +1 to defense rolls when shot or charged from over 9 inches away."
+    "description": "This unit gets +1 to defense rolls when shot from over 9 inches away, or charged from over 6 inches away."
   },
   {
     "name": "Guardian",
@@ -975,11 +959,10 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "always"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -1004,11 +987,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -1024,7 +1008,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Changebound Boost",
@@ -1251,7 +1235,7 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
@@ -1273,7 +1257,24 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "and",
+          "left": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "isSpell"
+              }
+            },
+            "right": {
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            }
+          }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
@@ -1290,12 +1291,12 @@
             "kind": "isSpell"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
-          "minRoll": 4
+          "minRoll": 2
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -1313,7 +1314,7 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
@@ -1775,7 +1776,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Advance",
-          "distanceInches": 2,
+          "distanceInches": 1,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -1978,7 +1979,15 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "always"
+          }
         },
         "effect": {
           "kind": "addExtraWound",
@@ -2001,7 +2010,15 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "always"
+          }
         },
         "effect": {
           "kind": "addExtraWound",
@@ -2057,8 +2074,16 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "unmodifiedRollEquals",
-          "dieValue": 6
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
         },
         "effect": {
           "kind": "addExtraHit",
@@ -2081,8 +2106,16 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "unmodifiedRollEquals",
-          "dieValue": 6
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
         },
         "effect": {
           "kind": "addExtraHit",
@@ -2389,23 +2422,9 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "or",
-          "left": {
-            "kind": "and",
-            "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
-              }
-            },
-            "right": {
-              "kind": "distanceGreaterThan",
-              "distanceInches": 9
-            }
-          },
-          "right": {
-            "kind": "isCharging"
-          }
+          "kind": "attackedFromBeyond",
+          "shotInches": 9,
+          "chargedInches": 6
         },
         "effect": {
           "kind": "rollModifier",
@@ -3809,7 +3828,7 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "rollModifier",
@@ -3936,11 +3955,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -3956,7 +3976,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "This unit gets +1 to defense rolls when shot or charged from over 9 inches away."
+    "description": "This unit gets +1 to defense rolls when shot from over 9 inches away, or charged from over 6 inches away."
   },
   {
     "name": "Guarded Buff",
@@ -4231,7 +4251,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "AP(+1) when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "AP(+1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Versatile Attack (Precision)",
@@ -4255,7 +4275,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "+1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "+1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Versatile Attack",
@@ -4323,8 +4343,9 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "attackedFromOverInches",
-          "distanceInches": 9
+          "kind": "attackedFromBeyond",
+          "shotInches": 9,
+          "chargedInches": 6
         },
         "effect": {
           "kind": "rollModifier",
@@ -4339,7 +4360,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "AP(+1) when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "AP(+1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Watchborn (Precision)",
@@ -4347,8 +4368,9 @@
       {
         "hookID": "Shooting_OnHitRollModifier",
         "condition": {
-          "kind": "attackedFromOverInches",
-          "distanceInches": 9
+          "kind": "attackedFromBeyond",
+          "shotInches": 9,
+          "chargedInches": 6
         },
         "effect": {
           "kind": "rollModifier",
@@ -4363,7 +4385,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "+1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "+1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Watchborn",
@@ -4433,11 +4455,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -4453,7 +4476,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "This unit gets +1 to defense rolls when shot or charged from over 9 inches away."
+    "description": "This unit gets +1 to defense rolls when shot from over 9 inches away, or charged from over 6 inches away."
   },
   {
     "name": "Versatile Defense (Evasion)",
@@ -4463,11 +4486,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -4483,7 +4507,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Versatile Defense",
@@ -4510,7 +4534,7 @@
           "scope": "UntilNextActivation"
         },
         "availableWhen": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "label": "+1 to defense rolls"
       },
@@ -4535,7 +4559,7 @@
           "scope": "UntilNextActivation"
         },
         "availableWhen": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "label": "-1 to enemy hit rolls"
       },
@@ -4560,7 +4584,7 @@
           "scope": "UntilNextActivation"
         },
         "availableWhen": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "label": "+1 to defense rolls"
       },
@@ -4585,7 +4609,7 @@
           "scope": "UntilNextActivation"
         },
         "availableWhen": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "label": "-1 to enemy hit rolls"
       }
@@ -4593,7 +4617,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "When a unit where all models have this rule is deployed or activated, pick one effect until the unit's next activation: when shot or charged from over 9 inches away, it either gets +1 to defense rolls, or enemies get -1 to hit rolls against it."
+    "description": "When a unit where most models have this rule is deployed or activated, pick one effect until the unit's next activation: when shot/charged from over 9 inches/6 inches away, it either gets +1 to defense rolls, or enemies get -1 to hit rolls against it."
   },
   {
     "name": "Versatile Defense Aura",
@@ -4762,7 +4786,7 @@
             "minCount": 1
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -4797,7 +4821,7 @@
             "minCount": 1
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -4832,7 +4856,7 @@
             "minCount": 1
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -5123,8 +5147,14 @@
     "passive": [
       {
         "hookID": "Shooting_OnHitRollComplete",
-        "condition": { "kind": "always" },
-        "effect": { "kind": "rollModifier", "rollKind": "Save", "delta": -1 },
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -1
+        },
         "lifetime": "ThisAttack",
         "seat": "Actor"
       }
@@ -5272,7 +5302,7 @@
       {
         "hookID": "Shooting_OnUnitDestroyed",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "grantToken",
@@ -5296,7 +5326,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -5531,7 +5561,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "and",
@@ -5605,7 +5635,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -5720,7 +5750,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -6274,11 +6304,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -6294,7 +6325,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Screened Aura",
@@ -8930,8 +8961,9 @@
             }
           },
           "right": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           }
         },
         "effect": {
@@ -8975,7 +9007,7 @@
       {
         "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "rangeModifier",
@@ -8988,7 +9020,7 @@
       {
         "hookID": "Movement_OnChargeDeclared",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "movementBonus",
@@ -9044,7 +9076,7 @@
       {
         "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "rangeModifier",
@@ -9057,7 +9089,7 @@
       {
         "hookID": "Movement_OnChargeDeclared",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "movementBonus",
@@ -9115,6 +9147,44 @@
           "actionType": "Charge",
           "distanceInches": -4,
           "minResultInches": 6
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Movement_OnChargeDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Shadowborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Shadowborn"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Shadowborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Shadowborn"
         },
         "lifetime": "ThisActivation",
         "seat": "Subject"
@@ -9279,8 +9349,9 @@
               }
             },
             "right": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             }
           }
         },
@@ -9398,6 +9469,25 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Plaguebound"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Plaguebound"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
       }
     ],
     "activated": [],
@@ -9425,8 +9515,9 @@
             "right": {
               "kind": "not",
               "inner": {
-                "kind": "attackedFromOverInches",
-                "distanceInches": 9
+                "kind": "attackedFromBeyond",
+                "shotInches": 9,
+                "chargedInches": 6
               }
             }
           }
@@ -9536,8 +9627,9 @@
           "right": {
             "kind": "not",
             "inner": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             }
           }
         },
@@ -9572,6 +9664,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Badlands Hunter"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Badlands Hunter"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -9598,6 +9703,25 @@
         "effect": {
           "kind": "reduceArmorPenetration",
           "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Ballistic Vest"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Ballistic Vest"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -9629,6 +9753,19 @@
           "kind": "addExtraHit",
           "onRollValue": 6,
           "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Berserker"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Berserker"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -9684,6 +9821,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Bloodborn"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Bloodborn"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -9733,6 +9883,19 @@
           "kind": "addExtraHit",
           "onRollValue": 6,
           "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Clan Warrior"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Clan Warrior"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -9798,6 +9961,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Cyber-Eyes"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Cyber-Eyes"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -9829,6 +10005,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Devout"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Devout"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -9857,6 +10046,19 @@
           "kind": "addExtraHit",
           "onRollValue": 6,
           "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Ferocious"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Ferocious"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -9912,17 +10114,35 @@
           "right": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "always"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
         "effect": {
           "kind": "reduceArmorPenetration",
           "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Guardian"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Guardian"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -9950,6 +10170,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Havocbound"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Havocbound"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -9962,44 +10195,14 @@
     "name": "Enhanced Highborn",
     "passive": [
       {
-        "hookID": "Movement_OnMoveActionDeclared",
+        "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "and",
-          "left": {
-            "kind": "unitHasRule",
-            "ruleName": "Highborn"
-          },
-          "right": {
-            "kind": "actionTypeIs",
-            "actionType": "Advance"
-          }
+          "kind": "unitHasRule",
+          "ruleName": "Highborn"
         },
         "effect": {
-          "kind": "movementBonus",
-          "actionType": "Advance",
-          "distanceInches": 4,
-          "minResultInches": 0
-        },
-        "lifetime": "ThisActivation",
-        "seat": "Actor"
-      },
-      {
-        "hookID": "Movement_OnMoveActionDeclared",
-        "condition": {
-          "kind": "and",
-          "left": {
-            "kind": "unitHasRule",
-            "ruleName": "Highborn"
-          },
-          "right": {
-            "kind": "actionTypeIs",
-            "actionType": "Rush"
-          }
-        },
-        "effect": {
-          "kind": "movementBonus",
-          "actionType": "Rush",
-          "distanceInches": 4,
+          "kind": "rangeModifier",
+          "delta": 4,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10021,7 +10224,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Charge",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10068,6 +10271,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Infected"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Infected"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -10088,7 +10304,7 @@
             "ruleName": "Knightborn"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -10112,13 +10328,32 @@
               "kind": "isSpell"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
           "minRoll": 4
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Knightborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Knightborn"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -10142,13 +10377,32 @@
             "ruleName": "Machine-Fog"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "rollModifier",
           "rollKind": "Hit",
           "delta": -1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Machine-Fog"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Machine-Fog"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -10176,6 +10430,19 @@
             "kind": "onUnmodifiedValue",
             "minValue": 5
           }
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Mischievous"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Mischievous"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -10231,6 +10498,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Primal"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Primal"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -10266,6 +10546,19 @@
           "kind": "addExtraAttackRoll",
           "onRollValue": 6,
           "count": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Psychotic"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Psychotic"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -10329,6 +10622,25 @@
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Activation_OnActivationStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Rapid Blink"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Rapid Blink"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -10356,7 +10668,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Advance",
-          "distanceInches": 2,
+          "distanceInches": 1,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10378,7 +10690,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Rush",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10400,7 +10712,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Charge",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10432,6 +10744,25 @@
           "kind": "rollModifier",
           "rollKind": "Save",
           "delta": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Safety Gear"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Safety Gear"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -10493,6 +10824,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Scrapper"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Scrapper"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -10520,7 +10864,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Advance",
-          "distanceInches": 2,
+          "distanceInches": 1,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10542,7 +10886,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Rush",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10564,7 +10908,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Charge",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -10589,12 +10933,31 @@
             "ruleName": "Self-Repair"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
           "minRoll": 5
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Self-Repair"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Self-Repair"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -10618,7 +10981,7 @@
             "ruleName": "Shadow Operative"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -10638,7 +11001,7 @@
             "ruleName": "Shadow Operative"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -10646,6 +11009,44 @@
           "actionType": "Charge",
           "distanceInches": -4,
           "minResultInches": 6
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Movement_OnChargeDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Shadow Operative"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Shadow Operative"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Shadow Operative"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Shadow Operative"
         },
         "lifetime": "ThisActivation",
         "seat": "Subject"
@@ -10669,13 +11070,32 @@
             "ruleName": "Sturdy"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "rollModifier",
           "rollKind": "Save",
           "delta": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Sturdy"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Sturdy"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -10700,6 +11120,19 @@
           "kind": "rollModifier",
           "rollKind": "Hit",
           "delta": 1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Targeting Visor"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Targeting Visor"
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -10763,6 +11196,25 @@
             "count": 2
           },
           "plusInches": 0
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Activation_OnActivationStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wolfborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Wolfborn"
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
@@ -14038,6 +14490,44 @@
         },
         "lifetime": "ThisActivation",
         "seat": "Subject"
+      },
+      {
+        "hookID": "Movement_OnChargeDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Darkborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Darkborn"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Darkborn"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Darkborn"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
       }
     ],
     "activated": [],
@@ -14090,7 +14580,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "unitHasRule",
@@ -14110,7 +14600,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "unitHasRule",
@@ -14121,6 +14611,44 @@
           "kind": "triggeredMove",
           "maxInches": 6,
           "isOptional": true
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Melee_OnPostMelee",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Harassing"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Harassing"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnPostShoot",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Harassing"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Harassing"
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
@@ -14176,7 +14704,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "unitHasRule",
@@ -14196,7 +14724,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "unitHasRule",
@@ -14207,6 +14735,44 @@
           "kind": "triggeredMove",
           "maxInches": 6,
           "isOptional": true
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Melee_OnPostMelee",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Guerrilla"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Guerrilla"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnPostShoot",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Guerrilla"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Guerrilla"
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
@@ -14678,7 +15244,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Enhanced Empyrean Spirit",

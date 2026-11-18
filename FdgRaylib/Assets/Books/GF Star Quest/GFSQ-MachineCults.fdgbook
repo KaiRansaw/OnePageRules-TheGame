@@ -6565,11 +6565,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -6585,7 +6586,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
     },
     {
       "name": "Rending when Shooting Aura",
@@ -6738,13 +6739,32 @@
               "ruleName": "Machine-Fog"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "rollModifier",
             "rollKind": "Hit",
             "delta": -1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Machine-Fog"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Machine-Fog"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -7019,7 +7039,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Versatile Attack (Precision)",
@@ -7043,7 +7063,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     }
   ],
   "spells": [

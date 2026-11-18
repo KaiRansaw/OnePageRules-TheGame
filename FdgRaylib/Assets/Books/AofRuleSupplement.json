@@ -5,7 +5,7 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
@@ -83,7 +83,24 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "and",
+          "left": {
+            "kind": "mostModelsHaveThisRule"
+          },
+          "right": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "isSpell"
+              }
+            },
+            "right": {
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
+            }
+          }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
@@ -100,12 +117,12 @@
             "kind": "isSpell"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
-          "minRoll": 4
+          "minRoll": 2
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -187,11 +204,12 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -207,7 +225,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+    "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
   },
   {
     "name": "Empyrean Spirit Boost",
@@ -272,11 +290,10 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "always"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -355,11 +372,10 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "always"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -510,8 +526,16 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "unmodifiedRollEquals",
-          "dieValue": 6
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
         },
         "effect": {
           "kind": "addExtraHit",
@@ -1029,7 +1053,7 @@
             "minCount": 1
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -1064,7 +1088,7 @@
             "minCount": 1
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -1358,8 +1382,9 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "attackedFromOverInches",
-          "distanceInches": 9
+          "kind": "attackedFromBeyond",
+          "shotInches": 9,
+          "chargedInches": 6
         },
         "effect": {
           "kind": "rollModifier",
@@ -1374,7 +1399,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "AP(+1) when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "AP(+1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Vinci Tech (Precision)",
@@ -1382,8 +1407,9 @@
       {
         "hookID": "Shooting_OnHitRollModifier",
         "condition": {
-          "kind": "attackedFromOverInches",
-          "distanceInches": 9
+          "kind": "attackedFromBeyond",
+          "shotInches": 9,
+          "chargedInches": 6
         },
         "effect": {
           "kind": "rollModifier",
@@ -1398,7 +1424,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "+1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+    "description": "+1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
   },
   {
     "name": "Vinci Tech",
@@ -1489,7 +1515,7 @@
       {
         "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "rangeModifier",
@@ -1502,7 +1528,7 @@
       {
         "hookID": "Movement_OnChargeDeclared",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "movementBonus",
@@ -1680,7 +1706,7 @@
       {
         "hookID": "Shooting_OnRangeCheck",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "rangeModifier",
@@ -1693,7 +1719,7 @@
       {
         "hookID": "Movement_OnChargeDeclared",
         "condition": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "effect": {
           "kind": "movementBonus",
@@ -2127,7 +2153,15 @@
       {
         "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
+          },
+          "right": {
+            "kind": "always"
+          }
         },
         "effect": {
           "kind": "addExtraWound",
@@ -2300,7 +2334,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -2518,7 +2552,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "mostModelsWithinInchesOfTerrain",
@@ -2653,7 +2687,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -2676,7 +2710,7 @@
         "condition": {
           "kind": "and",
           "left": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "right": {
             "kind": "tokenPresent",
@@ -2739,7 +2773,7 @@
           }
         },
         "availableWhen": {
-          "kind": "allModelsHaveThisRule"
+          "kind": "mostModelsHaveThisRule"
         },
         "label": "Reckless Piercing"
       }
@@ -2861,7 +2895,7 @@
             "ruleName": "Angelic Blessing"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -2885,13 +2919,32 @@
               "kind": "isSpell"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
           "minRoll": 4
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Angelic Blessing"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Angelic Blessing"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -2922,6 +2975,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Bestial"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Bestial"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -2946,6 +3012,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Buccaneer"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Buccaneer"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -2966,12 +3045,31 @@
             "ruleName": "Cursed Undead"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "ignoreWoundOnRoll",
           "minRoll": 5
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Cursed Undead"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Cursed Undead"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -2999,6 +3097,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Destroyer"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Destroyer"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -3019,13 +3130,32 @@
             "ruleName": "Empyrean Spirit"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
           "kind": "rollModifier",
           "rollKind": "Hit",
           "delta": -1
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Empyrean Spirit"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Empyrean Spirit"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -3060,6 +3190,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Lucky"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Lucky"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -3082,17 +3225,35 @@
           "right": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "always"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
         "effect": {
           "kind": "reduceArmorPenetration",
           "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Ossified"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Ossified"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -3115,7 +3276,7 @@
         },
         "effect": {
           "kind": "rangeModifier",
-          "delta": 8,
+          "delta": 4,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -3137,7 +3298,7 @@
         "effect": {
           "kind": "movementBonus",
           "actionType": "Charge",
-          "distanceInches": 4,
+          "distanceInches": 2,
           "minResultInches": 0
         },
         "lifetime": "ThisActivation",
@@ -3194,6 +3355,19 @@
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "unitHasRule",
+          "ruleName": "Royal Warrior"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Royal Warrior"
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -3223,7 +3397,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
@@ -3233,6 +3407,25 @@
             "id": "Shaken"
           },
           "minRoll": 3
+        },
+        "lifetime": "ThisRound",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Round_OnRoundStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Vale Oath"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Vale Oath"
         },
         "lifetime": "ThisRound",
         "seat": "Actor"
@@ -3258,17 +3451,35 @@
           "right": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "always"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           }
         },
         "effect": {
           "kind": "reduceArmorPenetration",
           "amount": 2
+        },
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Warden"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Warden"
         },
         "lifetime": "ThisAttack",
         "seat": "Subject"
@@ -3305,6 +3516,25 @@
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
+      },
+      {
+        "hookID": "Activation_OnActivationStart",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wave-Step"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Wave-Step"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Actor"
       }
     ],
     "activated": [],
@@ -3325,7 +3555,7 @@
             "ruleName": "Wild Veil"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -3345,7 +3575,7 @@
             "ruleName": "Wild Veil"
           },
           "right": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           }
         },
         "effect": {
@@ -3353,6 +3583,44 @@
           "actionType": "Charge",
           "distanceInches": -4,
           "minResultInches": 6
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Movement_OnChargeDeclared",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wild Veil"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Wild Veil"
+        },
+        "lifetime": "ThisActivation",
+        "seat": "Subject"
+      },
+      {
+        "hookID": "Shooting_OnRangeCheck",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "unitHasRule",
+            "ruleName": "Wild Veil"
+          },
+          "right": {
+            "kind": "mostModelsHaveThisRule"
+          }
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Wild Veil"
         },
         "lifetime": "ThisActivation",
         "seat": "Subject"

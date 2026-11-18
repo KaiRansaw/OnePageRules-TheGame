@@ -3115,11 +3115,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -3135,7 +3136,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
     },
     {
       "name": "Indirect when Shooting Aura",
@@ -3419,8 +3420,9 @@
               "right": {
                 "kind": "not",
                 "inner": {
-                  "kind": "attackedFromOverInches",
-                  "distanceInches": 9
+                  "kind": "attackedFromBeyond",
+                  "shotInches": 9,
+                  "chargedInches": 6
                 }
               }
             }

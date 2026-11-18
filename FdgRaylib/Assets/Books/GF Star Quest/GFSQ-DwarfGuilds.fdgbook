@@ -9443,11 +9443,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -9463,7 +9464,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit gets \u002B1 to defense rolls when shot or charged from over 9 inches away."
+      "description": "This unit gets \u002B1 to defense rolls when shot from over 9 inches away, or charged from over 6 inches away."
     },
     {
       "name": "Swift",
@@ -9695,13 +9696,32 @@
               "ruleName": "Sturdy"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "rollModifier",
             "rollKind": "Save",
             "delta": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Sturdy"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Sturdy"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

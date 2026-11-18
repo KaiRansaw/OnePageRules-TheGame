@@ -5205,6 +5205,25 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Ballistic Vest"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Ballistic Vest"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
         }
       ],
       "activated": [],

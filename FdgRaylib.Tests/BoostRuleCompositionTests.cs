@@ -123,8 +123,11 @@ public class BoostRuleCompositionTests
         {
             Assert.That(ExtraHitsOnANaturalFive(harness, attacker, target, Near), Is.EqualTo(0f),
                 $"'{boostRule}' only widens the trigger beyond 9 inches.");
-            Assert.That(ExtraHitsOnANaturalSix(harness, attacker, target, Near), Is.EqualTo(1f),
-                $"...but the base '{baseRule}' still scores on a 6 up close.");
+            // 3.6.0 moved the base rule itself behind the band: "When this model shoots/charges enemies over 9"/6"
+            // away, unmodified result of 6 to hit deal 1 extra hit". It used to score at any range (the 3.5 wording) -
+            // Kai's 2026-11-18 rules audit.
+            Assert.That(ExtraHitsOnANaturalSix(harness, attacker, target, Near), Is.EqualTo(0f),
+                $"...and the base '{baseRule}' scores only from over 9 inches too (3.6.0).");
         }
     }
 
