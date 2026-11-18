@@ -55,24 +55,43 @@ public sealed class UnitModelSettings
     /// <summary>Someone has looked at this model in the facing review and it faces the right way (with <see cref="YawDegrees"/>).</summary>
     public bool FacingChecked { get; set; }
 
+    /// <summary>
+    /// Changed by hand on this computer (Asset Lab, facing review, Match terrain), so it keeps winning over the settings
+    /// shipped in the game (<see cref="SharedModelSettings"/>). False for what the downloader writes.
+    /// </summary>
+    public bool ChangedHere { get; set; }
+
     /// <summary>Free text: where the model came from, which unit it is meant for.</summary>
     public string Notes { get; set; } = "";
 
     /// <summary>Settings sidecar path for a model file.</summary>
     public static string PathFor(string modelFile) => modelFile + Suffix;
 
-    /// <summary>The saved settings for <paramref name="modelFile"/>, or null when none were saved (or the file is unreadable).</summary>
+    /// <summary>
+    /// The settings to use for <paramref name="modelFile"/>, or null when there are none. Running from the repo, the file
+    /// beside the model wins (it is what gets shipped); in a download, the settings shipped in the game win unless the
+    /// model was changed by hand on this computer - see <see cref="SharedModelSettings"/>.
+    /// </summary>
     public static UnitModelSettings? Load(string modelFile)
+    {
+        UnitModelSettings? local = LoadLocal(modelFile);
+        UnitModelSettings? shipped = SharedModelSettings.For(modelFile);
+        UnitModelSettings? s;
+        if (shipped == null) s = local;
+        else if (local == null) s = shipped;
+        else if (SharedModelSettings.IsAuthority || local.ChangedHere) s = local;
+        else { s = shipped; s.Notes = local.Notes.Length > 0 ? local.Notes : shipped.Notes; }
+        // Terrain never stands on a base (Kai, 2026-11-14). Pieces downloaded before 2.13 were saved with a 25mm one.
+        if (s != null && IsTerrain(modelFile)) s.BaseMm = 0;
+        return s;
+    }
+
+    /// <summary>Only the settings file beside the model, or null when none was saved (or it is unreadable).</summary>
+    public static UnitModelSettings? LoadLocal(string modelFile)
     {
         string path = PathFor(modelFile);
         if (!File.Exists(path)) return null;
-        try
-        {
-            var s = JsonConvert.DeserializeObject<UnitModelSettings>(File.ReadAllText(path));
-            // Terrain never stands on a base (Kai, 2026-11-14). Pieces downloaded before 2.13 were saved with a 25mm one.
-            if (s != null && IsTerrain(modelFile)) s.BaseMm = 0;
-            return s;
-        }
+        try { return JsonConvert.DeserializeObject<UnitModelSettings>(File.ReadAllText(path)); }
         catch (JsonException) { return null; }
         catch (IOException) { return null; }
     }
@@ -81,7 +100,19 @@ public sealed class UnitModelSettings
     public static bool IsTerrain(string modelFile) =>
         Path.GetFullPath(modelFile).Replace('\\', '/').Split('/').Contains(FdgRaylib.Terrain.WarhammerTerrain.ModelsFolderName);
 
-    public void Save(string modelFile) => File.WriteAllText(PathFor(modelFile), JsonConvert.SerializeObject(this, Formatting.Indented));
+    /// <summary>Saves beside the model (and, running from the repo, into the shipped copy).</summary>
+    public void Save(string modelFile)
+    {
+        File.WriteAllText(PathFor(modelFile), JsonConvert.SerializeObject(this, Formatting.Indented));
+        SharedModelSettings.Record(modelFile, this);
+    }
+
+    /// <summary>Saves a change the player made by hand: it keeps winning over the shipped settings on this computer.</summary>
+    public void SaveEdit(string modelFile)
+    {
+        ChangedHere = true;
+        Save(modelFile);
+    }
 
     public UnitModelSettings Copy() => (UnitModelSettings)MemberwiseClone();
 
@@ -186,14 +217,32 @@ public sealed class ModelDownloadDefaults
 
     public static string PathIn(string root) => Path.Combine(root, FileName);
 
+    /// <summary>The facing for new downloads: this computer's own when running from the repo or when set here,
+    /// else the one shipped in the game (<see cref="SharedModelSettings"/>).</summary>
     public static ModelDownloadDefaults Load(string? root = null)
     {
-        string path = PathIn(root ?? UnitModelPaths.Root);
-        try { return File.Exists(path) ? JsonConvert.DeserializeObject<ModelDownloadDefaults>(File.ReadAllText(path)) ?? new() : new(); }
-        catch (JsonException) { return new(); }
-        catch (IOException) { return new(); }
+        ModelDownloadDefaults? local = LoadLocal(root);
+        if (local != null && (SharedModelSettings.IsAuthority || local.ChangedHere)) return local;
+        float? shipped = SharedModelSettings.DownloadYaw();
+        return shipped != null ? new ModelDownloadDefaults { YawDegrees = shipped.Value } : local ?? new();
     }
 
-    public void Save(string? root = null) =>
+    /// <summary>Only this computer's file, or null when there is none.</summary>
+    public static ModelDownloadDefaults? LoadLocal(string? root = null)
+    {
+        string path = PathIn(root ?? UnitModelPaths.Root);
+        try { return File.Exists(path) ? JsonConvert.DeserializeObject<ModelDownloadDefaults>(File.ReadAllText(path)) : null; }
+        catch (JsonException) { return null; }
+        catch (IOException) { return null; }
+    }
+
+    /// <summary>Set by hand on this computer (the facing review), so it wins over the shipped facing here.</summary>
+    public bool ChangedHere { get; set; }
+
+    public void Save(string? root = null)
+    {
+        ChangedHere = true;
         File.WriteAllText(PathIn(root ?? UnitModelPaths.Root), JsonConvert.SerializeObject(this, Formatting.Indented));
+        SharedModelSettings.RecordDownloadYaw(YawDegrees);
+    }
 }

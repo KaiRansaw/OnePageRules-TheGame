@@ -522,7 +522,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         if (_open == null) return;
         try
         {
-            _settings.Save(_open);
+            _settings.SaveEdit(_open);
             _saved.Text = "Saved beside the file.";
             _saved.Modulate = HudKit.Lime;
             _list.Clear(); // forces the list to redraw, so the file gets its * mark

@@ -32,10 +32,23 @@ public static class PictureFraming
     /// <summary>The key for a unit: its army and name with case, spaces and punctuation ignored (as pictures are found).</summary>
     public static string KeyFor(string faction, string unit) => OfficialPictures.Normalise(faction) + "/" + OfficialPictures.Normalise(unit);
 
+    /// <summary>
+    /// Kai's framing, shipped inside the game (Kai, 2026-11-17: settings "supposed to be saved as config and pushed to
+    /// the github" weren't). Running from the repo, every change made here is copied into it; in a download, a unit
+    /// framed on that computer keeps its own framing and every other unit gets Kai's.
+    /// </summary>
+    public const string ShippedRelativePath = "Models3D/picture-framing.json";
+    public static string ShippedPath => System.IO.Path.Combine(AppAssets.AssetsFolder, ShippedRelativePath);
+    private static Dictionary<string, Frame>? _shipped;
+
+    private static Dictionary<string, Frame> Shipped() => _shipped ??= Read(ShippedPath);
+
     public static Frame For(string faction, string unit, string? file = null)
     {
         var all = Load(file);
-        return all.TryGetValue(KeyFor(faction, unit), out var f) ? f : Frame.Default;
+        string key = KeyFor(faction, unit);
+        if (all.TryGetValue(key, out var f)) return f;
+        return file == null && Shipped().TryGetValue(key, out var g) ? g : Frame.Default;
     }
 
     public static void Set(string faction, string unit, Frame frame, string? file = null)
@@ -43,8 +56,22 @@ public static class PictureFraming
         var all = Load(file);
         string key = KeyFor(faction, unit);
         frame = Clamp(frame);
-        if (frame.IsDefault) all.Remove(key); else all[key] = frame;
+        // Back to centred: drop it, unless the shipped framing would then show instead - then keep "centred" here.
+        if (frame.IsDefault && !(file == null && Shipped().ContainsKey(key) && !SharedModelSettings.IsAuthority)) all.Remove(key);
+        else all[key] = frame;
         Save(file);
+        if (file == null) Harvest();
+    }
+
+    /// <summary>Running from the repo: makes the shipped framing the same as this PC's. Nothing elsewhere.</summary>
+    public static void Harvest()
+    {
+        if (!SharedModelSettings.IsAuthority) return;
+        var local = Load(null);
+        var shipped = local.Where(kv => !kv.Value.IsDefault).OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        _shipped = shipped;
+        Write(ShippedPath, shipped);
     }
 
     public static Frame Clamp(Frame f) => new(Math.Clamp(f.X, 0f, 1f), Math.Clamp(f.Y, 0f, 1f), Math.Clamp(f.Zoom, 1f, MaxZoom));
@@ -71,22 +98,33 @@ public static class PictureFraming
         file ??= Path;
         if (_frames != null && _loadedFrom == file) return _frames;
         _loadedFrom = file;
-        try { _frames = File.Exists(file) ? JsonSerializer.Deserialize<Dictionary<string, Frame>>(File.ReadAllText(file)) ?? new() : new(); }
-        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { _frames = new(); }
+        _frames = Read(file);
         return _frames;
     }
 
-    private static void Save(string? file)
+    private static Dictionary<string, Frame> Read(string file)
     {
-        file ??= Path;
+        try { return File.Exists(file) ? JsonSerializer.Deserialize<Dictionary<string, Frame>>(File.ReadAllText(file)) ?? new() : new(); }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new(); }
+    }
+
+    private static void Write(string file, Dictionary<string, Frame> frames)
+    {
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(file)!);
-            File.WriteAllText(file, JsonSerializer.Serialize(_frames ?? new(), new JsonSerializerOptions { WriteIndented = true }));
+            string json = JsonSerializer.Serialize(frames, new JsonSerializerOptions { WriteIndented = true });
+            if (File.Exists(file) && File.ReadAllText(file) == json) return;
+            File.WriteAllText(file, json);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
+    private static void Save(string? file)
+    {
+        Write(file ?? Path, _frames ?? new());
+    }
+
     /// <summary>Forget what was read (tests, or after the file changed on disk).</summary>
-    public static void Forget() { _frames = null; _loadedFrom = null; }
+    public static void Forget() { _frames = null; _loadedFrom = null; _shipped = null; }
 }

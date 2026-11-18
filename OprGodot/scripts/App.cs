@@ -27,6 +27,12 @@ public partial class App : Node
 
     public override void _EnterTree() => I = this;
 
+    public override void _Notification(int what)
+    {
+        // Pending copies of model settings into the shipped file are written a moment after the last save; don't lose them on quit.
+        if (what == NotificationWMCloseRequest || what == NotificationPredelete) FdgRaylib.Models3D.SharedModelSettings.Flush();
+    }
+
     public override void _Ready()
     {
         // Books, Quest data and the default saves folder are found through AppAssets. In the editor that is
@@ -38,6 +44,18 @@ public partial class App : Node
 
         // Shared with the Raylib build: same file, same player name, same last host address.
         UserConfig.EnsureExists();
+        // Kai's model facings and picture framing go into the game's own files (Assets/Models3D) so every download
+        // gets them. Running from the repo, copy what is on this PC into those files now, off the main thread.
+        if (FdgRaylib.Models3D.SharedModelSettings.IsAuthority)
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    int n = FdgRaylib.Models3D.SharedSettingsSync.Harvest();
+                    GD.Print($"Shared model settings: {n} model(s) recorded in {FdgRaylib.Models3D.SharedModelSettings.RelativePath}.");
+                }
+                catch (System.Exception e) { GD.PrintErr("Shared model settings: " + e.Message); }
+            });
         Hud.TextWrap.Attach(GetTree());
         // An update moves the old .exe/.dlls aside while the game runs; they are free to delete now.
         if (!OS.HasFeature("editor")) FdgRaylib.Update.GameUpdater.CleanUpOldFiles(AppAssets.Root);

@@ -77,6 +77,10 @@ public sealed class WarhammerTerrainLibrary
         if (WarhammerTerrain.Load(catalogue) is not { } t) return null;
         string folder = modelsFolder ?? WarhammerTerrain.ModelsFolder;
         Dictionary<int, Match> saved = ReadMatches(Path.Combine(folder, FileName));
+        // Kai's matches ship in the game (Assets/Models3D): a download gets them, and its own matches win over them.
+        if (modelsFolder == null)
+            foreach (var (id, m) in ReadMatches(ShippedPath))
+                saved.TryAdd(id, m);
         var entries = new List<Entry>();
         foreach (WarhammerTerrain.Piece p in t.Pieces)
         {
@@ -93,6 +97,10 @@ public sealed class WarhammerTerrainLibrary
     }
 
     public string MatchesPath => Path.Combine(Folder, FileName);
+
+    /// <summary>Kai's matches as shipped in the game - copied from his PC by <see cref="SharedSettingsSync"/>.</summary>
+    public const string ShippedRelativePath = "Models3D/terrain-matches.json";
+    public static string ShippedPath => Path.Combine(AppAssets.AssetsFolder, ShippedRelativePath);
 
     public void Save()
     {

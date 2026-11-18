@@ -54,7 +54,7 @@ public static class WarhammerModels
     {
         var s = UnitModelSettings.Load(file) ?? new UnitModelSettings { BaseMm = 0, HeightMm = 0 };
         s.UpAxis = up;
-        s.Save(file);
+        s.SaveEdit(file);
         Ups[file] = up;
     }
 

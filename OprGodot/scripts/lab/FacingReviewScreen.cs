@@ -218,7 +218,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         var s = SettingsFor(file);
         s.YawDegrees = Wrap(s.YawDegrees + degrees);
         s.FacingChecked = false; // a turned model wants a fresh look
-        s.Save(file);
+        s.SaveEdit(file);
         _checkedCache[file] = false;
         Show();
         _state.Text = $"Saved - turned {s.YawDegrees:0} degrees. Space when it faces the arrow.";
@@ -231,7 +231,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         if (Current is not { } file) return;
         var s = SettingsFor(file);
         s.FacingChecked = true;
-        s.Save(file);
+        s.SaveEdit(file);
         _checkedCache[file] = true;
         RelabelFaction();
         if (_index < _files.Count - 1) _index++;
@@ -265,7 +265,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
         {
             var s = SettingsFor(f);
             s.YawDegrees = yaw;
-            s.Save(f);
+            s.SaveEdit(f);
             n++;
         }
         new ModelDownloadDefaults { YawDegrees = yaw }.Save(_root);

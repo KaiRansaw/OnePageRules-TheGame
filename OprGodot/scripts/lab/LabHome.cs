@@ -45,6 +45,7 @@ public partial class LabHome : PanelContainer
             new("ReviewFacing", "Review facing...", "Go through the models one by one and turn any that face the wrong way.", () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview)),
             new("Home_BrowseModels", "Browse models", "Every downloaded model on the real table at true size, with a search box - set how one stands, see a unit or an army of it.", () => ShowViewer("")),
             new("ImportStl", "Import printable model...", "Bring in a 3D-printing model (.stl) and its base, made light for the table and saved to a unit.", () => _lab.OpenStlImport()),
+            new("Home_SendSettings", "Send my settings to GitHub", "Sends how every model stands (facing, tilt, height, base), your picture framing and your model / terrain matches to GitHub, so every download - your laptop, your friends - gets them. Only from the PC that runs the game from the repo.", SendSettings),
             new("Home_OpenFolder", "Open the models folder", "The UnitModels folder in Windows, to add or rename files yourself.", () => OS.ShellOpen(FdgRaylib.Models3D.UnitModelPaths.Root)),
         },
         "pictures" => new Tool[]
@@ -70,6 +71,31 @@ public partial class LabHome : PanelContainer
         },
         _ => Array.Empty<Tool>(),
     };
+
+    private bool _sending;
+
+    private void SendSettings()
+    {
+        if (_sending) return;
+        if (!FdgRaylib.Models3D.SharedModelSettings.IsAuthority)
+        {
+            Toast("Only works on the PC that runs the game from the repo - this copy is a download.");
+            return;
+        }
+        _sending = true;
+        Toast("Sending your settings to GitHub...");
+        System.Threading.Tasks.Task.Run(FdgRaylib.Models3D.SharedSettingsSync.Publish).ContinueWith(t =>
+            Callable.From(() => { _sending = false; Toast(t.IsFaulted ? "Couldn't send: " + t.Exception?.GetBaseException().Message : t.Result); }).CallDeferred());
+    }
+
+    private void Toast(string text)
+    {
+        var dlg = new AcceptDialog { Title = "Settings", DialogText = text };
+        dlg.Confirmed += () => dlg.QueueFree();
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered();
+    }
 
     public override void _Ready()
     {
