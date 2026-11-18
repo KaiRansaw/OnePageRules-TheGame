@@ -23,6 +23,8 @@ public sealed class MapPiece
     public float W = 6, D = 6;
     public float Angle;
     public IZone? Raw;
+    /// <summary>Locked in the editor: can't be dragged, turned or resized by accident (saved with the map; the game ignores it).</summary>
+    public bool Locked;
 
     public MapPiece Clone() => (MapPiece)MemberwiseClone();
 
@@ -118,7 +120,7 @@ public sealed class MapDraft
 
     private static MapPiece FromEntry(TerrainPieceEntry e)
     {
-        var p = new MapPiece { Name = e.Name ?? "", Rules = e.TerrainType, Height = e.HeightInches > 0 ? e.HeightInches : 1f, Points = Math.Max(1, e.Points), Kind = e.Kind ?? "", Look = e.Look ?? "" };
+        var p = new MapPiece { Name = e.Name ?? "", Rules = e.TerrainType, Height = e.HeightInches > 0 ? e.HeightInches : 1f, Points = Math.Max(1, e.Points), Kind = e.Kind ?? "", Look = e.Look ?? "", Locked = e.Locked };
         switch (e.Shape)
         {
             case RectangularZone r:
@@ -160,7 +162,7 @@ public sealed class MapDraft
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry
         {
-            Name = p.Name, TerrainType = p.Rules, Shape = p.ToZone(), HeightInches = p.Height, Points = p.Points, Kind = p.Kind, Look = p.Look,
+            Name = p.Name, TerrainType = p.Rules, Shape = p.ToZone(), HeightInches = p.Height, Points = p.Points, Kind = p.Kind, Look = p.Look, Locked = p.Locked,
         }).ToList(),
         Objectives = Objectives.Select(o => new MapObjectiveEntry { X = o.X, Z = o.Z }).ToList(),
         BaseMarkers = Bases.ToList(),
@@ -231,6 +233,108 @@ public sealed class MapDraft
     }
 
     public MapPiece? PieceAt(float x, float z) => Pieces.LastOrDefault(p => p.Contains(x, z));
+
+    // ------------------------------------------------------------------ editing many pieces at once (Map Maker option A, Kai 2026-11-17)
+
+    /// <summary>Snaps to a step in inches (1, 0.5) - 0 or less = quarter inches (snap off).</summary>
+    public static float SnapTo(float v, float step) => step > 0 ? MathF.Round(v / step) * step : MathF.Round(v * 4) / 4;
+
+    /// <summary>The axis-aligned box around a piece's footprint (turned pieces included).</summary>
+    public static (float L, float T, float R, float B) Box(MapPiece p)
+    {
+        if (p.Round) return (p.X - p.W / 2, p.Z - p.W / 2, p.X + p.W / 2, p.Z + p.W / 2);
+        var c = p.Corners();
+        return (c.Min(k => k.X), c.Min(k => k.Z), c.Max(k => k.X), c.Max(k => k.Z));
+    }
+
+    /// <summary>Moves the pieces by (dx, dz); locked pieces stay. Each centre stays on the table.</summary>
+    public void MoveBy(IEnumerable<MapPiece> pieces, float dx, float dz)
+    {
+        foreach (MapPiece p in pieces.Where(p => !p.Locked)) { p.X += dx; p.Z += dz; Clamp(p); }
+    }
+
+    /// <summary>Turns the unlocked pieces together about their middle, each piece turning with the group.</summary>
+    public void RotateGroup(IList<MapPiece> pieces, float degrees)
+    {
+        var free = pieces.Where(p => !p.Locked).ToList();
+        if (free.Count == 0) return;
+        float cx = free.Average(p => p.X), cz = free.Average(p => p.Z);
+        float a = degrees * MathF.PI / 180f, c = MathF.Cos(a), s = MathF.Sin(a);
+        foreach (MapPiece p in free)
+        {
+            float dx = p.X - cx, dz = p.Z - cz;
+            p.X = cx + dx * c - dz * s;
+            p.Z = cz + dx * s + dz * c;
+            if (!p.Round && p.Raw == null) p.Angle = Wrap180(p.Angle + degrees);
+            Clamp(p);
+        }
+    }
+
+    private static float Wrap180(float a) { a %= 360f; if (a > 180) a -= 360; if (a <= -180) a += 360; return a; }
+
+    /// <summary>Copies of the pieces, a little down and to the right, added to the map. Returns the copies.</summary>
+    public List<MapPiece> Duplicate(IEnumerable<MapPiece> pieces, float offset = 3f)
+    {
+        var copies = pieces.Select(p => { var c = p.Clone(); c.X += offset; c.Z += offset; c.Locked = false; Clamp(c); return c; }).ToList();
+        Pieces.AddRange(copies);
+        return copies;
+    }
+
+    public enum EMirror { LeftRight, TopBottom, Turn180 }
+
+    /// <summary>
+    /// Mirror copies on the other side of the table: across the middle line between the long edges (top / bottom), the
+    /// short edges (left / right), or turned 180 degrees about the centre (for corner and diagonal deployments).
+    /// Returns the copies (already on the map).
+    /// </summary>
+    public List<MapPiece> MirrorCopy(IEnumerable<MapPiece> pieces, EMirror how)
+    {
+        var copies = new List<MapPiece>();
+        foreach (MapPiece p in pieces.Where(p => p.Raw == null))
+        {
+            var c = p.Clone();
+            c.Locked = false;
+            switch (how)
+            {
+                case EMirror.LeftRight: c.X = TableW - p.X; c.Angle = Wrap180(-p.Angle); break;
+                case EMirror.TopBottom: c.Z = TableH - p.Z; c.Angle = Wrap180(-p.Angle); break;
+                default: c.X = TableW - p.X; c.Z = TableH - p.Z; c.Angle = Wrap180(p.Angle + 180); break;
+            }
+            Clamp(c);
+            copies.Add(c);
+        }
+        Pieces.AddRange(copies);
+        return copies;
+    }
+
+    /// <summary>Lines the unlocked pieces up on one edge of the group: their left edges (x) or their top edges (z).</summary>
+    public void LineUp(IList<MapPiece> pieces, bool leftEdges)
+    {
+        var free = pieces.Where(p => !p.Locked).ToList();
+        if (free.Count < 2) return;
+        float edge = leftEdges ? pieces.Min(p => Box(p).L) : pieces.Min(p => Box(p).T);
+        foreach (MapPiece p in free)
+        {
+            var b = Box(p);
+            if (leftEdges) p.X += edge - b.L; else p.Z += edge - b.T;
+            Clamp(p);
+        }
+    }
+
+    /// <summary>Spreads the pieces evenly between the outer two, along whichever way the group is longer.</summary>
+    public void SpreadEvenly(IList<MapPiece> pieces)
+    {
+        if (pieces.Count < 3) return;
+        bool alongX = pieces.Max(p => p.X) - pieces.Min(p => p.X) >= pieces.Max(p => p.Z) - pieces.Min(p => p.Z);
+        var order = pieces.OrderBy(p => alongX ? p.X : p.Z).ToList();
+        float a = alongX ? order[0].X : order[0].Z, b = alongX ? order[^1].X : order[^1].Z;
+        for (int i = 1; i < order.Count - 1; i++)
+        {
+            if (order[i].Locked) continue;
+            float v = a + (b - a) * i / (order.Count - 1);
+            if (alongX) order[i].X = v; else order[i].Z = v;
+        }
+    }
 
     public int ObjectiveAt(float x, float z) => Objectives.FindIndex(o => (o.X - x) * (o.X - x) + (o.Z - z) * (o.Z - z) <= 1.5f * 1.5f);
 

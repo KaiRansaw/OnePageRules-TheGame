@@ -24,7 +24,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 {
     public MapDraft Draft { get; set; } = MapDraft.New(72, 48);
 
-    private enum ETool { Select, Place, Objective, Base }
+    // Map Maker option A (Kai, 2026-11-17): Box select and Measure join the tools, on a rail beside the table.
+    private enum ETool { Select, BoxSelect, Place, Objective, Base, Measure }
 
     private ETool _tool = ETool.Select;
     private TerrainBook.PieceKind _kind = TerrainBook.Kinds[1];
@@ -33,10 +34,30 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private int _modelSet = -1;
     private string _modelKind = "";
     private int _baseSize = 32;
-    private MapPiece? _sel;
+    // Every selected piece (box select, Shift+click). _sel is the one piece when exactly one is picked - the single
+    // piece panel, the corner handles and the name label only apply then.
+    private readonly List<MapPiece> _picked = new();
+    private MapPiece? _sel
+    {
+        get => _picked.Count == 1 ? _picked[0] : null;
+        set { _picked.Clear(); if (value != null) _picked.Add(value); }
+    }
     private int _selObjective = -1;
-    private MapPiece? _clipboard;
-    private bool _rulesView, _snap = true, _topView;
+    private List<MapPiece> _clipboard = new();
+    private bool _rulesView, _topView, _grid;
+    // Snap step in inches: 1, 0.5, or 0 = off (quarter inches).
+    private float _snapStep = 1f;
+    private MapDraft.EMirror _mirror = MapDraft.EMirror.TopBottom;
+    // Box select: where the drag started (screen), whether Shift adds to the selection, and the drawn rectangle.
+    private Vector2? _boxFrom;
+    private bool _boxAdd;
+    private Panel _boxRect = null!;
+    // Measure: the two ends of the ruler, in table inches.
+    private Vector2? _measureA, _measureB;
+    // Group drag: where the pointer went down, and where each picked piece started.
+    private Vector2 _dragStart;
+    private List<(MapPiece P, float X, float Z)> _dragFrom = new();
+    private VBoxContainer _rail = null!;
     private EGameSystem _checkFor;
 
     private Node3D _world = null!, _board = null!, _pieces = null!, _marks = null!, _dressed = null!;
@@ -108,6 +129,13 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         leftPanel.OffsetLeft = 16; leftPanel.OffsetTop = 92; leftPanel.OffsetBottom = -48; leftPanel.OffsetRight = 16 + 290;
         hud.AddChild(leftPanel);
 
+        _rail = new VBoxContainer();
+        _rail.AddThemeConstantOverride("separation", 6);
+        var railPanel = HudKit.Panel(HudKit.PanelBox(10), HudKit.Pad(_rail, 6, 8, 6, 8));
+        railPanel.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
+        railPanel.OffsetLeft = 16 + 290 + 8; railPanel.OffsetTop = 92;
+        hud.AddChild(railPanel);
+
         _right = new VBoxContainer();
         _right.AddThemeConstantOverride("separation", 6);
         var rs = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -124,7 +152,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _status.HorizontalAlignment = HorizontalAlignment.Center;
         _status.MouseFilter = MouseFilterEnum.Ignore;
         hud.AddChild(_status);
-        var keys = HudKit.Text("Click to place - drag to move - Q / E turn (Shift: 5) - corner handles resize - Del removes - Ctrl+Z undo - right-drag turns the camera - T top view", 12, HudKit.Dim, HudKit.Semi);
+        _boxRect = new Panel { Visible = false, MouseFilter = MouseFilterEnum.Ignore, Name = "BoxSelectRect" };
+        _boxRect.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = HudKit.Lime with { A = 0.10f }, BorderColor = HudKit.Lime, BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2 });
+        hud.AddChild(_boxRect);
+        var keys = HudKit.Text("Box-drag to select many - Shift+click adds - drag to move - Ctrl+D duplicate - R rotate 90 - Q / E turn (Shift: 5) - L lock - M measure - Del removes - Ctrl+Z / Y undo / redo - right-drag turns the camera - T top view", 12, HudKit.Dim, HudKit.Semi);
         keys.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
         keys.OffsetLeft = 330; keys.OffsetRight = -350; keys.OffsetTop = -18; keys.OffsetBottom = -2;
         keys.HorizontalAlignment = HorizontalAlignment.Center;
@@ -173,6 +204,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void Rebuild()
     {
         TopBar();
+        ToolRail();
         LeftPanel();
         RightPanel();
         Sync3D();
@@ -184,8 +216,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     {
         Clear(_top);
         _top.AddChild(Ui.Button("Back", App.I.Back, "Back to the map list (asks if there are unsaved changes).", "BackButton").Also(b => { b.Name = "Back"; b.CustomMinimumSize = new Vector2(100, 40); }));
-        _top.AddChild(HudKit.Text("MAP MAKER", 22, HudKit.Fg, HudKit.Exo(800)).Also(l => l.SizeFlagsVertical = SizeFlags.ShrinkCenter));
-        _name = new LineEdit { Name = "MapName", Text = Draft.Name, CustomMinimumSize = new Vector2(240, 0), MaxLength = 48, PlaceholderText = "map name", TooltipText = "The map's name (plain letters)." };
+        // (No "MAP MAKER" title since option A's extra buttons: the bar needs the room, and the screen says what it is.)
+        _name = new LineEdit { Name = "MapName", Text = Draft.Name, CustomMinimumSize = new Vector2(220, 0), MaxLength = 48, PlaceholderText = "map name", TooltipText = "The map's name (plain letters)." };
         _name.TextChanged += t => Draft.Name = t;
         _top.AddChild(_name);
         var sizes = TableSizing.Sizes.ToList();
@@ -219,7 +251,65 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             : $"{GameSystemInfo.DisplayName(_checkFor)}'s book has no terrain generator - pick a game that has one under Book check.").Also(b => { b.Name = "Generate"; b.Disabled = !TerrainBook.HasGenerator(_checkFor); }));
         _top.AddChild(Ui.Button("Undo", () => { if (Draft.Undo()) AfterUndo(); }, "Undo (Ctrl+Z).").Also(b => b.Disabled = !Draft.CanUndo));
         _top.AddChild(Ui.Button("Redo", () => { if (Draft.Redo()) AfterUndo(); }, "Redo (Ctrl+Y).").Also(b => b.Disabled = !Draft.CanRedo));
+        _top.AddChild(Ui.Button("Copy", CopyPicked, "Copy the selected pieces (Ctrl+C).").Also(b => { b.Name = "CopyPieces"; b.Disabled = _picked.Count == 0; }));
+        _top.AddChild(Ui.Button("Paste", Paste, "Paste the copied pieces, a little down and right (Ctrl+V).").Also(b => { b.Name = "PastePieces"; b.Disabled = _clipboard.Count == 0; }));
+        _top.AddChild(Ui.Button("Duplicate", DuplicatePicked, "Copy and paste the selected pieces in one go (Ctrl+D).").Also(b => { b.Name = "DuplicatePieces"; b.Disabled = _picked.Count == 0; }));
+        _top.AddChild(SnapButton(1f, "Snap 1\"", "Moves and sizes land on whole inches. Click again for no snap."));
+        _top.AddChild(SnapButton(0.5f, "Snap 1/2\"", "Moves and sizes land on half inches. Click again for no snap."));
+        var grid = new Button { Name = "Grid", Text = "Grid 6\"", ToggleMode = true, ButtonPressed = _grid, FocusMode = FocusModeEnum.None,
+            TooltipText = "Faint lines every 6\" on the table, to judge gaps and distances. Editor only." };
+        grid.Toggled += on => { _grid = on; Sync3D(); };
+        _top.AddChild(grid);
         _top.AddChild(Ui.Button("SAVE MAP", SaveMap, Draft.SaveProblem() ?? "Save the map to your Maps folder.", "CommitButton").Also(b => { b.Name = "SaveMap"; b.CustomMinimumSize = new Vector2(150, 40); }));
+    }
+
+    private Button SnapButton(float step, string text, string tip)
+    {
+        var b = new Button { Name = step == 1f ? "Snap1" : "SnapHalf", Text = text, ToggleMode = true, ButtonPressed = _snapStep == step, FocusMode = FocusModeEnum.None, TooltipText = tip };
+        b.Pressed += () =>
+        {
+            _snapStep = _snapStep == step ? 0f : step;
+            Say(_snapStep == 0 ? "Snap off - pieces move in quarter inches." : $"Snapping to {(_snapStep == 1 ? "1\"" : "1/2\"")}.");
+            TopBar();
+        };
+        return b;
+    }
+
+    private float Snap(float v) => MapDraft.SnapTo(v, _snapStep);
+
+    // ================================================================== the tool rail (option A)
+
+    private void ToolRail()
+    {
+        Clear(_rail);
+        void Add(ETool t, string text, string tip, Action? pick = null)
+        {
+            var b = new Button { Name = "Tool" + t, Text = text, ToggleMode = true, ButtonPressed = _tool == t, FocusMode = FocusModeEnum.None, TooltipText = tip, CustomMinimumSize = new Vector2(96, 38) };
+            b.Pressed += pick ?? (() => SetTool(t));
+            _rail.AddChild(b);
+        }
+        Add(ETool.Select, "Select", "Click a piece to pick it, drag to move it. Shift+click adds or removes a piece; drag an empty spot to box-select.");
+        Add(ETool.BoxSelect, "Box select", "Drag a box: every piece whose middle is inside gets selected (Shift: add to what's selected).");
+        Add(ETool.Place, "Place", "Place the piece picked on the left - click the table. Right-click stops.", () => { SetTool(ETool.Place); Say(_model != null ? $"Placing {_model.Name} - click the table." : $"Placing {_kind.Name} - click the table. Pick another on the left."); });
+        Add(ETool.Objective, "Objective", "Fixed objective markers. With none, the game rolls D3+2 and places them the usual way.");
+        Add(ETool.Base, "Size base", "A model base, only to check a unit fits through a gap. The game ignores these.");
+        Add(ETool.Measure, "Measure", "Drag on the table to measure in inches (M). Editor only.");
+    }
+
+    private void SetTool(ETool t)
+    {
+        _tool = t;
+        if (t != ETool.Measure) { _measureA = _measureB = null; }
+        if (t is ETool.Place or ETool.Objective or ETool.Base) { _picked.Clear(); _selObjective = -1; }
+        Say(t switch
+        {
+            ETool.BoxSelect => "Drag a box over the pieces to select them. Shift adds to the selection.",
+            ETool.Objective => "Click the table to place objective markers. Right-click to stop.",
+            ETool.Base => "Click the table to drop a size base. Right-click to stop.",
+            ETool.Measure => "Drag on the table to measure. Right-click to stop.",
+            _ => "",
+        });
+        Rebuild();
     }
 
     private void AfterUndo()
@@ -252,10 +342,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         also.AddThemeConstantOverride("separation", 5);
         also.AddChild(new Button { Name = "ToolObjective", Text = "Objective", ToggleMode = true, ButtonPressed = _tool == ETool.Objective, FocusMode = FocusModeEnum.None,
             TooltipText = "Fixed objective markers. With none, the game rolls D3+2 and places them the usual way." }
-            .Also(b => b.Pressed += () => { _tool = ETool.Objective; _sel = null; Say("Click the table to place objective markers. Right-click to stop."); Rebuild(); }));
+            .Also(b => b.Pressed += () => SetTool(ETool.Objective)));
         also.AddChild(new Button { Name = "ToolBase", Text = "Size base", ToggleMode = true, ButtonPressed = _tool == ETool.Base, FocusMode = FocusModeEnum.None,
             TooltipText = "A model base, only to check a unit fits through a gap. The game ignores these." }
-            .Also(b => b.Pressed += () => { _tool = ETool.Base; _sel = null; Say("Click the table to drop a size base. Right-click to stop."); Rebuild(); }));
+            .Also(b => b.Pressed += () => SetTool(ETool.Base)));
         var bs = new OptionButton { TooltipText = "Base size for the next size base." };
         int[] sizes = { 25, 32, 40, 50, 60 };
         foreach (int s in sizes) bs.AddItem($"{s}mm");
@@ -463,9 +553,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void RightPanel()
     {
         Clear(_right);
+        if (_picked.Count > 1)
+        {
+            GroupPanel();
+            return;
+        }
         if (_sel is { } p)
         {
             _right.AddChild(HudKit.Heading("Selected piece", 13));
+            if (p.Locked) _right.AddChild(ForgeWidgets.Wrapped("Locked - it can't be dragged, turned or resized. L unlocks it.", 12, LockColour));
             var name = new LineEdit { Name = "PieceName", Text = p.Name, MaxLength = 40, TooltipText = "What the piece is called in the game (plain letters)." };
             name.TextSubmitted += t => { Draft.Remember(); p.Name = t.Trim(); Rebuild(); };
             name.FocusExited += () => { if (name.Text.Trim() != p.Name) { Draft.Remember(); p.Name = name.Text.Trim(); Sync3D(); } };
@@ -525,11 +621,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 cb.Toggled += on => { Draft.Remember(); p.Rules = on ? p.Rules | f : p.Rules & ~f; Rebuild(); };
                 _right.AddChild(cb);
             }
-            var row = new HBoxContainer();
-            row.AddThemeConstantOverride("separation", 6);
-            row.AddChild(Ui.Button("Copy", () => { _clipboard = p.Clone(); Paste(); }, "Copy the piece (Ctrl+C, Ctrl+V)."));
-            row.AddChild(Ui.Button("Delete", DeleteSelected, "Remove the piece (Del).", "BackButton").Also(b => b.Name = "DeletePiece"));
-            _right.AddChild(row);
+            _right.AddChild(HudKit.Heading("Do", 13));
+            GroupActions(false);
         }
         else if (_selObjective >= 0 && _selObjective < Draft.Objectives.Count)
         {
@@ -542,10 +635,127 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         {
             _right.AddChild(HudKit.Heading("Selected", 13));
             _right.AddChild(ForgeWidgets.Wrapped("Click a piece on the table to change it, or pick a piece on the left to place one.", 14, HudKit.Dim));
-            var snap = new CheckBox { Name = "Snap", Text = "Snap to 1\"", ButtonPressed = _snap, FocusMode = FocusModeEnum.None, TooltipText = "Positions and sizes land on whole inches." };
-            snap.Toggled += on => _snap = on;
-            _right.AddChild(snap);
+            _right.AddChild(ForgeWidgets.Wrapped("To change many at once: drag a box over them (or Box select), or Shift+click each one. Ctrl+A selects every piece.", 13, HudKit.Dim));
+            if (_tool == ETool.Measure && _measureA is { } a && _measureB is { } b)
+                _right.AddChild(HudKit.Text($"Measured: {a.DistanceTo(b):0.0}\"", 16, HudKit.Lime, HudKit.Semi).Also(l => l.Name = "MeasureReadout"));
         }
+    }
+
+    private static readonly Color LockColour = new(1f, 0.62f, 0.25f);
+
+    /// <summary>Option A's right panel for several pieces: what they are, and what can be done to them together.</summary>
+    private void GroupPanel()
+    {
+        int n = _picked.Count, locked = _picked.Count(p => p.Locked);
+        _right.AddChild(HudKit.Heading($"{n} pieces selected", 13).Also(h => h.Name = "GroupHeading"));
+        _right.AddChild(ForgeWidgets.Wrapped("Drag any of them to move them all. Shift+click adds or removes a piece; drag an empty spot to box-select.", 13, HudKit.Dim));
+        if (locked > 0) _right.AddChild(ForgeWidgets.Wrapped($"{locked} of them locked - those stay put.", 12, LockColour));
+        // What's in the selection, by name ("Ruins x2, Forest").
+        string what = string.Join(", ", _picked.GroupBy(p => p.Name.Length > 0 ? p.Name : p.Kind).Select(g => g.Count() > 1 ? $"{g.Key} x{g.Count()}" : g.Key));
+        _right.AddChild(ForgeWidgets.Wrapped(what, 13, HudKit.Fg));
+        GroupActions(true);
+    }
+
+    /// <summary>The buttons that act on every picked piece (one piece gets the same ones, minus the group-only ones).</summary>
+    private void GroupActions(bool many)
+    {
+        int n = _picked.Count;
+        Button Wide(string name, string text, Action act, string tip, string? variation = null)
+        {
+            var b = Ui.Button(text, act, tip, variation);
+            b.Name = name;
+            b.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            _right.AddChild(b);
+            return b;
+        }
+        Wide("Rotate90", many ? "Rotate 90 together (R)" : "Rotate 90 (R)", () => RotatePicked(90), "Turn them a quarter turn about their middle, keeping how they sit to each other.");
+        Wide("Duplicate", "Duplicate (Ctrl+D)", DuplicatePicked, "A copy, a little down and to the right, selected so you can drag it.");
+        Wide("MirrorCopy", "Mirror copy", MirrorPicked, "A mirror-image copy on the other side of the table, so both players get the same terrain.");
+        var how = new OptionButton { Name = "MirrorHow", TooltipText = "Which way the mirror copy goes." };
+        // In MapDraft.EMirror's order.
+        how.AddItem("left / right");
+        how.AddItem("top / bottom");
+        how.AddItem("corner to corner");
+        how.Selected = (int)_mirror;
+        how.ItemSelected += i => _mirror = (MapDraft.EMirror)(int)i;
+        _right.AddChild(Row("Mirror", how));
+        if (many)
+        {
+            Wide("LineUpLeft", "Line up: left edges", () => GroupDo(ps => Draft.LineUp(ps, true)), "Slide them sideways so their left edges line up with the leftmost one.");
+            Wide("LineUpTop", "Line up: top edges", () => GroupDo(ps => Draft.LineUp(ps, false)), "Slide them up or down so their top edges line up with the highest one.");
+            Wide("Spread", "Spread evenly", () => GroupDo(ps => Draft.SpreadEvenly(ps)), "Even gaps between them, between the two outermost (needs 3 or more).").Disabled = n < 3;
+        }
+        bool anyFree = _picked.Any(p => !p.Locked);
+        Wide("Lock", anyFree ? "Lock (L)" : "Unlock (L)", ToggleLock, "A locked piece can still be selected and edited here, but not dragged, turned or resized on the table. Saved with the map.");
+        _right.AddChild(HudKit.Heading("Rotate", 13));
+        var turn = new HBoxContainer();
+        turn.AddThemeConstantOverride("separation", 5);
+        foreach (int d in new[] { -15, -5, 5, 15 })
+        {
+            int deg = d;
+            turn.AddChild(Ui.Button(d > 0 ? $"+{d}" : d.ToString(), () => RotatePicked(deg), $"Turn {Math.Abs(d)} deg (Q / E, Shift for 5).").Also(b => { b.Name = "Turn" + (d < 0 ? "M" : "P") + Math.Abs(d); b.SizeFlagsHorizontal = SizeFlags.ExpandFill; }));
+        }
+        _right.AddChild(turn);
+        Wide("DeletePiece", many ? $"Delete all {n}" : "Delete", DeleteSelected, "Remove them (Del). Locked pieces are kept.", "BackButton");
+    }
+
+    private void GroupDo(Action<List<MapPiece>> act)
+    {
+        if (_picked.All(p => p.Locked)) { Say("They're all locked - L unlocks them.", LockColour); return; }
+        Draft.Remember();
+        act(_picked);
+        Rebuild();
+    }
+
+    private void RotatePicked(float degrees)
+    {
+        if (_picked.Count == 0) return;
+        if (_picked.All(p => p.Locked)) { Say("Locked - L unlocks it.", LockColour); return; }
+        Draft.Remember();
+        Draft.RotateGroup(_picked, degrees);
+        Rebuild();
+    }
+
+    private void CopyPicked()
+    {
+        if (_picked.Count == 0) return;
+        _clipboard = _picked.Select(p => p.Clone()).ToList();
+        Say(_picked.Count == 1 ? "Copied." : $"Copied {_picked.Count} pieces.");
+        TopBar();
+    }
+
+    private void DuplicatePicked()
+    {
+        if (_picked.Count == 0) return;
+        Draft.Remember();
+        var copies = Draft.Duplicate(_picked);
+        _picked.Clear();
+        _picked.AddRange(copies);
+        _selObjective = -1;
+        Say(copies.Count == 1 ? "Duplicated - drag the copy where you want it." : $"Duplicated {copies.Count} pieces - drag them where you want them.");
+        Rebuild();
+    }
+
+    private void MirrorPicked()
+    {
+        if (_picked.Count == 0) return;
+        Draft.Remember();
+        var copies = Draft.MirrorCopy(_picked, _mirror);
+        if (copies.Count == 0) { Say("That piece is an old multi-part shape the editor can't mirror."); return; }
+        _picked.Clear();
+        _picked.AddRange(copies);
+        Say($"{copies.Count} mirror cop{(copies.Count == 1 ? "y" : "ies")} placed on the other side - now selected.", Palette.Lime);
+        Rebuild();
+    }
+
+    private void ToggleLock()
+    {
+        if (_picked.Count == 0) return;
+        bool lockThem = _picked.Any(p => !p.Locked);
+        Draft.Remember();
+        foreach (MapPiece p in _picked) p.Locked = lockThem;
+        Say(lockThem ? "Locked - they can't be dragged, turned or resized by accident." : "Unlocked.", lockThem ? LockColour : null);
+        Rebuild();
     }
 
     private static Control Row(string label, Control c)
@@ -568,7 +778,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void AskClear()
     {
         var dlg = new ConfirmationDialog { Title = "Clear the table?", DialogText = "Remove every piece, objective and size base? (Undo brings them back.)", OkButtonText = "Clear" };
-        dlg.Confirmed += () => { Draft.Remember(); Draft.Pieces.Clear(); Draft.Objectives.Clear(); Draft.Bases.Clear(); _sel = null; _selObjective = -1; Rebuild(); dlg.QueueFree(); };
+        dlg.Confirmed += () => { Draft.Remember(); Draft.Pieces.Clear(); Draft.Objectives.Clear(); Draft.Bases.Clear(); _picked.Clear(); _selObjective = -1; Rebuild(); dlg.QueueFree(); };
         dlg.Canceled += () => dlg.QueueFree();
         AddChild(dlg);
         dlg.PopupCentered();
@@ -623,21 +833,28 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     private void DeleteSelected()
     {
-        if (_sel is { } p) { Draft.Remember(); Draft.Pieces.Remove(p); _sel = null; }
+        if (_picked.Count > 0)
+        {
+            var gone = _picked.Where(p => !p.Locked).ToList();
+            int kept = _picked.Count - gone.Count;
+            if (gone.Count > 0) { Draft.Remember(); foreach (MapPiece p in gone) Draft.Pieces.Remove(p); }
+            _picked.RemoveAll(p => !p.Locked);
+            if (kept > 0) Say($"{kept} locked piece{(kept == 1 ? " was" : "s were")} kept - unlock with L to delete.", LockColour);
+        }
         else if (_selObjective >= 0) { Draft.Remember(); Draft.Objectives.RemoveAt(_selObjective); _selObjective = -1; }
         Rebuild();
     }
 
     private void Paste()
     {
-        if (_clipboard == null) return;
+        if (_clipboard.Count == 0) return;
         Draft.Remember();
-        var p = _clipboard.Clone();
-        p.X += 3; p.Z += 3;
-        Draft.Clamp(p);
-        Draft.Pieces.Add(p);
-        _sel = p;
-        _clipboard = p.Clone();
+        // Each paste lands 3" further on, so pasting twice doesn't stack copies on top of each other.
+        var copies = Draft.Duplicate(_clipboard);
+        _clipboard = copies.Select(c => c.Clone()).ToList();
+        _picked.Clear();
+        _picked.AddRange(copies);
+        _selObjective = -1;
         Rebuild();
     }
 
@@ -674,7 +891,39 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             _marks.AddChild(at);
             TableLook.AddBase(at, b.Base.DiameterInches / 2, new Color(0.6f, 0.7f, 0.75f));
         }
+        if (_grid) DrawGrid();
+        if (_measureA is { } ma && _measureB is { } mb) DrawRuler(ma, mb);
         UpdateGhost(GetViewport().GetMousePosition());
+    }
+
+    /// <summary>Faint lines every 6" (the Grid 6" toggle), plus the table's middle lines a little brighter.</summary>
+    private void DrawGrid()
+    {
+        var faint = TableLook.Mat(new Color(1, 1, 1, 0.16f), 0.8f);
+        var mid = TableLook.Mat(new Color(1, 1, 1, 0.32f), 0.8f);
+        for (float x = 6; x < W - 0.01f; x += 6)
+            TableLook.Mesh(_marks, new BoxMesh { Size = new Vector3(0.06f, 0.01f, D) }, Mathf.Abs(x - W / 2) < 0.01f ? mid : faint, World(x, D / 2, 0.025f));
+        for (float z = 6; z < D - 0.01f; z += 6)
+            TableLook.Mesh(_marks, new BoxMesh { Size = new Vector3(W, 0.01f, 0.06f) }, Mathf.Abs(z - D / 2) < 0.01f ? mid : faint, World(W / 2, z, 0.025f));
+    }
+
+    /// <summary>The Measure tool's ruler: a line between the two ends, and the distance in inches above its middle.</summary>
+    private void DrawRuler(Vector2 a, Vector2 b)
+    {
+        Color c = HudKit.Lime;
+        var mat = TableLook.Mat(c, 0.4f, c, 1.4f);
+        float len = a.DistanceTo(b);
+        Vector3 pa = World(a.X, a.Y, 0.15f), pb = World(b.X, b.Y, 0.15f);
+        TableLook.Mesh(_marks, new SphereMesh { Radius = 0.3f, Height = 0.6f }, mat, pa);
+        TableLook.Mesh(_marks, new SphereMesh { Radius = 0.3f, Height = 0.6f }, mat, pb);
+        if (len > 0.05f)
+        {
+            var line = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.12f, 0.06f, len) }, MaterialOverride = mat };
+            _marks.AddChild(line);
+            line.Position = (pa + pb) / 2;
+            line.LookAt(pb, Vector3.Up);
+        }
+        _marks.AddChild(new Label3D { Text = $"{len:0.0}\"", FontSize = 72, PixelSize = 0.014f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = (pa + pb) / 2 + new Vector3(0, 1.3f, 0), NoDepthTest = true, Modulate = c, OutlineSize = 12 });
     }
 
     /// <summary>The look style the editor shows: the Book check game's (Grimdark Future games sci-fi, Age of Fantasy
@@ -705,7 +954,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     private void DrawPiece(MapPiece p)
     {
-        bool sel = p == _sel;
+        bool sel = _picked.Contains(p);
         Color c = BattleTable.TerrainColour(p.Rules);
         var root = new Node3D { Position = World(p.X, p.Z), RotationDegrees = new Vector3(0, -p.Angle, 0) };
         _pieces.AddChild(root);
@@ -728,7 +977,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             root.AddChild(new Label3D { Text = p.Name, FontSize = 40, PixelSize = 0.01f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, h + 0.8f, 0), Modulate = new Color(1, 1, 1, 0.85f) });
         }
         // The exact footprint: a thin outline on the felt (lime when selected).
-        Color edge = sel ? HudKit.Lime : new Color(1, 1, 1, 0.35f);
+        // Locked pieces are always outlined in amber, so you can see which ones won't move.
+        Color edge = p.Locked ? (sel ? LockColour : LockColour with { A = 0.6f }) : sel ? HudKit.Lime : new Color(1, 1, 1, 0.35f);
         if (p.Round)
             TableLook.Mesh(root, new TorusMesh { InnerRadius = p.W / 2 - 0.06f, OuterRadius = p.W / 2 + 0.06f, Rings = 64 }, TableLook.Mat(edge, 0.5f, edge, sel ? 1.5f : 0.2f), new Vector3(0, 0.03f, 0));
         else
@@ -740,7 +990,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 bool alongX = Mathf.Abs(k[a].Y - k[b].Y) < 0.01f;
                 TableLook.Mesh(root, new BoxMesh { Size = alongX ? new Vector3(len, 0.04f, 0.12f) : new Vector3(0.12f, 0.04f, len) }, TableLook.Mat(edge, 0.5f, edge, sel ? 1.5f : 0.2f), new Vector3(mid.X, 0.03f, -mid.Y));
             }
-        if (sel && p.Raw == null)
+        if (p.Locked)
+            root.AddChild(new Label3D { Text = "LOCKED", FontSize = 64, PixelSize = 0.025f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, Mathf.Max(0.15f, p.Height) + 0.5f, 0), NoDepthTest = true, Modulate = LockColour, OutlineSize = 10 });
+        if (p == _sel && p.Raw == null && !p.Locked)
             foreach (var (x, z) in p.Corners())
                 TableLook.Mesh(_marks, new SphereMesh { Radius = 0.45f, Height = 0.9f }, TableLook.Mat(HudKit.Lime, 0.3f, HudKit.Lime, 1.5f), World(x, z, 0.4f));
     }
@@ -760,7 +1012,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         else
             _ghost.Mesh = _kind.Round ? new CylinderMesh { TopRadius = _kind.Width / 2, BottomRadius = _kind.Width / 2, Height = h } : new BoxMesh { Size = new Vector3(_kind.Width, h, _kind.Depth) };
         _ghost.MaterialOverride = TableLook.Mat(HudKit.Lime with { A = 0.35f }, 0.5f, HudKit.Lime, 0.4f);
-        _ghost.Position = World(MapDraft.SnapInch(at.X, _snap), MapDraft.SnapInch(at.Y, _snap), h / 2);
+        _ghost.Position = World(Snap(at.X), Snap(at.Y), h / 2);
     }
 
     // ================================================================== camera
@@ -799,8 +1051,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         Vector2 dir = Vector2.Zero;
         if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) dir.Y -= 1;
         if (Input.IsKeyPressed(Key.S) && !Input.IsKeyPressed(Key.Ctrl) || Input.IsKeyPressed(Key.Down)) dir.Y += 1;
-        if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) dir.X -= 1;
-        if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) dir.X += 1;
+        if (Input.IsKeyPressed(Key.A) && !Input.IsKeyPressed(Key.Ctrl) || Input.IsKeyPressed(Key.Left)) dir.X -= 1;
+        if (Input.IsKeyPressed(Key.D) && !Input.IsKeyPressed(Key.Ctrl) || Input.IsKeyPressed(Key.Right)) dir.X += 1;
         if (dir == Vector2.Zero) return;
         Vector3 right = new Vector3(1, 0, 0).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         Vector3 fwd = new Vector3(0, 0, 1).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
@@ -834,8 +1086,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } mb:
                 _dragPan = mb.Pressed ? mb.Position : null; break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
-                if (mb.Pressed) LeftDown(mb.Position);
-                else { _dragging = false; _resizeCorner = -1; if (_selObjective >= 0 || _sel != null) Rebuild(); }
+                if (mb.Pressed) LeftDown(mb.Position, mb.ShiftPressed);
+                else if (_boxFrom != null) FinishBox(mb.Position);
+                else { bool was = _dragging; _dragging = false; _resizeCorner = -1; if (was || _selObjective >= 0 || _picked.Count > 0) Rebuild(); }
+                break;
+            case InputEventMouseMotion mm when _boxFrom != null:
+                UpdateBox(mm.Position);
                 break;
             case InputEventMouseMotion mm when _dragRotate is { } r:
                 _yaw -= (mm.Position.X - r.X) * 0.3f;
@@ -863,10 +1119,22 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     private Vector2 _rightDown;
 
-    private void LeftDown(Vector2 screen)
+    private void LeftDown(Vector2 screen, bool shift)
     {
-        if (TableAt(screen) is not { } at) return;
-        float x = MapDraft.SnapInch(at.X, _snap), z = MapDraft.SnapInch(at.Y, _snap);
+        if (_tool == ETool.BoxSelect) { StartBox(screen, shift); return; }
+        if (TableAt(screen) is not { } at)
+        {
+            if (_tool == ETool.Select) StartBox(screen, shift);
+            return;
+        }
+        if (_tool == ETool.Measure)
+        {
+            _measureA = _measureB = at;
+            _dragging = true;
+            Sync3D();
+            return;
+        }
+        float x = Snap(at.X), z = Snap(at.Y);
         switch (_tool)
         {
             case ETool.Place:
@@ -888,8 +1156,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 Rebuild();
                 return;
         }
-        // Select: a corner handle of the selected piece first, then an objective, then a piece.
-        if (_sel is { Raw: null } s)
+        // Select: a corner handle of the selected piece first, then an objective, then a piece, else a box select.
+        if (!shift && _sel is { Raw: null, Locked: false } s)
         {
             var corners = s.Corners();
             for (int i = 0; i < corners.Length; i++)
@@ -912,13 +1180,68 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             return;
         }
         _selObjective = -1;
-        _sel = Draft.PieceAt(at.X, at.Y);
-        if (_sel != null)
+        MapPiece? hit = Draft.PieceAt(at.X, at.Y);
+        if (hit == null)
+        {
+            if (!shift) _picked.Clear();
+            Rebuild();
+            StartBox(screen, shift);
+            return;
+        }
+        if (shift)
+        {
+            if (!_picked.Remove(hit)) _picked.Add(hit);
+            Rebuild();
+            return;
+        }
+        if (!_picked.Contains(hit)) _sel = hit;
+        if (_picked.Any(p => !p.Locked))
         {
             Draft.Remember();
             _dragging = true;
-            _dragOffset = new Vector2(_sel.X, _sel.Z) - at;
+            _dragStart = at;
+            _dragOffset = new Vector2(hit.X, hit.Z) - at;
+            _dragFrom = _picked.Select(p => (p, p.X, p.Z)).ToList();
         }
+        else Say("Locked - it can't be dragged. L unlocks it.", LockColour);
+        Rebuild();
+    }
+
+    // ------------------------------------------------------------------ box select
+
+    private void StartBox(Vector2 screen, bool add)
+    {
+        _boxFrom = screen;
+        _boxAdd = add;
+        UpdateBox(screen);
+        _boxRect.Visible = true;
+    }
+
+    private void UpdateBox(Vector2 screen)
+    {
+        if (_boxFrom is not { } a) return;
+        var r = new Rect2(a, Vector2.Zero).Expand(screen);
+        _boxRect.Position = r.Position;
+        _boxRect.Size = r.Size;
+    }
+
+    /// <summary>Selects every piece whose middle is inside the dragged box, as seen from the camera.</summary>
+    private void FinishBox(Vector2 screen)
+    {
+        if (_boxFrom is not { } a) return;
+        _boxFrom = null;
+        _boxRect.Visible = false;
+        var r = new Rect2(a, Vector2.Zero).Expand(screen);
+        if (r.Size.X < 4 && r.Size.Y < 4) { Rebuild(); return; }
+        if (!_boxAdd) _picked.Clear();
+        _selObjective = -1;
+        foreach (MapPiece p in Draft.Pieces)
+        {
+            Vector3 w = World(p.X, p.Z);
+            if (_camera.IsPositionBehind(w) || !r.HasPoint(_camera.UnprojectPosition(w)) || _picked.Contains(p)) continue;
+            _picked.Add(p);
+        }
+        Say(_picked.Count == 0 ? "Nothing in the box." : _picked.Count == 1 ? "1 piece selected." : $"{_picked.Count} pieces selected.");
         Rebuild();
     }
 
@@ -927,30 +1250,50 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         if (TableAt(screen) is not { } at) return;
         if (_selObjective >= 0 && _selObjective < Draft.Objectives.Count)
         {
-            Draft.Objectives[_selObjective] = (MapDraft.SnapInch(at.X, _snap), MapDraft.SnapInch(at.Y, _snap));
+            Draft.Objectives[_selObjective] = (Snap(at.X), Snap(at.Y));
             Sync3D();
             return;
         }
-        if (_sel is not { } p) return;
-        if (_resizeCorner >= 0)
+        if (_tool == ETool.Measure)
+        {
+            _measureB = at;
+            Say($"{_measureA!.Value.DistanceTo(at):0.0}\" - drag again to measure something else. Right-click to stop.", HudKit.Lime);
+            Sync3D();
+            return;
+        }
+        if (_resizeCorner >= 0 && _sel is { } p)
         {
             // The corner follows the pointer; the opposite corner stays put.
             float a = p.Angle * Mathf.Pi / 180f, c = Mathf.Cos(a), s = Mathf.Sin(a);
             var opp = p.Corners()[(_resizeCorner + 2) % 4];
             float dx = at.X - opp.X, dz = at.Y - opp.Z;
             float lx = dx * c + dz * s, lz = -dx * s + dz * c;
-            float w = Mathf.Max(1, MapDraft.SnapInch(Mathf.Abs(lx), _snap)), d = Mathf.Max(1, MapDraft.SnapInch(Mathf.Abs(lz), _snap));
+            float w = Mathf.Max(1, Snap(Mathf.Abs(lx))), d = Mathf.Max(1, Snap(Mathf.Abs(lz)));
             if (p.Round) { w = d = Mathf.Max(w, d); }
             float mx = Mathf.Sign(lx == 0 ? 1 : lx) * w / 2, mz = Mathf.Sign(lz == 0 ? 1 : lz) * d / 2;
             p.W = w; p.D = d;
             p.X = opp.X + mx * c - mz * s;
             p.Z = opp.Z + mx * s + mz * c;
         }
+        else if (_dragFrom.Count == 1)
+        {
+            // One piece: its middle lands on the snap.
+            var (one, _, _) = _dragFrom[0];
+            if (one.Locked) return;
+            one.X = Snap(at.X + _dragOffset.X);
+            one.Z = Snap(at.Y + _dragOffset.Y);
+            Draft.Clamp(one);
+        }
         else
         {
-            p.X = MapDraft.SnapInch(at.X + _dragOffset.X, _snap);
-            p.Z = MapDraft.SnapInch(at.Y + _dragOffset.Y, _snap);
-            Draft.Clamp(p);
+            // Several: they all move by the same snapped step, so they keep how they sit to each other.
+            float dx = Snap(at.X - _dragStart.X), dz = Snap(at.Y - _dragStart.Y);
+            foreach (var (q, x0, z0) in _dragFrom)
+            {
+                if (q.Locked) continue;
+                q.X = x0 + dx; q.Z = z0 + dz;
+                Draft.Clamp(q);
+            }
         }
         Sync3D();
     }
@@ -963,13 +1306,20 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         {
             case Key.Z when k.CtrlPressed: if (Draft.Undo()) AfterUndo(); break;
             case Key.Y when k.CtrlPressed: if (Draft.Redo()) AfterUndo(); break;
-            case Key.C when k.CtrlPressed: if (_sel != null) { _clipboard = _sel.Clone(); Say("Copied."); } break;
+            case Key.C when k.CtrlPressed: CopyPicked(); break;
             case Key.V when k.CtrlPressed: Paste(); break;
+            case Key.D when k.CtrlPressed: if (!k.Echo) DuplicatePicked(); break;
+            case Key.A when k.CtrlPressed: _picked.Clear(); _picked.AddRange(Draft.Pieces); _selObjective = -1; _tool = ETool.Select; Say($"All {_picked.Count} pieces selected."); Rebuild(); break;
             case Key.S when k.CtrlPressed: SaveMap(); break;
             case Key.Delete or Key.Backspace: DeleteSelected(); break;
-            case Key.Q or Key.E when _sel is { Round: false, Raw: null } p:
+            case Key.Escape when _picked.Count > 0 || _measureA != null: _picked.Clear(); _measureA = _measureB = null; Rebuild(); break;
+            case Key.R when !k.Echo && _picked.Count > 0: RotatePicked(90); break;
+            case Key.L when !k.Echo && _picked.Count > 0: ToggleLock(); break;
+            case Key.M when !k.Echo: SetTool(_tool == ETool.Measure ? ETool.Select : ETool.Measure); break;
+            case Key.Q or Key.E when _picked.Count > 1 || _sel is { Round: false, Raw: null }:
+                if (_picked.All(p => p.Locked)) { Say("Locked - L unlocks it.", LockColour); break; }
                 if (!k.Echo) Draft.Remember();
-                p.Angle = Mathf.Wrap(p.Angle + (k.Keycode == Key.Q ? 1 : -1) * (k.ShiftPressed ? 5 : 15), -180, 180);
+                Draft.RotateGroup(_picked, (k.Keycode == Key.Q ? 1 : -1) * (k.ShiftPressed ? 5 : 15));
                 Rebuild();
                 break;
             case Key.Q: _yaw += 5; ApplyCamera(); break;
@@ -997,8 +1347,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             {
                 var (x, z) = XZ(a[1]);
                 Draft.Remember();
-                _sel = MapPiece.FromKind(k, x, z);
-                Draft.Pieces.Add(_sel);
+                var placed = MapPiece.FromKind(k, x, z);
+                Draft.Pieces.Add(placed);
+                _sel = placed;
                 break;
             }
             // "model:<id>@x;z" - a Warhammer model piece (the id from the terrain list).
@@ -1006,8 +1357,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             {
                 var (x, z) = XZ(m[1]);
                 Draft.Remember();
-                _sel = WarhammerTerrainLibrary.PieceFor(entry, x, z);
-                Draft.Pieces.Add(_sel);
+                var placed = WarhammerTerrainLibrary.PieceFor(entry, x, z);
+                Draft.Pieces.Add(placed);
+                _sel = placed;
                 break;
             }
             case "obj": { var (x, z) = XZ(arg); Draft.Objectives.Add((x, z)); break; }
@@ -1021,7 +1373,28 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             case "mats": OpenMatPicker(); return;
             case "rules": _rulesView = !_rulesView; break;
             case "top": ToggleTopView(); break;
-            case "turn" when _sel != null && float.TryParse(arg, out float deg): _sel.Angle = deg; break;
+            case "turn" when _sel is { } ts && float.TryParse(arg, out float deg): ts.Angle = deg; break;
+            // "pick:0;2;3" selects several pieces by number; "measure:x;z;x;z" lays the ruler; "grid"; "snap:0.5";
+            // "lock", "rotate:90", "mirror:0|1|2", "dup", "lineup", "spread" act on the picked pieces.
+            case "pick":
+                _picked.Clear();
+                foreach (string t in arg.Split(';')) if (int.TryParse(t, out int pi) && pi < Draft.Pieces.Count) _picked.Add(Draft.Pieces[pi]);
+                break;
+            case "measure":
+            {
+                var m = arg.Split(';').Select(v => float.Parse(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+                _tool = ETool.Measure; _picked.Clear();
+                _measureA = new Vector2(m[0], m[1]); _measureB = new Vector2(m[2], m[3]);
+                break;
+            }
+            case "grid": _grid = !_grid; break;
+            case "snap" when float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float st): _snapStep = st; break;
+            case "lock": ToggleLock(); return;
+            case "rotate" when float.TryParse(arg, out float rd): RotatePicked(rd); return;
+            case "mirror" when int.TryParse(arg, out int mi): _mirror = (MapDraft.EMirror)mi; MirrorPicked(); return;
+            case "dup": DuplicatePicked(); return;
+            case "lineup": GroupDo(ps => Draft.LineUp(ps, true)); return;
+            case "spread": GroupDo(ps => Draft.SpreadEvenly(ps)); return;
             case "check" when Enum.TryParse(arg, out EGameSystem sys): _checkFor = sys; break;
             case "name": Draft.Name = arg; break;
             case "save": SaveMap(); return;
