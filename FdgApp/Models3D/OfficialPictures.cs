@@ -118,11 +118,11 @@ public static class OfficialPictures
                         string avatar = (string?)product?["avatarImageUrl"] ?? "";
                         if (avatar.Length == 0) tally.Missing++;
                         else if (HasPicture(portraits, unit)) tally.Skipped++;
-                        else if (await Save(http, Cdn + avatar, Path.Combine(portraits, file), PortraitMax, shrink, tally, $"{bookName} / {unit} portrait", ct)) got++;
+                        else if (await Save(http, FullUrl(avatar), Path.Combine(portraits, file), PortraitMax, shrink, tally, $"{bookName} / {unit} portrait", ct)) got++;
 
                         if (!standees || product?["imageUrls"] is not JArray images || images.Count == 0) continue;
                         if (HasPicture(army, unit)) tally.Skipped++;
-                        else if (await Save(http, Cdn + (string?)images[0], Path.Combine(army, file), StandeeMax, shrink, tally, $"{bookName} / {unit} standee", ct)) got++;
+                        else if (await Save(http, FullUrl((string?)images[0] ?? ""), Path.Combine(army, file), StandeeMax, shrink, tally, $"{bookName} / {unit} standee", ct)) got++;
                     }
                     progress?.Invoke($"  {bookName}: {got} new");
                 }
@@ -157,6 +157,18 @@ public static class OfficialPictures
             try { return await http.GetStringAsync(url, ct); }
             catch (HttpRequestException) when (attempt < 3) { await Task.Delay(2000 * attempt, ct); }
         }
+    }
+
+    /// <summary>Army Forge gives a picture either as a path on its CDN or, for newer units, as a full web address (their
+    /// S3 bucket). Only the first kind gets the CDN in front - gluing it onto a full address made a link that 404s (the
+    /// "failed ... 404 (Not Found)" lines a friend hit on 2026-11-17).</summary>
+    public static string FullUrl(string url)
+    {
+        url = url.Trim();
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return url;
+        if (url.StartsWith("//")) return "https:" + url;
+        return Cdn + url.TrimStart('/');
     }
 
     public static string Normalise(string s) => new(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());

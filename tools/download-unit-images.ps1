@@ -27,6 +27,8 @@ Add-Type -AssemblyName System.Drawing
 
 $Api = 'https://army-forge.onepagerules.com/api'
 $Cdn = 'https://army-forge.opr-cdn.com/'
+# Newer units give a full https:// address (S3) instead of a CDN path - use those as they are.
+function Full-Url([string]$u) { if ($u -match '^https?://') { $u } else { $Cdn + $u.TrimStart('/') } }
 $PortraitMax = 256
 $StandeeMax = 768
 
@@ -174,7 +176,7 @@ foreach ($k in $keys) {
                 elseif (Test-HasPicture $portraitFolder $u.name) { $skipped++ }
                 else {
                     try {
-                        Save-Picture ($Cdn + $p.avatarImageUrl) (Join-Path $portraitFolder $file) $PortraitMax
+                        Save-Picture (Full-Url $p.avatarImageUrl) (Join-Path $portraitFolder $file) $PortraitMax
                         Add-GitIgnore $portraitFolder $file
                         $saved++; $got++
                     } catch { $failed++; $failures.Add("$($book.name) / $($u.name) portrait: $($_.Exception.Message)") }
@@ -185,7 +187,7 @@ foreach ($k in $keys) {
                     if (Test-HasPicture $armyFolder $u.name) { $skipped++ }
                     else {
                         try {
-                            Save-Picture ($Cdn + @($p.imageUrls)[0]) (Join-Path $armyFolder $file) $StandeeMax
+                            Save-Picture (Full-Url @($p.imageUrls)[0]) (Join-Path $armyFolder $file) $StandeeMax
                             Add-GitIgnore $armyFolder $file
                             $saved++; $got++
                         } catch { $failed++; $failures.Add("$($book.name) / $($u.name) standee: $($_.Exception.Message)") }

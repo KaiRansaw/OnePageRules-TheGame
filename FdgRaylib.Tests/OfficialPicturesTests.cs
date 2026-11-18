@@ -73,4 +73,13 @@ public class OfficialPicturesTests
         Assert.That(OfficialPictures.Games.SelectMany(g => g.Systems).Select(s => s.Id).OrderBy(i => i), Is.EqualTo(new[] { 2, 3, 4, 5, 7, 8, 9, 10 }));
         Assert.That(OfficialPictures.Games.Single(g => g.Name == "GF: Star Quest").Systems.Select(s => s.Id), Is.EquivalentTo(new[] { 9, 10 }));
     }
+
+    [Test]
+    public void FullUrl_KeepsFullAddresses_AndPrefixesCdnPaths()
+    {
+        const string s3 = "https://af-images.s3.eu-north-1.amazonaws.com/army-books/unitProduct/w7qor7b2kuifcyvk/x.jpg";
+        Assert.That(OfficialPictures.FullUrl(s3), Is.EqualTo(s3));
+        Assert.That(OfficialPictures.FullUrl("army-books/unitProduct/a/b.png"), Is.EqualTo(OfficialPictures.Cdn + "army-books/unitProduct/a/b.png"));
+        Assert.That(OfficialPictures.FullUrl("/army-books/a.png"), Is.EqualTo(OfficialPictures.Cdn + "army-books/a.png"));
+    }
 }
