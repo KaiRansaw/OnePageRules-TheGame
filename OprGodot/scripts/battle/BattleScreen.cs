@@ -229,8 +229,19 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                     else OnLeftClick(mb.Position);
                     break;
                 }
+                // Kai, 2026-11-17: press on one of the models being set up or moved and drag it where you want it.
+                if (!mb.Pressed && _grabbing)
+                {
+                    _grabbing = false;
+                    Decisions.TableDrop(mb.Position, _grabMoved);
+                    break;
+                }
+                if (mb.Pressed && Decisions.TableGrab(mb.Position)) { _grabbing = true; _grabMoved = false; _leftDown = mb.Position; break; }
                 if (mb.Pressed) { OnLeftClick(mb.Position); _leftDown = mb.Position; _leftHeld = true; _aiming = false; }
                 else { _leftHeld = false; _aiming = false; }
+                break;
+            case InputEventMouseMotion mm when _grabbing:
+                if (_grabMoved || mm.Position.DistanceTo(_leftDown) > 6f) { _grabMoved = true; Decisions.TableDrag(mm.Position); }
                 break;
             case InputEventMouseMotion mm when _boxFrom is { } from:
                 ShowBox(from, mm.Position);
@@ -294,7 +305,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
 
     private Vector2 _rightDown;
     private Vector2 _leftDown;
-    private bool _leftHeld, _aiming;
+    private bool _leftHeld, _aiming, _grabbing, _grabMoved;
     private Vector2? _boxFrom;
     private Panel? _box;
 
@@ -353,7 +364,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Vector2 mouse = GetViewport().GetMousePosition();
         bool overHud = GetViewport().GuiGetHoveredControl() is { } c && c != this && c != _hud;
         IUnit? under = TestHover ?? (overHud ? null : _table.UnitAt(mouse));
-        if (!overHud && !_aiming) Decisions.TableHover(mouse);
+        if (!overHud && !_aiming && !_grabbing) Decisions.TableHover(mouse);
         _table.ShowCursor(overHud ? null : _table.TableAt(mouse));
         if (under != null && Session.IsMine(under.PlayerID)) under = null;
         _table.HoverUnit = under?.ID;

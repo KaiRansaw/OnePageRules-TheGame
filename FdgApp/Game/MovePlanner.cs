@@ -251,6 +251,48 @@ public static class MovePlanner
     }
 
     /// <summary>
+    /// Drag-and-drop moves (Kai, 2026-11-17): the picked models slide by (dx, dz) from where they are in
+    /// <paramref name="ends"/>, each held to its own reach from where it STARTED this move (the per-model distance
+    /// is a ruler, not a judgement). Nothing else is checked here - coherency, terrain and enemies are judged when
+    /// the player confirms, through <see cref="Arranged"/>'s plan. Returns the new arrangement.
+    /// </summary>
+    public static Dictionary<ModelID, (float X, float Z)> Dragged(DefineMovementPathRequest request,
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, float? cap = null)
+    {
+        var living = request.UnitDataBinding.GetValue().ModelBindings.Select(b => b.GetValue()).Where(m => m.GetIsAlive()).ToList();
+        var d = living.ToDictionary(m => m.ID, m => ends.TryGetValue(m.ID, out var e) ? e : (m.Position.x, m.Position.z));
+        foreach (ModelData m in living.Where(m => picked.Contains(m.ID)))
+        {
+            float limit = Math.Min(cap ?? float.MaxValue, request.PlayerBudgetFor(m.ID).maxDistance) - 0.01f;
+            var (sx, sz) = d[m.ID];
+            float tx = sx + dx, tz = sz + dz;
+            float len = Dist(m.Position.x, m.Position.z, tx, tz);
+            if (len > limit && len > 0.0001f)
+            {
+                float k = Math.Max(0, limit) / len;
+                tx = m.Position.x + (tx - m.Position.x) * k;
+                tz = m.Position.z + (tz - m.Position.z) * k;
+            }
+            d[m.ID] = (tx, tz);
+        }
+        return d;
+    }
+
+    /// <summary>The models a move breaks a rule with, and the rule - for marking them when a confirm is refused.</summary>
+    public static List<(ModelID Id, string Reason)> ProblemModels(DefineMovementPathRequest request, ITableState table, List<ModelMoveEntry> moves)
+    {
+        IUnit me = request.UnitDataBinding.GetValue();
+        MovementUtilities.ValidatePaths(moves,
+            entry => { var (_, rush, maxDist) = request.PlayerBudgetFor(entry.Model.GetValue().ID); return new ModelMoveBudget(rush, maxDist); },
+            Footprints(table, me, request.TargetPlayerID, enemy: true), request.CanMoveThroughEnemies, request.IgnoresDifficultTerrain,
+            request.IgnoresImpassibleTerrain, table.Terrain.Objects.ToList(), out List<ReasonForInvalidMove> errors,
+            Footprints(table, me, request.TargetPlayerID, enemy: false), lenientCoherency: true,
+            measured: request.LeaderOnlyMovement ? entry => request.IsMeasured(entry.Model.GetValue().ID) : null,
+            buildingEntry: true);
+        return errors.Select(e => (e.RelevantModel.GetValue().ID, e.ToString())).ToList();
+    }
+
+    /// <summary>
     /// How many Dangerous-terrain dice this move will make the unit roll - 0 when it does not test (Build 2.07). The
     /// same rule the roll uses (<see cref="DangerousTerrainOdds"/>), with the flags the engine put on the request.
     /// </summary>

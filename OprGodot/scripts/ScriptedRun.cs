@@ -537,6 +537,14 @@ public partial class ScriptedRun : Node
     private void TableMouse(string step)
     {
         if (Find<Battle.BattleScreen>(GetTree().Root) is not { } battle) { GD.PrintErr("ScriptedRun: no battle on screen."); return; }
+        // "clickdragmodel:i|dx;dz": drag the i-th model being set up or moved by dx, dz inches (Kai, 2026-11-17).
+        if (step.StartsWith("clickdragmodel:") && step[15..].Split('|') is [var mi, var md]
+            && battle.Decisions.Current?.DraggableAt(int.Parse(mi)) is { } mp)
+        {
+            string[] d = md.Split(';');
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            step = $"clickdrag:{mp.X.ToString(ci)};{mp.Y.ToString(ci)}|{(mp.X + float.Parse(d[0], ci)).ToString(ci)};{(mp.Y + float.Parse(d[1], ci)).ToString(ci)}";
+        }
         // "clickdrag:x;z|x2;z2" (table inches): press at the first point, drag to the second, release - the hold-and-turn.
         if (step.StartsWith("clickdrag:") && step[10..].Split('|') is [var a, var b])
         {

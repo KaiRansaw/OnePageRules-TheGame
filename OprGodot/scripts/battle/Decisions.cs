@@ -83,6 +83,16 @@ public abstract class Decision
     public virtual void TableHover(BattleScreen s, Vector2 at) { }
     /// <summary>Left button held and dragged after a click (Kai, 2026-11-12): turn what was just placed towards the pointer.</summary>
     public virtual bool TableAim(BattleScreen s, Vector2 at) => false;
+    /// <summary>
+    /// Kai, 2026-11-17: press on one of the models being set up or moved and drag it. True = this decision took the
+    /// press (no click and no turning follow); then <see cref="TableDrag"/> while the button is held, and
+    /// <see cref="TableDrop"/> on release (<c>moved</c> false = it was only a click on the model).
+    /// </summary>
+    public virtual bool TableGrab(BattleScreen s, Vector2 at) => false;
+    /// <summary>Test driver: where the i-th model being set up or moved would stand (table inches), or null.</summary>
+    public virtual Vector2? DraggableAt(int i) => null;
+    public virtual void TableDrag(BattleScreen s, Vector2 at) { }
+    public virtual void TableDrop(BattleScreen s, Vector2 at, bool moved) { }
     /// <summary>Shift + drag on the table draws a selection box (Kai, 2026-11-13: box-select models to move).</summary>
     public virtual bool WantsBox => false;
     public virtual void TableBox(BattleScreen s, Vector2 from, Vector2 to) { }
@@ -470,6 +480,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private readonly HashSet<ModelID> _picked = new();
     private Dictionary<ModelID, (float X, float Z)>? _arranged;
     private bool Individual => _arranged != null;
+    // Kai, 2026-11-17: drag and drop. A model (or the picked ones) follows the pointer, held only to its own move
+    // distance; coherency, terrain and enemies are judged when you confirm, and the models at fault go red.
+    private Vector2 _grabAt;
+    private Dictionary<ModelID, (float X, float Z)>? _grabBase;
+    private List<(ModelID Id, string Reason)> _faults = new();
 
     public MoveDecision(DefineMovementPathRequest r)
     {
@@ -497,8 +512,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _ => $"Move {Unit.Name}",
     };
 
-    public override string Hint => _picked.Count > 0
-        ? $"{_picked.Count} model{(_picked.Count == 1 ? "" : "s")} picked - click the table to move {(_picked.Count == 1 ? "it" : "them")}. Click another of your models (Ctrl+click adds) to move it instead. Space to confirm, right-click to drop the pick."
+    public override string Hint => _faults.Count > 0
+        ? $"Can't move like that: {_faults[0].Reason} ({_faults.Select(f => f.Id).Distinct().Count()} red). Drag them into place, then Space."
+        : _picked.Count > 0
+        ? $"{_picked.Count} model{(_picked.Count == 1 ? "" : "s")} picked - drag {(_picked.Count == 1 ? "it" : "them")}, or click the table to send {(_picked.Count == 1 ? "it" : "them")} there. Ctrl+click adds a model. Space to confirm, right-click to drop the pick."
+        : Individual ? "Drag any of the unit's models to move it on its own. Space to confirm - nothing is checked until then."
         : _pending != null
         ? (_final ? "Space to confirm - hold the left button and drag to turn it - right-click to take the last point back."
                   : "Click again to add a turn, hold and drag to turn the unit, Space to confirm, right-click to take the last point back.")
@@ -537,10 +555,66 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _s?.Table.ClearGhosts("move");
         _s?.Table.ClearGhosts("moverange");
         _s?.Table.ClearGhosts("picked");
+        _s?.Table.ClearGhosts("faults");
+        _faults.Clear();
         Version++;
     }
 
     public override bool WantsBox => !_final;
+    public override Vector2? DraggableAt(int i) => Unit.Models.Where(m => m.GetIsAlive()).ElementAtOrDefault(i) is { } m ? new Vector2(EndOf(m).X, EndOf(m).Z) : null;
+
+    /// <summary>The unit's living model whose planned spot (its ghost, or where it stands) is under the pointer.</summary>
+    private IModel? GhostAt(BattleScreen s, Vector2 screen)
+    {
+        if (s.Table.TableAt(screen) is not { } tp) return null;
+        return Unit.Models.Where(m => m.GetIsAlive())
+            .Select(m => (m, d: tp.DistanceTo(new Vector2(EndOf(m).X, EndOf(m).Z))))
+            .Where(x => x.d <= Mathf.Max(0.5f, x.m.BaseRadiusInches) + 0.15f)
+            .OrderBy(x => x.d).Select(x => x.m).FirstOrDefault();
+    }
+
+    public override bool TableGrab(BattleScreen s, Vector2 at)
+    {
+        if (Done || _final || GhostAt(s, at) is not { } own || s.Table.TableAt(at) is not { } tp) return false;
+        if (!_picked.Contains(own.ID))
+        {
+            if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear();
+            _picked.Add(own.ID);
+        }
+        else if (Input.IsKeyPressed(Key.Ctrl)) _picked.Remove(own.ID);
+        StartIndividual();
+        _grabAt = tp;
+        _grabBase = new Dictionary<ModelID, (float X, float Z)>(_arranged!);
+        DrawPicked(s);
+        Version++;
+        return true;
+    }
+
+    public override void TableDrag(BattleScreen s, Vector2 at)
+    {
+        if (_grabBase == null || _picked.Count == 0 || s.Table.TableAt(at) is not { } tp) return;
+        _arranged = MovePlanner.Dragged(_r, _grabBase, _picked, tp.X - _grabAt.X, tp.Y - _grabAt.Y, Cap);
+        _pending = MovePlanner.Arranged(_r, s.Session.Table, _arranged);
+        ClearFaults(s);
+        Draw(s, _pending, placed: true, null);
+        DrawPicked(s);
+        _note = $"{KindName(_pending)}: longest {_pending.Distance:0.0}\".";
+        Version++;
+    }
+
+    public override void TableDrop(BattleScreen s, Vector2 at, bool moved)
+    {
+        _grabBase = null;
+        DrawPicked(s);
+        Version++;
+    }
+
+    private void ClearFaults(BattleScreen s)
+    {
+        if (_faults.Count == 0) return;
+        _faults.Clear();
+        s.Table.ClearGhosts("faults");
+    }
 
     public override void TableBox(BattleScreen s, Vector2 from, Vector2 to)
     {
@@ -572,6 +646,15 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         _final = false;
     }
 
+    /// <summary>The picked models' middle sent to <paramref name="to"/>, each held to its own reach - unchecked.</summary>
+    private Dictionary<ModelID, (float X, float Z)> SlidePicked(Vector2 to)
+    {
+        var moving = Unit.Models.Where(m => m.GetIsAlive() && _picked.Contains(m.ID)).ToList();
+        if (moving.Count == 0) return new Dictionary<ModelID, (float X, float Z)>(_arranged!);
+        float cx = moving.Average(m => EndOf(m).X), cz = moving.Average(m => EndOf(m).Z);
+        return MovePlanner.Dragged(_r, _arranged!, _picked, to.X - cx, to.Y - cz, Cap);
+    }
+
     private void DrawPicked(BattleScreen s)
     {
         var rings = Unit.Models.Where(m => m.GetIsAlive() && _picked.Contains(m.ID))
@@ -593,6 +676,18 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override void Confirm()
     {
         if (_pending is not { } p) return;
+        // Dragged models are only judged now (Kai, 2026-11-17): say what is wrong and mark the models, don't send.
+        if (!p.Valid && _s != null)
+        {
+            _faults = MovePlanner.ProblemModels(_r, _s.Session.Table, p.Moves);
+            if (_faults.Count == 0) _faults = new() { (Unit.Models.First(m => m.GetIsAlive()).ID, p.Problem ?? "not allowed") };
+            var bad = new HashSet<ModelID>(_faults.Select(f => f.Id));
+            _s.Table.SetGhosts("faults", Unit.Models.Where(m => m.GetIsAlive() && bad.Contains(m.ID))
+                .Select(m => { var (x, z) = EndOf(m); return new BattleTable.Ghost(x, z, Mathf.Max(0.5f, m.BaseRadiusInches) + 0.35f, Palette.WoundsRed, Ring: true); }).ToList());
+            _s.Toast($"Can't move like that: {p.Problem}. The red models need moving.");
+            Version++;
+            return;
+        }
         _s?.Table.ClearGhosts("move");
         _s?.Table.ClearGhosts("moverange");
         Complete(new Selected<List<ModelMoveEntry>>(p.Moves));
@@ -621,7 +716,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     }
 
     public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); s.Table.HideSelectedRanges = true; }
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.ClearGhosts("picked"); s.Table.HideSelectedRanges = false; }
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.ClearGhosts("picked"); s.Table.ClearGhosts("faults"); s.Table.HideSelectedRanges = false; }
 
     public override void AutoPlay(BattleScreen s)
     {
@@ -652,7 +747,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 
     private void Draw(BattleScreen s, MovePlanner.Plan plan, bool placed, MovePlanner.Plan? preview)
     {
-        Color Of(MovePlanner.Plan p) => !p.Valid ? Palette.WoundsRed : p.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
+        Color Of(MovePlanner.Plan p) => !p.Valid && !Individual ? Palette.WoundsRed : p.Distance <= _r.MaxAdvanceDistance + 0.01f ? HudKit.Lime
             : p.Distance <= _r.MaxRushDistance + 0.01f ? HudKit.Gold : HudKit.Enemy;
         Color c = Of(plan);
         if (placed) c = c.Lightened(0.25f);
@@ -705,9 +800,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         {
             if (_picked.Count == 0 || at.DistanceTo(_lastHover) < 2 || s.Table.TableAt(at) is not { } hp) return;
             _lastHover = at;
-            var (preview, _) = MovePlanner.PickedTowards(_r, s.Session.Table, _arranged!, _picked, hp.X, hp.Y, Cap);
+            var preview = MovePlanner.Arranged(_r, s.Session.Table, SlidePicked(hp));
             if (_pending != null) Draw(s, _pending, placed: true, preview); else Draw(s, preview, placed: false, null);
-            _note = preview.Valid ? $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." + Danger(preview) : $"Can't go there: {preview.Problem}.";
+            _note = $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." + Danger(preview);
             Version++;
             return;
         }
@@ -750,10 +845,10 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         {
             if (_picked.Count == 0) { s.Toast("Click one of this unit's models to move it, or Space to confirm."); return true; }
             if (s.Table.TableAt(at) is not { } tp) return true;
-            var (picked, ends) = MovePlanner.PickedTowards(_r, s.Session.Table, _arranged!, _picked, tp.X, tp.Y, Cap);
-            if (!picked.Valid) { s.Toast($"Can't move there: {picked.Problem}."); return true; }
-            _arranged = ends;
+            _arranged = SlidePicked(tp);
+            var picked = MovePlanner.Arranged(_r, s.Session.Table, _arranged);
             _pending = picked;
+            ClearFaults(s);
             Draw(s, picked, placed: true, null);
             DrawPicked(s);
             Version++;
@@ -1278,6 +1373,12 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     private AimedPlacement? _placer;
     private List<PlacedObjectEntry<ModelData>>? _pending;
     private Vector2 _lastHover = new(-9999, -9999);
+    // Kai, 2026-11-17: once the block is down, drag single models (or a Ctrl / Shift-box pick of several) where you
+    // want them. Nothing is checked until Space - then ManualPlacement judges the lot and marks what is wrong.
+    private readonly HashSet<int> _picked = new();
+    private Vector2 _grabAt;
+    private List<(int Index, Position From)> _grabFrom = new();
+    private List<ManualPlacement.Fault> _faults = new();
 
     public PlaceDecision(PlaceObjectsRequest<ModelData> r) => _r = r;
 
@@ -1287,7 +1388,8 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     public override string Prompt => string.IsNullOrWhiteSpace(_r.DisplayName) ? $"Place {UnitName}" : _r.DisplayName;
     public override string Hint => AimedPlacement.IsReposition(_r)
         ? "This one can only stay where it is for now."
-        : _pending != null ? "Space to confirm - hold the left button and drag to turn it - click elsewhere to change it - right-click to clear."
+        : _faults.Count > 0 ? ManualPlacement.Describe(_faults) + " Drag the red models into place, then Space."
+        : _pending != null ? "Drag any model to move it (Ctrl+click or Shift+drag picks several) - drag the table to turn the unit - Space when done - right-click to pick it up again."
         : _near.Length > 0 ? _near
         : "Click inside the outlined zone - the unit is set up there in formation.";
 
@@ -1302,10 +1404,91 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     public override void Confirm()
     {
         if (_pending is not { } p) return;
+        // The one check, on Done (Kai, 2026-11-17): every model in a legal spot and the unit in coherency.
+        if (_s != null)
+        {
+            _faults = ManualPlacement.Check(_r, _s.Session.Table, p);
+            if (_faults.Count > 0)
+            {
+                _s.Toast(ManualPlacement.Describe(_faults) + " The red models need moving.");
+                Draw(_s, p, placed: true, null);
+                return;
+            }
+        }
         Complete(new Selected<List<PlacedObjectEntry<ModelData>>>(p));
     }
+
+    public override bool RightClick(BattleScreen s)
+    {
+        if (_picked.Count > 0) { _picked.Clear(); if (_pending != null) Draw(s, _pending, placed: true, null); return true; }
+        return base.RightClick(s);
+    }
+
+    /// <summary>The placed model under the pointer (its ghost), or -1.</summary>
+    private int PlacedAt(BattleScreen s, Vector2 screen)
+    {
+        if (_pending == null || s.Table.TableAt(screen) is not { } tp) return -1;
+        int best = -1;
+        float bestD = float.MaxValue;
+        for (int i = 0; i < _pending.Count; i++)
+        {
+            var e = _pending[i];
+            float d = tp.DistanceTo(new Vector2(e.Position.x, e.Position.z));
+            if (d <= Mathf.Max(0.5f, e.Binding.GetValue().BaseRadiusInches) + 0.15f && d < bestD) { best = i; bestD = d; }
+        }
+        return best;
+    }
+
+    public override bool TableGrab(BattleScreen s, Vector2 at)
+    {
+        if (AimedPlacement.IsReposition(_r) || s.Table.TableAt(at) is not { } tp) return false;
+        int i = PlacedAt(s, at);
+        if (i < 0) return false;
+        if (!_picked.Contains(i))
+        {
+            if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear();
+            _picked.Add(i);
+        }
+        else if (Input.IsKeyPressed(Key.Ctrl)) { _picked.Remove(i); Draw(s, _pending!, placed: true, null); return true; }
+        _grabAt = tp;
+        _grabFrom = _picked.Select(k => (k, _pending![k].Position)).ToList();
+        Draw(s, _pending!, placed: true, null);
+        return true;
+    }
+
+    public override void TableDrag(BattleScreen s, Vector2 at)
+    {
+        if (_pending == null || s.Table.TableAt(at) is not { } tp) return;
+        Vector2 d = tp - _grabAt;
+        foreach (var (k, from) in _grabFrom)
+            _pending[k] = _pending[k] with { Position = new Position(from.x + d.X, from.z + d.Y) };
+        _faults.Clear();
+        Draw(s, _pending, placed: true, null);
+    }
+
+    public override void TableDrop(BattleScreen s, Vector2 at, bool moved)
+    {
+        if (_pending != null) Draw(s, _pending, placed: true, null);
+    }
+
+    public override bool WantsBox => _pending != null && !AimedPlacement.IsReposition(_r);
+    public override Vector2? DraggableAt(int i) => _pending is { } p && i < p.Count ? new Vector2(p[i].Position.x, p[i].Position.z) : null;
+
+    public override void TableBox(BattleScreen s, Vector2 from, Vector2 to)
+    {
+        if (_pending == null) return;
+        var rect = new Rect2(from, Vector2.Zero).Expand(to);
+        _picked.Clear();
+        for (int i = 0; i < _pending.Count; i++)
+            if (rect.HasPoint(s.Table.Camera.UnprojectPosition(s.Table.World(_pending[i].Position.x, _pending[i].Position.z, 0.3f)))) _picked.Add(i);
+        if (_picked.Count == 0) s.Toast("No models of this unit inside the box.");
+        Draw(s, _pending, placed: true, null);
+    }
+
     public override void ClearPending()
     {
+        _picked.Clear();
+        _faults.Clear();
         _pending = null;
         _lastHover = new(-9999, -9999);
         _s?.Table.ClearGhosts("move");
@@ -1366,8 +1549,14 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
         }
         foreach (var e in plan)
             FacingArrows.Add(lines, e.Position.x, e.Position.z, Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), FacingAim.Shown(e), c with { A = 0.95f });
-        s.Table.SetGhosts("move", plan.Select(e => new BattleTable.Ghost(e.Position.x, e.Position.z,
-            Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), c with { A = placed ? 1.6f : 1f })), lines);
+        var bad = new HashSet<ModelID>(_faults.Select(f => f.Id));
+        var ghosts = plan.Select(e => new BattleTable.Ghost(e.Position.x, e.Position.z,
+            Mathf.Max(0.4f, e.Binding.GetValue().BaseRadiusInches), (bad.Contains(e.Binding.GetValue().ID) ? Palette.WoundsRed : c) with { A = placed ? 1.6f : 1f })).ToList();
+        // The picked models get a ring, like the move tool's picks.
+        if (ReferenceEquals(plan, _pending))
+            foreach (int k in _picked.Where(k => k < plan.Count))
+                ghosts.Add(new BattleTable.Ghost(plan[k].Position.x, plan[k].Position.z, Mathf.Max(0.5f, plan[k].Binding.GetValue().BaseRadiusInches) + 0.25f, HudKit.Lime, Ring: true));
+        s.Table.SetGhosts("move", ghosts, lines);
         Version++;
     }
 
@@ -1391,6 +1580,13 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
+        // Once the block is down a click on the table only lets go of the picked models - the unit itself stays
+        // where it is (right-click picks it up again), so a missed grab never throws the arrangement away.
+        if (_pending != null)
+        {
+            if (_picked.Count > 0) { _picked.Clear(); Draw(s, _pending, placed: true, null); }
+            return true;
+        }
         if (PlanAt(s, at) is not { } plan) return AimedPlacement.IsReposition(_r);
         _pending = plan;
         Draw(s, plan, placed: true, s.Table.TableAt(at));
