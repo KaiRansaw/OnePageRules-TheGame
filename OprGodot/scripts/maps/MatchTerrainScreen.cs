@@ -30,7 +30,16 @@ public partial class MatchTerrainScreen : Control
     private bool _picturesRunning;
     private int _picturesDone, _picturesTotal;
 
-    private sealed record Card(VBoxContainer Root, TextureRect Picture, Label Size, OptionButton Kind);
+    private sealed record Card(VBoxContainer Root, Control Frame, TextureRect Picture, Label Size, OptionButton Kind, CheckBox Hide);
+
+    // Kai, 2026-11-18: "select multiple terrain pieces, and mark them all as a kind of terrain". Click a picture to
+    // pick it (click again to drop it), Shift+click picks everything between, and the bar above sets the kind for
+    // every picked piece at once.
+    private readonly HashSet<int> _picked = new();
+    private int? _lastClicked;
+    private HBoxContainer _bulk = null!;
+    private Label _bulkCount = null!;
+    private OptionButton _bulkKind = null!;
 
     /// <summary>Looking down a little more than a unit portrait: terrain is read from above.</summary>
     private static readonly PortraitShot.Angle Angle = new("T", "Terrain", 30, 32, 1f, 1f);
@@ -70,12 +79,14 @@ public partial class MatchTerrainScreen : Control
         head.AddChild(sheetToggle);
         col.AddChild(head);
 
-        var help = ForgeWidgets.Wrapped("Pick what each piece is - its kind gives it that kind's rules on a map (Ruins: cover + unstable, Building: impassable + blocks sight...). " +
+        var help = ForgeWidgets.Wrapped("Click pictures to pick several pieces (Shift+click picks a run of them), then set their kind all at once from the bar. " +
+            "Pick what each piece is - its kind gives it that kind's rules on a map (Ruins: cover + unstable, Building: impassable + blocks sight...). " +
             "Decoration has no rules. Hide pieces you don't want in the Map Maker. A kind already filled in is a guess from the piece's Warhammer keywords - check it. " +
             "Pictures and sizes are made the first time (it takes a few minutes); everything saves as you go.", 14, HudKit.Dim);
         col.AddChild(help);
         _status = HudKit.Text("", 14, HudKit.Lime, HudKit.Semi);
         col.AddChild(_status);
+        col.AddChild(BulkBar());
 
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
         _grid = new GridContainer { Columns = 7, SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -112,6 +123,85 @@ public partial class MatchTerrainScreen : Control
     }
 
     private static bool _sheetOpen = true;
+
+    private Control BulkBar()
+    {
+        _bulk = new HBoxContainer { Name = "BulkBar" };
+        _bulk.AddThemeConstantOverride("separation", 10);
+        _bulkCount = HudKit.Text("", 15, HudKit.Lime, HudKit.Exo(700));
+        _bulkCount.CustomMinimumSize = new Vector2(150, 0);
+        _bulk.AddChild(_bulkCount);
+        _bulk.AddChild(HudKit.Text("Set kind:", 14, HudKit.Dim, HudKit.Semi));
+        _bulkKind = new OptionButton { Name = "BulkKind", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(220, 0),
+            TooltipText = "Give every picked piece this kind." };
+        _bulkKind.AddItem("Pick a kind...");
+        foreach (var k in WarhammerTerrainLibrary.Kinds) _bulkKind.AddItem(k.Name);
+        _bulkKind.ItemSelected += i =>
+        {
+            if (i <= 0) return;
+            SetKindOfPicked(WarhammerTerrainLibrary.Kinds[(int)i - 1].Id);
+            _bulkKind.Selected = 0;
+        };
+        _bulk.AddChild(_bulkKind);
+        _bulk.AddChild(Ui.Button("Hide them", () => SetHiddenOfPicked(true), "Leave every picked piece out of the Map Maker.").Also(b => b.Name = "BulkHide"));
+        _bulk.AddChild(Ui.Button("Unhide them", () => SetHiddenOfPicked(false), "Put every picked piece back in the Map Maker.").Also(b => b.Name = "BulkUnhide"));
+        _bulk.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        _bulk.AddChild(Ui.Button("Pick all shown", PickAllShown, "Pick every piece the filters are showing.").Also(b => b.Name = "PickAll"));
+        _bulk.AddChild(Ui.Button("Clear picks", ClearPicks, "Drop every pick.").Also(b => b.Name = "ClearPicks"));
+        RefreshBulk();
+        return _bulk;
+    }
+
+    private void RefreshBulk()
+    {
+        int n = _picked.Count;
+        _bulkCount.Text = n == 0 ? "None picked" : $"{n} picked";
+        foreach (Node c in _bulk.GetChildren())
+            if (c is BaseButton b && b.Name != "PickAll") b.Disabled = n == 0;
+        foreach (var (id, card) in _cards) card.Frame.SelfModulate = _picked.Contains(id) ? HudKit.Lime : Colors.White;
+    }
+
+    private void OnPictureClicked(int id)
+    {
+        bool shift = Input.IsKeyPressed(Key.Shift);
+        if (shift && _lastClicked is { } from && _cards.ContainsKey(from))
+        {
+            var order = _cards.Keys.ToList(); // card order = grid order
+            int a = order.IndexOf(from), b = order.IndexOf(id);
+            for (int i = Math.Min(a, b); i <= Math.Max(a, b); i++) _picked.Add(order[i]);
+        }
+        else if (!_picked.Remove(id)) _picked.Add(id);
+        _lastClicked = id;
+        RefreshBulk();
+    }
+
+    private void PickAllShown() { foreach (int id in _cards.Keys) _picked.Add(id); RefreshBulk(); }
+
+    private void ClearPicks() { _picked.Clear(); _lastClicked = null; RefreshBulk(); }
+
+    private IEnumerable<WarhammerTerrainLibrary.Entry> PickedEntries() =>
+        _lib?.Entries.Where(e => _picked.Contains(e.Id)) ?? Enumerable.Empty<WarhammerTerrainLibrary.Entry>();
+
+    private void SetKindOfPicked(string kind)
+    {
+        int ki = WarhammerTerrainLibrary.Kinds.ToList().FindIndex(k => k.Id == kind);
+        foreach (var e in PickedEntries())
+        {
+            e.Match.Kind = kind;
+            if (_cards.TryGetValue(e.Id, out Card? card)) { card.Kind.Selected = ki + 1; Colour(card.Kind, kind); }
+            Changed(e);
+        }
+    }
+
+    private void SetHiddenOfPicked(bool hidden)
+    {
+        foreach (var e in PickedEntries())
+        {
+            e.Match.Hidden = hidden;
+            if (_cards.TryGetValue(e.Id, out Card? card)) card.Hide.SetPressedNoSignal(hidden);
+            Changed(e);
+        }
+    }
 
     /// <summary>
     /// Kai, 2026-11-14: a cheat sheet of what each kind does, beside the cards. Each kind with the rules the Advanced
@@ -188,6 +278,8 @@ public partial class MatchTerrainScreen : Control
         _cards.Clear();
         var shown = Shown().ToList();
         foreach (var e in shown) _grid.AddChild(MakeCard(e));
+        _picked.IntersectWith(_cards.Keys); // picks the filters now hide are dropped, so "Set kind" never touches unseen pieces
+        RefreshBulk();
         UpdateStatus();
     }
 
@@ -198,6 +290,13 @@ public partial class MatchTerrainScreen : Control
         var pic = new TextureRect { CustomMinimumSize = new Vector2(200, 170), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             TooltipText = $"{e.OriginalName}\n{e.SetName}" + (e.Keywords.Length > 0 ? $"\nWarhammer: {e.Keywords}" : "") };
         if (LoadThumb(e.Id) is { } tex) pic.Texture = tex;
+        pic.TooltipText += "\n(click to pick, Shift+click for a run)";
+        pic.MouseFilter = MouseFilterEnum.Stop;
+        pic.MouseDefaultCursorShape = CursorShape.PointingHand;
+        pic.GuiInput += ev =>
+        {
+            if (ev is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) { OnPictureClicked(e.Id); pic.AcceptEvent(); }
+        };
         var frame = HudKit.Panel(HudKit.PanelBox(8), pic);
         card.AddChild(frame);
 
@@ -245,7 +344,8 @@ public partial class MatchTerrainScreen : Control
             MakePictures();
         };
         card.AddChild(up);
-        _cards[e.Id] = new Card(card, pic, size, kind);
+        _cards[e.Id] = new Card(card, frame, pic, size, kind, hide);
+        if (_picked.Contains(e.Id)) frame.SelfModulate = HudKit.Lime;
         return card;
     }
 
