@@ -8,8 +8,9 @@ namespace FdgRaylib.Pictures;
 /// game tiles, and one picture per army - shared by that army's three games (Orcs is the same picture in Age of
 /// Fantasy, Skirmish and Quest). Set in the Asset Lab's picture manager: the game keeps its own copy of each picture in
 /// <c>Assets/Pictures/</c> with a focus point and zoom in <c>Assets/Pictures/pictures.json</c>, so moving or deleting the
-/// original changes nothing. <b>The folder ships with the game</b> (Kai: everyone sees the same art), the same way
-/// <c>model-matches.json</c> does.
+/// original changes nothing. <b>The folder is personal and stays out of git</b> (Kai, 2026-11-17: his pictures are
+/// for his own use, so <c>.gitignore</c> keeps every <c>Assets/Pictures/</c> folder out of the push; friends see the
+/// fallbacks - unit pictures on the army colour - unless he hands them the pictures himself).
 /// </summary>
 public static class MenuPictures
 {
