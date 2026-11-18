@@ -27,6 +27,11 @@ public partial class ArmyPicker : PanelContainer
     public string? Selected { get; set; }
     public Action<string>? Picked { get; init; }
     public Action? Closed { get; init; }
+    /// <summary>
+    /// Extra buttons on the bottom bar, left of the main one (the Forge's "Edit a list" / "Import a list", Kai
+    /// 2026-11-17). Each gets this picker so it can close it once its job is done.
+    /// </summary>
+    public IReadOnlyList<(string Name, string Text, string Tip, Action<ArmyPicker> Act)>? Extras { get; init; }
     /// <summary>Army Forge: the games to switch between, as tabs in the top bar (null = no tabs).</summary>
     public IReadOnlyList<EGameSystem>? Games { get; init; }
     /// <summary>A game tab was clicked: the owner reopens the grid for that game.</summary>
@@ -116,6 +121,13 @@ public partial class ArmyPicker : PanelContainer
         _info.AddThemeFontOverride("font", HudKit.Semi);
         _info.AddThemeFontSizeOverride("font_size", 20);
         _commit = layout.GetNode<Button>("%ArmyPickerCommit");
+        foreach (var (name, text, tip, act) in Extras ?? Array.Empty<(string, string, string, Action<ArmyPicker>)>())
+        {
+            var x = new Button { Name = name, Text = text, TooltipText = tip, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(Math.Max(170, text.Length * 12 + 40), 0) };
+            x.Pressed += () => act(this);
+            _commit.GetParent().AddChild(x);
+            _commit.GetParent().MoveChild(x, _commit.GetIndex());
+        }
         _commit.Text = CommitText;
         _commit.TooltipText = "Use the picked army (or double-click a tile).";
         _commit.Pressed += Commit;
@@ -343,6 +355,9 @@ public partial class ArmyPicker : PanelContainer
         Picked?.Invoke(army);
         QueueFree();
     }
+
+    /// <summary>Closes the grid without picking and without the Closed callback (its job was done another way).</summary>
+    public void Dismiss() => QueueFree();
 
     public void Close()
     {

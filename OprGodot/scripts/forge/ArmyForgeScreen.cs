@@ -105,7 +105,9 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             UseLook();
             Rebuild();
             // A fresh Forge (not opening a file, not a campaign) starts on the army grid (Kai, 2026-11-16).
-            if (OpenPath == null && Campaign == null && !ScriptedRun.IsRequested) OpenArmyGrid();
+            // Kai, 2026-11-17: Back on that first grid leaves the Forge (to the main menu), and the grid offers
+            // Edit a list / Import a list as well as building a new one.
+            if (OpenPath == null && Campaign == null && !ScriptedRun.IsRequested) OpenArmyGrid(opening: true);
         }
             }
 
@@ -239,7 +241,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
     }
 
     /// <summary>Opens the army picture grid for the Forge's game (with game tabs when the game can change).</summary>
-    public void OpenArmyGrid(Action<BookFile>? choose = null, bool games = true)
+    public void OpenArmyGrid(Action<BookFile>? choose = null, bool games = true, bool opening = false)
     {
         var s = _s!;
         choose ??= book => Guarded(() => { s.ChooseBook(book); Status(""); Rebuild(); }, null);
@@ -256,11 +258,20 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 Status("");
                 UseLook();
                 Rebuild();
-                OpenArmyGrid(choose, games);
+                OpenArmyGrid(choose, games, opening);
             }, null),
             Picked = name => { if (s.BooksInSystem.FirstOrDefault(x => x.Name == name) is { } book) choose(book); },
+            Closed = opening ? () => CallDeferred(nameof(LeaveForge)) : null,
+            Extras = Campaign != null ? null : new (string, string, string, Action<ArmyPicker>)[]
+            {
+                ("EditList", "EDIT A LIST", "Open one of your saved armies for this game and change it.", p => OpenLoad(p.Dismiss)),
+                ("ImportList", "IMPORT A LIST", "Paste a share link from the Army Forge website.", p => OpenImport(p.Dismiss)),
+            },
         });
     }
+
+    /// <summary>Back on the Forge's opening grid: straight out of the Forge (nothing has been built yet).</summary>
+    private void LeaveForge() => App.I.Back();
 
     private Control BuildMain()
     {
@@ -300,8 +311,8 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         game.ItemSelected += i => Guarded(() => { s.ChooseSystem(s.Systems[(int)i]); Status(""); UseLook(); Rebuild(); }, () => game.Selected = s.Systems.IndexOf(s.System));
         _top.AddChild(game);
 
-        _top.AddChild(FactionButton("The army book to build from. Opens the army picture grid.",
-            book => Guarded(() => { s.ChooseBook(book); Status(""); Rebuild(); }, null), games: true));
+        // The army is picked on its own screen now (Kai, 2026-11-17: no faction dropdown up here) - just say which.
+        _top.AddChild(HudKit.Text(s.Book.Name, 18, HudKit.Fg, HudKit.Bold).Also(l => { l.Name = "FactionName"; l.SizeFlagsVertical = SizeFlags.ShrinkCenter; }));
 
         var name = new LineEdit { Name = "ArmyName", PlaceholderText = "army name", Text = s.List.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
         name.TextChanged += txt => s.List.Name = txt;
@@ -321,9 +332,9 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         _top.AddChild(limit);
 
         _top.AddChild(Ui.Grow());
-        _top.AddChild(TopButton("New", "New", "Start an empty list for this faction.", () => Guarded(() => { s.NewList(); Status(""); Rebuild(); }, null)));
-        _top.AddChild(TopButton("Load", "Load", "Open one of your saved armies for this game.", OpenLoad));
-        _top.AddChild(TopButton("ImportLink", "Import Link", "Paste a share link from the Army Forge website.", OpenImport));
+        _top.AddChild(TopButton("New", "New", "Start a new list - pick the army on the army screen.", () => Guarded(() => { s.NewList(); Status(""); Rebuild(); OpenArmyGrid(); }, null)));
+        _top.AddChild(TopButton("Load", "Edit a list", "Open one of your saved armies for this game.", () => OpenLoad()));
+        _top.AddChild(TopButton("ImportLink", "Import a list", "Paste a share link from the Army Forge website.", () => OpenImport()));
         _top.AddChild(TopButton("Save", "Save", "Name the army and save it into this game's armies folder.", OpenSave, "CommitButton"));
     }
 
@@ -708,7 +719,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         box.SelectAll();
     }
 
-    private void OpenLoad()
+    private void OpenLoad(Action? opened = null)
     {
         var s = _s!;
         var armies = s.SavedArmies();
@@ -730,6 +741,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             int[] sel = list.GetSelectedItems();
             if (sel.Length == 0 || sel[0] >= armies.Count) return;
             popup.QueueFree();
+            opened?.Invoke();
             Guarded(() => { OpenFile(armies[sel[0]].Path); Rebuild(); }, null);
         }
         buttons.AddChild(Ui.Button("Open", Open, variation: "CommitButton"));
@@ -751,13 +763,13 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         else Take();
     }
 
-    private void OpenImport()
+    private void OpenImport(Action? opened = null)
     {
         ImportArmyPopup.Open(this, p =>
         {
             p.Detailed = true;
             p.SaveLabel = "Save and open in the Forge";
-            p.Saved = (path, _) => { p.QueueFree(); Guarded(() => { OpenFile(path); Rebuild(); }, null); };
+            p.Saved = (path, _) => { p.QueueFree(); opened?.Invoke(); Guarded(() => { OpenFile(path); Rebuild(); }, null); };
         });
     }
 
@@ -783,6 +795,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
                 s.SelectRoster(u2.Id); break;
             case "row" when int.TryParse(arg, out int r): s.SelectRow(r); break;
             case "combine": if (s.SelectedIndex is int ci) s.SetCombined(ci, true); break;
+            case "grid": OpenArmyGrid(opening: true); return;
             case "upgrades": if (s.SelectedIndex is int ui) { OpenUpgrades(ui); return; } break;
             case "pick" or "count":
                 if (_view == View.Upgrades && arg.Split('|') is { Length: >= 2 } parts)
