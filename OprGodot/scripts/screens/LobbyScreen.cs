@@ -1043,7 +1043,16 @@ public partial class LobbyScreen : Control, Hud.ILooked
     private void TakeLaunch()
     {
         if (Session.TakeLaunchedGame() is not { } game) return;
-        var session = FdgRaylib.Game.GameSession.Start(game, Session, Battle.BattleResolvers.Register);
+        FdgRaylib.Game.GameSession session;
+        try { session = FdgRaylib.Game.GameSession.Start(game, Session, Battle.BattleResolvers.Register); }
+        catch (Exception e)
+        {
+            // Never lose a launched game silently (Kai, 2026-11-17: bot vs bot LAUNCH did nothing, then "already
+            // launched") - say what went wrong; the lobby can't launch this game again, so Back out and start a new one.
+            GD.PrintErr("Opening the table failed: " + e);
+            ShowLaunchError("The game started but its table couldn't open:\n" + e.Message + "\n\nGo Back and set up the game again, and send Claude a screenshot of this.");
+            return;
+        }
         // The versus loading screen goes up first, then the table loads under it (Kai, 2026-11-16).
         VersusScreen.Show(GetTree(), session, Session, () => App.I.Open<Battle.BattleScreen>(Scenes.Battle, s => s.Session = session));
     }

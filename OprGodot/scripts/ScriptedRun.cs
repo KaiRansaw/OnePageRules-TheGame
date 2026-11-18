@@ -125,6 +125,14 @@ public partial class ScriptedRun : Node
                 else GD.PrintErr($"ScriptedRun: no army at {name[5..]}");
                 return;
             }
+            // "allbots" hands every human seat in the lobby to a bot (bot vs bot, to watch).
+            if (name == "allbots" && Find<LobbyScreen>(GetTree().Root) is { } botLobby)
+            {
+                foreach (var p in botLobby.Session.Vm.PlayerInfos.ToList())
+                    if (p.PlayerType == FDG.Players.EPlayerType.Local) botLobby.Session.ToggleBot(p);
+                GD.Print("ScriptedRun: every seat is a bot");
+                return;
+            }
             // "army2:<file>" gives the SECOND seat that army (a bot opponent for a scripted game).
             if (name.StartsWith("army2:") && Find<LobbyScreen>(GetTree().Root) is { } lobby2 && lobby2.Session.Vm.PlayerInfos.Count > 1)
             {

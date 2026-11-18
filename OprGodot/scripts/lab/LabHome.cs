@@ -77,11 +77,6 @@ public partial class LabHome : PanelContainer
     private void SendSettings()
     {
         if (_sending) return;
-        if (!FdgRaylib.Models3D.SharedModelSettings.IsAuthority)
-        {
-            Toast("Only works on the PC that runs the game from the repo - this copy is a download.");
-            return;
-        }
         _sending = true;
         Toast("Sending your settings to GitHub...");
         System.Threading.Tasks.Task.Run(FdgRaylib.Models3D.SharedSettingsSync.Publish).ContinueWith(t =>

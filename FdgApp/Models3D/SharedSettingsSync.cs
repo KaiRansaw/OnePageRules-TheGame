@@ -54,7 +54,9 @@ public static class SharedSettingsSync
     /// </summary>
     public static string Publish()
     {
-        if (!SharedModelSettings.IsAuthority) return "Only works on the PC the settings come from, running the game from the repo.";
+        if (!SharedModelSettings.IsSourceTree) return "Only works on the PC that runs the game from the repo - this copy is a download.";
+        if (!SharedModelSettings.TryClaim(out string owner))
+            return $"The settings come from {owner}. Send them from that computer (changes made here stay on this computer).";
         int n = Harvest();
         SharedModelSettings.Flush();
         string repo = Path.GetFullPath(Path.Combine(AppAssets.Root, ".."));

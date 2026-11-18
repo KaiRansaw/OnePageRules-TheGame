@@ -42,6 +42,7 @@ public static class SharedModelSettings
 
     private static readonly object Gate = new();
     private static FileData? _data;
+    private static bool _dirty;
     private static string? _loadedFrom;
 
     public static string ShippedPath => Path.Combine(AppAssets.AssetsFolder, RelativePath);
@@ -63,9 +64,9 @@ public static class SharedModelSettings
     }
 
     /// <summary>
-    /// Running from the repo on the computer the settings come from (the file's owner, or any computer while the file has
-    /// no owner yet): this computer's settings are the ones to ship. False in a download and in a copy of the repo on
-    /// another computer.
+    /// Running from the repo on the computer the settings come from (the owner, set by the first "Send my settings to
+    /// GitHub" - <see cref="TryClaim"/>): this computer's settings are the ones to ship. False in a download, in a copy of
+    /// the repo on another computer, and everywhere until the first Send.
     /// </summary>
     public static bool IsAuthority
     {
@@ -75,7 +76,30 @@ public static class SharedModelSettings
             if (!IsSourceTree) return false;
             string owner;
             lock (Gate) owner = Data().Owner;
-            return owner.Length == 0 || owner.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+            return owner.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>Who the shipped settings belong to ("" until the first Send my settings).</summary>
+    public static string Owner
+    {
+        get { lock (Gate) return Data().Owner; }
+    }
+
+    /// <summary>
+    /// "Send my settings to GitHub" on a computer running from the repo while the settings have no owner yet: this
+    /// computer becomes the one they come from. Nothing is written before that, so a copy of the repo that is only
+    /// played on never creates the file (it would block that computer's next git pull).
+    /// </summary>
+    public static bool TryClaim(out string owner)
+    {
+        lock (Gate)
+        {
+            owner = Data().Owner;
+            if (!IsSourceTree) return false;
+            if (owner.Length > 0 && !owner.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)) return false;
+            Data().Owner = owner = Environment.MachineName;
+            return true;
         }
     }
 
@@ -126,8 +150,8 @@ public static class SharedModelSettings
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            if (Data(path).Owner.Length == 0) Data(path).Owner = Environment.MachineName;
             string json = JsonConvert.SerializeObject(Data(path), Formatting.Indented);
+            _dirty = false;
             if (File.Exists(path) && File.ReadAllText(path) == json) return;
             File.WriteAllText(path, json);
         }
@@ -153,7 +177,7 @@ public static class SharedModelSettings
     /// <summary>Writes any pending change to the shipped file now.</summary>
     public static void Flush()
     {
-        lock (Gate) if (_data != null && _loadedFrom == ShippedPath) Write();
+        lock (Gate) if (_dirty && _data != null && _loadedFrom == ShippedPath) Write();
     }
 
     /// <summary>The shipped settings for a model, or null when the file has none for it.</summary>
@@ -181,6 +205,7 @@ public static class SharedModelSettings
             var copy = settings.Copy();
             copy.ChangedHere = false;
             Data().Models[key] = copy;
+            _dirty = true;
             WriteSoon();
         }
     }
@@ -192,6 +217,7 @@ public static class SharedModelSettings
         lock (Gate)
         {
             Data().DownloadYawDegrees = yaw;
+            _dirty = true;
             WriteSoon();
         }
     }
@@ -231,6 +257,6 @@ public static class SharedModelSettings
     /// <summary>Forget what was read (tests).</summary>
     public static void Forget()
     {
-        lock (Gate) { _data = null; _loadedFrom = null; }
+        lock (Gate) { _data = null; _loadedFrom = null; _dirty = false; }
     }
 }
