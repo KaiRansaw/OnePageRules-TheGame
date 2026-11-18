@@ -360,6 +360,15 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
                 return;
             }
+            // "selectunit:Hive Guardians" selects the first unit with that name, so its card shows (screenshot checks).
+            if (name.StartsWith("selectunit:"))
+            {
+                var b = Find<Battle.BattleScreen>(GetTree().Root);
+                var unit = b?.Session.Table.Units.Objects.FirstOrDefault(u => u.Name.Contains(name[11..], StringComparison.OrdinalIgnoreCase));
+                if (unit != null) b!.SelectUnit(unit);
+                GD.Print($"ScriptedRun: {name} {(unit != null ? "selected" : "not found")}");
+                return;
+            }
             // "waitround:2" holds until the battle has reached that round (or ended).
             if (name.StartsWith("waitround:") && int.TryParse(name[10..], out int round))
             {

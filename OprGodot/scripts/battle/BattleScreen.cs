@@ -1091,12 +1091,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
             col.AddChild(head);
         }
 
-        var stats = new HBoxContainer();
-        stats.AddThemeConstantOverride("separation", 5);
+        // Three boxes fit one row; a multi-model unit with wounds has four (2.66), which pushed the card wider
+        // than its slot (Kai, 2026-11-18: Hive Guardians spilling under the Actions panel) - so four go 2 x 2.
+        var wl = WoundsLeft(u);
+        var stats = new GridContainer { Columns = wl is null ? 3 : 2 };
+        stats.AddThemeConstantOverride("h_separation", 5);
+        stats.AddThemeConstantOverride("v_separation", 4);
         stats.AddChild(Stat("QUA", $"{u.Quality}+", "targeting"));
         stats.AddChild(Stat("DEF", $"{u.Defense}+", "shield"));
         stats.AddChild(Stat(wounds ? "WOUNDS" : "MODELS", $"{left}/{max}", "rally-the-troops"));
-        if (WoundsLeft(u) is { } wl) stats.AddChild(Stat("WOUNDS", $"{wl.Left}/{wl.Max}", "skull-crack"));
+        if (wl is { } w) stats.AddChild(Stat("WOUNDS", $"{w.Left}/{w.Max}", "skull-crack"));
         col.AddChild(stats);
 
         var grid = new GridContainer { Columns = 4 };
