@@ -89,6 +89,29 @@ public abstract class Decision
     /// <see cref="TableDrop"/> on release (<c>moved</c> false = it was only a click on the model).
     /// </summary>
     public virtual bool TableGrab(BattleScreen s, Vector2 at) => false;
+    /// <summary>
+    /// The model nearest the pointer ON SCREEN among <paramref name="spots"/> (table inches + base radius), or -1.
+    /// Judged in screen pixels against the token's foot and top, not on the felt under the pointer - a click on a
+    /// token's top hits the felt an inch or more behind it at a slant camera, and missed the model (Kai, 2026-11-17).
+    /// </summary>
+    protected static int NearestOnScreen(BattleScreen s, Vector2 screen, IReadOnlyList<(float X, float Z, float R)> spots)
+    {
+        Camera3D cam = s.Table.Camera;
+        int best = -1;
+        float bestD = float.MaxValue;
+        for (int i = 0; i < spots.Count; i++)
+        {
+            var (x, z, r) = spots[i];
+            Vector3 foot = s.Table.World(x, z, 0f);
+            if (cam.IsPositionBehind(foot)) continue;
+            Vector2 f = cam.UnprojectPosition(foot), t = cam.UnprojectPosition(s.Table.World(x, z, 0.9f));
+            float px = cam.UnprojectPosition(s.Table.World(x + Mathf.Max(0.5f, r), z, 0f)).DistanceTo(f);
+            float d = Mathf.Min(screen.DistanceTo(f), Mathf.Min(screen.DistanceTo(t), screen.DistanceTo((f + t) / 2)));
+            if (d <= px * 1.15f + 6f && d < bestD) { best = i; bestD = d; }
+        }
+        return best;
+    }
+
     /// <summary>Test driver: where the i-th model being set up or moved would stand (table inches), or null.</summary>
     public virtual Vector2? DraggableAt(int i) => null;
     public virtual void TableDrag(BattleScreen s, Vector2 at) { }
@@ -566,11 +589,11 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     /// <summary>The unit's living model whose planned spot (its ghost, or where it stands) is under the pointer.</summary>
     private IModel? GhostAt(BattleScreen s, Vector2 screen)
     {
-        if (s.Table.TableAt(screen) is not { } tp) return null;
-        return Unit.Models.Where(m => m.GetIsAlive())
-            .Select(m => (m, d: tp.DistanceTo(new Vector2(EndOf(m).X, EndOf(m).Z))))
-            .Where(x => x.d <= Mathf.Max(0.5f, x.m.BaseRadiusInches) + 0.15f)
-            .OrderBy(x => x.d).Select(x => x.m).FirstOrDefault();
+        var living = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        int i = NearestOnScreen(s, screen, living.Select(m => (EndOf(m).X, EndOf(m).Z, m.BaseRadiusInches)).ToList());
+        if (i >= 0) return living[i];
+        // Before anything is planned the real model is where it stands - the table's own pick works there too.
+        return _pending == null && s.Table.ModelAt(screen) is { } under ? living.FirstOrDefault(m => m.ID.Equals(under.ID)) : null;
     }
 
     public override bool TableGrab(BattleScreen s, Vector2 at)
@@ -1427,16 +1450,8 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     /// <summary>The placed model under the pointer (its ghost), or -1.</summary>
     private int PlacedAt(BattleScreen s, Vector2 screen)
     {
-        if (_pending == null || s.Table.TableAt(screen) is not { } tp) return -1;
-        int best = -1;
-        float bestD = float.MaxValue;
-        for (int i = 0; i < _pending.Count; i++)
-        {
-            var e = _pending[i];
-            float d = tp.DistanceTo(new Vector2(e.Position.x, e.Position.z));
-            if (d <= Mathf.Max(0.5f, e.Binding.GetValue().BaseRadiusInches) + 0.15f && d < bestD) { best = i; bestD = d; }
-        }
-        return best;
+        if (_pending == null) return -1;
+        return NearestOnScreen(s, screen, _pending.Select(e => (e.Position.x, e.Position.z, e.Binding.GetValue().BaseRadiusInches)).ToList());
     }
 
     public override bool TableGrab(BattleScreen s, Vector2 at)

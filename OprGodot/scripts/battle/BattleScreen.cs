@@ -181,7 +181,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         bool onTable = GetViewport().GuiGetHoveredControl() == this;
         bool starts = e is InputEventMouseButton { Pressed: true };
         if (starts && !onTable) return;
-        if (e is InputEventMouseMotion && _dragRotate == null && _dragPan == null && !_leftHeld) return;
+        if (e is InputEventMouseMotion && _dragRotate == null && _dragPan == null && !_leftHeld && !_grabbing) return;
         TableMouse(e);
         AcceptEvent();
     }
