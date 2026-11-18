@@ -711,9 +711,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         if (prompt.Length == 0)
         {
             if (Session.EndedText != null) { prompt = "GAME OVER"; hint = Session.EndedText; }
-            else if (activating != null && !Session.IsMine(activating.PlayerID)) { prompt = $"{Session.SeatOf(activating.PlayerID)?.Name ?? "Enemy"} IS PLAYING"; hint = activating.Name; }
+            // Kai, 2026-11-18: "Player is Activating Unit Name".
+            else if (activating != null && !Session.IsMine(activating.PlayerID)) { prompt = $"{Session.SeatOf(activating.PlayerID)?.Name ?? "Enemy"} IS ACTIVATING"; hint = activating.Name; }
             else if (Session.Registry.LastAutopilotTask is { } auto) { prompt = "AUTOPILOT"; hint = $"The bot plays this part for you for now: {auto}"; }
-            else if (progress.RoundCount is int r) { prompt = $"ROUND {r}"; hint = "Between activations - the game is working out what happens next."; }
+            // Kai, 2026-11-18: between the other side's activations, say who the game is waiting on.
+            else if (progress.RoundCount is int r && WaitingOn(progress) is { } who) { prompt = $"WAITING ON {who}"; hint = $"Round {r}"; }
+            else if (progress.RoundCount is int r2) { prompt = $"ROUND {r2}"; hint = "Between activations - the game is working out what happens next."; }
             else { prompt = "SETTING UP"; hint = "The table is being laid out."; }
         }
         _prompt.Text = prompt.ToUpperInvariant();
@@ -886,6 +889,25 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         var (left, max, wounds) = LeftOf(u);
         if (wounds) return $"{left}/{max}W";
         return WoundsLeft(u) is { } w ? $"{left}/{max}  {w.Left}/{w.Max}W" : $"{left}/{max}";
+    }
+
+    /// <summary>
+    /// Whose activation is next while nothing is being asked of this screen: the next seat after the one that just
+    /// activated (seat order) that is not this computer's and still has units to activate. Null when none is.
+    /// </summary>
+    private string? WaitingOn(FDG.IGameProgress progress)
+    {
+        var left = progress.UnactivatedUnits.Select(u => u.PlayerID).ToHashSet();
+        var seats = Session.Seats.Where(seat => !Session.IsMine(seat.Id) && left.Contains(seat.Id)).ToList();
+        if (seats.Count == 0) return null;
+        int after = _lastActivating == null ? -1 : Session.Seats.ToList().FindIndex(seat => seat.Id.Equals(_lastActivating.PlayerID));
+        var ordered = Session.Seats.ToList();
+        for (int i = 1; i <= ordered.Count; i++)
+        {
+            var seat = ordered[((after < 0 ? -1 : after) + i + ordered.Count) % ordered.Count];
+            if (seats.Contains(seat)) return seat.Name;
+        }
+        return seats[0].Name;
     }
 
     private static (int Left, int Max, bool Wounds) LeftOf(IUnit u) => u.Models.Count == 1

@@ -173,8 +173,9 @@ public static class MovePlanner
     /// <paramref name="ends"/> goes straight from where it stands to its end; the rest stay. The distance is the longest
     /// single model's. Checked with the same validation as a whole-unit move.
     /// </summary>
-    public static Plan Arranged(DefineMovementPathRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends) =>
-        Arranged(For(request, table), ends);
+    public static Plan Arranged(DefineMovementPathRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends,
+        IReadOnlyList<(float X, float Z)>? turns = null) =>
+        Arranged(For(request, table), ends, turns);
 
     /// <summary>The same for the move after a melee (Kai, 2026-11-17: the 3" move wouldn't let him move one model).</summary>
     public static Plan Arranged(ConsolidationMoveRequest request, ITableState table, IReadOnlyDictionary<ModelID, (float X, float Z)> ends) =>
@@ -186,23 +187,31 @@ public static class MovePlanner
         IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz) =>
         Dragged(request.UnitDataBinding, ends, picked, dx, dz, _ => request.MaxDistanceInches);
 
-    private static Plan Arranged(Mover mover, IReadOnlyDictionary<ModelID, (float X, float Z)> ends)
+    /// <summary>
+    /// Kai, 2026-11-18: turn points and single-model moves together - go round a building with turn points, then lay the
+    /// models out at the end. With <paramref name="turns"/> (the unit's middle at each turn, as a whole-unit move places
+    /// them), every model goes through its own place at each turn and then straight to its end; its distance is measured
+    /// along that whole route. Without turns each model goes straight to its end, as before.
+    /// </summary>
+    private static Plan Arranged(Mover mover, IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyList<(float X, float Z)>? turns = null)
     {
         var moves = new List<ModelMoveEntry>();
         var shown = new List<(ModelID, float, float, float)>();
         float longest = 0;
+        Prefix prefix = PrefixFor(Movers(mover), turns ?? Array.Empty<(float, float)>());
         foreach (var b in mover.Unit.GetValue().ModelBindings)
         {
             ModelData m = b.GetValue();
             if (!m.GetIsAlive()) { moves.Add(new ModelMoveEntry(b, new List<Position>())); continue; }
-            var path = new List<Position>();
-            float ex = m.Position.x, ez = m.Position.z;
-            if (ends.TryGetValue(m.ID, out var e) && Dist(m.Position.x, m.Position.z, e.X, e.Z) > 0.01f)
+            var path = prefix.Offsets.Select(o => new Position(m.Position.x + o.X, m.Position.z + o.Z)).ToList();
+            float px = path.Count > 0 ? path[^1].x : m.Position.x, pz = path.Count > 0 ? path[^1].z : m.Position.z;
+            float ex = px, ez = pz;
+            if (ends.TryGetValue(m.ID, out var e) && Dist(px, pz, e.X, e.Z) > 0.01f)
             {
                 path.Add(new Position(e.X, e.Z));
                 (ex, ez) = e;
-                longest = Math.Max(longest, Dist(m.Position.x, m.Position.z, e.X, e.Z));
             }
+            longest = Math.Max(longest, PathLength(m.Position.x, m.Position.z, path));
             moves.Add(new ModelMoveEntry(b, path));
             shown.Add((m.ID, ex, ez, m.BaseRadiusInches));
         }
@@ -269,29 +278,43 @@ public static class MovePlanner
     /// the player confirms, through <see cref="Arranged"/>'s plan. Returns the new arrangement.
     /// </summary>
     public static Dictionary<ModelID, (float X, float Z)> Dragged(DefineMovementPathRequest request,
-        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, float? cap = null) =>
-        Dragged(request.UnitDataBinding, ends, picked, dx, dz, id => Math.Min(cap ?? float.MaxValue, request.PlayerBudgetFor(id).maxDistance));
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, float? cap = null,
+        IReadOnlyList<(float X, float Z)>? turns = null) =>
+        Dragged(request.UnitDataBinding, ends, picked, dx, dz, id => Math.Min(cap ?? float.MaxValue, request.PlayerBudgetFor(id).maxDistance), turns);
 
     private static Dictionary<ModelID, (float X, float Z)> Dragged(DataBinding<UnitData> unit,
-        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, Func<ModelID, float> reach)
+        IReadOnlyDictionary<ModelID, (float X, float Z)> ends, IReadOnlyCollection<ModelID> picked, float dx, float dz, Func<ModelID, float> reach,
+        IReadOnlyList<(float X, float Z)>? turns = null)
     {
         var living = unit.GetValue().ModelBindings.Select(b => b.GetValue()).Where(m => m.GetIsAlive()).ToList();
         var d = living.ToDictionary(m => m.ID, m => ends.TryGetValue(m.ID, out var e) ? e : (m.Position.x, m.Position.z));
+        Prefix prefix = PrefixFor(living.Select(m => unit.GetValue().ModelBindings.First(b => b.GetValue().ID.Equals(m.ID))).ToList(),
+            turns ?? Array.Empty<(float, float)>());
         foreach (ModelData m in living.Where(m => picked.Contains(m.ID)))
         {
-            float limit = reach(m.ID) - 0.01f;
+            // The last leg starts at the model's place at the last turn (or where it stands), with what the turns left.
+            var (ox, oz) = prefix.Last;
+            float ax = m.Position.x + ox, az = m.Position.z + oz;
+            float limit = reach(m.ID) - 0.01f - prefix.Length;
             var (sx, sz) = d[m.ID];
             float tx = sx + dx, tz = sz + dz;
-            float len = Dist(m.Position.x, m.Position.z, tx, tz);
+            float len = Dist(ax, az, tx, tz);
             if (len > limit && len > 0.0001f)
             {
                 float k = Math.Max(0, limit) / len;
-                tx = m.Position.x + (tx - m.Position.x) * k;
-                tz = m.Position.z + (tz - m.Position.z) * k;
+                tx = ax + (tx - ax) * k;
+                tz = az + (tz - az) * k;
             }
             d[m.ID] = (tx, tz);
         }
         return d;
+    }
+
+    private static float PathLength(float x, float z, IReadOnlyList<Position> path)
+    {
+        float len = 0;
+        foreach (Position p in path) { len += Dist(x, z, p.x, p.z); x = p.x; z = p.z; }
+        return len;
     }
 
     /// <summary>The models a move breaks a rule with, and the rule - for marking them when a confirm is refused.</summary>

@@ -503,6 +503,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     private readonly HashSet<ModelID> _picked = new();
     private Dictionary<ModelID, (float X, float Z)>? _arranged;
     private bool Individual => _arranged != null;
+    // Kai, 2026-11-18: turn points first (round a building), then lay the models out at the end. The whole-unit turns
+    // placed before a model was picked stay; every model goes through them, then to its own end.
+    private List<(float X, float Z)> _turns = new();
     // Kai, 2026-11-17: drag and drop. A model (or the picked ones) follows the pointer, held only to its own move
     // distance; coherency, terrain and enemies are judged when you confirm, and the models at fault go red.
     private Vector2 _grabAt;
@@ -539,7 +542,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         ? $"Can't move like that: {_faults[0].Reason} ({_faults.Select(f => f.Id).Distinct().Count()} red). Drag them into place, then Space."
         : _picked.Count > 0
         ? $"{_picked.Count} model{(_picked.Count == 1 ? "" : "s")} picked - drag {(_picked.Count == 1 ? "it" : "them")}, or click the table to send {(_picked.Count == 1 ? "it" : "them")} there. Ctrl+click adds a model. Space to confirm, right-click to drop the pick."
-        : Individual ? "Drag any of the unit's models to move it on its own. Space to confirm - nothing is checked until then."
+        : Individual ? (_turns.Count > 0 ? $"Through {_turns.Count} turn{(_turns.Count == 1 ? "" : "s")} - drag" : "Drag") + " any of the unit's models to lay it out. Space to confirm - nothing is checked until then."
         : _pending != null
         ? (_final ? "Space to confirm - hold the left button and drag to turn it - right-click to take the last point back."
                   : "Click again to add a turn, hold and drag to turn the unit, Space to confirm, right-click to take the last point back.")
@@ -572,6 +575,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     {
         _picked.Clear();
         _arranged = null;
+        _turns.Clear();
         _pending = null;
         _via.Clear();
         _final = false;
@@ -598,7 +602,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
 
     public override bool TableGrab(BattleScreen s, Vector2 at)
     {
-        if (Done || _final || GhostAt(s, at) is not { } own || s.Table.TableAt(at) is not { } tp) return false;
+        if (Done || GhostAt(s, at) is not { } own || s.Table.TableAt(at) is not { } tp) return false;
         if (!_picked.Contains(own.ID))
         {
             if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear();
@@ -616,8 +620,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override void TableDrag(BattleScreen s, Vector2 at)
     {
         if (_grabBase == null || _picked.Count == 0 || s.Table.TableAt(at) is not { } tp) return;
-        _arranged = MovePlanner.Dragged(_r, _grabBase, _picked, tp.X - _grabAt.X, tp.Y - _grabAt.Y, Cap);
-        _pending = MovePlanner.Arranged(_r, s.Session.Table, _arranged);
+        _arranged = MovePlanner.Dragged(_r, _grabBase, _picked, tp.X - _grabAt.X, tp.Y - _grabAt.Y, Cap, _turns);
+        _pending = MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns);
         ClearFaults(s);
         Draw(s, _pending, placed: true, null);
         DrawPicked(s);
@@ -665,7 +669,9 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     {
         if (_arranged != null) return;
         _arranged = Unit.Models.Where(m => m.GetIsAlive()).ToDictionary(m => m.ID, EndOf);
-        _via.Clear();
+        // Keep the route: every turn point but the last (the last is where the unit's formation ended - the models now
+        // go from there to wherever they are dragged). A path that ended in contact has no such last point.
+        _turns = _final ? _via.ToList() : _via.Take(Math.Max(0, _via.Count - 1)).ToList();
         _final = false;
     }
 
@@ -675,7 +681,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         var moving = Unit.Models.Where(m => m.GetIsAlive() && _picked.Contains(m.ID)).ToList();
         if (moving.Count == 0) return new Dictionary<ModelID, (float X, float Z)>(_arranged!);
         float cx = moving.Average(m => EndOf(m).X), cz = moving.Average(m => EndOf(m).Z);
-        return MovePlanner.Dragged(_r, _arranged!, _picked, to.X - cx, to.Y - cz, Cap);
+        return MovePlanner.Dragged(_r, _arranged!, _picked, to.X - cx, to.Y - cz, Cap, _turns);
     }
 
     private void DrawPicked(BattleScreen s)
@@ -776,17 +782,32 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         if (placed) c = c.Lightened(0.25f);
         var ghosts = plan.Ends.Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), c with { A = placed ? 1.6f : 1f })).ToList();
         var lines = new List<BattleTable.GhostLine>();
-        var facingOf = plan.Moves.ToDictionary(m => m.Model.GetValue().ID, FacingAim.Shown);
-        foreach (var e in plan.Ends)
-            if (facingOf.TryGetValue(e.Id, out FDG.Float2 f)) FacingArrows.Add(lines, e.X, e.Z, Mathf.Max(0.4f, e.Radius), f, c with { A = 0.95f });
         var models = Unit.Models.Where(m => m.GetIsAlive()).ToList();
+        if (!Individual)
+        {
+            var facingOf = plan.Moves.ToDictionary(m => m.Model.GetValue().ID, FacingAim.Shown);
+            foreach (var e in plan.Ends)
+                if (facingOf.TryGetValue(e.Id, out FDG.Float2 f)) FacingArrows.Add(lines, e.X, e.Z, Mathf.Max(0.4f, e.Radius), f, c with { A = 0.95f });
+        }
         if (Individual)
         {
-            // One model at a time: each moved model's own straight line.
-            var endOf = plan.Ends.ToDictionary(e => e.Id, e => new Vector2(e.X, e.Z));
+            // Kai, 2026-11-18: quieter. No facing arrows; the unit's route through its turns drawn once, thin; each moved
+            // model only a faint hairline for its own last leg.
+            Color quiet = c with { A = 0.35f };
+            if (_turns.Count > 0 && models.Count > 0)
+            {
+                var from = new Vector2(models.Average(m => m.Position.x), models.Average(m => m.Position.z));
+                foreach (var t in _turns) { var to = new Vector2(t.X, t.Z); lines.Add(new BattleTable.GhostLine(from, to, c with { A = 0.6f }, 0.08f)); from = to; }
+                foreach (var t in _turns) ghosts.Add(new BattleTable.Ghost(t.X, t.Z, 0.4f, c with { A = 0.7f }, Ring: true));
+            }
+            var moveOf = plan.Moves.ToDictionary(mv => mv.Model.GetValue().ID, mv => mv.Positions);
             foreach (var m in models)
-                if (endOf.TryGetValue(m.ID, out Vector2 to) && to.DistanceTo(new Vector2(m.Position.x, m.Position.z)) > 0.05f)
-                    lines.Add(new BattleTable.GhostLine(new Vector2(m.Position.x, m.Position.z), to, c with { A = 0.85f }));
+            {
+                if (!moveOf.TryGetValue(m.ID, out var path) || path.Count == 0) continue;
+                Vector2 legFrom = path.Count >= 2 ? new Vector2(path[^2].x, path[^2].z) : new Vector2(m.Position.x, m.Position.z);
+                Vector2 legTo = new(path[^1].x, path[^1].z);
+                if (legTo.DistanceTo(legFrom) > 0.3f) lines.Add(new BattleTable.GhostLine(legFrom, legTo, quiet, 0.04f));
+            }
             if (preview != null)
                 ghosts.AddRange(preview.Ends.Where(e => _picked.Contains(e.Id))
                     .Select(e => new BattleTable.Ghost(e.X, e.Z, Mathf.Max(0.4f, e.Radius), Of(preview) with { A = 0.35f })));
@@ -823,7 +844,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         {
             if (_picked.Count == 0 || at.DistanceTo(_lastHover) < 2 || s.Table.TableAt(at) is not { } hp) return;
             _lastHover = at;
-            var preview = MovePlanner.Arranged(_r, s.Session.Table, SlidePicked(hp));
+            var preview = MovePlanner.Arranged(_r, s.Session.Table, SlidePicked(hp), _turns);
             if (_pending != null) Draw(s, _pending, placed: true, preview); else Draw(s, preview, placed: false, null);
             _note = $"{KindName(preview)}: {preview.Distance:0.0}\" - click to move {(_picked.Count == 1 ? "it" : "them")} there." + Danger(preview);
             Version++;
@@ -855,7 +876,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         // One of this unit's own models: pick it (Ctrl adds or removes), to move it on its own.
-        if (!_final && s.Table.ModelAt(at) is { } own && Unit.Models.Any(m => m.ID.Equals(own.ID)) && own.GetIsAlive())
+        if (s.Table.ModelAt(at) is { } own && Unit.Models.Any(m => m.ID.Equals(own.ID)) && own.GetIsAlive())
         {
             if (!Input.IsKeyPressed(Key.Ctrl)) _picked.Clear();
             if (!_picked.Add(own.ID)) _picked.Remove(own.ID);
@@ -869,7 +890,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
             if (_picked.Count == 0) { s.Toast("Click one of this unit's models to move it, or Space to confirm."); return true; }
             if (s.Table.TableAt(at) is not { } tp) return true;
             _arranged = SlidePicked(tp);
-            var picked = MovePlanner.Arranged(_r, s.Session.Table, _arranged);
+            var picked = MovePlanner.Arranged(_r, s.Session.Table, _arranged, _turns);
             _pending = picked;
             ClearFaults(s);
             Draw(s, picked, placed: true, null);
