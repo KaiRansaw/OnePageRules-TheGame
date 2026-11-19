@@ -13,7 +13,8 @@ namespace OprGodot.Battle;
 /// </summary>
 public static class GroundBlend
 {
-    /// <summary>Which layers are drawn (letters s, d, t). Off until Kai picks from the comparison (2026-11-18); the worn
+    /// <summary>Which layers are drawn (letters s, d, t). BACKBURNER (Kai, 2026-11-18): off until the built-in terrain set
+    /// is finalised, then Kai picks from the comparison. Never applied to Warhammer models (callers skip them). The worn
     /// ground still needs its lighting fixed (some halos came out near-black - their triangles face down).</summary>
     public static string Layers = "";
 

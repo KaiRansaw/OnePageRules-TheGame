@@ -593,8 +593,6 @@ public partial class BattleTable : Node3D
         var holder = new Node3D();
         _terrainRoot.AddChild(holder);
         // Kai, 2026-11-14: a Warhammer model the map placed shows as itself, when this computer has it.
-        // Kai, 2026-11-18: terrain sits IN the battlefield's ground (worn ground, shade, tufts round its edge).
-        GroundBlend.Add(holder, polys, kind, seed, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(Session.Lobby.Vm.MapHorizon));
         if (WarhammerModels.Dress(holder, t.Look, polys[0]))
         {
             nodes.Add(holder);
@@ -603,6 +601,8 @@ public partial class BattleTable : Node3D
         float h = t.HeightInches > 0.05f ? t.HeightInches : 1f;
         // Plain stand-ins for now (Kai, 2026-11-14); the pack looks (TerrainDresser.Dress) wait for the Terrain Lab pieces.
         TerrainDresser.DressBasic(holder, polys, h, kind, theme, seed, t.Name);
+        // Kai, 2026-11-18: built-in terrain only sits IN the ground (never the Warhammer models). Off until he picks.
+        GroundBlend.Add(holder, polys, kind, seed, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(Session.Lobby.Vm.MapHorizon));
         nodes.Add(holder);
         return true;
     }

@@ -998,8 +998,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         var node = new Node3D();
         _dressed.AddChild(node);
         if (polys.Count == 0 || !WarhammerModels.Dress(node, p.Look, polys[0]))
+        {
             TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
-        GroundBlend.Add(node, polys, KindOf(p), TerrainLooks.SeedFor(p.X, p.Z, p.Name), MapAtmosphere.HorizonFor(HorizonId));
+            // Built-in terrain only (Kai, 2026-11-18: never the Warhammer models). Off until he picks.
+            GroundBlend.Add(node, polys, KindOf(p), TerrainLooks.SeedFor(p.X, p.Z, p.Name), MapAtmosphere.HorizonFor(HorizonId));
+        }
         _looks[p] = (sig, node);
         return true;
     }
