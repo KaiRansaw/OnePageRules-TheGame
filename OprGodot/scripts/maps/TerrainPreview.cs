@@ -1,6 +1,7 @@
 using FdgRaylib.Terrain;
 using Godot;
 using OprGodot.Battle;
+using OprGodot.Forge;
 using OprGodot.Hud;
 
 namespace OprGodot.Maps;
@@ -22,6 +23,13 @@ public partial class TerrainPreview : PanelContainer
     private Camera3D _cam = null!;
     private Label _banner = null!, _caption = null!;
     private SubViewportContainer _box = null!;
+    private HBoxContainer _sinkRow = null!;
+    private HSlider _sink = null!;
+    private Label _sinkValue = null!;
+    private WarhammerTerrainLibrary.Entry? _entry;
+
+    /// <summary>Kai, 2026-11-18: the shown piece's sink was changed (already written to its match - save it).</summary>
+    public event Action<WarhammerTerrainLibrary.Entry>? SinkChanged;
     private float _yaw = 35, _pitch = 35, _dist = 20;
     private bool _dragging;
     private Vector3 _focus;
@@ -61,6 +69,25 @@ public partial class TerrainPreview : PanelContainer
         _caption = HudKit.Text(matLook != null && WarhammerTerrain.MatFile(matLook) != null ? $"On Mat {MatNumber} - drag to turn, wheel to zoom"
             : $"Mat {MatNumber} isn't downloaded - shown on felt. Drag to turn, wheel to zoom", 12, HudKit.Dim, HudKit.Semi);
         col.AddChild(_caption);
+        // Kai, 2026-11-18: "adjust its base point, so if a model DOES have a base, the base is under the map".
+        _sinkRow = new HBoxContainer { Name = "SinkRow" };
+        _sinkRow.AddThemeConstantOverride("separation", 8);
+        _sinkRow.AddChild(HudKit.Text("Sink into ground", 13, HudKit.Fg, HudKit.Semi).Also(l => l.TooltipText =
+            "Lowers the model so a sculpted base goes under the ground and out of sight. Saved for this model everywhere it's used (maps, battles). Looks only - the rules footprint doesn't move."));
+        _sink = new HSlider { Name = "Sink", MinValue = 0, MaxValue = 4, Step = 0.05, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        _sinkValue = HudKit.Text("0\"", 13, HudKit.Fg, HudKit.Semi);
+        _sinkValue.CustomMinimumSize = new Vector2(48, 0);
+        _sink.ValueChanged += v =>
+        {
+            _sinkValue.Text = $"{v:0.##}\"";
+            if (_entry == null || Mathf.IsEqualApprox((float)v, _entry.Match.Sink)) return;
+            _entry.Match.Sink = (float)v;
+            Redraw();
+            SinkChanged?.Invoke(_entry);
+        };
+        _sinkRow.AddChild(_sink);
+        _sinkRow.AddChild(_sinkValue);
+        col.AddChild(_sinkRow);
         AddChild(col);
         ShowPiece(null, 0);
     }
@@ -69,9 +96,13 @@ public partial class TerrainPreview : PanelContainer
     public void ShowPiece(WarhammerTerrainLibrary.Entry? entry, int ticked)
     {
         if (_piece == null) return;
-        foreach (Node c in _piece.GetChildren()) { _piece.RemoveChild(c); c.QueueFree(); }
+        _entry = ticked == 1 ? entry : null;
+        _sinkRow.Visible = _entry != null;
+        if (_entry != null) _sink.SetValueNoSignal(_entry.Match.Sink);
+        _sinkValue.Text = $"{_sink.Value:0.##}\"";
         if (ticked > 1)
         {
+            Clear();
             _banner.Text = "Too many models selected";
             _box.Visible = false;
             return;
@@ -79,17 +110,32 @@ public partial class TerrainPreview : PanelContainer
         _box.Visible = true;
         if (entry == null)
         {
+            Clear();
             _banner.Text = "Tick a piece to see it here.";
             _box.Visible = false;
             return;
         }
         float w = Mathf.Max(0.5f, entry.Match.W), d = Mathf.Max(0.5f, entry.Match.D);
-        var footprint = new[] { new Vector2(-w / 2, -d / 2), new Vector2(w / 2, -d / 2), new Vector2(w / 2, d / 2), new Vector2(-w / 2, d / 2) };
-        bool drawn = WarhammerModels.Dress(_piece, entry.Look, footprint);
-        _banner.Text = drawn ? "" : entry.Measured ? "Couldn't load this model." : "Still measuring this piece...";
+        Redraw();
         _focus = new Vector3(0, Mathf.Max(0.5f, entry.Match.H) * 0.4f, 0);
         _dist = Mathf.Clamp(Mathf.Max(Mathf.Max(w, d), entry.Match.H) * 1.8f, 6f, 60f);
         Aim();
+    }
+
+    private void Clear()
+    {
+        foreach (Node c in _piece.GetChildren()) { _piece.RemoveChild(c); c.QueueFree(); }
+    }
+
+    /// <summary>The shown piece drawn again (its sink changed), keeping the camera where it is.</summary>
+    private void Redraw()
+    {
+        Clear();
+        if (_entry == null) return;
+        float w = Mathf.Max(0.5f, _entry.Match.W), d = Mathf.Max(0.5f, _entry.Match.D);
+        var footprint = new[] { new Vector2(-w / 2, -d / 2), new Vector2(w / 2, -d / 2), new Vector2(w / 2, d / 2), new Vector2(-w / 2, d / 2) };
+        bool drawn = WarhammerModels.Dress(_piece, _entry.Look, footprint, _entry.Match.Sink);
+        _banner.Text = drawn ? "" : _entry.Measured ? "Couldn't load this model." : "Still measuring this piece...";
     }
 
     private void OnInput(InputEvent e)

@@ -163,6 +163,7 @@ public static class Horizon
 
     private static NoiseTexture2D? _macro;
     /// <summary>Soft seamless noise for the ground's big patches and for mixing its two detail samples.</summary>
+    public static NoiseTexture2D MacroNoise => Macro;
     private static NoiseTexture2D Macro => _macro ??= new NoiseTexture2D
     {
         Width = 512, Height = 512, Seamless = true, GenerateMipmaps = true,

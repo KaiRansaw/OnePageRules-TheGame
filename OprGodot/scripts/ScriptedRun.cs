@@ -385,6 +385,14 @@ public partial class ScriptedRun : Node
                 _wait = 30;
                 return;
             }
+            // "value:Sink|1.5" sets the slider / spin box named Sink, as if dragged by hand.
+            if (name.StartsWith("value:") && name[6..].Split('|') is [var rName, var rVal]
+                && GetTree().Root.FindChild(rName, true, false) is Godot.Range range)
+            {
+                range.Value = double.Parse(rVal, System.Globalization.CultureInfo.InvariantCulture);
+                _wait = 30;
+                return;
+            }
             // "mapcam:12|120" tilts the Map Maker's camera to 12 degrees, 120" back (horizon checks).
             if (name.StartsWith("mapcam:") && name[7..].Split('|') is [var mp, var md] && Find<Maps.MapEditorScreen>(GetTree().Root) is { } mapEd)
             {

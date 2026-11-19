@@ -101,6 +101,7 @@ public partial class MatchTerrainScreen : Control
         var sideCol = new VBoxContainer { CustomMinimumSize = new Vector2(410, 0), Name = "Side" };
         sideCol.AddThemeConstantOverride("separation", 10);
         _preview = new TerrainPreview { Name = "Preview" };
+        _preview.SinkChanged += Changed;
         sideCol.AddChild(_preview);
         Control sheet = CheatSheet();
         sheet.Visible = _sheetOpen;

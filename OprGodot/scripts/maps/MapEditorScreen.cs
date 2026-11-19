@@ -632,7 +632,22 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
             if (!p.Round) _right.AddChild(Row("Turned", Spin(p.Angle, -180, 180, v => p.Angle = v, 5, "deg")));
-            _right.AddChild(Row("Height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall it is. The table is flat for now, so height only matters to Climbable: over 3\" tall it counts as Impassable."));
+            _right.AddChild(Row("Rules height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall the piece counts as for the rules - it doesn't move the model. The table is flat for now, so height only matters to Climbable: over 3\" tall it counts as Impassable."));
+            // Kai, 2026-11-18: sink a Warhammer model so its sculpted base goes under the ground. Saved on the MODEL (its
+            // match), so every piece using it - here, on other maps, in battle - follows.
+            if (modelPiece && WarhammerModels.Library?.ForLook(p.Look) is { } model)
+            {
+                var sink = new SpinBox { Name = "SinkModel", MinValue = 0, MaxValue = 4, Step = 0.05, Value = model.Match.Sink, Suffix = "\"",
+                    TooltipText = "Lowers this model into the ground so a sculpted base is hidden. Saved for the model everywhere it's used. Looks only." };
+                sink.ValueChanged += v =>
+                {
+                    model.Match.Sink = (float)v;
+                    model.Match.Checked = true;
+                    try { WarhammerModels.Library?.Save(); } catch (Exception ex) { Say("Couldn't save the sink: " + ex.Message, Palette.WoundsRed); }
+                    Sync3D();
+                };
+                _right.AddChild(Row("Sink model", sink));
+            }
 
             _right.AddChild(HudKit.Heading("Rules (from the book)", 13));
             foreach (ETerrainType flag in TerrainBook.RuleFlags)
@@ -972,7 +987,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     /// the style has no look for it - the plain block is drawn.</summary>
     private bool Dress(MapPiece p)
     {
-        string sig = $"{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.#}|{p.Round}|{p.Height:0.##}|{p.Kind}|{p.Look}|{p.Name}|{Theme}";
+        string sig = $"{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.#}|{p.Round}|{p.Height:0.##}|{p.Kind}|{p.Look}|{p.Name}|{Theme}|{WarhammerModels.Library?.ForLook(p.Look)?.Match.Sink:0.##}";
         if (_looks.TryGetValue(p, out var have))
         {
             if (have.Sig == sig) return true;
@@ -984,6 +999,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _dressed.AddChild(node);
         if (polys.Count == 0 || !WarhammerModels.Dress(node, p.Look, polys[0]))
             TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
+        GroundBlend.Add(node, polys, KindOf(p), TerrainLooks.SeedFor(p.X, p.Z, p.Name), MapAtmosphere.HorizonFor(HorizonId));
         _looks[p] = (sig, node);
         return true;
     }

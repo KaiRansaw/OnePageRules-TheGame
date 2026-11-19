@@ -245,6 +245,29 @@ public static partial class TerrainDresser
     }
 
     /// <summary>Props round the edge of the footprint (rocks round a pond, stones by the lava).</summary>
+    private static readonly Prop[] Tufts =
+    {
+        new("nature/grass_large", 0.35f, 0.7f), new("nature/grass_leafsLarge", 0.3f, 0.6f), new("nature/plant_bush", 0.4f, 0.8f),
+        new("nature/stone_smallA", 0.15f, 0.35f), new("nature/rock_smallA", 0.15f, 0.3f), new("nature/stone_smallC", 0.12f, 0.3f),
+    };
+
+    /// <summary>Life-size grass tufts and stones along a footprint's edge, half in and half out, so the piece's edge
+    /// melts into the field (see <see cref="Battle.GroundBlend"/>).</summary>
+    public static void EdgeTufts(Node3D root, Vector2[] poly, Random rng)
+    {
+        float perimeter = Enumerable.Range(0, poly.Length).Sum(i => poly[i].DistanceTo(poly[(i + 1) % poly.Length]));
+        int count = Math.Clamp((int)(perimeter * 1.4f), 6, 120);
+        Vector2 c = Centroid(poly);
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 edge = OnEdge(poly, (float)rng.NextDouble());
+            Vector2 d = (edge - c).Normalized();
+            Vector2 p = edge + d * (float)(rng.NextDouble() * 2.2 - 0.6);
+            var prop = Tufts[rng.Next(Tufts.Length)];
+            PlaceTall(root, prop.File, new Vector3(p.X, 0, p.Y), (float)rng.NextDouble() * Mathf.Tau, Lerp(prop, rng), 1.2f);
+        }
+    }
+
     private static void Ring(Node3D root, Vector2[] poly, Prop[] props, float density, float y, Random rng)
     {
         if (props.Length == 0) return;

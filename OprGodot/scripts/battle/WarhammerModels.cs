@@ -69,7 +69,7 @@ public static class WarhammerModels
     /// Draws the model a piece's Look names onto <paramref name="footprint"/> (the piece's outline in table space, as
     /// the stand-ins take it: x across, y = the table's z). False - nothing added - when this computer doesn't have it.
     /// </summary>
-    public static bool Dress(Node3D parent, string? look, Vector2[] footprint)
+    public static bool Dress(Node3D parent, string? look, Vector2[] footprint, float? sink = null)
     {
         if (WarhammerTerrainLibrary.IdOf(look) is null || footprint.Length < 3) return false;
         if (Library?.ForLook(look) is not { } entry) return false;
@@ -107,7 +107,8 @@ public static class WarhammerModels
         pivot.Scale = new Vector3(sx, sy, sz);
         Vector3 c = box.GetCenter();
         pivot.Position = new Vector3(-c.X * sx, -box.Position.Y * sy, -c.Z * sz);
-        holder.Position = new Vector3(centre.X, 0, centre.Y);
+        // Sunk into the ground by the model's own setting (Match terrain / Map Maker), so a sculpted base goes under it.
+        holder.Position = new Vector3(centre.X, -(sink ?? entry.Match.Sink), centre.Y);
         // Turn the model's +X onto the footprint's first edge (its width), the same way the outlines are drawn - checked
         // against them in the Map Maker's top view (2026-11-14).
         holder.Rotation = new Vector3(0, Mathf.Atan2(across.Y, across.X), 0);
