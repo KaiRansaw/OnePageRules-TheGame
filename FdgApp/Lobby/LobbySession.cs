@@ -83,8 +83,12 @@ public sealed class LobbySession : IDisposable
         viewModel.SetAllowedGameSystems(GameSystemInfo.ArmySource(system));
         viewModel.SetShootingMode(EShootingMode.DeclareFirst);
         bool wasSkirmish = GameSystemInfo.IsSkirmish(current), isSkirmish = GameSystemInfo.IsSkirmish(system);
+        // Kai, 2026-11-19: a game you switch to opens at its own book's full match - Age of Fantasy at 1500 (its
+        // Advanced Rulebook), not the 2000 left over from Grimdark Future, which grew the table past the 6' x 4' every
+        // bundled map is drawn for. Coming back to the same game keeps the size you last played.
         if (isSkirmish && !wasSkirmish) viewModel.SetArmyPoints(300);
-        else if (!isSkirmish && wasSkirmish) viewModel.SetArmyPoints(2000);
+        else if (!isSkirmish && (wasSkirmish || current != system))
+            viewModel.SetArmyPoints(TableSizing.FullMatchPoints(system) ?? (wasSkirmish ? 2000 : viewModel.ArmyPoints));
         if (Array.IndexOf(GameSystemInfo.Modes(system), viewModel.GameMode) < 0)
             viewModel.SetGameMode(GameSystemInfo.Modes(system)[0]);
         else if (viewModel.GameMode == EGameMode.Horde)
