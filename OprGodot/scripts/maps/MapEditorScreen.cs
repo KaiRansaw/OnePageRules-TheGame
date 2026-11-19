@@ -95,7 +95,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         if (refreshed > 0) CallDeferred(nameof(SayRefreshed), refreshed);
         _world = new Node3D { Name = "MapWorld" };
         AddChild(_world);
-        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D);
+        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D, Horizon.On);
         _board = new Node3D();
         _pieces = new Node3D();
         _marks = new Node3D();
@@ -237,10 +237,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         };
         _top.AddChild(size);
         var mats = MatsHere();
-        string matName = mats.FirstOrDefault(m => m.Look == Draft.Mat)?.Name ?? (Draft.Mat.Length > 0 ? "Mat (not on this PC)" : "Plain felt");
-        _top.AddChild(Ui.Button("Mat: " + matName, OpenMatPicker, mats.Count > 0
-            ? "The battle mat the table is drawn with - saved with the map. Players without that picture see the plain felt."
-            : "No battle mats downloaded yet: Asset Lab -> Download models... -> Get Warhammer terrain.").Also(b => { b.Name = "MatButton"; b.Disabled = mats.Count == 0 && Draft.Mat.Length == 0; }));
+        string matName = mats.FirstOrDefault(m => m.Look == Draft.Mat)?.Name ?? Draft.Mat switch
+        {
+            "" or MapAtmosphere.GroundMat => "Horizon ground",
+            MapAtmosphere.FeltMat => "Plain felt",
+            _ => "Mat (not on this PC)",
+        };
+        _top.AddChild(Ui.Button("Mat: " + matName, OpenMatPicker,
+            "What the play area is drawn with - saved with the map. Horizon ground: the same ground as the land round the table, so they join up. "
+            + "Players without a downloaded mat's picture see the horizon ground.").Also(b => b.Name = "MatButton"));
         // Kai, 2026-11-18: what lies past the table, and the weather over it - both saved with the map, cosmetic.
         var horizon = new OptionButton { Name = "HorizonPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
             TooltipText = "What lies beyond the table when Settings -> Around the table is Battlefield: the land, sky and hills. Auto follows the map's terrain style (Generate...). Only for looks." };
@@ -501,7 +506,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         var col = new VBoxContainer { CustomMinimumSize = new Vector2(1080, 0) };
         col.AddThemeConstantOverride("separation", 8);
         col.AddChild(HudKit.Text("BATTLE MAT", 26, HudKit.Fg, HudKit.Exo(800)));
-        col.AddChild(HudKit.Text("The picture the table is drawn with. Saved with the map; a player without it sees the plain felt.", 14, HudKit.Dim, HudKit.Semi));
+        col.AddChild(HudKit.Text("What the play area is drawn with. Horizon ground matches the land round the table (Settings -> Around the table = Battlefield). Saved with the map.", 14, HudKit.Dim, HudKit.Semi));
         var grid = new GridContainer { Columns = 5 };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 8);
@@ -514,7 +519,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         var pics = new List<(TextureRect Pic, WarhammerTerrain.Mat Mat)>();
         Button Tile(string name, string look, out TextureRect pic)
         {
-            var b = new Button { Name = "Mat_" + (look.Length > 0 ? look[WarhammerTerrain.MatPrefix.Length..] : "Felt"), ToggleMode = true,
+            var b = new Button { Name = "Mat_" + (look.StartsWith(WarhammerTerrain.MatPrefix) ? look[WarhammerTerrain.MatPrefix.Length..] : look.Length > 0 ? look : "Ground"), ToggleMode = true,
                 ButtonPressed = Draft.Mat == look, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(204, 150), TooltipText = name };
             var tile = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             tile.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -528,7 +533,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             grid.AddChild(b);
             return b;
         }
-        Tile("Plain felt", "", out TextureRect felt);
+        Tile("Horizon ground", "", out TextureRect ground);
+        ground.Texture = Horizon.GroundPicture(MapAtmosphere.HorizonFor(HorizonId));
+        Tile("Plain felt", MapAtmosphere.FeltMat, out TextureRect felt);
         felt.Texture = TableLook.Felt(24, 16);
         foreach (var m in mats) { Tile(m.Name, m.Look, out TextureRect pic); pics.Add((pic, m)); }
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 640) };
@@ -877,7 +884,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId);
+        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId, battlefield: Horizon.On);
         Weather.Add(_board, W, D, Draft.Weather);
     }
 

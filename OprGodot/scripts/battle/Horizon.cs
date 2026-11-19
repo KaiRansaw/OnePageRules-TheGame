@@ -93,7 +93,6 @@ public static class Horizon
         var zs = Steps(hd, Reach);
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
-        const float Tile = 60f; // the ground picture repeats every 5 feet
         for (int i = 0; i < xs.Count; i++)
         for (int j = 0; j < zs.Count; j++)
         {
@@ -114,6 +113,19 @@ public static class Horizon
         }
         st.GenerateNormals();
         st.GenerateTangents();
+        TableLook.Mesh(root, st.Commit(), Ground(theme), Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+
+        // The playable edge: a thin light line round the mat.
+        Border(root, tableW, tableD);
+    }
+
+    /// <summary>The ground picture repeats every 5 feet, measured from the table's middle (land and table alike).</summary>
+    public const float Tile = 60f;
+
+    /// <summary>The theme's ground: its picture (or Hospitable's) tinted to the theme. UVs are table inches / <see cref="Tile"/>.</summary>
+    public static StandardMaterial3D Ground(TerrainBook.ETheme theme)
+    {
+        Theme th = Of(theme);
         var mat = new StandardMaterial3D
         {
             AlbedoColor = th.Tint, VertexColorUseAsAlbedo = true, Roughness = 0.95f,
@@ -121,10 +133,28 @@ public static class Horizon
         };
         if (mat.AlbedoTexture == null) mat.AlbedoColor = th.Ground;
         if (Picture(theme, "ground_normal") is { } normal) { mat.NormalEnabled = true; mat.NormalTexture = normal; mat.NormalScale = 0.6f; }
-        TableLook.Mesh(root, st.Commit(), mat, Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        return mat;
+    }
 
-        // The playable edge: a thin light line round the mat.
-        Border(root, tableW, tableD);
+    /// <summary>The theme's ground picture alone (for the mat picker), or null.</summary>
+    public static Texture2D? GroundPicture(TerrainBook.ETheme theme) => Picture(theme, "ground");
+
+    /// <summary>The play area drawn in the horizon's own ground (Kai, 2026-11-18: "make the terrain and the playable space be
+    /// the same texture"), lined up with the land round it so there is no seam, with the faint inch grid over it.</summary>
+    public static void AddTableGround(Node parent, float w, float d, TerrainBook.ETheme theme, Texture2D grid)
+    {
+        var st = new SurfaceTool();
+        st.Begin(Mesh.PrimitiveType.Triangles);
+        void V(float x, float z) { st.SetColor(Colors.White); st.SetUV(new Vector2(x / Tile, z / Tile)); st.SetNormal(Vector3.Up); st.AddVertex(new Vector3(x, 0.01f, z)); }
+        float hw = w / 2, hd = d / 2;
+        V(-hw, -hd); V(hw, -hd); V(hw, hd);
+        V(-hw, -hd); V(hw, hd); V(-hw, hd);
+        st.GenerateTangents();
+        TableLook.Mesh(parent, st.Commit(), Ground(theme), Vector3.Zero);
+        TableLook.Mesh(parent, new PlaneMesh { Size = new Vector2(w, d) }, new StandardMaterial3D
+        {
+            AlbedoTexture = grid, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        }, new Vector3(0, 0.015f, 0));
     }
 
     /// <summary>Grid lines from -reach to reach: every 6" across the table and just past it, widening outwards.</summary>

@@ -534,7 +534,7 @@ public partial class BattleTable : Node3D
     private FdgRaylib.Terrain.TableRooms.Room? _room;
     private FdgRaylib.Terrain.TableRooms.Room? Room => _room ??= TableLook.RoomFor(Session.Lobby.Vm.GameSystem);
 
-    private void Environment() => TableLook.AddLighting(this, Room, Session.Lobby.Vm.MapHorizon, W, D);
+    private void Environment() => TableLook.AddLighting(this, Room, Session.Lobby.Vm.MapHorizon, W, D, Horizon.On);
 
     private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f) => TableLook.Mat(c, rough, emit, emitE);
 
@@ -542,7 +542,7 @@ public partial class BattleTable : Node3D
 
     private void Board()
     {
-        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon);
+        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon, battlefield: Horizon.On);
         Weather.Add(this, W, D, Session.Lobby.Vm.MapWeather);
     }
 

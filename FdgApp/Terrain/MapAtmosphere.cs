@@ -15,6 +15,11 @@ public static class MapAtmosphere
     public const string Clear = "";
 
     /// <summary>Every weather the game draws, in the order the Map Maker lists them.</summary>
+    /// <summary>Map mats that are not pictures (Kai, 2026-11-18): "" = the horizon's own ground under the play area too, so
+    /// table and land are one surface (on the battlefield; a room's table shows felt); <see cref="GroundMat"/> = that ground
+    /// everywhere; <see cref="FeltMat"/> = the plain felt. Anything else is a downloaded mat picture.</summary>
+    public const string GroundMat = "ground", FeltMat = "felt";
+
     public static readonly IReadOnlyList<Weather> Weathers = new Weather[]
     {
         new(Clear, "Clear"),
