@@ -534,7 +534,12 @@ public partial class BattleTable : Node3D
     private FdgRaylib.Terrain.TableRooms.Room? _room;
     private FdgRaylib.Terrain.TableRooms.Room? Room => _room ??= TableLook.RoomFor(Session.Lobby.Vm.GameSystem);
 
-    private void Environment() => TableLook.AddLighting(this, Room, Session.Lobby.Vm.MapHorizon, W, D, Horizon.On);
+    private void Environment()
+    {
+        TableLook.AddLighting(this, Room, Session.Lobby.Vm.MapHorizon, W, D, Horizon.On, Session.Lobby.Vm.MapSky);
+        // The map's own light (Kai, 2026-11-18) - before the weather, which dims whatever light the map has.
+        Horizon.ApplyLight(this, FdgRaylib.Terrain.MapAtmosphere.Light.Parse(Session.Lobby.Vm.MapLight));
+    }
 
     private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f) => TableLook.Mat(c, rough, emit, emitE);
 

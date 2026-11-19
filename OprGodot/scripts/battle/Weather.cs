@@ -20,7 +20,7 @@ public static partial class Weather
     /// <paramref name="w"/> x <paramref name="d"/> table centred on the origin. Nothing for clear weather.</summary>
     public static Node3D? Add(Node3D parent, float w, float d, string? id)
     {
-        Overcast(parent, On ? id : null);
+        Overcast(parent, id);
         if (!On || string.IsNullOrEmpty(id)) return null;
         var root = new Node3D { Name = "Weather" };
         parent.AddChild(root);
@@ -43,8 +43,9 @@ public static partial class Weather
     /// <summary>Clouds over the sun: bad weather dims the sunlight and the sky and greys the haze. Finds the scene's
     /// "Environment" and "Sun" by walking up from <paramref name="from"/>; remembers their clear-day values so the
     /// Map Maker can switch weather back and forth.</summary>
-    private static void Overcast(Node from, string? id)
+    public static void Overcast(Node from, string? id)
     {
+        if (!On) id = null;
         (float light, float sky, float grey) = id switch
         {
             "rain" => (0.6f, 0.6f, 0.4f),

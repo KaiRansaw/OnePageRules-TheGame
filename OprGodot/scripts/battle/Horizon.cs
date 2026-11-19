@@ -34,15 +34,18 @@ public static class Horizon
     public static bool On => FdgRaylib.Config.UserConfig.Current.View.Room == FdgRaylib.Terrain.TableRooms.Battlefield;
 
     /// <summary>Points <paramref name="env"/> at the theme's sky and haze. Call after <see cref="TableLook.AddLighting"/>.</summary>
-    public static void SkyAndHaze(Godot.Environment env, TerrainBook.ETheme theme, float tableW, float tableD)
+    public static void SkyAndHaze(Godot.Environment env, TerrainBook.ETheme theme, float tableW, float tableD, string? sky = null)
     {
         Theme th = Of(theme);
         env.BackgroundMode = Godot.Environment.BGMode.Sky;
-        Texture2D? pano = Picture(theme, "sky");
+        // The map's sky (Kai, 2026-11-18): one of the style's sky pictures, the first when none is picked.
+        var skies = Skies(theme);
+        var chosen = skies.FirstOrDefault(k => k.Id.Equals(sky ?? "", StringComparison.OrdinalIgnoreCase)) ?? skies.FirstOrDefault();
+        Texture2D? pano = chosen != null ? Load(chosen.Color) : null;
         env.Sky = new Sky
         {
             SkyMaterial = pano != null
-                ? new PanoramaSkyMaterial { Panorama = pano, EnergyMultiplier = theme == TerrainBook.ETheme.Hospitable || HasOwn(theme, "sky") ? 1f : 0.8f }
+                ? new PanoramaSkyMaterial { Panorama = pano, EnergyMultiplier = 1f }
                 : new ProceduralSkyMaterial
                 {
                     SkyTopColor = th.SkyTop, SkyHorizonColor = th.SkyHorizon,
@@ -65,6 +68,32 @@ public static class Horizon
         env.FogDepthCurve = 1.6f;
         env.FogSkyAffect = 0f;
         env.FogAerialPerspective = 0f; // sky-tinted haze samples the panorama's dark lower half: plain haze colour instead
+    }
+
+    /// <summary>
+    /// The map's light (Kai, 2026-11-18: "edit the light of the map"): the sun's height, turn, brightness and warmth, and
+    /// the sky picture's turn. Finds the scene's "Sun" and "Environment" under <paramref name="world"/>. Clears what the
+    /// weather remembered as the clear-day light, so bad weather (added after) dims the NEW light.
+    /// </summary>
+    public static void ApplyLight(Node world, FdgRaylib.Terrain.MapAtmosphere.Light l)
+    {
+        if (world.GetNodeOrNull<DirectionalLight3D>("Sun") is { } sun)
+        {
+            sun.RotationDegrees = new Vector3(-l.SunHeight, l.SunTurn, 0);
+            sun.LightEnergy = 1.2f * l.Brightness;
+            Color neutral = new(1f, 0.95f, 0.88f);
+            sun.LightColor = l.Warmth >= 0 ? neutral.Lerp(new Color(1f, 0.72f, 0.45f), l.Warmth) : neutral.Lerp(new Color(0.72f, 0.84f, 1f), -l.Warmth);
+            if (sun.HasMeta("clear_energy")) sun.RemoveMeta("clear_energy");
+        }
+        if (world.GetNodeOrNull<WorldEnvironment>("Environment") is { Environment: { } env })
+        {
+            if (!env.HasMeta("base_ambient")) env.SetMeta("base_ambient", env.AmbientLightEnergy);
+            env.AmbientLightEnergy = (float)env.GetMeta("base_ambient") * Mathf.Lerp(1f, l.Brightness, 0.7f);
+            env.SkyRotation = new Vector3(0, Mathf.DegToRad(l.SkyTurn), 0);
+            if (!env.HasMeta("base_sky")) env.SetMeta("base_sky", env.BackgroundEnergyMultiplier);
+            env.BackgroundEnergyMultiplier = (float)env.GetMeta("base_sky") * Mathf.Lerp(1f, l.Brightness, 0.5f);
+            foreach (string m in new[] { "clear_ambient", "clear_sky" }) if (env.HasMeta(m)) env.RemoveMeta(m);
+        }
     }
 
     /// <summary>The land round a <paramref name="tableW"/> x <paramref name="tableD"/> table centred on the origin.</summary>
@@ -159,36 +188,52 @@ public static class Horizon
         return own.Count > 0 || theme == TerrainBook.ETheme.Hospitable ? own : GroundsIn(nameof(TerrainBook.ETheme.Hospitable));
     }
 
-    private static List<GroundPic> GroundsIn(string folder)
+    private static List<GroundPic> GroundsIn(string folder) => PicturesIn(folder, "ground", true);
+
+    /// <summary>The pictures in <c>res://horizon/&lt;folder&gt;/</c> whose names start with <paramref name="prefix"/>
+    /// ("ground", "sky"), each with its "_normal" partner when <paramref name="normals"/>. A plain file list, so a picture
+    /// dropped into the folder shows up the next time the game runs from the project - no re-import needed.</summary>
+    private static List<GroundPic> PicturesIn(string folder, string prefix, bool normals)
     {
-        if (GroundLists.TryGetValue(folder, out var have)) return have;
+        string key = folder + "|" + prefix;
+        if (GroundLists.TryGetValue(key, out var have)) return have;
         string dir = $"res://horizon/{folder}";
         var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // An exported game lists "x.jpg.import" / ".remap" rather than the picture itself - strip those back off.
         foreach (string f in DirAccess.DirExistsAbsolute(dir) ? DirAccess.GetFilesAt(dir) : Array.Empty<string>())
             files.Add(f.EndsWith(".import", StringComparison.OrdinalIgnoreCase) ? f[..^7] : f.EndsWith(".remap", StringComparison.OrdinalIgnoreCase) ? f[..^6] : f);
-        var exts = new[] { ".jpg", ".jpeg", ".png", ".webp", ".exr" };
+        var exts = new[] { ".jpg", ".jpeg", ".png", ".webp", ".exr", ".hdr" };
         var list = new List<GroundPic>();
         foreach (string f in files)
         {
             string ext = System.IO.Path.GetExtension(f).ToLowerInvariant(), stem = System.IO.Path.GetFileNameWithoutExtension(f);
-            if (!exts.Contains(ext) || !stem.StartsWith("ground", StringComparison.OrdinalIgnoreCase) || stem.EndsWith("_normal", StringComparison.OrdinalIgnoreCase)) continue;
-            string? normal = files.FirstOrDefault(n => System.IO.Path.GetFileNameWithoutExtension(n).Equals(stem + "_normal", StringComparison.OrdinalIgnoreCase));
-            list.Add(new GroundPic(stem, GroundName(stem), $"{dir}/{f}", normal != null ? $"{dir}/{normal}" : null));
+            if (!exts.Contains(ext) || !stem.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || stem.EndsWith("_normal", StringComparison.OrdinalIgnoreCase)) continue;
+            string? normal = normals ? files.FirstOrDefault(n => System.IO.Path.GetFileNameWithoutExtension(n).Equals(stem + "_normal", StringComparison.OrdinalIgnoreCase)) : null;
+            list.Add(new GroundPic(stem, PictureName(stem, prefix), $"{dir}/{f}", normal != null ? $"{dir}/{normal}" : null));
         }
         list.Sort((a, b) => Order(a.Id).CompareTo(Order(b.Id)) is var c && c != 0 ? c : string.Compare(a.Id, b.Id, StringComparison.OrdinalIgnoreCase));
-        return GroundLists[folder] = list;
+        return GroundLists[key] = list;
 
-        static int Order(string id) => id.Equals("ground", StringComparison.OrdinalIgnoreCase) ? 1
-            : int.TryParse(id[6..], out int n) ? n : 1000;
+        int Order(string id) => id.Equals(prefix, StringComparison.OrdinalIgnoreCase) ? 1
+            : int.TryParse(id[prefix.Length..], out int n) ? n : 1000;
     }
 
-    /// <summary>"ground" -> "Ground 1", "ground3" -> "Ground 3", "ground-dry grass" -> "Dry grass".</summary>
-    public static string GroundName(string id)
+    /// <summary>A style's skies: <c>sky.exr</c>, <c>sky2.hdr</c>, <c>sky-sunset.exr</c>... (360-degree pictures). A style
+    /// with none gets its painted sky.</summary>
+    public static IReadOnlyList<GroundPic> Skies(TerrainBook.ETheme theme) => PicturesIn(theme.ToString(), "sky", false);
+
+    /// <summary>Forget the folder lists (the Battlefield window's "Look again" after adding pictures).</summary>
+    public static void Rescan() { GroundLists.Clear(); }
+
+    /// <summary>"ground" -> "Ground 1", "ground3" -> "Ground 3", "ground-dry grass" -> "Dry grass" (skies the same way).</summary>
+    public static string GroundName(string id) => PictureName(id, "ground");
+
+    private static string PictureName(string id, string prefix)
     {
-        if (id.Equals("ground", StringComparison.OrdinalIgnoreCase)) return "Ground 1";
-        string rest = id[6..];
-        if (int.TryParse(rest, out int n)) return "Ground " + n;
+        string label = char.ToUpperInvariant(prefix[0]) + prefix[1..];
+        if (id.Equals(prefix, StringComparison.OrdinalIgnoreCase)) return label + " 1";
+        string rest = id[prefix.Length..];
+        if (int.TryParse(rest, out int n)) return label + " " + n;
         rest = rest.TrimStart('-', '_', ' ').Replace('_', ' ').Replace('-', ' ');
         return rest.Length == 0 ? id : char.ToUpperInvariant(rest[0]) + rest[1..];
     }
@@ -231,11 +276,27 @@ public static class Horizon
         return mat;
     }
 
-    private static Texture2D? Load(string path)
+    /// <summary>A picture by its res:// path: the imported copy, or - for a picture just dropped into the folder and not
+    /// imported yet - read straight from the file.</summary>
+    public static Texture2D? LoadPicture(string path)
     {
         if (Pictures.TryGetValue(path, out var t)) return t;
-        return Pictures[path] = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        if (ResourceLoader.Exists(path)) return Pictures[path] = GD.Load<Texture2D>(path);
+        Texture2D? raw = null;
+        try
+        {
+            var img = new Image();
+            if (img.Load(ProjectSettings.GlobalizePath(path)) == Error.Ok)
+            {
+                img.GenerateMipmaps();
+                raw = ImageTexture.CreateFromImage(img);
+            }
+        }
+        catch (Exception) { raw = null; }
+        return Pictures[path] = raw;
     }
+
+    private static Texture2D? Load(string path) => LoadPicture(path);
 
     private static NoiseTexture2D? _macro;
     /// <summary>Soft seamless noise for the ground's big patches and for mixing its two detail samples.</summary>

@@ -76,6 +76,8 @@ public sealed class MapDraft
     public string Horizon = "", Weather = "";
     /// <summary>The ground ("" = the style's first; an id; or ids joined by '+' to mix) - TerrainLayoutFile.Ground.</summary>
     public string Ground = "";
+    /// <summary>The sky picture id ("" = the style's first) and the light settings ("" = default) - TerrainLayoutFile.Sky / .Light.</summary>
+    public string Sky = "", Light = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -117,6 +119,8 @@ public sealed class MapDraft
         Horizon = f.Horizon ?? "";
         Weather = f.Weather ?? "";
         Ground = f.Ground ?? "";
+        Sky = f.Sky ?? "";
+        Light = f.Light ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -168,6 +172,8 @@ public sealed class MapDraft
         Horizon = Horizon,
         Weather = Weather,
         Ground = Ground,
+        Sky = Sky,
+        Light = Light,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry

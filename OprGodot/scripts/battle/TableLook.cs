@@ -53,7 +53,7 @@ public static class TableLook
     /// 360-degree photo is drawn all around the table instead of the dark background; the table's own lighting stays the
     /// same, so the rules colours read the same in every room.
     /// </summary>
-    public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null, string? horizon = null, float tableW = 72, float tableD = 48, bool battlefield = false)
+    public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null, string? horizon = null, float tableW = 72, float tableD = 48, bool battlefield = false, string? sky = null)
     {
         var env = new Godot.Environment
         {
@@ -68,7 +68,7 @@ public static class TableLook
             env.BackgroundEnergyMultiplier = Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.RoomBrightness, 0.2f, 1.5f);
         }
         if (room == null && battlefield)
-            Battle.Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), tableW, tableD);
+            Battle.Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), tableW, tableD, sky);
         parent.AddChild(new WorldEnvironment { Environment = env, Name = "Environment" });
         var sun = new DirectionalLight3D { LightEnergy = 1.2f, LightColor = new Color(1f, 0.95f, 0.88f), ShadowEnabled = true, Name = "Sun" };
         sun.RotationDegrees = new Vector3(-58, 32, 0);

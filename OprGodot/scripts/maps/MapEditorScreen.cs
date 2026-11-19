@@ -98,7 +98,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         if (refreshed > 0) CallDeferred(nameof(SayRefreshed), refreshed);
         _world = new Node3D { Name = "MapWorld" };
         AddChild(_world);
-        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D, Horizon.On);
+        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D, Horizon.On, Draft.Sky);
+        Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
         _board = new Node3D();
         _pieces = new Node3D();
         _marks = new Node3D();
@@ -243,35 +244,19 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             BuildBoard(); ApplyCamera(); Rebuild();
         };
         _top.AddChild(size);
+        // Kai, 2026-11-18: mat, horizon, sky, light, weather and ground live in one Battlefield window (the top bar ran off
+        // the screen).
         var mats = MatsHere();
         string matName = mats.FirstOrDefault(m => m.Look == Draft.Mat)?.Name ?? Draft.Mat switch
         {
-            "" or MapAtmosphere.GroundMat => "Horizon ground",
+            "" or MapAtmosphere.GroundMat => string.Join(" + ", Horizon.Pick(MapAtmosphere.HorizonFor(HorizonId), Draft.Ground).Select(g => g.Name)) is { Length: > 0 } g ? g : "Ground",
             MapAtmosphere.FeltMat => "Plain felt",
             _ => "Mat (not on this PC)",
         };
-        _top.AddChild(Ui.Button("Mat: " + matName, OpenMatPicker,
-            "What the play area is drawn with - saved with the map. Horizon ground: the same ground as the land round the table, so they join up. "
-            + "Players without a downloaded mat's picture see the horizon ground.").Also(b => b.Name = "MatButton"));
-        // Kai, 2026-11-18: what lies past the table, and the weather over it - both saved with the map, cosmetic.
-        var horizon = new OptionButton { Name = "HorizonPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
-            TooltipText = "What lies beyond the table when Settings -> Around the table is Battlefield: the land, sky and hills. Auto follows the map's terrain style (Generate...). Only for looks." };
-        foreach (string h in FdgRaylib.Terrain.MapAtmosphere.Horizons) horizon.AddItem("Horizon: " + (h.Length == 0 ? "Auto" : h));
-        horizon.Selected = Math.Max(0, FdgRaylib.Terrain.MapAtmosphere.Horizons.ToList().IndexOf(Draft.Horizon));
-        horizon.ItemSelected += i => { Draft.Remember(); Draft.Horizon = FdgRaylib.Terrain.MapAtmosphere.Horizons[(int)i]; Atmosphere(); BuildBoard(); };
-        _top.AddChild(horizon);
-        var weather = new OptionButton { Name = "WeatherPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
-            TooltipText = "The weather over the table when the map is played (rain, snow, fog...). Only for looks; players can turn weather off in Settings." };
-        var weathers = FdgRaylib.Terrain.MapAtmosphere.Weathers;
-        foreach (var w in weathers) weather.AddItem("Weather: " + w.Name);
-        weather.Selected = Math.Max(0, weathers.ToList().FindIndex(w => w.Id == Draft.Weather));
-        weather.ItemSelected += i => { Draft.Remember(); Draft.Weather = weathers[(int)i].Id; BuildBoard(); };
-        _top.AddChild(weather);
-        // Kai, 2026-11-18: each style can hold several grounds - pick one per map, or mix two or three in patches.
-        var picksNow = Horizon.Pick(MapAtmosphere.HorizonFor(HorizonId), Draft.Ground);
-        _top.AddChild(Ui.Button("Ground: " + (picksNow.Count == 0 ? "plain" : string.Join(" + ", picksNow.Select(g => g.Name))), OpenGroundPicker,
-            "The ground the field (and the play area, with the Horizon ground mat) is drawn with: one of this horizon style's grounds, or two or three mixed in natural patches. Saved with the map; only for looks.")
-            .Also(b => b.Name = "GroundButton"));
+        string weatherName = MapAtmosphere.WeatherById(Draft.Weather)?.Name ?? "Clear";
+        _top.AddChild(Ui.Button("Battlefield...", OpenBattlefield,
+            $"The battlefield's look, saved with the map: play area (mat or ground), the ground and how grounds mix, the horizon, sky, light and weather. Only for looks.\nNow: {matName}, {weatherName}.")
+            .Also(b => b.Name = "BattlefieldButton"));
         _top.AddChild(Ui.Grow());
         var rv = new Button { Name = "RulesView", Text = "Rules view", ToggleMode = true, ButtonPressed = _rulesView, FocusMode = FocusModeEnum.None,
             TooltipText = "Hide the scenery and colour every piece by what it does." };
@@ -530,66 +515,6 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     // ================================================================== battle mats
 
-    /// <summary>Kai, 2026-11-18: the map's ground - a main ground, plus up to two more mixed in through it in patches.
-    /// The pictures come from the horizon style's folder (OprGodot/horizon/&lt;Style&gt;/ground*.jpg).</summary>
-    public void OpenGroundPicker()
-    {
-        var theme = MapAtmosphere.HorizonFor(HorizonId);
-        var all = Horizon.Grounds(theme);
-        var veil = new Control { Name = "GroundPicker", MouseFilter = MouseFilterEnum.Stop };
-        veil.SetAnchorsPreset(LayoutPreset.FullRect);
-        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Ignore };
-        dim.SetAnchorsPreset(LayoutPreset.FullRect);
-        veil.AddChild(dim);
-        var col = new VBoxContainer { CustomMinimumSize = new Vector2(620, 0) };
-        col.AddThemeConstantOverride("separation", 10);
-        col.AddChild(HudKit.Text("GROUND", 26, HudKit.Fg, HudKit.Exo(800)));
-        col.AddChild(ForgeWidgets.Wrapped($"The {theme} style's grounds ({all.Count} on this computer). The main ground covers the field; a second and third show through it in big natural patches, like bare dirt in grass. Add more as ground2.jpg, ground3.jpg... (or ground-mud.jpg) in OprGodot/horizon/{theme}/.", 14, HudKit.Dim));
-        var current = Horizon.Pick(theme, Draft.Ground).Select(g => g.Id).ToList();
-        var pickers = new List<OptionButton>();
-        void Apply()
-        {
-            var ids = pickers.Select((o, i) => i == 0 ? all.ElementAtOrDefault(o.Selected)?.Id : o.Selected > 0 ? all.ElementAtOrDefault(o.Selected - 1)?.Id : null)
-                .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            string spec = ids.Count == 1 && ids[0] == all.FirstOrDefault()?.Id ? "" : string.Join("+", ids);
-            if (spec == Draft.Ground) return;
-            Draft.Remember();
-            Draft.Ground = spec;
-            BuildBoard();
-        }
-        string[] labels = { "Main ground", "Mixed with", "And" };
-        for (int row = 0; row < 3; row++)
-        {
-            var line = new HBoxContainer();
-            line.AddThemeConstantOverride("separation", 10);
-            line.AddChild(HudKit.Text(labels[row], 15, HudKit.Fg, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(130, 0)));
-            var pick = new OptionButton { Name = "GroundPick" + row, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(300, 0) };
-            if (row > 0) pick.AddItem("(none)");
-            foreach (var g in all) pick.AddItem(g.Name);
-            string? want = current.ElementAtOrDefault(row);
-            int at = want == null ? -1 : all.ToList().FindIndex(g => g.Id == want);
-            pick.Selected = row == 0 ? Math.Max(0, at) : at + 1;
-            var thumb = new TextureRect { CustomMinimumSize = new Vector2(64, 64), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered };
-            void ShowThumb()
-            {
-                int i = row == 0 ? pick.Selected : pick.Selected - 1;
-                thumb.Texture = i >= 0 && i < all.Count ? GD.Load<Texture2D>(all[i].Color) : null;
-            }
-            ShowThumb();
-            pick.ItemSelected += _ => { ShowThumb(); Apply(); };
-            pick.Disabled = row > 0 && all.Count < 2;
-            pickers.Add(pick);
-            line.AddChild(pick);
-            line.AddChild(thumb);
-            col.AddChild(line);
-        }
-        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        buttons.AddChild(Ui.Button("Done", () => { veil.QueueFree(); Rebuild(); }, "Close.").Also(b => b.Name = "CloseGround"));
-        col.AddChild(buttons);
-        AddChild(veil);
-        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
-    }
-
     /// <summary>The Warhammer Map Builder mats whose picture is on this computer.</summary>
     private static List<WarhammerTerrain.Mat> MatsHere() =>
         (WarhammerTerrain.LoadMats() ?? new()).Where(m => WarhammerTerrain.MatFile(m.Look) != null).ToList();
@@ -611,59 +536,196 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         return Thumbs[f] = t;
     }
 
-    /// <summary>Kai, 2026-11-14: pick the map's battle mat from a grid of the mod's mats (plus the plain felt).</summary>
-    public void OpenMatPicker()
+    /// <summary>The old name for the Battlefield window (ScriptedRun "mats").</summary>
+    public void OpenMatPicker() => OpenBattlefield();
+
+    /// <summary>
+    /// Kai, 2026-11-18: everything about how the battlefield looks, in one window - the play area (each of the style's
+    /// grounds is a mat by itself, plus the current mix, the plain felt and the downloaded mats), the ground mix, the
+    /// horizon and weather, the sky picture and its turn, and the light. All saved with the map; all looks only.
+    /// </summary>
+    public void OpenBattlefield()
     {
-        var mats = MatsHere();
-        var veil = new Control { Name = "MatPicker", MouseFilter = MouseFilterEnum.Stop };
+        GetNodeOrNull("Battlefield")?.QueueFree();
+        var theme = MapAtmosphere.HorizonFor(HorizonId);
+        var grounds = Horizon.Grounds(theme);
+        var skies = Horizon.Skies(theme);
+        var light = MapAtmosphere.Light.Parse(Draft.Light);
+        var veil = new Control { Name = "Battlefield", MouseFilter = MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(LayoutPreset.FullRect);
-        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Ignore };
+        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.45f), MouseFilter = MouseFilterEnum.Ignore };
         dim.SetAnchorsPreset(LayoutPreset.FullRect);
         veil.AddChild(dim);
-        var col = new VBoxContainer { CustomMinimumSize = new Vector2(1080, 0) };
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(1120, 0) };
         col.AddThemeConstantOverride("separation", 8);
-        col.AddChild(HudKit.Text("BATTLE MAT", 26, HudKit.Fg, HudKit.Exo(800)));
-        col.AddChild(HudKit.Text("What the play area is drawn with. Horizon ground matches the land round the table (Settings -> Around the table = Battlefield). Saved with the map.", 14, HudKit.Dim, HudKit.Semi));
-        var grid = new GridContainer { Columns = 5 };
+        col.AddChild(HudKit.Text("BATTLEFIELD", 26, HudKit.Fg, HudKit.Exo(800)));
+        col.AddChild(ForgeWidgets.Wrapped($"How the battlefield looks - saved with the map, looks only. New pictures go in OprGodot/horizon/{theme}/: grounds named ground*.jpg (ground2.jpg, ground-mud.jpg...), skies named sky* (sky2.exr...). Press Look again after adding some.", 13, HudKit.Dim));
+        void Reopen() { veil.QueueFree(); Rebuild(); OpenBattlefield(); }
+
+        // ---- horizon, weather
+        var row1 = new HBoxContainer();
+        row1.AddThemeConstantOverride("separation", 10);
+        var horizon = new OptionButton { Name = "HorizonPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(230, 0),
+            TooltipText = "The style beyond the table (Settings -> Around the table = Battlefield): its land, sky and grounds. Auto follows the map's terrain style (Generate...)." };
+        foreach (string h in MapAtmosphere.Horizons) horizon.AddItem("Horizon: " + (h.Length == 0 ? "Auto" : h));
+        horizon.Selected = Math.Max(0, MapAtmosphere.Horizons.ToList().IndexOf(Draft.Horizon));
+        horizon.ItemSelected += i => { Draft.Remember(); Draft.Horizon = MapAtmosphere.Horizons[(int)i]; RebuildWorld(); Reopen(); };
+        row1.AddChild(horizon);
+        var weather = new OptionButton { Name = "WeatherPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(230, 0),
+            TooltipText = "The weather over the table (rain, snow, fog...). Players can turn weather off in Settings." };
+        var weathers = MapAtmosphere.Weathers;
+        foreach (var w in weathers) weather.AddItem("Weather: " + w.Name);
+        weather.Selected = Math.Max(0, weathers.ToList().FindIndex(w => w.Id == Draft.Weather));
+        weather.ItemSelected += i => { Draft.Remember(); Draft.Weather = weathers[(int)i].Id; BuildBoard(); };
+        row1.AddChild(weather);
+        row1.AddChild(Ui.Grow());
+        row1.AddChild(Ui.Button("Look again", () => { Horizon.Rescan(); RebuildWorld(); Reopen(); }, "Read the style's folder again after adding ground or sky pictures.").Also(b => b.Name = "LookAgain"));
+        col.AddChild(row1);
+
+        // ---- sky + light
+        col.AddChild(HudKit.Heading("Sky and light", 14));
+        var skyRow = new HBoxContainer();
+        skyRow.AddThemeConstantOverride("separation", 10);
+        var sky = new OptionButton { Name = "SkyPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(230, 0),
+            TooltipText = "The 360-degree sky picture (the style's sky* files). A style with none has a painted sky." };
+        if (skies.Count == 0) { sky.AddItem("Sky: painted"); sky.Disabled = true; }
+        foreach (var k in skies) sky.AddItem("Sky: " + k.Name);
+        sky.Selected = Math.Max(0, skies.ToList().FindIndex(k => k.Id.Equals(Draft.Sky, StringComparison.OrdinalIgnoreCase)));
+        sky.ItemSelected += i => { Draft.Remember(); Draft.Sky = i == 0 ? "" : skies[(int)i].Id; LightChanged(); };
+        skyRow.AddChild(sky);
+        col.AddChild(skyRow);
+        var sliders = new GridContainer { Columns = 3 };
+        sliders.AddThemeConstantOverride("h_separation", 12);
+        sliders.AddThemeConstantOverride("v_separation", 4);
+        void Slider(string name, string label, string tip, double min, double max, double step, float value, Func<float, MapAtmosphere.Light> with, Func<float, string> show)
+        {
+            sliders.AddChild(HudKit.Text(label, 14, HudKit.Fg, HudKit.Semi).Also(l => { l.TooltipText = tip; l.MouseFilter = MouseFilterEnum.Stop; l.CustomMinimumSize = new Vector2(150, 0); }));
+            var s = new HSlider { Name = name, MinValue = min, MaxValue = max, Step = step, Value = value, CustomMinimumSize = new Vector2(560, 24), TooltipText = tip };
+            var val = HudKit.Text(show(value), 14, HudKit.Fg, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(80, 0));
+            s.ValueChanged += v =>
+            {
+                val.Text = show((float)v);
+                light = with((float)v);
+                Draft.Light = light.ToText();
+                LightChanged();
+            };
+            s.DragStarted += () => Draft.Remember();
+            sliders.AddChild(s);
+            sliders.AddChild(val);
+        }
+        string Deg(float v) => $"{v:0} deg";
+        Slider("SunHeight", "Sun height", "How high the sun is: low = long shadows and a golden-hour feel, high = midday.", 5, 90, 1, light.SunHeight, v => light with { SunHeight = v }, Deg);
+        Slider("SunTurn", "Sun direction", "Which side of the table the sun shines from.", 0, 360, 1, ((light.SunTurn % 360) + 360) % 360, v => light with { SunTurn = v }, Deg);
+        Slider("Brightness", "Brightness", "How bright the whole scene is - below 1 for dusk or a gloomy world.", 0.2, 2, 0.05, light.Brightness, v => light with { Brightness = v }, v => $"{v:0.00}");
+        Slider("Warmth", "Warmth", "The sunlight's colour: left cold and blue (night, winter, alien worlds), right warm orange (sunset, fire).", -1, 1, 0.05, light.Warmth, v => light with { Warmth = v }, v => v == 0 ? "neutral" : v < 0 ? $"cold {-v:0.00}" : $"warm {v:0.00}");
+        Slider("SkyTurn", "Sky turn", "Turns the sky picture round the table - put its sun or its best clouds where you want them.", 0, 360, 1, ((light.SkyTurn % 360) + 360) % 360, v => light with { SkyTurn = v }, Deg);
+        col.AddChild(sliders);
+        col.AddChild(Ui.Button("Default light", () => { Draft.Remember(); Draft.Light = ""; LightChanged(); Reopen(); }, "Back to the normal light and an unturned sky.").Also(b => { b.Name = "DefaultLight"; b.SizeFlagsHorizontal = SizeFlags.ShrinkBegin; }));
+
+        // ---- ground mix
+        col.AddChild(HudKit.Heading("Ground", 14));
+        var current = Horizon.Pick(theme, Draft.Ground).Select(g => g.Id).ToList();
+        var pickers = new List<OptionButton>();
+        var groundRow = new HBoxContainer();
+        groundRow.AddThemeConstantOverride("separation", 10);
+        string[] labels = { "Main", "Mixed with", "And" };
+        for (int r = 0; r < 3; r++)
+        {
+            int row = r;
+            groundRow.AddChild(HudKit.Text(labels[row], 14, HudKit.Fg, HudKit.Semi));
+            var pick = new OptionButton { Name = "GroundPick" + row, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
+                TooltipText = row == 0 ? "The ground that covers the field." : "Another ground showing through the main one in big natural patches." };
+            if (row > 0) pick.AddItem("(none)");
+            foreach (var g in grounds) pick.AddItem(g.Name);
+            string? want = current.ElementAtOrDefault(row);
+            int at = want == null ? -1 : grounds.ToList().FindIndex(g => g.Id == want);
+            pick.Selected = row == 0 ? Math.Max(0, at) : at + 1;
+            pick.Disabled = row > 0 && grounds.Count < 2;
+            pick.ItemSelected += _ =>
+            {
+                var ids = pickers.Select((o, i) => i == 0 ? grounds.ElementAtOrDefault(o.Selected)?.Id : o.Selected > 0 ? grounds.ElementAtOrDefault(o.Selected - 1)?.Id : null)
+                    .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                string spec = ids.Count == 1 && ids[0] == grounds.FirstOrDefault()?.Id ? "" : string.Join("+", ids);
+                if (spec == Draft.Ground) return;
+                Draft.Remember();
+                Draft.Ground = spec;
+                RebuildWorld();
+                Reopen();
+            };
+            pickers.Add(pick);
+            groundRow.AddChild(pick);
+        }
+        col.AddChild(groundRow);
+
+        // ---- play area: every ground is a mat by itself, the current mix, the felt, the downloaded mats
+        col.AddChild(HudKit.Heading("Play area", 14));
+        var grid = new GridContainer { Columns = 6 };
         grid.AddThemeConstantOverride("h_separation", 8);
         grid.AddThemeConstantOverride("v_separation", 8);
-        void Pick(string look)
+        Button Tile(string name, string nodeName, bool on, Texture2D? texture, Action pick)
         {
-            if (look != Draft.Mat) { Draft.Remember(); Draft.Mat = look; BuildBoard(); }
-            veil.QueueFree();
-            Rebuild();
-        }
-        var pics = new List<(TextureRect Pic, WarhammerTerrain.Mat Mat)>();
-        Button Tile(string name, string look, out TextureRect pic)
-        {
-            var b = new Button { Name = "Mat_" + (look.StartsWith(WarhammerTerrain.MatPrefix) ? look[WarhammerTerrain.MatPrefix.Length..] : look.Length > 0 ? look : "Ground"), ToggleMode = true,
-                ButtonPressed = Draft.Mat == look, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(204, 150), TooltipText = name };
+            var b = new Button { Name = nodeName, ToggleMode = true, ButtonPressed = on, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(172, 136), TooltipText = name };
             var tile = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             tile.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
             tile.OffsetLeft = 4; tile.OffsetRight = -4; tile.OffsetTop = 4; tile.OffsetBottom = -3;
-            pic = new TextureRect { CustomMinimumSize = new Vector2(0, 118), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore };
-            tile.AddChild(pic);
-            tile.AddChild(HudKit.Text(name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
+            tile.AddChild(new TextureRect { Name = "Pic", Texture = texture, CustomMinimumSize = new Vector2(0, 104), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore });
+            tile.AddChild(HudKit.Text(name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center).Also(l => { l.MouseFilter = MouseFilterEnum.Ignore; l.ClipText = true; }));
             b.AddChild(tile);
-            b.Pressed += () => Pick(look);
+            b.Pressed += () => { pick(); Reopen(); };
             grid.AddChild(b);
             return b;
         }
-        Tile("Horizon ground", "", out TextureRect ground);
-        ground.Texture = Horizon.GroundPicture(MapAtmosphere.HorizonFor(HorizonId), Draft.Ground);
-        Tile("Plain felt", MapAtmosphere.FeltMat, out TextureRect felt);
-        felt.Texture = TableLook.Felt(24, 16);
-        foreach (var m in mats) { Tile(m.Name, m.Look, out TextureRect pic); pics.Add((pic, m)); }
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 640) };
-        scroll.AddChild(grid);
-        col.AddChild(scroll);
+        bool groundMat = Draft.Mat is "" or MapAtmosphere.GroundMat;
+        var mix = Horizon.Pick(theme, Draft.Ground);
+        foreach (var g in grounds)
+        {
+            var gg = g;
+            Tile(g.Name, "Mat_" + g.Id, groundMat && mix.Count == 1 && mix[0].Id == g.Id, Horizon.LoadPicture(g.Color), () =>
+            {
+                Draft.Remember();
+                Draft.Mat = "";
+                Draft.Ground = gg.Id == grounds[0].Id ? "" : gg.Id;
+                RebuildWorld();
+            });
+        }
+        if (mix.Count > 1)
+            Tile("Mix: " + string.Join(" + ", mix.Select(g => g.Name)), "Mat_Mix", groundMat, Horizon.LoadPicture(mix[0].Color), () => { Draft.Remember(); Draft.Mat = ""; BuildBoard(); });
+        Tile("Plain felt", "Mat_felt", Draft.Mat == MapAtmosphere.FeltMat, TableLook.Felt(24, 16), () => { Draft.Remember(); Draft.Mat = MapAtmosphere.FeltMat; BuildBoard(); });
+        var pics = new List<(TextureRect Pic, WarhammerTerrain.Mat Mat)>();
+        foreach (var m in MatsHere())
+        {
+            var mm = m;
+            var b = Tile(m.Name, "Mat_" + m.Look[WarhammerTerrain.MatPrefix.Length..], Draft.Mat == m.Look, null, () => { Draft.Remember(); Draft.Mat = mm.Look; BuildBoard(); });
+            if (b.FindChild("Pic", true, false) is TextureRect pic) pics.Add((pic, m));
+        }
+        col.AddChild(grid);
+
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-        buttons.AddChild(Ui.Button("Close", () => veil.QueueFree(), "Keep the mat as it is.").Also(b => b.Name = "CloseMats"));
+        buttons.AddChild(Ui.Button("Done", () => { veil.QueueFree(); Rebuild(); }, "Close.").Also(b => b.Name = "CloseBattlefield"));
         col.AddChild(buttons);
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(1160, 860) };
+        scroll.AddChild(HudKit.Pad(col, 20, 16, 20, 16));
         AddChild(veil);
-        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
+        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), scroll), LayoutPreset.Center);
         _ = FillMatThumbs(veil, pics);
+    }
+
+    /// <summary>The sky and light changed: sky, haze and sun set again, then the weather dims the new light.</summary>
+    private void LightChanged()
+    {
+        Atmosphere();
+        Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
+        Weather.Overcast(_world, Draft.Weather);
+    }
+
+    /// <summary>Horizon or ground changed: the sky and the land (and the table's ground) are made again.</summary>
+    private void RebuildWorld()
+    {
+        Atmosphere();
+        BuildBoard();
+        Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
+        Weather.Overcast(_world, Draft.Weather);
     }
 
     /// <summary>Loads the picker's pictures a few a frame, so it opens at once (the first time makes the small copies).</summary>
@@ -1032,7 +1094,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     {
         if (TableLook.RoomFor(_checkFor) != null || !Horizon.On) return;
         if (_world.GetNodeOrNull<WorldEnvironment>("Environment") is { Environment: { } env })
-            Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(HorizonId), W, D);
+            Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(HorizonId), W, D, Draft.Sky);
     }
 
     private void Sync3D()

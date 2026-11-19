@@ -51,4 +51,42 @@ public static class MapAtmosphere
     /// <summary>The horizon a game draws: the map's choice, else its generator theme, else Generic.</summary>
     public static TerrainBook.ETheme HorizonFor(string? horizon) =>
         Enum.TryParse(horizon, out TerrainBook.ETheme t) ? t : TerrainBook.ETheme.Generic;
+
+    /// <summary>
+    /// A map's light (Kai, 2026-11-18: "edit the light of the map"): the sun's height above the horizon and its turn round
+    /// the table (degrees), brightness (1 = normal), warmth (-1 cold blue .. 0 neutral .. 1 warm orange) and how far the sky
+    /// picture is turned. Saved as "h=58;t=32;b=1;w=0;s=0" (<see cref="ToText"/>); "" is the default.
+    /// </summary>
+    public sealed record Light(float SunHeight = 58f, float SunTurn = 32f, float Brightness = 1f, float Warmth = 0f, float SkyTurn = 0f)
+    {
+        public static readonly Light Default = new();
+
+        public static Light Parse(string? text)
+        {
+            var l = Default;
+            foreach (string part in (text ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                string[] kv = part.Split('=', 2);
+                if (kv.Length != 2 || !float.TryParse(kv[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float v)) continue;
+                l = kv[0] switch
+                {
+                    "h" => l with { SunHeight = Math.Clamp(v, 5f, 90f) },
+                    "t" => l with { SunTurn = v },
+                    "b" => l with { Brightness = Math.Clamp(v, 0.1f, 3f) },
+                    "w" => l with { Warmth = Math.Clamp(v, -1f, 1f) },
+                    "s" => l with { SkyTurn = v },
+                    _ => l,
+                };
+            }
+            return l;
+        }
+
+        /// <summary>The saved form; "" when everything is the default.</summary>
+        public string ToText()
+        {
+            if (this == Default) return "";
+            string F(float v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            return $"h={F(SunHeight)};t={F(SunTurn)};b={F(Brightness)};w={F(Warmth)};s={F(SkyTurn)}";
+        }
+    }
 }
