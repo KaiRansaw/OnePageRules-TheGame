@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FDG;
+using FDG.SaveLoad;
 using FdgRaylib.Cli;
 using FdgRaylib.Terrain;
 using NUnit.Framework;
@@ -133,5 +134,49 @@ public class MapDraftTests
     {
         Assert.That(MapDraft.SizeGames(72, 48), Does.StartWith("The book table for Grimdark Future, Age of Fantasy"));
         Assert.That(MapDraft.SizeGames(48, 48), Does.Contain("GF: Firefight"));
+    }
+
+    /// <summary>
+    /// The Map Maker's line under a 6' x 4' map read "big games: GF: Firefight ~1250 pts, GF: Star Quest ~ pts, AoF:
+    /// Skirmish ~1000 pts, AoF: Quest ~ pts". The two Quest games have no army size that grows the table - they always
+    /// play on their own 4' x 4', so the lobby never offers them a bigger map - and so must not be listed at all.
+    /// </summary>
+    [Test]
+    public void SizeGames_ListsOnlyTheGamesThatCanPlayOnABiggerTable_EachWithItsPoints()
+    {
+        string line = MapDraft.SizeGames(72, 48);
+        Assert.That(line, Does.Contain("GF: Firefight about 1250 pts"));
+        Assert.That(line, Does.Contain("AoF: Skirmish about 1000 pts"));
+        Assert.That(line, Does.Not.Contain("Quest"), "a Quest game never plays on a bigger table");
+        Assert.That(line, Does.Not.Match(@"[~a-z]\s+pts"), "every listed game says how many points");
+
+        foreach (var (w, h) in TableSizing.Sizes)
+            Assert.That(MapDraft.SizeGames(w, h), Does.Not.Match(@"(about|~)\s+pts"), $"{MapDraft.SizeName(w, h)}: a game listed without its points");
+    }
+
+    /// <summary>
+    /// Picking a smaller table in the Map Maker brought the terrain back onto it but left the objective markers and
+    /// size bases where they stood - off the edge, and saved there.
+    /// </summary>
+    [Test]
+    public void ClampAll_BringsObjectivesAndSizeBasesBackOntoASmallerTable_NotOnlyThePieces()
+    {
+        MapDraft d = MapDraft.New(72, 48);
+        d.Pieces.Add(MapPiece.FromKind(TerrainBook.Kind("Forest")!, 60, 40));
+        d.Objectives.Add((66, 40));
+        d.Objectives.Add((20, 20));
+        d.Bases.Add(new MapBaseMarkerEntry { X = 68, Z = 44 });
+
+        d.TableW = 48; d.TableH = 36;
+        d.ClampAll();
+
+        Assert.That(d.Pieces[0].X, Is.EqualTo(48f));
+        Assert.That(d.Pieces[0].Z, Is.EqualTo(36f));
+        Assert.That(d.Objectives[0], Is.EqualTo((48f, 36f)), "an objective off the new table comes back to its edge");
+        Assert.That(d.Objectives[1], Is.EqualTo((20f, 20f)), "one already on the table stays put");
+        Assert.That((d.Bases[0].X, d.Bases[0].Z), Is.EqualTo((48f, 36f)));
+
+        TerrainLayoutFile saved = d.ToLayout();
+        Assert.That(saved.Objectives.All(o => o.X <= saved.TableWidthInches && o.Z <= saved.TableHeightInches), Is.True, "nothing is saved off the table");
     }
 }
