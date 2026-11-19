@@ -327,7 +327,9 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         _top.AddChild(forceOrg);
 
         _top.AddChild(HudKit.Text("Limit", 15, HudKit.Dim, HudKit.Semi));
-        var limit = new SpinBox { Name = "Limit", MinValue = 0, MaxValue = 20000, Step = 50, Value = s.List.PointsLimit, Suffix = "pts", CustomMinimumSize = new Vector2(120, 0), TooltipText = "The points limit for this list." };
+        // The arrows step 50; a typed limit is kept as typed (with Step = 50 the box held only multiples of 50, so
+        // 1275 became 1300 and a loaded list's 835 limit showed as 850).
+        var limit = new SpinBox { Name = "Limit", MinValue = 0, MaxValue = 20000, Step = 1, CustomArrowStep = 50, Value = s.List.PointsLimit, Suffix = "pts", CustomMinimumSize = new Vector2(120, 0), TooltipText = "The points limit for this list." };
         limit.ValueChanged += v => { s.List.PointsLimit = (int)v; Rebuild(); };
         _top.AddChild(limit);
 
