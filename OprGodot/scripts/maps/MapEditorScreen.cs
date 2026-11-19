@@ -1324,7 +1324,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         if (dir == Vector2.Zero) return;
         Vector3 right = new Vector3(1, 0, 0).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         Vector3 fwd = new Vector3(0, 0, 1).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
-        _focus += (right * dir.X + fwd * dir.Y) * (float)delta * _distance / Horizon.DistanceScale * 0.8f;
+        // Settings -> Camera: "Camera key speed" and "Invert tilt" are for every table camera, this one included.
+        _focus += (right * dir.X + fwd * dir.Y) * (float)delta * _distance / Horizon.DistanceScale * 0.8f * Battle.BattleScreen.CameraKeySpeed;
         _focus.X = Mathf.Clamp(_focus.X, -W / 2 - 10, W / 2 + 10);
         _focus.Z = Mathf.Clamp(_focus.Z, -D / 2 - 10, D / 2 + 10);
         ApplyCamera();
@@ -1368,7 +1369,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 break;
             case InputEventMouseMotion mm when _dragRotate is { } r:
                 _yaw -= (mm.Position.X - r.X) * 0.3f;
-                if (!_topView) _pitch = Mathf.Clamp(_pitch + (mm.Position.Y - r.Y) * 0.25f, 15f, 88f);
+                if (!_topView) _pitch = Mathf.Clamp(_pitch + (mm.Position.Y - r.Y) * 0.25f * Battle.BattleScreen.TiltDirection, 15f, 88f);
                 _dragRotate = mm.Position;
                 ApplyCamera();
                 break;
@@ -1595,8 +1596,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 Draft.RotateGroup(_picked, (k.Keycode == Key.Q ? 1 : -1) * (k.ShiftPressed ? 5 : 15));
                 Rebuild();
                 break;
-            case Key.Q: _yaw += 5; ApplyCamera(); break;
-            case Key.E: _yaw -= 5; ApplyCamera(); break;
+            case Key.Q: _yaw += 5 * Battle.BattleScreen.CameraKeySpeed; ApplyCamera(); break;
+            case Key.E: _yaw -= 5 * Battle.BattleScreen.CameraKeySpeed; ApplyCamera(); break;
             case Key.T when !k.Echo: ToggleTopView(); break;
             default: handled = false; break;
         }

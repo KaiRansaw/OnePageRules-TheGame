@@ -380,10 +380,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     /// <summary>Settings -> Camera -> "Camera key speed": how fast the keyboard moves and turns the camera. The slider
     /// was saved but nothing in the Godot battle read it.</summary>
-    private static float CameraKeySpeed => Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.CameraSpeed, 0.25f, 3f);
+    internal static float CameraKeySpeed => Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.CameraSpeed, 0.25f, 3f);
 
     /// <summary>Settings -> Camera -> "Invert tilt": -1 when on, so dragging tilts the camera the other way.</summary>
-    private static float TiltDirection => FdgRaylib.Config.UserConfig.Current.View.InvertTilt ? -1f : 1f;
+    internal static float TiltDirection => FdgRaylib.Config.UserConfig.Current.View.InvertTilt ? -1f : 1f;
 
     // ================================================================== clicks and hover
 
