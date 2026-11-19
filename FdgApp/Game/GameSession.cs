@@ -118,6 +118,12 @@ public sealed class GameSession
     public bool IsMine(PlayerID id) => Game.LocalPlayerIDs.Contains(id);
 
     /// <summary>
+    /// Two or more players at this computer, on opposite sides (hot-seat). Every army is then "mine" to the screen, so
+    /// it must not call one of them yours and the other the enemy's - it names both sides (Kai, 2026-11-19).
+    /// </summary>
+    public bool HotSeat => Game.LocalPlayerIDs.Count > 1 && Game.LocalPlayerIDs.Skip(1).Any(id => IsEnemy(Game.LocalPlayerIDs[0], id));
+
+    /// <summary>
     /// Whether <paramref name="other"/> is on the other side from <paramref name="me"/> - by team, the way the engine
     /// judges it. "Not one of this computer's players" (<see cref="IsMine"/>) is NOT the same thing: with two people
     /// on one computer (hot-seat) both armies are this computer's, and an ally played by a bot or a friend is not.

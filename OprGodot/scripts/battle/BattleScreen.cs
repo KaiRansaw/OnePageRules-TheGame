@@ -544,7 +544,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     /// </summary>
     private List<IUnit> WatchedSide(bool second)
     {
-        var sides = Session.Table.Units.Objects.Select(u => u.PlayerID).Distinct().OrderBy(id => id.ToString()).ToList();
+        // Two players at one computer: in seat order, so seat 1's army is the first tab.
+        var withUnits = Session.Table.Units.Objects.Select(u => u.PlayerID).Distinct().ToList();
+        var sides = Session.HotSeat ? Session.Seats.Select(s => s.Id).Where(withUnits.Contains).ToList()
+            : withUnits.OrderBy(id => id.ToString()).ToList();
         if (sides.Count == 0) return new List<IUnit>();
         for (int i = 0; i < 2 && i < sides.Count; i++)
         {
@@ -599,6 +602,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     /// <summary>Every seat is a bot and this computer hosts it: the screen only watches, and may pause the game.</summary>
     private bool Watching => Session.LocalPlayer == null && Session.Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host;
+
+    /// <summary>
+    /// The army list's two tabs are the two sides, named after their players, instead of YOUR ARMY / ENEMY: when
+    /// watching bots, and when two players share this computer (Kai, 2026-11-19 - with both seats set to Player the
+    /// screen held both armies under YOUR ARMY, left ENEMY empty and said YOUR TURN to both).
+    /// </summary>
+    private bool BothSidesByName => Watching || Session.HotSeat;
 
     private void TogglePause()
     {
@@ -798,7 +808,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (activating != null)
         {
             bool mine = Session.IsMine(activating.PlayerID);
-            _turn.Text = mine ? "YOUR TURN" : $"{Session.SeatOf(activating.PlayerID)?.Name.ToUpperInvariant() ?? "ENEMY"}'S TURN";
+            _turn.Text = mine && !Session.HotSeat ? "YOUR TURN" : $"{Session.SeatOf(activating.PlayerID)?.Name.ToUpperInvariant() ?? "ENEMY"}'S TURN";
             _turn.AddThemeColorOverride("font_color", mine ? HudKit.Lime : HudKit.Enemy);
         }
         else _turn.Text = progress.RoundCount == null ? "SETTING UP" : "";
@@ -924,7 +934,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     private void RefreshArmy(IGameProgress progress)
     {
-        List<IUnit> mine = Watching ? WatchedSide(_showEnemy)
+        List<IUnit> mine = BothSidesByName ? WatchedSide(_showEnemy)
             : _showEnemy ? Session.Table.Units.Objects.Where(u => !Session.IsMine(u.PlayerID)).ToList() : MyUnits();
         // Before round 1 the list is the deployment list: still to place first, placed units under a divider.
         bool setup = progress.RoundCount == null;
