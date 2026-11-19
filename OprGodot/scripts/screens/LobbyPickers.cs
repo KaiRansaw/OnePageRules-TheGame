@@ -21,7 +21,7 @@ namespace OprGodot;
 /// grid of map pictures for this table size, Random first, and on the right a big preview with the size, pieces,
 /// objectives, what each piece is on hover, and USE THIS MAP. Both sit over the lobby; Esc / Back closes them.
 /// </summary>
-public partial class LobbyScreen
+public partial class LobbyScreen : IBackGuard
 {
     private Control? _picker;
 
@@ -77,6 +77,23 @@ public partial class LobbyScreen
 
     /// <summary>Esc closes an open picker first.</summary>
     private bool PickerOpen => _picker != null && IsInstanceValid(_picker);
+
+    /// <summary>
+    /// Esc with something open over the lobby (Choose army's list, Select map, Choose heroes) closes that and stays in
+    /// the lobby. Without this Esc went straight to <see cref="App.Back"/>: the lobby closed, hosting stopped and every
+    /// seat's set-up was lost - while the pickers' own Back buttons say "(Esc)".
+    /// </summary>
+    public bool AllowBack()
+    {
+        if (PickerOpen) { ClosePicker(); return false; }
+        foreach (Node child in GetChildren())
+            if (child is Quest.HeroPartyPopup { Visible: true } party && !party.IsQueuedForDeletion())
+            {
+                party.QueueFree();
+                return false;
+            }
+        return true;
+    }
 
     // ================================================================== Choose Army
 
@@ -239,6 +256,9 @@ public partial class LobbyScreen
         sort.ItemSelected += _ => Fill();
         Fill();
         search.GrabFocus();
+        // Esc while typing in the search box closes the picker in one press (the box alone would only let go of the
+        // keyboard, and it took a second Esc).
+        search.GuiInput += e => { if (e.IsActionPressed("ui_cancel")) { ClosePicker(); search.AcceptEvent(); } };
     }
 
     // ================================================================== Select Map
