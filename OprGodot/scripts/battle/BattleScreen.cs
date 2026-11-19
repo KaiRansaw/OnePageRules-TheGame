@@ -1826,7 +1826,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Rebuilt only when something on it changes: the HUD refreshes several times a second, and a button rebuilt
         // between press and release never fires.
         var concedeSeats = ConcedeSeats();
-        string sig = $"{progress.TotalRounds}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
+        // RoundLimit, not progress.TotalRounds: before round 1 that always says 4, so a 6-round game's set-up read
+        // "Ends after round 4." here while the round counter beside it read "/6".
+        int lastRound = RoundLimit(progress);
+        string sig = $"{lastRound}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
             + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"
             + string.Join(",", concedeSeats.Select(c => $"{c.Conceded}{c.Pending}"));
         if (sig == _missionSig) return;
@@ -1836,7 +1839,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var vm = Session.Lobby.Vm;
         _missionBody.AddChild(HudKit.Text(vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
             ? "Seize objectives" : FDG.Missions.MissionCardCatalog.Name(vm.MissionCardGame), 16, HudKit.Fg, HudKit.Bold));
-        _missionBody.AddChild(HudKit.Text($"Ends after round {progress.TotalRounds}. " +
+        _missionBody.AddChild(HudKit.Text($"Ends after round {lastRound}. " +
             (vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off ? "Most objectives held wins." : "Most victory points wins."), 13, HudKit.Dim, HudKit.Semi));
         var scores = progress.Scores;
         string summary = string.Join("  -  ", Session.Seats.Select(s => $"{s.Name} {scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount}"));
