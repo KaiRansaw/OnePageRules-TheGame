@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FDG.ArmyBuilding;
 using FDG.Rules.Definitions;
 using FDG.Rules.Dispatch;
@@ -34,18 +35,55 @@ public class RuleGlossaryTests
         Assert.That(glossary.Describe("Stealth"), Is.Not.Empty);
     }
 
+    // 2026-11-19: this used to assert the opposite - "the book's own definition overrides by name". The book's
+    // description is a summary written beside the rule's effects, not OPR's text (2,907 of the 4,856 bundled
+    // definitions OPR has wording for say something else), so a name OPR publishes reads as OPR's wording.
     [Test]
-    public void Describe_BookDefinition_OverridesCoreByName()
+    public void Describe_ARuleOprPublishes_ReadsAsOprsWording_NotTheBooksOwnSummary()
     {
         RuleGlossary glossary = RuleGlossary.Build(BookWith(Definition("Stealth", "This book's own Stealth.")));
-        Assert.That(glossary.Describe("Stealth"), Is.EqualTo("This book's own Stealth."));
+        Assert.That(glossary.Describe("Stealth"), Is.EqualTo(OfficialRuleText.Text("Stealth", GameSystems.GrimdarkFuture)));
     }
 
     [Test]
     public void Describe_FactionRuleFromTheBook_Resolves()
     {
-        RuleGlossary glossary = RuleGlossary.Build(BookWith(Definition("Highborn", "Moves +2\" when Advancing.")));
-        Assert.That(glossary.Describe("Highborn"), Is.EqualTo("Moves +2\" when Advancing."));
+        // A rule only this book has (OPR publishes no text under the name): the definition's own description.
+        Assume.That(OfficialRuleText.Text("Clockwork Zeal", GameSystems.GrimdarkFuture), Is.Null);
+        RuleGlossary glossary = RuleGlossary.Build(BookWith(Definition("Clockwork Zeal", "Moves +2\" when Advancing.")));
+        Assert.That(glossary.Describe("Clockwork Zeal"), Is.EqualTo("Moves +2\" when Advancing."));
+    }
+
+    // The fault this guards (Kai's rule: rule text is the book's own words). Ratmen's Scurry was corrected in
+    // play on 2026-11-18 (+1" Advance), but its description still said "+2 inches on Advance" - and the
+    // description is what the Army Forge hovers and the Choose Army panel showed.
+    [Test]
+    public void BundledBooks_EveryRuleOprPublishes_ReadsAsOprsWording()
+    {
+        var wrong = new List<string>();
+        int checkedRules = 0;
+        foreach (BookFile book in FdgRaylib.Rendering.BookLibrary.Load())
+        {
+            RuleGlossary glossary = RuleGlossary.Build(book);
+            foreach (SpecialRuleDefinition definition in book.RuleDefinitions)
+            {
+                if (OfficialRuleText.OwnText(definition.Name, book.GameSystem) is not { } official) continue;
+                checkedRules++;
+                if (glossary.Describe(definition.Name) != official)
+                    wrong.Add($"{book.GameSystem} / {book.Name} / {definition.Name}: {glossary.Describe(definition.Name)}");
+            }
+        }
+        Assert.That(checkedRules, Is.GreaterThan(4000), "the bundled books were not read");
+        Assert.That(wrong, Is.Empty, "rules described in words that are not OPR's:\n" + string.Join("\n", wrong.Take(20)));
+    }
+
+    [Test]
+    public void Scurry_InTheAgeOfFantasyRatmenBook_ReadsPlusOneOnAdvance()
+    {
+        BookFile ratmen = FdgRaylib.Rendering.BookLibrary.Load()
+            .First(b => b.Name == "Ratmen" && GameSystems.SameSystem(b.GameSystem, GameSystems.AgeOfFantasy));
+        Assert.That(RuleGlossary.Build(ratmen).Describe("Scurry"),
+            Is.EqualTo("Moves +1\" when using Advance, and +2\" when using Rush/Charge."));
     }
 
     [Test]
@@ -132,8 +170,13 @@ public class RuleGlossaryTests
     {
         // RegisterOrReplace overrides through the same case-insensitive dictionary at army load, so the
         // glossary must not end up describing the core rule while the engine runs the book's version.
-        RuleGlossary glossary = RuleGlossary.Build(BookWith(Definition("Bane in Melee", "This book's own.")));
-        Assert.That(glossary.Describe("Bane in melee"), Is.EqualTo("This book's own."));
+        // Checked on a core helper OPR publishes no wording for (for a published name OPR's wording is the
+        // answer either way - see Describe_ARuleOprPublishes_ReadsAsOprsWording_NotTheBooksOwnSummary).
+        SpecialRuleDefinition? helper = CoreRuleCatalog.All.FirstOrDefault(d =>
+            OfficialRuleText.Text(d.Name, GameSystems.GrimdarkFuture) is null && d.Name.Any(char.IsLower));
+        Assume.That(helper, Is.Not.Null, "every core rule has OPR wording now - nothing left to check here");
+        RuleGlossary glossary = RuleGlossary.Build(BookWith(Definition(helper!.Name.ToUpperInvariant(), "This book's own.")));
+        Assert.That(glossary.Describe(helper.Name), Is.EqualTo("This book's own."));
     }
 
     [Test]

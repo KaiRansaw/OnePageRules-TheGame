@@ -94,14 +94,25 @@ public sealed class RuleGlossary
             if (OfficialRuleText.TextOrGrantedBy(name, gameSystem, sources) is { } via) byName[name] = via;
         }
 
-        // Last, and therefore highest: the book's OWN definition of a name. This is also OPR's text -
-        // the importer takes it from the same place - but it is the more specific of the two, because
-        // OPR does occasionally reword a rule for one book, and the per-system table above cannot hold
-        // two answers for one name. A faction rule that only this book has is here and nowhere else.
+        // Last: the book's OWN definitions. A name OPR publishes wording for in this system reads as OPR's
+        // wording, whatever the definition's own description says; the description is only the answer for a
+        // name OPR has no text for (a helper the engine generates, a rule only our files have).
+        //
+        // This used to let the description win, on the theory that it is OPR's text too and "the more specific
+        // of the two". Measured 2026-11-19 over the 288 bundled books: 2,907 of the 4,856 definitions OPR has
+        // wording for carry something else - summaries written beside the rule's effects - and some are wrong
+        // (Ratmen's Scurry read "+2 inches on Advance" where OPR says +1", three weeks after the effect itself
+        // was corrected). And OPR does not reword a rule per book: the harvest found one name per system (AP)
+        // that differs between books. So every Army Forge hover and the Choose Army panel showed a paraphrase
+        // for six rules in ten - against the owner's standing rule that rule text is the book's own words.
         if (definitions is not null)
             foreach (SpecialRuleDefinition definition in definitions)
             {
-                if (!string.IsNullOrWhiteSpace(definition.Description))
+                // This system's OWN entry only (no fall-back to the parent game): a Quest book must never be
+                // described in Grimdark Future's or Age of Fantasy's words.
+                if (OfficialRuleText.OwnText(definition.Name, gameSystem) is { } official)
+                    byName[definition.Name] = official;
+                else if (!string.IsNullOrWhiteSpace(definition.Description))
                     byName[definition.Name] = definition.Description;
                 grants[definition.Name] = GrantedBy(definition).ToList();
             }
