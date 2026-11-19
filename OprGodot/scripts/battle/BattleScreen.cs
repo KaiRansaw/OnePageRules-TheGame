@@ -1861,10 +1861,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Removed now, not at the end of the frame: a new button can't take the name of one still waiting to go.
         foreach (Node c in _missionBody.GetChildren()) { _missionBody.RemoveChild(c); c.QueueFree(); }
         var vm = Session.Lobby.Vm;
-        _missionBody.AddChild(HudKit.Text(vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
+        // Horde Mode is not won by holding objectives (its book: the mission ends when the defenders are all Shaken or
+        // destroyed, every objective is destroyed, or round 12 is finished) - the panel said "Seize objectives ... Most
+        // objectives held wins." there too. It names the mode and keeps to the round limit until Horde has its own panel.
+        bool horde = vm.GameMode == FDG.EGameMode.Horde;
+        _missionBody.AddChild(HudKit.Text(horde ? FdgRaylib.Lobby.LobbySession.ModeLabel(vm.GameMode)
+            : vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
             ? "Seize objectives" : FDG.Missions.MissionCardCatalog.Name(vm.MissionCardGame), 16, HudKit.Fg, HudKit.Bold));
-        _missionBody.AddChild(HudKit.Text($"Ends after round {lastRound}. " +
-            (vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off ? "Most objectives held wins." : "Most victory points wins."), 13, HudKit.Dim, HudKit.Semi));
+        _missionBody.AddChild(HudKit.Text($"Ends after round {lastRound}." + (horde ? ""
+            : vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off ? " Most objectives held wins." : " Most victory points wins."), 13, HudKit.Dim, HudKit.Semi));
         var scores = progress.Scores;
         string summary = string.Join("  -  ", Session.Seats.Select(s => $"{s.Name} {scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount}"));
         foreach (GameSession.Seat s in Session.Seats)
