@@ -1038,6 +1038,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (shaken) top.AddChild(HudKit.Icon("broken-shield", 15, Palette.WoundsRed));
         if (hero) top.AddChild(HudKit.Icon("flying-flag", 15, HudKit.Gold with { A = a }));
         top.AddChild(HudKit.Text(CountText(u), 13, HudKit.Dim with { A = a }, HudKit.Semi));
+        // The whole name where it fits in smaller letters (the row's text column is the list's 286 less the scroll bar,
+        // the margins and the part of the picture the text does not overlap; then the icons and the count).
+        float nameRoom = 286 - 12 - 9 - (pw - (int)(pw * 0.32f)) - HudKit.TextWidth(CountText(u), 13, HudKit.Semi) - 4
+            - (shaken ? 19 : 0) - (hero ? 19 : 0);
+        HudKit.FitText(name, nameRoom, 11);
         v.AddChild(top);
         v.AddChild(SegBar(left, max, a));
         UnitMark? mark = Decisions.ListMark(u);
@@ -1120,10 +1125,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         top.AddChild(names);
         bool done = UnitActivation.HasActivated(Session.Table.Progress, u);
         bool shaken = u.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken);
-        var tag = HudKit.Chip(shaken ? "SHAKEN" : !mine && !Watching ? "ENEMY" : done ? "ACTIVATED" : "READY",
-            shaken || (!mine && !Watching) ? HudKit.Enemy : done ? HudKit.Dim : HudKit.Lime, true, 12);
+        string tagText = shaken ? "SHAKEN" : !mine && !Watching ? "ENEMY" : done ? "ACTIVATED" : "READY";
+        var tag = HudKit.Chip(tagText, shaken || (!mine && !Watching) ? HudKit.Enemy : done ? HudKit.Dim : HudKit.Lime, true, 12);
         tag.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         top.AddChild(tag);
+        // The whole name, in smaller letters when it is a long one: the room is the card's width less the icon (no
+        // picture), the status chip and the gaps.
+        HudKit.FitText(nm, width - (picture == null ? 46 + 8 : 4) - (HudKit.TextWidth(tagText, 12, HudKit.Semi) + 16) - 8 - 6, 13);
         if (picture == null) col.AddChild(top);
         else
         {

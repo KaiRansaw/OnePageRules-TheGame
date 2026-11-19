@@ -431,6 +431,28 @@ public static class HudKit
     }
 
     /// <summary>Text that stays readable over a picture (a dark outline).</summary>
+    /// <summary>
+    /// Shrinks a one-line label's letters, a size at a time, until its text fits <paramref name="width"/> (never below
+    /// <paramref name="minSize"/>). For a name that has to stay on one line - a unit's name on its card and in the army
+    /// list: a long one ("Elite Weapon Masters") was simply cut off ("ELITE WEAPON MA").
+    /// </summary>
+    public static Label FitText(Label l, float width, int minSize = 12)
+    {
+        Font font = l.GetThemeFont("font");
+        int size = l.GetThemeFontSize("font_size");
+        if (font == null || size <= 0) return l;
+        while (size > minSize && font.GetStringSize(l.Text, HorizontalAlignment.Left, -1, size).X > width) size--;
+        l.AddThemeFontSizeOverride("font_size", size);
+        return l;
+    }
+
+    /// <summary>How wide <paramref name="s"/> is in a label made by <see cref="Text"/> with that font and size.</summary>
+    public static float TextWidth(string s, int size, Font? font = null)
+    {
+        if (Looks.Current.HeadingScale != 1f && IsHeadingFont(font)) size = Mathf.RoundToInt(size * Looks.Current.HeadingScale);
+        return (font ?? Medium).GetStringSize(s, HorizontalAlignment.Left, -1, size).X;
+    }
+
     public static Label OverPicture(Label l)
     {
         l.AddThemeConstantOverride("outline_size", 5);
