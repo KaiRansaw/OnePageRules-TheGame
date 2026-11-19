@@ -59,7 +59,9 @@ public partial class MapMakerScreen : Control
         root.AddChild(body);
         _status = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi);
         root.AddChild(_status);
-        VisibilityChanged += () => { if (Visible) Refresh(); };
+        // Coming back from the editor starts with a clean line: it kept saying e.g. Deleted "Crossroads" under a list that
+        // had since gained a new map.
+        VisibilityChanged += () => { if (Visible) { Say(""); Refresh(); } };
         Refresh();
     }
 
