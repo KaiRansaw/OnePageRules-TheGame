@@ -75,6 +75,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     private LineEdit _name = null!;
     private VBoxContainer _left = null!, _right = null!;
+    // Kai, 2026-11-18: placing a piece rebuilds the left panel - keep both scroll positions so the model list doesn't
+    // jump back to the top.
+    private ScrollContainer? _leftScroll;
+    private int _modelScrollY;
     private HBoxContainer _top = null!;
     private Label _status = null!;
 
@@ -125,6 +129,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _left = new VBoxContainer();
         _left.AddThemeConstantOverride("separation", 6);
         var ls = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _leftScroll = ls;
         _left.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         ls.AddChild(_left);
         var leftPanel = HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(ls, 10, 8, 10, 8));
@@ -340,9 +345,19 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         BuildBoard(); Rebuild();
     }
 
+    /// <summary>Sets a rebuilt list's scroll back once its containers have laid it out (two frames).</summary>
+    private async void RestoreScroll(ScrollContainer s, int y)
+    {
+        if (y <= 0) return;
+        for (int i = 0; i < 2; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (IsInstanceValid(s)) s.ScrollVertical = y;
+    }
+
     private void LeftPanel()
     {
+        int leftY = _leftScroll?.ScrollVertical ?? 0;
         Clear(_left);
+        if (_leftScroll is { } outer) RestoreScroll(outer, leftY);
         _left.AddChild(HudKit.Heading("Pieces (the book's)", 13));
         var grid = new GridContainer { Columns = 2 };
         grid.AddThemeConstantOverride("h_separation", 5);
@@ -468,8 +483,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
             list.AddChild(b);
         }
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 470) };
+        var scroll = new ScrollContainer { Name = "ModelScroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 470) };
         scroll.AddChild(list);
+        int keep = _modelScrollY;
+        scroll.GetVScrollBar().ValueChanged += v => _modelScrollY = (int)v;
+        // Put the list back where it was once it has been laid out (setting it now would be clamped to an empty list).
+        RestoreScroll(scroll, keep);
         _left.AddChild(scroll);
         _left.AddChild(HudKit.Text($"{shown.Count} of {all.Count} matched pieces", 12, HudKit.Dim, HudKit.Semi));
     }
@@ -637,8 +656,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             // match), so every piece using it - here, on other maps, in battle - follows.
             if (modelPiece && WarhammerModels.Library?.ForLook(p.Look) is { } model)
             {
-                var sink = new SpinBox { Name = "SinkModel", MinValue = 0, MaxValue = 4, Step = 0.05, Value = model.Match.Sink, Suffix = "\"",
-                    TooltipText = "Lowers this model into the ground so a sculpted base is hidden. Saved for the model everywhere it's used. Looks only." };
+                var sink = new SpinBox { Name = "SinkModel", MinValue = -4, MaxValue = 4, Step = 0.05, Value = model.Match.Sink, Suffix = "\"",
+                    TooltipText = "Above 0 sinks this model into the ground (hides a sculpted base); below 0 raises it (a model sitting too deep). Saved for the model everywhere it's used. Looks only." };
                 sink.ValueChanged += v =>
                 {
                     model.Match.Sink = (float)v;

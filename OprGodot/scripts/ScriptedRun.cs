@@ -393,6 +393,17 @@ public partial class ScriptedRun : Node
                 _wait = 30;
                 return;
             }
+            // "scroll:Name|y" scrolls the ScrollContainer named Name to y; "scrollat:Name" prints where it is.
+            if (name.StartsWith("scroll:") && name[7..].Split('|') is [var sName, var sY] && GetTree().Root.FindChild(sName, true, false) is ScrollContainer sc)
+            {
+                sc.ScrollVertical = int.Parse(sY);
+                return;
+            }
+            if (name.StartsWith("scrollat:") && GetTree().Root.FindChild(name[9..], true, false) is ScrollContainer sat)
+            {
+                GD.Print($"ScriptedRun: {name[9..]} scrolled to {sat.ScrollVertical}");
+                return;
+            }
             // "mapcam:12|120" tilts the Map Maker's camera to 12 degrees, 120" back (horizon checks).
             if (name.StartsWith("mapcam:") && name[7..].Split('|') is [var mp, var md] && Find<Maps.MapEditorScreen>(GetTree().Root) is { } mapEd)
             {

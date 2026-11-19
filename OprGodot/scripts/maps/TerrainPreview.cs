@@ -72,9 +72,9 @@ public partial class TerrainPreview : PanelContainer
         // Kai, 2026-11-18: "adjust its base point, so if a model DOES have a base, the base is under the map".
         _sinkRow = new HBoxContainer { Name = "SinkRow" };
         _sinkRow.AddThemeConstantOverride("separation", 8);
-        _sinkRow.AddChild(HudKit.Text("Sink into ground", 13, HudKit.Fg, HudKit.Semi).Also(l => l.TooltipText =
-            "Lowers the model so a sculpted base goes under the ground and out of sight. Saved for this model everywhere it's used (maps, battles). Looks only - the rules footprint doesn't move."));
-        _sink = new HSlider { Name = "Sink", MinValue = 0, MaxValue = 4, Step = 0.05, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        _sinkRow.AddChild(HudKit.Text("Sink / raise", 13, HudKit.Fg, HudKit.Semi).Also(l => l.TooltipText =
+            "Right lowers the model so a sculpted base goes under the ground and out of sight; left of 0 raises a model that sits too deep. Saved for this model everywhere it's used (maps, battles). Looks only - the rules footprint doesn't move."));
+        _sink = new HSlider { Name = "Sink", MinValue = -4, MaxValue = 4, Step = 0.05, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter };
         _sinkValue = HudKit.Text("0\"", 13, HudKit.Fg, HudKit.Semi);
         _sinkValue.CustomMinimumSize = new Vector2(48, 0);
         _sink.ValueChanged += v =>

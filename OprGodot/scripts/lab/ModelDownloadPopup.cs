@@ -96,6 +96,8 @@ public partial class ModelDownloadPopup : Control
         terrainRow.AddChild(terrainInfo);
         _getTerrain = Btn("GetWarhammerTerrain", "Get Warhammer terrain", "Read the Warhammer Map Builder mod (from your Tabletop Simulator folder, or from Steam), then fetch every terrain piece and save it as a model. Pieces already saved are skipped, so pressing it again carries on.", GetTerrain);
         terrainRow.AddChild(_getTerrain);
+        // Kai, 2026-11-18: the mod is off Steam, so friends get its file from him and point the game at it here.
+        terrainRow.AddChild(Btn("PickModFile", "Pick the mod file...", $"Got the mod's file ({WarhammerTerrain.WorkshopId}.json) from a friend? Choose it wherever you saved it (Downloads is fine) - the game keeps a copy and starts the download.", PickModFile));
         col.AddChild(terrainRow);
 
         col.AddChild(HudKit.Heading("Army", 15));
@@ -205,6 +207,27 @@ public partial class ModelDownloadPopup : Control
             LoadCatalogue();
             ShowBook();
             dlg.QueueFree();
+        };
+        dlg.Canceled += () => dlg.QueueFree();
+        AddChild(dlg);
+        dlg.PopupCentered(new Vector2I(900, 600));
+    }
+
+    private void PickModFile()
+    {
+        if (_cts != null) return;
+        var dlg = new FileDialog
+        {
+            FileMode = FileDialog.FileModeEnum.OpenFile, Access = FileDialog.AccessEnum.Filesystem, Filters = new[] { "*.json ; Warhammer Map Builder mod file" },
+            Title = $"Choose {WarhammerTerrain.WorkshopId}.json", UseNativeDialog = true,
+        };
+        dlg.FileSelected += path =>
+        {
+            dlg.QueueFree();
+            try { WarhammerTerrain.UsePickedModFile(path); }
+            catch (Exception e) { Log($"Could not use that file: {e.Message}"); return; }
+            Log("Got the mod's file - starting the terrain download.");
+            GetTerrain();
         };
         dlg.Canceled += () => dlg.QueueFree();
         AddChild(dlg);

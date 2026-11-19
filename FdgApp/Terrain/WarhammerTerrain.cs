@@ -289,9 +289,28 @@ public static class WarhammerTerrain
         return s;
     }
 
-    /// <summary>Where Tabletop Simulator keeps this mod's save on this computer, if it is subscribed (or null).</summary>
+    /// <summary>A copy of the mod's save the player picked by hand (Kai, 2026-11-18: friends get the file from him, since
+    /// the mod is off Steam) - kept in the UnitModels folder, so the button finds it again next time.</summary>
+    public static string PickedModFile => Path.Combine(UnitModelPaths.Root, "_mods", WorkshopId + ".json");
+
+    /// <summary>Copies a hand-picked mod save to <see cref="PickedModFile"/> after checking it really is this mod's
+    /// Tabletop Simulator save (it has the set tiles' piece lists). Throws with a plain reason.</summary>
+    public static void UsePickedModFile(string path, string? dest = null)
+    {
+        dest ??= PickedModFile;
+        string text = File.ReadAllText(path);
+        if (!text.Contains("ObjectStates", StringComparison.Ordinal) || !text.Contains("objectJSONs", StringComparison.Ordinal))
+            throw new IOException("That isn't the Warhammer Map Builder mod's file (looking for " + WorkshopId + ".json).");
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+        if (!string.Equals(Path.GetFullPath(path), Path.GetFullPath(dest), StringComparison.OrdinalIgnoreCase))
+            File.Copy(path, dest, true);
+    }
+
+    /// <summary>Where Tabletop Simulator keeps this mod's save on this computer, if it is subscribed (or null) - or the copy
+    /// picked by hand.</summary>
     public static string? LocalModFile()
     {
+        if (File.Exists(PickedModFile)) return PickedModFile;
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string[] docs =
         {
@@ -322,7 +341,7 @@ public static class WarhammerTerrain
     {
         if (LocalModFile() is { } local)
         {
-            progress?.Invoke("Reading the mod from your Tabletop Simulator folder...");
+            progress?.Invoke(local == PickedModFile ? "Reading the mod file you picked..." : "Reading the mod from your Tabletop Simulator folder...");
             return await File.ReadAllTextAsync(local, ct);
         }
         progress?.Invoke("Asking Steam where the mod is...");
