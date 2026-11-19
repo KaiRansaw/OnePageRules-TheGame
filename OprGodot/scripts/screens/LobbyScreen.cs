@@ -348,7 +348,9 @@ public partial class LobbyScreen : Control, Hud.ILooked
             return;
         }
         bool skirmish = GameSystemInfo.IsSkirmish(Vm.GameSystem);
-        _points = new SpinBox { MinValue = 0, MaxValue = 100000, Step = skirmish ? 25 : 250, Value = Vm.ArmyPoints, Editable = !locked, AllowGreater = true, Suffix = "pts" };
+        // The arrows step in the usual sizes; a typed number is kept as typed. (With Step = 250 the box could only hold
+        // multiples of 250: typing 1100 became 1000, and a campaign mission's 835 showed as 750.)
+        _points = new SpinBox { MinValue = 0, MaxValue = 100000, Step = 1, CustomArrowStep = skirmish ? 25 : 250, Value = Vm.ArmyPoints, Editable = !locked, AllowGreater = true, Suffix = "pts" };
         _points.ValueChanged += v => { if ((int)v != Vm.ArmyPoints) Vm.SetArmyPoints((int)v); };
         Row(rows, "Army points", "The point budget each player's army is built to. An army over this limit is flagged red on its seat card and blocks the launch. In a team game the limit is for the whole side.", _points);
 
