@@ -569,7 +569,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     /// <summary>A rule's book wording for this game system (Army Forge's own text), or null.</summary>
     public string? RuleText(string name)
     {
-        string slug = Session.Table.Progress is { } p ? FDG.GameSystemInfo.Slug(p.GameSystem) : "";
+        // The lobby's game, not the progress record's: that record does not exist until round 1 and answers
+        // "Grimdark Future" until then - so all through set-up and deployment an Age of Fantasy, Skirmish or Quest
+        // game showed Grimdark Future's wording on every rule hover (or none, for a rule only its own book has).
+        string slug = FDG.GameSystemInfo.Slug(Session.Lobby.Vm.GameSystem);
         return FDG.Rules.Dispatch.OfficialRuleText.TextOrGrantedBy(name, slug, GrantersOf(name));
     }
 
@@ -756,7 +759,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     {
         IGameProgress progress = Session.Table.Progress;
         _round.Text = progress.RoundCount?.ToString() ?? "-";
-        _roundOf.Text = $"/{progress.TotalRounds}";
+        _roundOf.Text = $"/{RoundLimit(progress)}";
 
         long tp = PerfProbe.Start();
         // Objectives held, per seat colour. Rebuilt only when a count changes (perf sweep, 2026-11-15 - it used to be
@@ -864,6 +867,18 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         Vector2 amin = _actionBlock.GetCombinedMinimumSize();
         if (_actionBlock.Size != amin) _actionBlock.Size = amin;
         _actionBlock.Position = new Vector2(_unitBlock.GetRect().End.X + 6, screen.Y - Pad - amin.Y);
+    }
+
+    /// <summary>
+    /// How many rounds the game lasts. Before round 1 the progress record does not exist and answers a standard game's
+    /// 4, so a 6-round game (or a 12-round Horde game) read "- /4" all through deployment: the lobby's settings say.
+    /// </summary>
+    private int RoundLimit(IGameProgress progress)
+    {
+        if (progress.RoundCount != null) return progress.TotalRounds;
+        var vm = Session.Lobby.Vm;
+        int limit = FDG.StateMachine.HordeRules.RoundLimit(vm.GameMode);
+        return limit == GameWideConstants.NUMBER_OF_ROUNDS && vm.NumberOfRounds is int n && n > 0 ? n : limit;
     }
 
     private IUnit? _lastActivating;
@@ -2003,7 +2018,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     private string SuggestedSaveName()
     {
         var p = Session.Table.Progress;
-        string game = FDG.GameSystemInfo.DisplayName(p.GameSystem);
+        string game = FDG.GameSystemInfo.DisplayName(Session.Lobby.Vm.GameSystem);   // p.GameSystem says Grimdark Future before round 1
         string round = p.RoundCount is int r ? $"Round {r}" : "Set-up";
         string them = string.Join(" vs ", Session.Seats.Select(x => x.Faction.Length > 0 ? x.Faction : x.Name));
         return $"{game} - {them} - {round} - {DateTime.Now:yyyy-MM-dd HH-mm}";
