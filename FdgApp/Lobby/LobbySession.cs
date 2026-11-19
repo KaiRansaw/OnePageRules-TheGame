@@ -67,6 +67,7 @@ public sealed class LobbySession : IDisposable
         session = new LobbySession(created);
         ApplyGameSystem(created, system);
         ApplyGameMode(created, mode);
+        session.DropMapThisLobbyCannotOffer();
         return true;
     }
 
@@ -495,6 +496,22 @@ public sealed class LobbySession : IDisposable
         && TerrainLayoutLoader.TryLoadFromFile(path, out _)?.GeneratedFrom == nameof(TerrainBook.ETheme.Generic);
 
     public bool HasMap => Vm.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile && !string.IsNullOrEmpty(Vm.TerrainLayoutPath);
+
+    /// <summary>
+    /// A lobby opens on the last hosted game's settings, its map included - but only a map this lobby's own Select Map
+    /// screen would offer. The file must still be there: deleting or renaming a map in the Map Maker left every later
+    /// lobby naming a file that was gone, and Launch answered "Could not load terrain layout: File not found". And it
+    /// must be drawn for this game's table: a 6' x 4' Grimdark Future map followed the player into Firefight's
+    /// 4' x 4' lobby, where the picker does not even list it, and the game was played on it. Anything else goes back
+    /// to Random.
+    /// </summary>
+    public void DropMapThisLobbyCannotOffer()
+    {
+        if (!HasMap) return;
+        TerrainLayoutFile? map = File.Exists(Vm.TerrainLayoutPath) ? TerrainLayoutLoader.TryLoadFromFile(Vm.TerrainLayoutPath!, out _) : null;
+        if (map == null || !TableSizing.Same((map.TableWidthInches, map.TableHeightInches), TableWithoutMap()))
+            SetMap(null);
+    }
 
     /// <summary>The table this game is set up for, ignoring any chosen map.</summary>
     public (float W, float H) TableWithoutMap() =>
