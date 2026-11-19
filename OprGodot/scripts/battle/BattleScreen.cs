@@ -68,7 +68,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         _table = new BattleTable { Session = Session };
         AddChild(_table);
         _focus = Vector3.Zero;
-        _distance = Mathf.Max(_table.W, _table.D) * 0.95f + 10f;
+        _distance = (Mathf.Max(_table.W, _table.D) * 0.95f + 10f) * Horizon.DistanceScale;
+        // Kai, 2026-11-18 (camera "4"): on the battlefield the camera starts a little lower, looking across the field.
+        if (Horizon.On) { _pitch = 42f; _savedPitch = 42f; }
 
         _hud = new Control { MouseFilter = MouseFilterEnum.Ignore };
         _hud.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -139,6 +141,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Vector3 offset = new Vector3(0, 0, _distance).Rotated(Vector3.Right, -Mathf.DegToRad(pitch)).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         _table.Camera.Position = _focus + offset;
         _table.Camera.LookAt(_focus, _topView ? Vector3.Forward.Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) : Vector3.Up);
+        Horizon.FollowCamera(_table, _distance);
     }
 
     /// <summary>The terrain drawn by what it does (the Map Maker's Rules view).</summary>
@@ -151,7 +154,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
     public void ToggleTopView()
     {
         _topView = !_topView;
-        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max(_table.W * 0.75f, _table.D * 1.2f)); }
+        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max(_table.W * 0.75f, _table.D * 1.2f) * Horizon.DistanceScale); }
         else _pitch = _savedPitch;
         ApplyCamera();
     }
@@ -197,9 +200,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         switch (e)
         {
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true }:
-                _distance = Mathf.Max(8f, _distance * 0.9f); ApplyCamera(); break;
+                _distance = Mathf.Max(8f * Horizon.DistanceScale, _distance * 0.9f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelDown, Pressed: true }:
-                _distance = Mathf.Min(220f, _distance * 1.1f); ApplyCamera(); break;
+                _distance = Mathf.Min(220f * Horizon.DistanceScale, _distance * 1.1f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right } mb:
                 _dragRotate = mb.Pressed ? mb.Position : null;
                 // A right CLICK (not a drag to turn the camera): drop the placed move / shot, step back, drop the
@@ -257,7 +260,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                 ApplyCamera();
                 break;
             case InputEventMouseMotion mm when _dragPan is { } p:
-                Pan((mm.Position - p) * -_distance * 0.0016f);
+                Pan((mm.Position - p) * -_distance / Horizon.DistanceScale * 0.0016f);
                 _dragPan = mm.Position;
                 break;
         }
@@ -345,7 +348,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) dir.X -= 1;
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) dir.X += 1;
         if (dir != Vector2.Zero && GetViewport().GuiGetFocusOwner() is not LineEdit)
-            Pan(dir * (float)delta * _distance * 0.8f);
+            Pan(dir * (float)delta * _distance / Horizon.DistanceScale * 0.8f);
     }
 
     // ================================================================== clicks and hover

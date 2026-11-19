@@ -138,7 +138,7 @@ public partial class BattleTable : Node3D
         _modelRoot = new Node3D { Name = "Models" };
         AddChild(_terrainRoot);
         AddChild(_modelRoot);
-        Camera = new Camera3D { Fov = 44, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
+        Camera = new Camera3D { Fov = Horizon.Lens, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
         AddChild(Camera);
         LoadUnitModels();
     }

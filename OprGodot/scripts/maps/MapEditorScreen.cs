@@ -104,8 +104,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _world.AddChild(_pieces);
         _world.AddChild(_dressed);
         _world.AddChild(_marks);
-        _camera = new Camera3D { Fov = 44, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
+        _camera = new Camera3D { Fov = Horizon.Lens, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
         _world.AddChild(_camera);
+        // Kai, 2026-11-18 (camera "4"): the long lens sits further back, and starts a little lower on the battlefield.
+        _distance *= Horizon.DistanceScale;
+        if (Horizon.On) { _pitch = 45f; _savedPitch = 45f; }
         _ghost = new MeshInstance3D { Visible = false };
         _world.AddChild(_ghost);
 
@@ -1059,12 +1062,13 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         Vector3 offset = new Vector3(0, 0, _distance).Rotated(Vector3.Right, -Mathf.DegToRad(pitch)).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         _camera.Position = _focus + offset;
         _camera.LookAt(_focus, _topView ? Vector3.Forward.Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) : Vector3.Up);
+        Horizon.FollowCamera(_world, _distance);
     }
 
     private void ToggleTopView()
     {
         _topView = !_topView;
-        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max(W * 0.8f, D * 1.25f)); }
+        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max(W * 0.8f, D * 1.25f) * Horizon.DistanceScale); }
         else _pitch = _savedPitch;
         ApplyCamera();
     }
@@ -1092,7 +1096,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         if (dir == Vector2.Zero) return;
         Vector3 right = new Vector3(1, 0, 0).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         Vector3 fwd = new Vector3(0, 0, 1).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
-        _focus += (right * dir.X + fwd * dir.Y) * (float)delta * _distance * 0.8f;
+        _focus += (right * dir.X + fwd * dir.Y) * (float)delta * _distance / Horizon.DistanceScale * 0.8f;
         _focus.X = Mathf.Clamp(_focus.X, -W / 2 - 10, W / 2 + 10);
         _focus.Z = Mathf.Clamp(_focus.Z, -D / 2 - 10, D / 2 + 10);
         ApplyCamera();
@@ -1108,9 +1112,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         switch (e)
         {
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true }:
-                _distance = Mathf.Max(8f, _distance * 0.9f); ApplyCamera(); break;
+                _distance = Mathf.Max(8f * Horizon.DistanceScale, _distance * 0.9f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelDown, Pressed: true }:
-                _distance = Mathf.Min(260f, _distance * 1.1f); ApplyCamera(); break;
+                _distance = Mathf.Min(260f * Horizon.DistanceScale, _distance * 1.1f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right } mb:
                 if (mb.Pressed) { _dragRotate = mb.Position; _rightDown = mb.Position; }
                 else
@@ -1137,7 +1141,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
                 break;
             case InputEventMouseMotion mm when _dragPan is { } p:
             {
-                Vector2 d = (mm.Position - p) * -_distance * 0.0016f;
+                Vector2 d = (mm.Position - p) * -_distance / Horizon.DistanceScale * 0.0016f;
                 _focus += new Vector3(1, 0, 0).Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) * d.X + new Vector3(0, 0, 1).Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) * d.Y;
                 _dragPan = mm.Position;
                 ApplyCamera();

@@ -55,13 +55,13 @@ public static class Horizon
         foreach (string m in new[] { "clear_sky", "clear_haze" }) if (env.HasMeta(m)) env.RemoveMeta(m);
         // Haze: clear over the table, thickening out to the horizon so the land never visibly ends. Depth fog is measured
         // from the camera, which sits up to ~2 table-widths back, so the haze starts well past that.
-        float near = Mathf.Max(tableW, tableD) * 2.5f + 60f;
+        float near = Mathf.Max(tableW, tableD) * 1.5f;
         env.FogEnabled = true;
         env.FogMode = Godot.Environment.FogModeEnum.Depth;
         env.FogLightColor = th.Haze;
         env.FogDensity = 1f;
         env.FogDepthBegin = near;
-        env.FogDepthEnd = Reach * 0.85f;
+        env.FogDepthEnd = near + 690f;
         env.FogDepthCurve = 1.6f;
         env.FogSkyAffect = 0f;
         env.FogAerialPerspective = 0f; // sky-tinted haze samples the panorama's dark lower half: plain haze colour instead
@@ -119,22 +119,55 @@ public static class Horizon
         Border(root, tableW, tableD);
     }
 
-    /// <summary>The ground picture repeats every 5 feet, measured from the table's middle (land and table alike).</summary>
+    /// <summary>UV size of the land mesh (only the plain fallback colour uses UVs; the ground shader works in world inches).</summary>
     public const float Tile = 60f;
 
-    /// <summary>The theme's ground: its picture (or Hospitable's) tinted to the theme. UVs are table inches / <see cref="Tile"/>.</summary>
-    public static StandardMaterial3D Ground(TerrainBook.ETheme theme)
+    /// <summary>One repeat of the ground picture, in table inches: miniature scale, so a twig is smaller than a base.</summary>
+    public const float DetailInches = 3f;
+
+    /// <summary>Kai, 2026-11-18 (camera "4"): a long lens on the battlefield - flatter, like a real field filmed from afar.
+    /// Rooms and the plain table keep the old 44 degrees.</summary>
+    public static float Lens => On ? 30f : 44f;
+
+    /// <summary>How much further back the camera sits for the same view with <see cref="Lens"/> (1 with the old lens).</summary>
+    public static float DistanceScale => Mathf.Tan(Mathf.DegToRad(22f)) / Mathf.Tan(Mathf.DegToRad(Lens / 2f));
+
+    /// <summary>Camera "4"'s haze: it starts about where the camera looks (the table) and thickens over the next ~60 feet,
+    /// so the land beyond the table falls away into distance. Depth haze is measured from the camera, so it follows the
+    /// camera's distance - zooming out never fogs the table. Call whenever the camera moves.</summary>
+    public static void FollowCamera(Node world, float cameraDistance)
+    {
+        if (!On || world.GetNodeOrNull<WorldEnvironment>("Environment") is not { Environment: { FogEnabled: true } env }) return;
+        env.FogDepthBegin = cameraDistance;
+        env.FogDepthEnd = cameraDistance + 690f;
+    }
+
+    /// <summary>The theme's ground (<c>shaders/ground.gdshader</c>): its picture (or Hospitable's) tinted to the theme, laid
+    /// out by world position so the table and land join up.</summary>
+    public static Material Ground(TerrainBook.ETheme theme)
     {
         Theme th = Of(theme);
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = th.Tint, VertexColorUseAsAlbedo = true, Roughness = 0.95f,
-            AlbedoTexture = Picture(theme, "ground"), TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic,
-        };
-        if (mat.AlbedoTexture == null) mat.AlbedoColor = th.Ground;
-        if (Picture(theme, "ground_normal") is { } normal) { mat.NormalEnabled = true; mat.NormalTexture = normal; mat.NormalScale = 0.6f; }
+        Texture2D? pic = Picture(theme, "ground");
+        if (pic == null) return new StandardMaterial3D { AlbedoColor = th.Ground, Roughness = 0.95f, VertexColorUseAsAlbedo = true };
+        var mat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/ground.gdshader") };
+        mat.SetShaderParameter("detail", pic);
+        mat.SetShaderParameter("tint", th.Tint);
+        // Kai, 2026-11-18 (picked "E" from the comparison): the ground at life-size scale - one repeat every 3" of table,
+        // two samples mixed and big soft patches over it, so it reads as real land and not wallpaper.
+        mat.SetShaderParameter("detail_inches", DetailInches);
+        mat.SetShaderParameter("mix_layers", true);
+        mat.SetShaderParameter("macro", Macro);
+        if (Picture(theme, "ground_normal") is { } normal) { mat.SetShaderParameter("detail_normal", normal); mat.SetShaderParameter("has_normal", true); }
         return mat;
     }
+
+    private static NoiseTexture2D? _macro;
+    /// <summary>Soft seamless noise for the ground's big patches and for mixing its two detail samples.</summary>
+    private static NoiseTexture2D Macro => _macro ??= new NoiseTexture2D
+    {
+        Width = 512, Height = 512, Seamless = true, GenerateMipmaps = true,
+        Noise = new FastNoiseLite { NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth, Frequency = 0.012f, FractalOctaves = 3, Seed = 4242 },
+    };
 
     /// <summary>The theme's ground picture alone (for the mat picker), or null.</summary>
     public static Texture2D? GroundPicture(TerrainBook.ETheme theme) => Picture(theme, "ground");
