@@ -268,6 +268,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         weather.Selected = Math.Max(0, weathers.ToList().FindIndex(w => w.Id == Draft.Weather));
         weather.ItemSelected += i => { Draft.Remember(); Draft.Weather = weathers[(int)i].Id; BuildBoard(); };
         _top.AddChild(weather);
+        // Kai, 2026-11-18: each style can hold several grounds - pick one per map, or mix two or three in patches.
+        var picksNow = Horizon.Pick(MapAtmosphere.HorizonFor(HorizonId), Draft.Ground);
+        _top.AddChild(Ui.Button("Ground: " + (picksNow.Count == 0 ? "plain" : string.Join(" + ", picksNow.Select(g => g.Name))), OpenGroundPicker,
+            "The ground the field (and the play area, with the Horizon ground mat) is drawn with: one of this horizon style's grounds, or two or three mixed in natural patches. Saved with the map; only for looks.")
+            .Also(b => b.Name = "GroundButton"));
         _top.AddChild(Ui.Grow());
         var rv = new Button { Name = "RulesView", Text = "Rules view", ToggleMode = true, ButtonPressed = _rulesView, FocusMode = FocusModeEnum.None,
             TooltipText = "Hide the scenery and colour every piece by what it does." };
@@ -495,6 +500,66 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
 
     // ================================================================== battle mats
 
+    /// <summary>Kai, 2026-11-18: the map's ground - a main ground, plus up to two more mixed in through it in patches.
+    /// The pictures come from the horizon style's folder (OprGodot/horizon/&lt;Style&gt;/ground*.jpg).</summary>
+    public void OpenGroundPicker()
+    {
+        var theme = MapAtmosphere.HorizonFor(HorizonId);
+        var all = Horizon.Grounds(theme);
+        var veil = new Control { Name = "GroundPicker", MouseFilter = MouseFilterEnum.Stop };
+        veil.SetAnchorsPreset(LayoutPreset.FullRect);
+        var dim = new ColorRect { Color = new Color(0, 0, 0, 0.55f), MouseFilter = MouseFilterEnum.Ignore };
+        dim.SetAnchorsPreset(LayoutPreset.FullRect);
+        veil.AddChild(dim);
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(620, 0) };
+        col.AddThemeConstantOverride("separation", 10);
+        col.AddChild(HudKit.Text("GROUND", 26, HudKit.Fg, HudKit.Exo(800)));
+        col.AddChild(ForgeWidgets.Wrapped($"The {theme} style's grounds ({all.Count} on this computer). The main ground covers the field; a second and third show through it in big natural patches, like bare dirt in grass. Add more as ground2.jpg, ground3.jpg... (or ground-mud.jpg) in OprGodot/horizon/{theme}/.", 14, HudKit.Dim));
+        var current = Horizon.Pick(theme, Draft.Ground).Select(g => g.Id).ToList();
+        var pickers = new List<OptionButton>();
+        void Apply()
+        {
+            var ids = pickers.Select((o, i) => i == 0 ? all.ElementAtOrDefault(o.Selected)?.Id : o.Selected > 0 ? all.ElementAtOrDefault(o.Selected - 1)?.Id : null)
+                .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            string spec = ids.Count == 1 && ids[0] == all.FirstOrDefault()?.Id ? "" : string.Join("+", ids);
+            if (spec == Draft.Ground) return;
+            Draft.Remember();
+            Draft.Ground = spec;
+            BuildBoard();
+        }
+        string[] labels = { "Main ground", "Mixed with", "And" };
+        for (int row = 0; row < 3; row++)
+        {
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 10);
+            line.AddChild(HudKit.Text(labels[row], 15, HudKit.Fg, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(130, 0)));
+            var pick = new OptionButton { Name = "GroundPick" + row, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(300, 0) };
+            if (row > 0) pick.AddItem("(none)");
+            foreach (var g in all) pick.AddItem(g.Name);
+            string? want = current.ElementAtOrDefault(row);
+            int at = want == null ? -1 : all.ToList().FindIndex(g => g.Id == want);
+            pick.Selected = row == 0 ? Math.Max(0, at) : at + 1;
+            var thumb = new TextureRect { CustomMinimumSize = new Vector2(64, 64), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered };
+            void ShowThumb()
+            {
+                int i = row == 0 ? pick.Selected : pick.Selected - 1;
+                thumb.Texture = i >= 0 && i < all.Count ? GD.Load<Texture2D>(all[i].Color) : null;
+            }
+            ShowThumb();
+            pick.ItemSelected += _ => { ShowThumb(); Apply(); };
+            pick.Disabled = row > 0 && all.Count < 2;
+            pickers.Add(pick);
+            line.AddChild(pick);
+            line.AddChild(thumb);
+            col.AddChild(line);
+        }
+        var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        buttons.AddChild(Ui.Button("Done", () => { veil.QueueFree(); Rebuild(); }, "Close.").Also(b => b.Name = "CloseGround"));
+        col.AddChild(buttons);
+        AddChild(veil);
+        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
+    }
+
     /// <summary>The Warhammer Map Builder mats whose picture is on this computer.</summary>
     private static List<WarhammerTerrain.Mat> MatsHere() =>
         (WarhammerTerrain.LoadMats() ?? new()).Where(m => WarhammerTerrain.MatFile(m.Look) != null).ToList();
@@ -556,7 +621,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             return b;
         }
         Tile("Horizon ground", "", out TextureRect ground);
-        ground.Texture = Horizon.GroundPicture(MapAtmosphere.HorizonFor(HorizonId));
+        ground.Texture = Horizon.GroundPicture(MapAtmosphere.HorizonFor(HorizonId), Draft.Ground);
         Tile("Plain felt", MapAtmosphere.FeltMat, out TextureRect felt);
         felt.Texture = TableLook.Felt(24, 16);
         foreach (var m in mats) { Tile(m.Name, m.Look, out TextureRect pic); pics.Add((pic, m)); }
@@ -921,7 +986,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId, battlefield: Horizon.On);
+        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId, battlefield: Horizon.On, ground: Draft.Ground);
         Weather.Add(_board, W, D, Draft.Weather);
     }
 

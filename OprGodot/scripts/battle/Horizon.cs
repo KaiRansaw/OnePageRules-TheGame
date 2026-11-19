@@ -68,7 +68,7 @@ public static class Horizon
     }
 
     /// <summary>The land round a <paramref name="tableW"/> x <paramref name="tableD"/> table centred on the origin.</summary>
-    public static void AddLand(Node3D parent, float tableW, float tableD, TerrainBook.ETheme theme)
+    public static void AddLand(Node3D parent, float tableW, float tableD, TerrainBook.ETheme theme, string? ground = null)
     {
         Theme th = Of(theme);
         var root = new Node3D { Name = "Horizon" };
@@ -113,7 +113,7 @@ public static class Horizon
         }
         st.GenerateNormals();
         st.GenerateTangents();
-        TableLook.Mesh(root, st.Commit(), Ground(theme), Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        TableLook.Mesh(root, st.Commit(), Ground(theme, ground), Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
         // The playable edge: a thin light line round the mat.
         Border(root, tableW, tableD);
@@ -142,23 +142,99 @@ public static class Horizon
         env.FogDepthEnd = cameraDistance + 690f;
     }
 
-    /// <summary>The theme's ground (<c>shaders/ground.gdshader</c>): its picture (or Hospitable's) tinted to the theme, laid
-    /// out by world position so the table and land join up.</summary>
-    public static Material Ground(TerrainBook.ETheme theme)
+    /// <summary>One ground picture in a style's folder: <see cref="Id"/> is its file name without the extension
+    /// ("ground", "ground2", "ground-mud"), <see cref="Name"/> what the Map Maker shows.</summary>
+    public sealed record GroundPic(string Id, string Name, string Color, string? Normal);
+
+    private static readonly Dictionary<string, List<GroundPic>> GroundLists = new();
+
+    /// <summary>
+    /// The grounds in <c>res://horizon/&lt;Theme&gt;/</c> (Kai, 2026-11-18: "can each one have multiple grounds?" - yes):
+    /// every picture whose name starts "ground" (ground.jpg, ground2.jpg, ground-mud.jpg...), each with an optional
+    /// "_normal" partner. A style with none borrows Hospitable's (tinted to the style).
+    /// </summary>
+    public static IReadOnlyList<GroundPic> Grounds(TerrainBook.ETheme theme)
+    {
+        List<GroundPic> own = GroundsIn(theme.ToString());
+        return own.Count > 0 || theme == TerrainBook.ETheme.Hospitable ? own : GroundsIn(nameof(TerrainBook.ETheme.Hospitable));
+    }
+
+    private static List<GroundPic> GroundsIn(string folder)
+    {
+        if (GroundLists.TryGetValue(folder, out var have)) return have;
+        string dir = $"res://horizon/{folder}";
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // An exported game lists "x.jpg.import" / ".remap" rather than the picture itself - strip those back off.
+        foreach (string f in DirAccess.DirExistsAbsolute(dir) ? DirAccess.GetFilesAt(dir) : Array.Empty<string>())
+            files.Add(f.EndsWith(".import", StringComparison.OrdinalIgnoreCase) ? f[..^7] : f.EndsWith(".remap", StringComparison.OrdinalIgnoreCase) ? f[..^6] : f);
+        var exts = new[] { ".jpg", ".jpeg", ".png", ".webp", ".exr" };
+        var list = new List<GroundPic>();
+        foreach (string f in files)
+        {
+            string ext = System.IO.Path.GetExtension(f).ToLowerInvariant(), stem = System.IO.Path.GetFileNameWithoutExtension(f);
+            if (!exts.Contains(ext) || !stem.StartsWith("ground", StringComparison.OrdinalIgnoreCase) || stem.EndsWith("_normal", StringComparison.OrdinalIgnoreCase)) continue;
+            string? normal = files.FirstOrDefault(n => System.IO.Path.GetFileNameWithoutExtension(n).Equals(stem + "_normal", StringComparison.OrdinalIgnoreCase));
+            list.Add(new GroundPic(stem, GroundName(stem), $"{dir}/{f}", normal != null ? $"{dir}/{normal}" : null));
+        }
+        list.Sort((a, b) => Order(a.Id).CompareTo(Order(b.Id)) is var c && c != 0 ? c : string.Compare(a.Id, b.Id, StringComparison.OrdinalIgnoreCase));
+        return GroundLists[folder] = list;
+
+        static int Order(string id) => id.Equals("ground", StringComparison.OrdinalIgnoreCase) ? 1
+            : int.TryParse(id[6..], out int n) ? n : 1000;
+    }
+
+    /// <summary>"ground" -> "Ground 1", "ground3" -> "Ground 3", "ground-dry grass" -> "Dry grass".</summary>
+    public static string GroundName(string id)
+    {
+        if (id.Equals("ground", StringComparison.OrdinalIgnoreCase)) return "Ground 1";
+        string rest = id[6..];
+        if (int.TryParse(rest, out int n)) return "Ground " + n;
+        rest = rest.TrimStart('-', '_', ' ').Replace('_', ' ').Replace('-', ' ');
+        return rest.Length == 0 ? id : char.ToUpperInvariant(rest[0]) + rest[1..];
+    }
+
+    /// <summary>The grounds a map asks for: "" = the style's first; an id; or ids joined by '+' (up to three, mixed).
+    /// Ids this computer's style doesn't have are skipped; nothing left = the first ground.</summary>
+    public static List<GroundPic> Pick(TerrainBook.ETheme theme, string? spec)
+    {
+        var all = Grounds(theme);
+        var picked = (spec ?? "").Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(id => all.FirstOrDefault(g => g.Id.Equals(id, StringComparison.OrdinalIgnoreCase))).OfType<GroundPic>()
+            .DistinctBy(g => g.Id).Take(3).ToList();
+        if (picked.Count == 0 && all.Count > 0) picked.Add(all[0]);
+        return picked;
+    }
+
+    /// <summary>The style's ground (<c>shaders/ground.gdshader</c>): the map's ground or mix of up to three, tinted to the
+    /// style, laid out by world position so the table and land join up.</summary>
+    public static Material Ground(TerrainBook.ETheme theme, string? spec = null)
     {
         Theme th = Of(theme);
-        Texture2D? pic = Picture(theme, "ground");
-        if (pic == null) return new StandardMaterial3D { AlbedoColor = th.Ground, Roughness = 0.95f, VertexColorUseAsAlbedo = true };
+        List<GroundPic> picks = Pick(theme, spec);
+        if (picks.Count == 0) return new StandardMaterial3D { AlbedoColor = th.Ground, Roughness = 0.95f, VertexColorUseAsAlbedo = true };
         var mat = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/ground.gdshader") };
-        mat.SetShaderParameter("detail", pic);
         mat.SetShaderParameter("tint", th.Tint);
         // Kai, 2026-11-18 (picked "E" from the comparison): the ground at life-size scale - one repeat every 3" of table,
         // two samples mixed and big soft patches over it, so it reads as real land and not wallpaper.
         mat.SetShaderParameter("detail_inches", DetailInches);
         mat.SetShaderParameter("mix_layers", true);
         mat.SetShaderParameter("macro", Macro);
-        if (Picture(theme, "ground_normal") is { } normal) { mat.SetShaderParameter("detail_normal", normal); mat.SetShaderParameter("has_normal", true); }
+        mat.SetShaderParameter("layers", picks.Count);
+        string[] slots = { "detail", "detail2", "detail3" };
+        bool normals = false;
+        for (int i = 0; i < picks.Count; i++)
+        {
+            mat.SetShaderParameter(slots[i], Load(picks[i].Color));
+            if (picks[i].Normal is { } n && Load(n) is { } nt) { mat.SetShaderParameter(slots[i] + "_normal", nt); normals = true; }
+        }
+        mat.SetShaderParameter("has_normal", normals);
         return mat;
+    }
+
+    private static Texture2D? Load(string path)
+    {
+        if (Pictures.TryGetValue(path, out var t)) return t;
+        return Pictures[path] = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
     }
 
     private static NoiseTexture2D? _macro;
@@ -170,12 +246,13 @@ public static class Horizon
         Noise = new FastNoiseLite { NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth, Frequency = 0.012f, FractalOctaves = 3, Seed = 4242 },
     };
 
-    /// <summary>The theme's ground picture alone (for the mat picker), or null.</summary>
-    public static Texture2D? GroundPicture(TerrainBook.ETheme theme) => Picture(theme, "ground");
+    /// <summary>The map's (first) ground picture alone (for the mat picker and the worn-ground halos), or null.</summary>
+    public static Texture2D? GroundPicture(TerrainBook.ETheme theme, string? spec = null) =>
+        Pick(theme, spec) is { Count: > 0 } p ? Load(p[0].Color) : null;
 
     /// <summary>The play area drawn in the horizon's own ground (Kai, 2026-11-18: "make the terrain and the playable space be
     /// the same texture"), lined up with the land round it so there is no seam, with the faint inch grid over it.</summary>
-    public static void AddTableGround(Node parent, float w, float d, TerrainBook.ETheme theme, Texture2D grid)
+    public static void AddTableGround(Node parent, float w, float d, TerrainBook.ETheme theme, Texture2D grid, string? ground = null)
     {
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
@@ -184,7 +261,7 @@ public static class Horizon
         V(-hw, -hd); V(hw, -hd); V(hw, hd);
         V(-hw, -hd); V(hw, hd); V(-hw, hd);
         st.GenerateTangents();
-        TableLook.Mesh(parent, st.Commit(), Ground(theme), Vector3.Zero);
+        TableLook.Mesh(parent, st.Commit(), Ground(theme, ground), Vector3.Zero);
         TableLook.Mesh(parent, new PlaneMesh { Size = new Vector2(w, d) }, new StandardMaterial3D
         {
             AlbedoTexture = grid, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,

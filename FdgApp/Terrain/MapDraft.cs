@@ -74,6 +74,8 @@ public sealed class MapDraft
     public string Mat = "";
     /// <summary>The horizon theme ("" = follow GeneratedFrom) and the weather (""= clear) - TerrainLayoutFile.Horizon / .Weather.</summary>
     public string Horizon = "", Weather = "";
+    /// <summary>The ground ("" = the style's first; an id; or ids joined by '+' to mix) - TerrainLayoutFile.Ground.</summary>
+    public string Ground = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -114,6 +116,7 @@ public sealed class MapDraft
         Mat = f.Mat ?? "";
         Horizon = f.Horizon ?? "";
         Weather = f.Weather ?? "";
+        Ground = f.Ground ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -164,6 +167,7 @@ public sealed class MapDraft
         Mat = Mat,
         Horizon = Horizon,
         Weather = Weather,
+        Ground = Ground,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry

@@ -542,7 +542,7 @@ public partial class BattleTable : Node3D
 
     private void Board()
     {
-        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon, battlefield: Horizon.On);
+        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon, battlefield: Horizon.On, ground: Session.Lobby.Vm.MapGround);
         Weather.Add(this, W, D, Session.Lobby.Vm.MapWeather);
     }
 
