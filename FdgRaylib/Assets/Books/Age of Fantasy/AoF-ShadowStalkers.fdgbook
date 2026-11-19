@@ -6254,7 +6254,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "An unmodified 6 to hit gives the attack AP(\u002B4)."
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), those hits get AP(\u002B1)."
     },
     {
       "name": "Melee Slayer",
@@ -6284,7 +6284,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When charging, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(3) or higher."
     },
     {
       "name": "Unpredictable Fighter Mark",
@@ -6318,7 +6318,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly unit to attack it in melee this activation rolls one die: on a 1-3 its attacks get AP(\u002B1); on a 4-6 \u002B1 to hit instead."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which friendly units gets Unpredictable Fighter against once (next time the effect would apply)."
     },
     {
       "name": "Thrust in Melee Aura",
@@ -6340,7 +6340,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Thrust."
+      "description": "This model and its unit get Thrust on its weapons in melee."
     },
     {
       "name": "Strider Aura",
@@ -6362,7 +6362,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Strider."
+      "description": "This model and its unit get Strider."
     },
     {
       "name": "Banner",
@@ -6385,7 +6385,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model and its unit get \u002B1 to Morale Test rolls triggered by shooting/melee."
     },
     {
       "name": "Musician",
@@ -6440,7 +6440,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model and its unit moves \u002B1\u0022 when using move actions."
     },
     {
       "name": "Sergeant",
@@ -6488,7 +6488,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Precision Target",
@@ -6532,7 +6532,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 18 inches in line of sight and place X markers on it. Attackers get \u002B1 to hit per marker while they remain."
+      "description": "Once per game, during this model\u0027s activation, before attacking, pick X enemy units within 18\u0022 and in line of sight of it, and place one token on them. Friendly units get \u002B1 to hit rolls when attacking them."
     },
     {
       "name": "Repel Ambushers",
@@ -6622,7 +6622,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Dodge",
@@ -6761,7 +6761,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Shadowborn",
@@ -6798,7 +6798,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies get -4 inches range when shooting this unit and -2 inches of movement when charging it (each to a minimum of 6 inches)."
+      "description": "When a unit where most models have this rule is targeted by an enemy unit for shooting/charging, that enemy unit gets -4\u0022/-2\u0022 range to a min. of 6\u0022."
     },
     {
       "name": "Enhanced Shadowborn",
@@ -6887,7 +6887,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Shadowborn, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Shadowborn (instead of only -4/-2)."
+      "description": "If most models in this unit have Shadowborn, enemy units shooting/charging it get -8\u0022/-4\u0022 range to a min. of 6\u0022 from Shadowborn (instead of only -4\u0022/-2\u0022)."
     },
     {
       "name": "Unique Hero",
@@ -6932,7 +6932,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model and its unit get Counter on its weapons in melee."
     },
     {
       "name": "Enhanced Shadowborn Aura",
@@ -7033,7 +7033,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Neutral",
-      "description": "Once per activation, before attacking, place each model fully within 6 inches of its position. Moves -6 inches on Advance and on Rush/Charge."
+      "description": "Once per activation, before attacking, you may place this model anywhere fully within 6\u0022 of its position. If you do, this model moves -6\u0022 when using Advance, and -6\u0022 when using Rush/Charge until the end of that activation."
     },
     {
       "name": "Counter in Melee",
@@ -7065,7 +7065,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     }
   ],
   "spells": [

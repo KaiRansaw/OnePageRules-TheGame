@@ -5283,7 +5283,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "One model in this unit casts spells with as many spell tokens per round as there are models with this rule in the unit. Unspent tokens are lost at the end of the round."
+      "description": "Pick one model with this rule in this unit to have Caster(X), where X is the total number of models with this rule in this unit. If the model is killed, pick another to be the new caster, and transfer all spell tokens to it. The caster loses all unspent spell tokens at the end of the round."
     },
     {
       "name": "Melee Slayer",
@@ -5313,7 +5313,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When charging, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(3) or higher."
     },
     {
       "name": "Banner",
@@ -5336,7 +5336,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model and its unit get \u002B1 to Morale Test rolls triggered by shooting/melee."
     },
     {
       "name": "Musician",
@@ -5391,7 +5391,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model and its unit moves \u002B1\u0022 when using move actions."
     },
     {
       "name": "Sergeant",
@@ -5439,7 +5439,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Heavy Impact",
@@ -5465,7 +5465,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Unwieldy Debuff",
@@ -5500,7 +5500,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets Unwieldy in melee once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets Unwieldy on its weapons in melee once (next time the effect would apply)."
     },
     {
       "name": "Takedown Strike",
@@ -5590,7 +5590,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Fragment",
@@ -5692,7 +5692,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Bravery Aura",
@@ -5714,7 +5714,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Bravery."
+      "description": "This model and its unit get \u002B1 to Morale Test rolls."
     },
     {
       "name": "Unwieldy on its weapons in melee",
@@ -5790,7 +5790,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each of the defender\u0027s unmodified Defense rolls of 1 deals an extra wound."
+      "description": "When this model shoots/charges enemies over 9\u0022/6\u0022 away, unmodified results of 1 to block hits from weapons deal 1 extra wound."
     },
     {
       "name": "Enhanced Destroyer",
@@ -5827,7 +5827,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Destroyer, enemies always take wounds on unmodified results of 1 to block from Destroyer (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Destroyer, enemies always take wounds on unmodified results of 1 to block from Destroyer (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Great Sergeant",
@@ -5865,7 +5865,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model attacks, unmodified results of 5-6 to hit each deal 1 extra hit (only the original hit counts for special rules)."
+      "description": "This model gets AP(\u002B2) when attacking."
     },
     {
       "name": "Great Banner",
@@ -5900,7 +5900,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Courage for its next relevant roll."
+      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022, which gets \u002B1 to Morale Test rolls triggered by shooting/melee once (next time the effect would apply)."
     },
     {
       "name": "Great Musician",
@@ -5935,7 +5935,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Musician for its next relevant roll."
+      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022, which moves \u002B1\u0022 when using move actions once (next time the effect would apply)."
     },
     {
       "name": "Melee Evasion Buff",
@@ -5970,7 +5970,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Melee Evasion for its next relevant roll."
+      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022, which gets Melee Evasion once (next time the effect would apply)."
     },
     {
       "name": "Piercing Feat",
@@ -6005,7 +6005,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, at the start of its activation, this unit may give all its weapons AP(\u002B1) for that activation."
+      "description": "Once per game, when this unit attacks, you may use this rule so that the weapons of all models with this rule in it get AP(\u002B1)."
     },
     {
       "name": "Unwieldy in melee",

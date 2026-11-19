@@ -77,6 +77,27 @@ public class RuleGlossaryTests
         Assert.That(wrong, Is.Empty, "rules described in words that are not OPR's:\n" + string.Join("\n", wrong.Take(20)));
     }
 
+    // Kai, 2026-11-19 ("Clear them out"): the summaries themselves are gone from the book files - 3,608 stored
+    // descriptions now hold OPR's wording, because the engine still reads Definition.Description directly for ability
+    // offers and token tips. The old summaries are kept in WorkItems/468 for the effects audit. If this fails after a
+    // re-harvest of OfficialRuleText.json, the books need the same in-place replacement again.
+    [Test]
+    public void BundledBooks_NoStoredDescriptionOfARuleOprPublishes_SaysAnythingButOprsWording()
+    {
+        var wrong = new List<string>();
+        int checkedRules = 0;
+        foreach (BookFile book in FdgRaylib.Rendering.BookLibrary.Load())
+            foreach (SpecialRuleDefinition definition in book.RuleDefinitions)
+            {
+                if (OfficialRuleText.OwnText(definition.Name, book.GameSystem) is not { } official) continue;
+                checkedRules++;
+                if (!string.IsNullOrEmpty(definition.Description) && definition.Description != official)
+                    wrong.Add($"{book.GameSystem} / {book.Name} / {definition.Name}: {definition.Description}");
+            }
+        Assert.That(checkedRules, Is.GreaterThan(5000), "the bundled books were not read");
+        Assert.That(wrong, Is.Empty, $"{wrong.Count} stored descriptions are not OPR's wording:\n" + string.Join("\n", wrong.Take(20)));
+    }
+
     [Test]
     public void Scurry_InTheAgeOfFantasyRatmenBook_ReadsPlusOneOnAdvance()
     {

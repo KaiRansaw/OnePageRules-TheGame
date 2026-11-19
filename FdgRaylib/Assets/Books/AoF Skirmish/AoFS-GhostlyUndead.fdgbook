@@ -4622,7 +4622,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -4677,7 +4677,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -4726,7 +4726,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Repel Ambushers",
@@ -4770,7 +4770,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get No Retreat."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get No Retreat. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Spell Resistance",
@@ -4816,7 +4816,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Reap",
@@ -4930,7 +4930,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Enhanced Empyrean Spirit Aura",
@@ -4952,7 +4952,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Empyrean Spirit."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Enhanced Empyrean Spirit. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bane on their weapons when attacking",
@@ -5006,7 +5006,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
+      "description": "If most models in this unit have this rule, enemy units shooting/charging them from over 9\u0022/6\u0022 away get -1 to hit rolls ."
     },
     {
       "name": "Enhanced Empyrean Spirit",
@@ -5055,7 +5055,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Empyrean Spirit, enemies attacking them always get -1 to hit rolls from Empyrean Spirit (instead of only when shooting/charging from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Empyrean Spirit, enemies attacking them always get -1 to hit rolls from Empyrean Spirit (instead of only when shooting/charging from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Traversal",
@@ -5076,7 +5076,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit\u0027s models may pass through other units, friendly or enemy, while moving."
+      "description": "May move through friendly and enemy units."
     },
     {
       "name": "Ethereal",
@@ -5155,7 +5155,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Neutral",
-      "description": "Once per activation, before attacking, place each model fully within 6 inches of its position. Moves -6 inches on Advance and on Rush/Charge."
+      "description": "Once per activation, before attacking, you may place this model anywhere fully within 6\u0022 of its position. If you do, this model moves -6\u0022 when using Advance, and -6\u0022 when using Rush/Charge until the end of that activation."
     },
     {
       "name": "Precision Feat",
@@ -5190,7 +5190,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, at the start of its activation, this unit may take \u002B1 to hit rolls for that activation."
+      "description": "Once per game, when this unit attacks, you may use this rule so that all models with this rule in it get \u002B1 to hit rolls."
     },
     {
       "name": "No Retreat",
@@ -5212,7 +5212,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+      "description": "When a unit where most models have this rule fails a Morale Test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
     },
     {
       "name": "Precision Feat Boost",

@@ -5365,7 +5365,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores Regeneration. Against units with Defense 2\u002B, this weapon gets AP(\u002B2)."
+      "description": "Ignores Regeneration, and when attacking units where most models have Tough(27) or higher, this weapon gets AP(\u002B2)."
     },
     {
       "name": "Melee Slayer",
@@ -5395,7 +5395,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Precision Shooter Aura",
@@ -5417,7 +5417,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Shooter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Banner",
@@ -5440,7 +5440,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5495,7 +5495,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5562,7 +5562,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 24 inches in line of sight and place X markers on it. Attackers may remove markers from it before rolling to hit, gaining \u002B1 to hit per removed marker."
+      "description": "Only one use per game. Once per game, during this model\u0027s activation, before attacking, place X tokens on one enemy unit within 24\u0022 and in line of sight, or one token on X enemy units within 24\u0022 and in line of sight. When attacking, friendly units may remove one token from their target before rolling to hit to get \u002B1 to hit rolls."
     },
     {
       "name": "Morale Debuff",
@@ -5598,7 +5598,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to morale test rolls once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to Morale Test rolls once (next time the effect would apply)."
     },
     {
       "name": "Repel Ambushers",
@@ -5659,7 +5659,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which must take a morale test. If failed you may move it by up to 6\u0022 in a straight line in any direction."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which must take a Morale Test. If failed you may move it by up to 6\u0022 in a straight line in any direction. Units may only be moved once per round in this way."
     },
     {
       "name": "Anti-Regen",
@@ -5727,7 +5727,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Brace",
@@ -5801,7 +5801,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Unique Hero",
@@ -5824,7 +5824,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Spell Drain",
@@ -5864,7 +5864,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy model within 18 inches in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
     },
     {
       "name": "Piercing Charge Aura",
@@ -5886,7 +5886,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Charge."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Piercing Charge. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Bestial Aura",
@@ -5908,7 +5908,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Bestial."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Bestial. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bestial",
@@ -5934,7 +5934,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The defender must re-roll unmodified Defense 6s."
+      "description": "When attacking, targets must re-roll unmodified Defense results of 6 when blocking hits from this model\u0027s weapons."
     },
     {
       "name": "Enhanced Bestial",
@@ -6026,7 +6026,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls when shooting."
+      "description": "This model gets \u002B1 to hit rolls when shooting."
     },
     {
       "name": "Piercing Charge",

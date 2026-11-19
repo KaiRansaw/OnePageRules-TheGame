@@ -5391,7 +5391,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Melee Slayer Aura",
@@ -5413,7 +5413,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Melee Slayer."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Melee Slayer. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Ranged Slayer Aura",
@@ -5435,7 +5435,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Ranged Slayer."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Ranged Slayer. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Increased Shooting Range Mark",
@@ -5469,7 +5469,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Increased Shooting Range."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units get \u002B6\u0022 range on their weapons when shooting against once (next time the effect would apply)."
     },
     {
       "name": "Steadfast",
@@ -5504,7 +5504,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this unit is Shaken at the start of the round, roll one die. On a 4\u002B it stops being Shaken."
+      "description": "If a unit where most models have this rule is Shaken at the beginning of the round, roll one die. On a 4\u002B, it stops being Shaken."
     },
     {
       "name": "Banner",
@@ -5527,7 +5527,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5582,7 +5582,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5650,7 +5650,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation: pick one enemy within 30 inches in line of sight and roll one die; on a 4\u002B place a marker on it. Attackers may remove markers from it before it rolls to block, gaining AP(\u002B1) per removed marker."
+      "description": "Only one use per game. Once per activation, before attacking, pick one enemy unit within 30\u0022 and in line of sight of this model and roll one die, on a 4\u002B place a token on it. When attacking, friendly units may remove tokens from their target before rolling to block to get \u002BAP(X) on their weapons, where X is the number of removed tokens."
     },
     {
       "name": "Precision Spotter",
@@ -5695,7 +5695,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation: pick one enemy within 30 inches in line of sight and roll one die; on a 4\u002B place a marker on it. Attackers may remove markers from it before rolling to hit, gaining \u002B1 to hit per removed marker."
+      "description": "Only one use per game. Once per activation, before attacking, pick one enemy unit within 30\u0022 and in line of sight of this model and roll one die, on a 4\u002B place a token on it. Friendly units may remove tokens from their target before rolling to hit to get \u002BX to hit rolls when attacking, where X is the number of removed tokens."
     },
     {
       "name": "Heavy Impact",
@@ -5721,7 +5721,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Repel Ambushers",
@@ -5919,7 +5919,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Unique Hero",
@@ -5942,7 +5942,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Enhanced Vinci Tech",
@@ -6004,7 +6004,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Versatile Attack, it always gets either AP(\u002B1) or \u002B1 to hit rolls from Versatile Attack (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Versatile Attack, it always gets either AP(\u002B1) or \u002B1 to hit rolls from Versatile Attack (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Crossing Strike",
@@ -6104,7 +6104,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Vinci Tech."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Vinci Tech. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -6190,7 +6190,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect until the end of the activation: when shooting or charging enemies over 9 inches away, it gets either AP(\u002B1) or \u002B1 to hit rolls."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9\u0022/6\u0022 away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
     },
     {
       "name": "Ranged Slayer",
@@ -6223,7 +6223,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s ranged attacks get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When using Hold actions and shooting, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(27) or higher."
     },
     {
       "name": "Versatile Expert (Piercing)",
@@ -6246,7 +6246,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Versatile Expert (Precision)",
@@ -6269,7 +6269,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Vinci Tech (Piercing)",
@@ -6294,7 +6294,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9\u0022/6\u0022 away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
     },
     {
       "name": "Vinci Tech (Precision)",
@@ -6319,7 +6319,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9\u0022/6\u0022 away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
     }
   ],
   "spells": [

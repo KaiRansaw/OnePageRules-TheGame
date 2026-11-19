@@ -7990,7 +7990,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When charging, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(3) or higher."
     },
     {
       "name": "Banner",
@@ -8013,7 +8013,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model and its unit get \u002B1 to Morale Test rolls triggered by shooting/melee."
     },
     {
       "name": "Musician",
@@ -8068,7 +8068,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model and its unit moves \u002B1\u0022 when using move actions."
     },
     {
       "name": "Sergeant",
@@ -8116,7 +8116,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Speed Debuff",
@@ -8151,7 +8151,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which moves -2\u0022 when using Advance actions and -4\u0022 when using Rush/Charge actions once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which moves -2\u0022 when using Advance actions and -4\u0022 when using Rush/Charge actions once (next time the effect would apply)."
     },
     {
       "name": "Heavy Impact",
@@ -8177,7 +8177,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Repel Ambushers",
@@ -8233,7 +8233,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it. Units placed via Spawn can\u0027t seize or contest objectives on the round they are placed."
     },
     {
       "name": "Quick Shot",
@@ -8288,7 +8288,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight. One friendly unit that used a Rush action may still shoot it once."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which friendly units gets Quick Shot against once (next time the effect would apply)."
     },
     {
       "name": "Anti-Cover",
@@ -8377,7 +8377,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Dodge",
@@ -8542,7 +8542,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Unique Hero",
@@ -8595,7 +8595,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If a unit where most models have this rule has most of them within 1 inch of terrain, they get \u002B1 to Defense rolls."
+      "description": "If a unit where most models have this rule has most of them within 1\u0022 of terrain, they get \u002B1 to Defense rolls."
     },
     {
       "name": "Piercing Charge Aura",
@@ -8676,7 +8676,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies get -4 inches range when shooting this unit and -2 inches of movement when charging it (each to a minimum of 6 inches)."
+      "description": "When a unit where most models have this rule is targeted by an enemy unit for shooting/charging, that enemy unit gets -4\u0022/-2\u0022 range to a min. of 6\u0022."
     },
     {
       "name": "Enhanced Wild Veil",
@@ -8765,7 +8765,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Wild Veil, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Wild Veil (instead of only -4 inches/-2 inches)."
+      "description": "If most models in this unit have Wild Veil, enemy units shooting/charging it get -8\u0022/-4\u0022 range to a min. of 6\u0022 from Wild Veil (instead of only -4\u0022/-2\u0022)."
     },
     {
       "name": "Grounded Protection",
@@ -8794,7 +8794,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit are within 1 inch of terrain, roll one die for each wound the unit takes. On a 5\u002B the wound is ignored."
+      "description": "If a unit where most models have this rule has most of them within 1\u0022 of terrain, when they take wounds roll one die per wound, and on a 5\u002B it is ignored."
     }
   ],
   "spells": [

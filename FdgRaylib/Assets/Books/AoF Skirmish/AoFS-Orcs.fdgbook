@@ -5802,7 +5802,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When charging, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(9) or higher."
     },
     {
       "name": "Ferocious",
@@ -5834,7 +5834,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "When this model shoots/charges enemies over 9\u0022/6\u0022 away, unmodified result of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
     },
     {
       "name": "Banner",
@@ -5857,7 +5857,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5912,7 +5912,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5960,7 +5960,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Speed Debuff",
@@ -5995,7 +5995,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which moves -2\u0022 when using Advance actions and -4\u0022 when using Rush/Charge actions once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which moves -2\u0022 when using Advance actions and -4\u0022 when using Rush/Charge actions once (next time the effect would apply)."
     },
     {
       "name": "Speed Feat Aura",
@@ -6017,7 +6017,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Speed Feat."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Speed Feat. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Dodge",
@@ -6133,7 +6133,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Counter in Melee",
@@ -6165,7 +6165,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     },
     {
       "name": "Enhanced Ferocious",
@@ -6209,7 +6209,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Ferocious, the target always takes hits on unmodified hit results of 6 from Ferocious (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Ferocious, the target always takes hits on unmodified hit results of 6 from Ferocious (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Pierce",
@@ -6299,7 +6299,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Marksman."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Piercing Marksman. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Piercing Charge Aura",
@@ -6321,7 +6321,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Charge."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Piercing Charge. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Ferocious Aura",
@@ -6343,7 +6343,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Ferocious."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game Enhanced Ferocious. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Rending on their weapons in melee",
@@ -6392,7 +6392,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Ravage(\u002B1): when it is this unit\u0027s turn to attack in melee, it rolls 1 extra Ravage die per model, and each 6\u002B deals one wound to the target."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Ravage(\u002B1). If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Speed Feat",
@@ -6427,7 +6427,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, at the start of its activation, this unit may move \u002B2 inches on Advance actions and \u002B4 inches on Rush and Charge actions for that activation."
+      "description": "Once per game, when this unit moves, you may use this rule so that all models with this rule in it move \u002B2\u0022 when using Advance actions and \u002B4\u0022 when using Rush/Charge actions."
     },
     {
       "name": "Piercing Marksman",
@@ -6460,7 +6460,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+      "description": "When shooting at enemies over 9\u0022 away, this model\u0027s weapons get AP(\u002B1)."
     },
     {
       "name": "Piercing Charge",

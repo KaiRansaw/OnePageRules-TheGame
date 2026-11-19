@@ -6378,7 +6378,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Other friendly units within 12\u0022 may use rules that pick friendly units as if they were in this unit\u0027s position, so a 12\u0022 pick reaches targets up to 24\u0022 away. Applies to unit picks, not to spells."
+      "description": "Only one use per game. If this unit is within 24\u0022 of another friendly unit with this rule that is within 6\u0022 of a friendly Hero, then that Hero may use special rules that allow it to pick friendly units within 12\u0022 (except for spells) on this unit as if it was in range."
     },
     {
       "name": "Melee Slayer",
@@ -6408,7 +6408,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Unpredictable Fighter Mark",
@@ -6442,7 +6442,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly unit to attack it in melee this activation rolls one die: on a 1-3 its attacks get AP(\u002B1); on a 4-6 \u002B1 to hit instead."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets Unpredictable Fighter against once (next time the effect would apply)."
     },
     {
       "name": "Increased Shooting Range Buff",
@@ -6477,7 +6477,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Increased Shooting Range for its next relevant roll."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets \u002B6\u0022 range on its weapons when shooting once (next time the effect would apply)."
     },
     {
       "name": "Bounding",
@@ -6503,7 +6503,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Precision Target",
@@ -6547,7 +6547,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 18 inches in line of sight and place X markers on it. Attackers get \u002B1 to hit per marker while they remain."
+      "description": "Only one use per game. Once per game, during this model\u0027s activation, before attacking, pick X enemy units within 18\u0022 and in line of sight of it, and place one token on them. Friendly units get \u002B1 to hit rolls when attacking them."
     },
     {
       "name": "Repel Ambushers",
@@ -6658,7 +6658,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Dodge",
@@ -6735,7 +6735,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores Cover, and when attacking units with most models within 1 inch of terrain, this weapon gets AP(\u002B1)."
+      "description": "Ignores Cover, and when attacking units with most models within 1\u0022 of terrain, this weapon gets AP(\u002B1)."
     },
     {
       "name": "Shadowborn",
@@ -6772,7 +6772,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies get -4 inches range when shooting this unit and -2 inches of movement when charging it (each to a minimum of 6 inches)."
+      "description": "When a unit where most models have this rule is targeted by an enemy unit for shooting/charging, that enemy unit gets -4\u0022/-2\u0022 range to a min. of 6\u0022."
     },
     {
       "name": "Enhanced Shadowborn",
@@ -6861,7 +6861,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Shadowborn, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Shadowborn (instead of only -4/-2)."
+      "description": "If most models in this unit have Shadowborn, enemy units shooting/charging it get -8\u0022/-4\u0022 range to a min. of 6\u0022 from Shadowborn (instead of only -4\u0022/-2\u0022)."
     },
     {
       "name": "Enhanced Shadowborn Aura",
@@ -6883,7 +6883,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Shadowborn."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Enhanced Shadowborn. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Counter in Melee Buff",
@@ -6918,7 +6918,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Counter in Melee until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 nearest friendly units within 12\u0022, which gets Counter in Melee."
     },
     {
       "name": "Rapid Rush Buff",
@@ -6953,7 +6953,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Rapid Rush until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 nearest friendly units within 12\u0022, which gets Rapid Rush once (next time the effect would apply)."
     },
     {
       "name": "Thrust in Melee Buff",
@@ -6988,7 +6988,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Thrust in Melee until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 nearest friendly units within 12\u0022, which gets Thrust in Melee once (next time the effect would apply)."
     },
     {
       "name": "Enhanced Shadowborn Buff",
@@ -7023,7 +7023,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Shadowborn until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 nearest friendly units within 12\u0022, which gets Enhanced Shadowborn once (next time the effect would apply)."
     },
     {
       "name": "Defense",
@@ -7081,7 +7081,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     },
     {
       "name": "Thrust in Melee",

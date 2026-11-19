@@ -5273,7 +5273,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this unit\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this model\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
     },
     {
       "name": "Melee Slayer",
@@ -5303,7 +5303,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Scurry",
@@ -5358,7 +5358,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves \u002B2 inches on Advance and \u002B2 inches on Rush/Charge."
+      "description": "Moves \u002B1\u0022 when using Advance, and \u002B2\u0022 when using Rush/Charge."
     },
     {
       "name": "Precision Fighter Aura",
@@ -5380,7 +5380,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Precision Fighter Buff",
@@ -5415,7 +5415,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Precision Fighter for its next relevant roll."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets \u002B1 to hit rolls in melee once (next time the effect would apply)."
     },
     {
       "name": "Banner",
@@ -5438,7 +5438,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5493,7 +5493,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5552,7 +5552,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to defense rolls once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to Defense rolls once (next time the effect would apply)."
     },
     {
       "name": "Heavy Impact",
@@ -5578,7 +5578,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Hazardous",
@@ -5615,7 +5615,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Attacks with this weapon get AP(4), but this weapon\u0027s unit takes one wound on unmodified rolls of 1 to hit."
+      "description": "Gets AP(4), but on unmodified results of 1 to hit this model takes one wound, or X wounds if this weapon has the Blast(X)/Deadly(X) rule."
     },
     {
       "name": "Repel Ambushers",
@@ -5695,7 +5695,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where all models have this rule is Shaken or fully destroyed, you may remove it from the table as destroyed and place a new copy of it fully within 12\u0022 of any table edge at the beginning of the next round after Ambushers have been deployed. Units that deploy via Reinforcement can\u0027t seize or contest objectives on the round they deploy, and this rule doesn\u0027t apply to the new copy of the unit."
+      "description": "When a unit where all models have this rule is Shaken, you may remove it from the table as destroyed. At the beginning of the next round after a unit where all models have this rule is destroyed, after Ambushers have been deployed, you may place a new copy of it fully within 9\u0022 of any table edge, over 9\u0022 away from enemy units. Units that deploy via Reinforcement can\u0027t seize or contest objectives on the round they deploy, and this rule doesn\u0027t apply to the new copy of the unit."
     },
     {
       "name": "Takedown Strike",
@@ -5828,7 +5828,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Brace",
@@ -5902,7 +5902,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Counter in Melee",
@@ -5934,7 +5934,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     },
     {
       "name": "Enhanced Scurry",
@@ -6010,7 +6010,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Scurry, it moves \u002B2 inches on Advance and \u002B4 inches on Rush/Charge from Scurry (instead of only \u002B1 inches and \u002B2 inches)."
+      "description": "If this model has Scurry, it moves \u002B2\u0022 on Advance and \u002B4\u0022 on Rush/Charge from Scurry (instead of only \u002B1\u0022 and \u002B2\u0022)."
     },
     {
       "name": "Unique Hero",
@@ -6033,7 +6033,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Quick Throw",
@@ -6077,7 +6077,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Counter on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Scurry Aura",
@@ -6099,7 +6099,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Scurry."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Scurry. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -6148,7 +6148,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     }
   ],
   "spells": [

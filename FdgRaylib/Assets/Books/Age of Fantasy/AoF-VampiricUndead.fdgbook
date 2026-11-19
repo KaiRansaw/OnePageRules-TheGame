@@ -7876,7 +7876,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+      "description": "Counts as having Ambush, but may be deployed anywhere over 3\u0022 away from enemy unit."
     },
     {
       "name": "Banner",
@@ -7899,7 +7899,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model and its unit get \u002B1 to Morale Test rolls triggered by shooting/melee."
     },
     {
       "name": "Musician",
@@ -7954,7 +7954,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model and its unit moves \u002B1\u0022 when using move actions."
     },
     {
       "name": "Sergeant",
@@ -8002,7 +8002,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Morale Debuff",
@@ -8038,7 +8038,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to morale test rolls once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to Morale Test rolls once (next time the effect would apply)."
     },
     {
       "name": "Casting Buff",
@@ -8074,7 +8074,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one friendly model within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
     },
     {
       "name": "Repel Ambushers",
@@ -8130,7 +8130,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it. Units placed via Spawn can\u0027t seize or contest objectives on the round they are placed."
     },
     {
       "name": "Reanimation Aura",
@@ -8191,7 +8191,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022, which must take a morale test. If failed you may move it by up to 6\u0022 in a straight line in any direction."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which must take a Morale Test. If failed you may move it by up to 6\u0022 in a straight line in any direction. Units may only be moved once per round in this way."
     },
     {
       "name": "No Retreat Aura",
@@ -8289,7 +8289,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
+      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, then it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
     },
     {
       "name": "Spell Resistance",
@@ -8335,7 +8335,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Fragment",
@@ -8437,7 +8437,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Brace in Melee",
@@ -8540,7 +8540,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Cursed Undead until the end of its next activation."
+      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022, which gets Enhanced Cursed Undead once (next time the effect would apply)."
     },
     {
       "name": "Cursed Undead",
@@ -8562,7 +8562,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores each wound on a roll of 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. On a 6\u002B it is ignored."
     },
     {
       "name": "Enhanced Cursed Undead",
@@ -8654,7 +8654,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+      "description": "When a unit where most models have this rule fails a Morale Test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
     },
     {
       "name": "Piercing Marksman",
@@ -8687,7 +8687,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+      "description": "When shooting at enemies over 9\u0022 away, this model\u0027s weapons get AP(\u002B1)."
     }
   ],
   "spells": [

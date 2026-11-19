@@ -4631,7 +4631,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Gets X accumulator tokens at the start of each round, but can\u0027t hold more than 6 tokens at once. Casters from other friendly units within 12\u0022 may spend this unit\u0027s accumulator tokens as if they were their own spell tokens. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Gets X accumulator tokens at the start of each round, but can\u0027t hold more than 6 tokens at once. Casters from other friendly units within 12\u0022 may spend this model\u0027s accumulator tokens as if they were their own spell tokens."
     },
     {
       "name": "Changebound",
@@ -4662,7 +4662,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting this unit from over 9 inches away, or charging it from over 6 inches away, get -1 to hit."
+      "description": "If most models in this unit have this rule, enemy units shooting/charging them from over 9\u0022/6\u0022 away get -1 to hit rolls ."
     },
     {
       "name": "Indirect when Shooting Aura",
@@ -4684,7 +4684,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Indirect when shooting."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Indirect on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding Aura",
@@ -4706,7 +4706,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Bounding."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Bounding. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Banner",
@@ -4729,7 +4729,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -4784,7 +4784,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -4833,7 +4833,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Split",
@@ -4855,7 +4855,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit is fully destroyed, you may place a new unit of X fully within 6\u0022 of it before removing the last model."
+      "description": "When this unit is fully destroyed, you may place a new unit of X fully within 6\u0022 of it before removing the last model. Units placed via Split can\u0027t seize or contest objectives on the round they are placed."
     },
     {
       "name": "Anti-Regen",
@@ -4923,7 +4923,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Brace",
@@ -4997,7 +4997,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Enhanced Changebound",
@@ -5038,7 +5038,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Changebound, enemies attacking them always get -1 to hit rolls from Changebound (instead of only when shooting/charging from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Changebound, enemies attacking them always get -1 to hit rolls from Changebound (instead of only when shooting/charging from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Spell Drain",
@@ -5078,7 +5078,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy model within 18 inches in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
     },
     {
       "name": "Spell Resistance Aura",
@@ -5100,7 +5100,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Spell Resistance."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Spell Resistance. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Changebound Aura",
@@ -5122,7 +5122,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Changebound."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Changebound. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -5202,7 +5202,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Fires at targets out of line of sight and ignores cover when shooting; -1 to hit if the unit moved this activation."
+      "description": "This model gets Indirect on its weapons when shooting."
     },
     {
       "name": "Bounding",
@@ -5228,7 +5228,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     }
   ],
   "spells": [

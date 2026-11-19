@@ -5052,7 +5052,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Swift",
@@ -5074,7 +5074,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores the movement penalty for Difficult terrain (as Strider)."
+      "description": "This model may ignore the Slow rule."
     },
     {
       "name": "Rending when Shooting Aura",
@@ -5096,7 +5096,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Rending when shooting."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Rending on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Precision Fighter Aura",
@@ -5118,7 +5118,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding",
@@ -5144,7 +5144,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Banner",
@@ -5167,7 +5167,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5222,7 +5222,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5281,7 +5281,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to morale test rolls once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to Morale Test rolls once (next time the effect would apply)."
     },
     {
       "name": "Heavy Impact",
@@ -5307,7 +5307,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Takedown Strike",
@@ -5406,7 +5406,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight and roll X dice; for each 2\u002B it takes one hit with AP(1)."
+      "description": "Only one use per game. Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight, and roll X dice. For each 2\u002B it takes one hit with AP(1)."
     },
     {
       "name": "Vengeance",
@@ -5438,7 +5438,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is destroyed, place a marker on the unit that destroyed it. Friendly units get \u002B1 to hit rolls against that unit for the rest of the game."
+      "description": "When this Hero becomes unconscious, place one Vengeance marker on the unit that made it unconscious. Friendly units get \u002BX to hit rolls with their weapons when attacking that unit, where X is the number of markers on it."
     },
     {
       "name": "Anti-Cover",
@@ -5533,7 +5533,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Decimate",
@@ -5614,7 +5614,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Lucky."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Lucky. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Lucky",
@@ -5646,7 +5646,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "When this model shoots/charges enemies over 9\u0022/6\u0022 away, unmodified result of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
     },
     {
       "name": "Enhanced Lucky",
@@ -5690,7 +5690,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Lucky, the target always takes hits on unmodified hit results of 6 from Lucky (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Lucky, the target always takes hits on unmodified hit results of 6 from Lucky (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Defense",
@@ -5739,7 +5739,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Rending when shooting",
@@ -5787,7 +5787,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting, an unmodified 6 to hit gives the attack AP(\u002B4), and the attack ignores Regeneration."
+      "description": "This model gets Rending on its weapons when shooting."
     },
     {
       "name": "Precision Fighter",
@@ -5810,7 +5810,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     }
   ],
   "spells": [

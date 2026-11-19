@@ -4912,7 +4912,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this unit\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this model\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
     },
     {
       "name": "Primal",
@@ -4936,7 +4936,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule doesn\u0027t apply to newly generated attacks."
     },
     {
       "name": "Steadfast",
@@ -4971,7 +4971,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this unit is Shaken at the start of the round, roll one die. On a 4\u002B it stops being Shaken."
+      "description": "If a unit where most models have this rule is Shaken at the beginning of the round, roll one die. On a 4\u002B, it stops being Shaken."
     },
     {
       "name": "Bounding",
@@ -4997,7 +4997,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Banner",
@@ -5020,7 +5020,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -5075,7 +5075,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -5142,7 +5142,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 18 inches in line of sight and place X markers on it. Attackers get \u002B1 to hit per marker while they remain."
+      "description": "Once per game, during this model\u0027s activation, before attacking, pick X enemy units within 18\u0022 and in line of sight of it, and place one token on them. Friendly units get \u002B1 to hit rolls when attacking them."
     },
     {
       "name": "Precision Spotter",
@@ -5187,7 +5187,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation: pick one enemy within 30 inches in line of sight and roll one die; on a 4\u002B place a marker on it. Attackers may remove markers from it before rolling to hit, gaining \u002B1 to hit per removed marker."
+      "description": "Once per activation, before attacking, pick one enemy unit within 30\u0022 and in line of sight of this model and roll one die, on a 4\u002B place a token on it. Friendly units may remove tokens from their target before rolling to hit to get \u002BX to hit rolls when attacking, where X is the number of removed tokens."
     },
     {
       "name": "Heavy Impact",
@@ -5213,7 +5213,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Protection Feat",
@@ -5248,7 +5248,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, when this unit activates, it may brace: until its next activation it rolls one die per wound it takes, ignoring each on a 5\u002B."
+      "description": "Once per game, when this unit takes wounds and most of its models have this rule, you may use this rule and roll one die per wound, and on a 5\u002B it is ignored."
     },
     {
       "name": "Spawn",
@@ -5282,7 +5282,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it. Units placed via Spawn can\u0027t seize or contest objectives on the round they are placed."
     },
     {
       "name": "Anti-Cover",
@@ -5436,7 +5436,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Enhanced Primal",
@@ -5584,7 +5584,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9 inches/6 inches away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9\u0022/6\u0022 away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
     },
     {
       "name": "Crossing Strike",
@@ -5662,7 +5662,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Counter on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Primal Buff",
@@ -5697,7 +5697,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Primal until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Enhanced Primal once (next time the effect would apply)."
     },
     {
       "name": "Shred on their weapons when attacking",
@@ -5742,7 +5742,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Versatile Warrior."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Versatile Warrior. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Protection Feat Guard",
@@ -5844,7 +5844,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     }
   ],
   "spells": [

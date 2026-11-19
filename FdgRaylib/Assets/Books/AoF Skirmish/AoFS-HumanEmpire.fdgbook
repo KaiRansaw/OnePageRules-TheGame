@@ -4358,7 +4358,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "One model in this unit casts spells with as many spell tokens per round as there are models with this rule in the unit. Unspent tokens are lost at the end of the round."
+      "description": "This model counts as having Caster(1)."
     },
     {
       "name": "Extended Buff Range",
@@ -4380,7 +4380,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Other friendly units within 12\u0022 may use rules that pick friendly units as if they were in this unit\u0027s position, so a 12\u0022 pick reaches targets up to 24\u0022 away. Applies to unit picks, not to spells."
+      "description": "If this unit is within 24\u0022 of another friendly unit with this rule that is within 6\u0022 of a friendly Hero, then that Hero may use special rules that allow it to pick friendly units within 12\u0022 (except for spells) on this unit as if it was in range."
     },
     {
       "name": "Precision Fighting Mark",
@@ -4414,7 +4414,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets \u002B1 to hit rolls in melee."
+      "description": "Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units get \u002B1 to hit rolls in melee against once (next time the effect would apply)."
     },
     {
       "name": "Hold the Line",
@@ -4452,7 +4452,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9 inches/6 inches away."
+      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9\u0022/6\u0022 away."
     },
     {
       "name": "Precision Shooter Buff",
@@ -4487,7 +4487,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Precision Shooter for its next relevant roll."
+      "description": "Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets \u002B1 to hit rolls when shooting once (next time the effect would apply)."
     },
     {
       "name": "Bounding",
@@ -4513,7 +4513,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Banner",
@@ -4536,7 +4536,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit gets \u002B1 to morale test rolls triggered by shooting or melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls triggered by shooting/melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Musician",
@@ -4591,7 +4591,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The unit moves \u002B1 inch on Advance, Rush and Charge actions."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game moves \u002B1\u0022 when using move actions. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Sergeant",
@@ -4639,7 +4639,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Repel Ambushers",
@@ -4820,7 +4820,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Enhanced Hold the Line",
@@ -4829,7 +4829,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Hold the Line, they always get \u002B1 to Morale Test rolls from Hold the Line (instead of only when shot/charged from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Hold the Line, they always get \u002B1 to Morale Test rolls from Hold the Line (instead of only when shot/charged from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Rapid Rush Buff",
@@ -4864,7 +4864,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Rapid Rush for its next relevant roll."
+      "description": "Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Rapid Rush once (next time the effect would apply)."
     },
     {
       "name": "AP(\u002B1) on its weapons in melee",
@@ -4887,7 +4887,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s weapons get AP(\u002B1) in melee."
+      "description": "Targets get -X to Defense rolls when blocking hits."
     },
     {
       "name": "Enhanced Hold the Line Buff",
@@ -4922,7 +4922,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Hold the Line until the end of its next activation."
+      "description": "Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Enhanced Hold the Line once (next time the effect would apply)."
     },
     {
       "name": "Precision Fighting",

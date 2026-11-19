@@ -4271,7 +4271,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "An unmodified 6 to hit gives the attack AP(\u002B4)."
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), those hits get AP(\u002B1)."
     },
     {
       "name": "Clan Warrior",
@@ -4295,7 +4295,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule doesn\u0027t apply to newly generated attacks."
     },
     {
       "name": "Precision Fighter",
@@ -4318,7 +4318,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Precision Fighter Aura",
@@ -4340,7 +4340,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding",
@@ -4366,7 +4366,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Armor",
@@ -4391,7 +4391,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Defense X\u002B in place of the model\u0027s own Defense stat."
+      "description": "Counts as having Defense X\u002B."
     },
     {
       "name": "Casting Buff",
@@ -4427,7 +4427,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one friendly model within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
     },
     {
       "name": "Repel Ambushers",
@@ -4503,7 +4503,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is destroyed, place a marker on the unit that destroyed it. Friendly units get \u002B1 to hit rolls against that unit for the rest of the game."
+      "description": "When this unit is fully destroyed, place as many Vengeance tokens on the unit that destroyed it as models with this rule in this unit at the beginning of the game. Friendly units get \u002BX to hit rolls when attacking that unit, where X is the number of tokens on it."
     },
     {
       "name": "Anti-Cover",
@@ -4717,7 +4717,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Marksman."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Piercing Marksman. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Counter in Melee Aura",
@@ -4739,7 +4739,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Counter on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "\u002B6\u0022 range on their weapons when shooting",
@@ -4784,7 +4784,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Anti-Cover."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Anti-Cover on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Clan Warrior Aura",
@@ -4806,7 +4806,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Clan Warrior."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Enhanced Clan Warrior. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Versatile Expert (Piercing)",
@@ -4829,7 +4829,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Versatile Expert (Precision)",
@@ -4852,7 +4852,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Piercing Marksman",
@@ -4885,7 +4885,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+      "description": "When shooting at enemies over 9\u0022 away, this model\u0027s weapons get AP(\u002B1)."
     },
     {
       "name": "Counter in Melee",
@@ -4917,7 +4917,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     }
   ],
   "spells": [

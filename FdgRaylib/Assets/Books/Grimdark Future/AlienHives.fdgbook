@@ -11617,7 +11617,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "One model in this unit casts spells with as many spell tokens per round as there are models with this rule in the unit. Unspent tokens are lost at the end of the round."
+      "description": "Pick one model with this rule in this unit to have Caster(X), where X is the total number of models with this rule in this unit. If the model is killed, pick another to be the new caster, and transfer all spell tokens to it. The caster loses all unspent spell tokens at the end of the round."
     },
     {
       "name": "Spell Conduit",
@@ -11647,7 +11647,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this unit\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this model\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
     },
     {
       "name": "Hive Bond",
@@ -11685,7 +11685,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9 inches/6 inches away."
+      "description": "If most models in this unit have this rule, they get \u002B1 to Morale Test rolls when shot/charged from over 9\u0022/6\u0022 away."
     },
     {
       "name": "Infiltrate",
@@ -11710,7 +11710,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+      "description": "Counts as having Ambush, but may be deployed anywhere over 3\u0022 away from enemy unit."
     },
     {
       "name": "Precision Debuff",
@@ -11815,7 +11815,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly unit to attack it in melee this activation rolls one die: on a 1-3 its attacks get AP(\u002B1); on a 4-6 \u002B1 to hit instead."
+      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which friendly units gets Unpredictable Fighter against once (next time the effect would apply)."
     },
     {
       "name": "Piercing Growth",
@@ -11914,7 +11914,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Gains a marker at the start of each round while on the table and not Shaken (max 4); every two markers add AP(\u002B1) to its attacks."
+      "description": "Place one token on this unit at the beginning of each round if it\u0027s on the table and isn\u0027t Shaken, up to a max. of four tokens. For every two tokens, models with this rule in this unit get AP(\u002B1) on their weapons."
     },
     {
       "name": "Piercing Target",
@@ -11958,7 +11958,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 18 inches in line of sight and place X markers on it. Attackers get AP(\u002B1) per marker while they remain."
+      "description": "Once per game, during this model\u0027s activation, before attacking, pick X enemy units within 18\u0022 and in line of sight of it, and place one token on them. Friendly units get AP(\u002B1) on their weapons when attacking them."
     },
     {
       "name": "Spawn",
@@ -11992,7 +11992,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it. Units placed via Spawn can\u0027t seize or contest objectives on the round they are placed."
     },
     {
       "name": "No Retreat",
@@ -12014,7 +12014,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+      "description": "When a unit where most models have this rule fails a Morale Test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
     },
     {
       "name": "Takedown Strike",
@@ -12113,7 +12113,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight and roll X dice; for each 2\u002B it takes one hit with AP(1)."
+      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight, and roll X dice. For each 2\u002B it takes one hit with AP(1)."
     },
     {
       "name": "Regenerative Strength",
@@ -12140,7 +12140,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Place one marker on this model when it ignores a wound. When in melee, pick one of its weapons to get \u002BX attacks, where X is the number of markers on it."
+      "description": "Place one token on this model when it ignores a wound. Once per round, when it\u0027s this model\u0027s turn to strike in melee, roll as many dice as tokens on it before attacking, unless this unit is Fatigued. For each 4\u002B the target takes one wound."
     },
     {
       "name": "Anti-Cover",
@@ -12229,7 +12229,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Fragment",
@@ -12310,7 +12310,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Hive Bond, they always get \u002B1 to Morale Test rolls from Hive Bond (instead of only when shot/charged from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Hive Bond, they always get \u002B1 to Morale Test rolls from Hive Bond (instead of only when shot/charged from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Unique Hero",
@@ -12389,7 +12389,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule does not apply to newly generated attacks."
+      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule doesn\u0027t apply to newly generated attacks."
     },
     {
       "name": "Enhanced Hive Bond Aura",
