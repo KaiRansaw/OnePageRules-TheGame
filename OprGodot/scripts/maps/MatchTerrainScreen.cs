@@ -259,6 +259,7 @@ public partial class MatchTerrainScreen : Control
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         if (e.IsActionPressed("ui_cancel")) { Leave(); GetViewport().SetInputAsHandled(); }
     }
 

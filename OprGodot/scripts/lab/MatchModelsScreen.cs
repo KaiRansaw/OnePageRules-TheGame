@@ -603,6 +603,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
+        if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         if (e is not InputEventKey { Pressed: true, Echo: false } k || GetViewport().GuiGetFocusOwner() is LineEdit) return;
         switch (k.Keycode)
         {

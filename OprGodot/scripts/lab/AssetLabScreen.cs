@@ -937,6 +937,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         switch (e)
         {
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.T }: View(_topView ? 1 : 3); break;

@@ -1337,6 +1337,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!IsVisibleInTree()) return;   // not while another screen is open over the editor
         if (GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit or SpinBox) return;
         Vector2 dir = Vector2.Zero;
         if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) dir.Y -= 1;
@@ -1614,6 +1615,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         if (e is not InputEventKey { Pressed: true } k || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit or SpinBox) return;
         bool handled = true;
         switch (k.Keycode)

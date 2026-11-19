@@ -429,6 +429,7 @@ public partial class FacingReviewScreen : Control, IOwnBackdrop
 
     public override void _UnhandledKeyInput(InputEvent e)
     {
+        if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         if (e is not InputEventKey { Pressed: true, Echo: false } k ) return;
         switch (k.Keycode)
         {
