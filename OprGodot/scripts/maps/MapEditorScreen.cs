@@ -1328,6 +1328,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         if (e is not InputEventMouse) return;
         bool onTable = GetViewport().GuiGetHoveredControl() == this;
         if (e is InputEventMouseButton { Pressed: true } && !onTable) return;
+        // A press on the table ends any typing. The name box (or a size box) otherwise kept the keyboard after the pointer
+        // went back to the table: W/A/S/D, Q/E, R and Del did nothing - or typed into the map's name - until a click
+        // happened to rebuild the top bar.
+        if (e is InputEventMouseButton { Pressed: true } && GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit or SpinBox)
+            GetViewport().GuiReleaseFocus();
         switch (e)
         {
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true }:
