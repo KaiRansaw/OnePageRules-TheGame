@@ -248,6 +248,23 @@ public sealed class MapDraft
         p.Z = Math.Clamp(p.Z, 0, TableH);
     }
 
+    /// <summary>
+    /// Brings everything back onto the table after its size changed: the pieces, and the objective markers and size
+    /// bases too - on a smaller table those were left where they stood, off the edge, and an objective saved out there
+    /// can never be reached in a game.
+    /// </summary>
+    public void ClampAll()
+    {
+        foreach (MapPiece p in Pieces) Clamp(p);
+        for (int i = 0; i < Objectives.Count; i++)
+            Objectives[i] = (Math.Clamp(Objectives[i].X, 0, TableW), Math.Clamp(Objectives[i].Z, 0, TableH));
+        foreach (MapBaseMarkerEntry b in Bases)
+        {
+            b.X = Math.Clamp(b.X, 0, TableW);
+            b.Z = Math.Clamp(b.Z, 0, TableH);
+        }
+    }
+
     public MapPiece? PieceAt(float x, float z) => Pieces.LastOrDefault(p => p.Contains(x, z));
 
     // ------------------------------------------------------------------ editing many pieces at once (Map Maker option A, Kai 2026-11-17)

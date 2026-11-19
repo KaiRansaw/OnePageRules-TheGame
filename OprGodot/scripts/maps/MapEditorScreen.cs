@@ -241,11 +241,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         size.ItemSelected += i =>
         {
             if (i >= sizes.Count) return;
-            Draft.Remember();
-            Draft.TableW = sizes[(int)i].W; Draft.TableH = sizes[(int)i].H;
-            foreach (MapPiece p in Draft.Pieces) Draft.Clamp(p);
-            _checkFor = DefaultGame();
-            BuildBoard(); ApplyCamera(); Rebuild();
+            SetTableSize(sizes[(int)i].W, sizes[(int)i].H);
         };
         _top.AddChild(size);
         // Kai, 2026-11-18: mat, horizon, sky, light, weather and ground live in one Battlefield window (the top bar ran off
@@ -281,6 +277,17 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         grid.Toggled += on => { _grid = on; Sync3D(); };
         _top.AddChild(grid);
         _top.AddChild(Ui.Button("SAVE MAP", SaveMap, Draft.SaveProblem() ?? "Save the map to your Maps folder.", "CommitButton").Also(b => { b.Name = "SaveMap"; b.CustomMinimumSize = new Vector2(150, 40); }));
+    }
+
+    /// <summary>A different table: everything is brought back onto it (pieces, objective markers and size bases - the
+    /// markers used to be left hanging off a smaller table), and the Book check moves to a game that plays on it.</summary>
+    private void SetTableSize(float w, float d)
+    {
+        Draft.Remember();
+        Draft.TableW = w; Draft.TableH = d;
+        Draft.ClampAll();
+        _checkFor = DefaultGame();
+        BuildBoard(); ApplyCamera(); Rebuild();
     }
 
     private Button SnapButton(float step, string text, string tip)
@@ -1184,10 +1191,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private string KindOf(MapPiece p) => TerrainLooks.GuessKind(p.Kind, p.Name, p.Rules, p.Height, p.Area);
 
     /// <summary>The piece's 3D look (<see cref="TerrainDresser"/>), reused while nothing about it changed. False when
-    /// the style has no look for it - the plain block is drawn.</summary>
+    /// the style has no look for it - the plain block is drawn. The table's size is part of "nothing changed": a look is
+    /// built where the piece stands measured from the table's middle, so on a resized table an untouched piece's look
+    /// stayed where the old table had it.</summary>
     private bool Dress(MapPiece p)
     {
-        string sig = $"{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.#}|{p.Round}|{p.Height:0.##}|{p.Kind}|{p.Look}|{p.Name}|{Theme}|{WarhammerModels.Library?.ForLook(p.Look)?.Match.Sink:0.##}";
+        string sig = $"{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.#}|{p.Round}|{p.Height:0.##}|{p.Kind}|{p.Look}|{p.Name}|{Theme}|{WarhammerModels.Library?.ForLook(p.Look)?.Match.Sink:0.##}|{W:0.#}x{D:0.#}";
         if (_looks.TryGetValue(p, out var have))
         {
             if (have.Sig == sig) return true;
@@ -1664,8 +1673,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             case "save": SaveMap(); return;
             case "size" when int.TryParse(arg, out int si) && si < TableSizing.Sizes.Count():
                 var size = TableSizing.Sizes.ElementAt(si);
-                Draft.TableW = size.W; Draft.TableH = size.H; _checkFor = DefaultGame(); BuildBoard(); ApplyCamera();
-                break;
+                SetTableSize(size.W, size.H);
+                return;
         }
         Rebuild();
     }
