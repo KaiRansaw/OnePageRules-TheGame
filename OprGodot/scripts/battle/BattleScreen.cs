@@ -772,7 +772,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     {
         IGameProgress progress = Session.Table.Progress;
         _round.Text = progress.RoundCount?.ToString() ?? "-";
-        _roundOf.Text = $"/{RoundLimit(progress)}";
+        // The Quest games have no round limit (the engine's 999 stands for "none"): the counter read "3 /999".
+        int roundLimit = RoundLimit(progress);
+        _roundOf.Text = roundLimit >= FDG.StateMachine.StarQuestHordeRules.NoRoundLimit ? "" : $"/{roundLimit}";
 
         long tp = PerfProbe.Start();
         // Objectives held, per seat colour. Rebuilt only when a count changes (perf sweep, 2026-11-15 - it used to be
@@ -1861,15 +1863,23 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Removed now, not at the end of the frame: a new button can't take the name of one still waiting to go.
         foreach (Node c in _missionBody.GetChildren()) { _missionBody.RemoveChild(c); c.QueueFree(); }
         var vm = Session.Lobby.Vm;
-        // Horde Mode is not won by holding objectives (its book: the mission ends when the defenders are all Shaken or
-        // destroyed, every objective is destroyed, or round 12 is finished) - the panel said "Seize objectives ... Most
-        // objectives held wins." there too. It names the mode and keeps to the round limit until Horde has its own panel.
-        bool horde = vm.GameMode == FDG.EGameMode.Horde;
-        _missionBody.AddChild(HudKit.Text(horde ? FdgRaylib.Lobby.LobbySession.ModeLabel(vm.GameMode)
-            : vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
-            ? "Seize objectives" : FDG.Missions.MissionCardCatalog.Name(vm.MissionCardGame), 16, HudKit.Fg, HudKit.Bold));
-        _missionBody.AddChild(HudKit.Text($"Ends after round {lastRound}." + (horde ? ""
-            : vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off ? " Most objectives held wins." : " Most victory points wins."), 13, HudKit.Dim, HudKit.Semi));
+        // The standard game's text only fits a standard game. Horde and the Quest games are not won by holding objectives
+        // (Horde's book: the mission ends when the defenders are all Shaken or destroyed, every objective is destroyed, or
+        // round 12 is finished), the Quest games have no round limit, and the Mission Cards only apply as the engine says
+        // (MissionCardGame.IsOn: picked, a standard game, a system that has them) - a card game left over in the lobby's
+        // settings put "Battle of Wits ... Ends after round 999. Most victory points wins." on a Star Quest Horde game.
+        // Those modes name themselves and keep to a real round limit until they have panels of their own.
+        bool standard = vm.GameMode == FDG.EGameMode.Standard;
+        bool cards = standard && vm.MissionCardGame != FDG.Missions.EMissionCardGame.Off
+            && FDG.Missions.MissionCardCatalog.Available(vm.GameSystem);
+        string title = vm.GameMode == FDG.EGameMode.Horde ? FdgRaylib.Lobby.LobbySession.ModeLabel(vm.GameMode)
+            : !standard ? FDG.GameSystemInfo.ModeLabel(vm.GameMode, vm.GameSystem)
+            : cards ? FDG.Missions.MissionCardCatalog.Name(vm.MissionCardGame) : "Seize objectives";
+        string ends = lastRound >= FDG.StateMachine.StarQuestHordeRules.NoRoundLimit ? "" : $"Ends after round {lastRound}.";
+        string won = !standard ? "" : cards ? "Most victory points wins." : "Most objectives held wins.";
+        _missionBody.AddChild(HudKit.Text(title, 16, HudKit.Fg, HudKit.Bold));
+        if (ends.Length + won.Length > 0)
+            _missionBody.AddChild(HudKit.Text((ends + " " + won).Trim(), 13, HudKit.Dim, HudKit.Semi));
         var scores = progress.Scores;
         string summary = string.Join("  -  ", Session.Seats.Select(s => $"{s.Name} {scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount}"));
         foreach (GameSession.Seat s in Session.Seats)
