@@ -1543,6 +1543,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         CallDeferred(nameof(PlaceBlockCard));
     }
 
+    /// <summary>Test driver: where the camera is, for checking the camera settings (the "camera" step).</summary>
+    public string CameraState => FormattableString.Invariant($"yaw={_yaw:0.##} pitch={_pitch:0.##} distance={_distance:0.##} focus=({_focus.X:0.##};{_focus.Z:0.##})");
+
+    /// <summary>Screenshot driver: shows a rule's hover card (as pointing at its name in the report does) and says what it reads.</summary>
+    public string? DriveRuleTip(string rule)
+    {
+        ShowMetaTip("r:" + rule);
+        return RuleText(rule);
+    }
+
     /// <summary>Screenshot driver: shows the hover card of the latest block with a fight in it (as pointing at it does).</summary>
     public bool DriveReportCard(bool pin)
     {

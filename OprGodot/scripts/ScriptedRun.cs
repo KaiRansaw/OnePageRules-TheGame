@@ -374,13 +374,15 @@ public partial class ScriptedRun : Node
                 foreach (var d in AllOf<AcceptDialog>(GetTree().Root).Where(d => d.Visible)) d.GetOkButton().EmitSignal(BaseButton.SignalName.Pressed);
                 return;
             }
-            // "waitfor:ShootDecision" holds until the battle is waiting on that kind of decision (max ~3000 frames).
+            // "waitfor:ShootDecision" holds until the battle is waiting on that kind of decision (max ~3000 frames);
+            // "waitfor:Any" until it is waiting on any decision at all (which one comes first depends on the roll-offs).
             if (name.StartsWith("waitfor:"))
             {
-                bool there = Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current?.GetType().Name == name[8..];
+                string? waitingOn = Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current?.GetType().Name;
+                bool there = waitingOn != null && (name[8..] == "Any" || waitingOn == name[8..]);
                 if (!there && ++_waitedFor < 200) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
                 _waitedFor = 0;
-                GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}");
+                GD.Print($"ScriptedRun: {name} {(there ? "reached" : "timed out")}{(there && name[8..] == "Any" ? " - " + waitingOn : "")}");
                 return;
             }
             // "trimshot:<model file>|<png>" pictures a terrain model with its scenic base cut off (TerrainBaseTrim checks).
@@ -463,6 +465,20 @@ public partial class ScriptedRun : Node
             // "autopick" lets the bot answer whatever the battle is asking right now (e.g. which unit to deploy next).
             if (name == "autopick" && Find<Battle.BattleScreen>(GetTree().Root) is { Decisions.Current: { } now } ab) { now.AutoPlay(ab); return; }
             // "reportcard" / "reportcardpin" shows (or pins) the battle report's card for the latest fight.
+            // "ruletip:Scurry" shows that rule's hover card in the battle and prints what it reads; "camera" prints where
+            // the camera is; "tiltdrag:40" drags the camera's turn button 40 pixels down the screen (tilt checks).
+            if (name.StartsWith("ruletip:") && Find<Battle.BattleScreen>(GetTree().Root) is { } tipBattle)
+            { GD.Print($"ScriptedRun: ruletip {name[8..]} = {tipBattle.DriveRuleTip(name[8..]) ?? "(no wording found)"}"); return; }
+            if (name == "camera" && Find<Battle.BattleScreen>(GetTree().Root) is { } camBattle)
+            { GD.Print($"ScriptedRun: camera {camBattle.CameraState}"); return; }
+            if (name.StartsWith("tiltdrag:") && float.TryParse(name[9..], System.Globalization.CultureInfo.InvariantCulture, out float tiltBy))
+            {
+                Vector2 from = GetViewport().GetVisibleRect().Size / 2, to = from + new Vector2(0, tiltBy);
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = true, Position = from, GlobalPosition = from });
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = to, GlobalPosition = to, Relative = to - from, ButtonMask = MouseButtonMask.Right });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Right, Pressed = false, Position = to, GlobalPosition = to });
+                return;
+            }
             if (name.StartsWith("reportcard") && Find<Battle.BattleScreen>(GetTree().Root) is { } rb)
             { GD.Print($"ScriptedRun: report card {(rb.DriveReportCard(name == "reportcardpin") ? "shown" : "- no fight yet")}"); return; }
             if (name.StartsWith("click") || name.StartsWith("hover")) { TableMouse(name); return; }  // also "clickdrag:x;z|x2;z2"
