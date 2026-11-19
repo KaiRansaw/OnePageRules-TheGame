@@ -191,7 +191,7 @@ public partial class SettingsScreen : Control
     private static void BuildCamera(VBoxContainer rows)
     {
         rows.AddChild(Slider("Camera key speed",
-            "How fast the keyboard moves, turns, zooms and tilts the camera. 1.00x is normal.",
+            "How fast the keyboard moves and turns the camera. 1.00x is normal.",
             View.CameraSpeed, 0.25, 3, v => View.CameraSpeed = v, "x"));
         rows.AddChild(Check("Invert tilt", "Swap which way the camera tilts.", View.InvertTilt, on => View.InvertTilt = on));
     }
