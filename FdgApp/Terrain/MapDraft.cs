@@ -478,7 +478,11 @@ public sealed class MapDraft
         var book = GameSystemInfo.DisplayOrder.Where(s => TableSizing.Same(GameWideConstants.TableSizeFor(s), (w, h))).Select(GameSystemInfo.DisplayName).ToList();
         var big = GameSystemInfo.DisplayOrder
             .Where(s => !TableSizing.Same(GameWideConstants.TableSizeFor(s), (w, h)) && TableSizing.SizesFor(s).Any(z => TableSizing.Same(z, (w, h))))
-            .Select(s => $"{GameSystemInfo.DisplayName(s)} ~{TableSizing.SuggestedPoints(s, w, h)} pts").ToList();
+            .Select(s => (Name: GameSystemInfo.DisplayName(s), Points: TableSizing.SuggestedPoints(s, w, h)))
+            // Only games whose table grows with the armies: the two Quest games always play on their own 4' x 4', so
+            // a bigger map is never offered to them (and they printed as "GF: Star Quest ~ pts", a number short).
+            .Where(g => g.Points is not null)
+            .Select(g => $"{g.Name} about {g.Points} pts").ToList();
         var parts = new List<string>();
         if (book.Count > 0) parts.Add("The book table for " + string.Join(", ", book));
         if (big.Count > 0) parts.Add("big games: " + string.Join(", ", big));
