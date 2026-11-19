@@ -1056,6 +1056,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         useSet.AddItem("Plain pieces");
         foreach (var kv in whSets) useSet.AddItem("Warhammer: " + kv.Value);
         if (whSets.Count > 0) col.AddChild(useSet);
+        // A window is sized from its contents before they are laid out, when wrapped text is still as narrow as it can
+        // be - one word a line. That made this window taller than the screen, with Generate and Cancel off the bottom.
+        // Telling each paragraph its width first gives the window its real height.
+        foreach (Label wrapped in col.GetChildren().OfType<Label>()) wrapped.CustomMinimumSize = new Vector2(520, 0);
         dlg.AddChild(col);
         dlg.Confirmed += () =>
         {
