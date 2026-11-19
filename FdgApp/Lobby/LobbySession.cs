@@ -569,7 +569,14 @@ public sealed class LobbySession : IDisposable
         {
             LobbyViewModel_Host.SeatSnapshot seat = plan.Seats[i];
             PlayerID id;
-            if (i == 0) id = Vm.PlayerInfos[0].PlayerID;   // the host's own seat is always row 0
+            if (i == 0)
+            {
+                id = Vm.PlayerInfos[0].PlayerID;   // the host's own seat is always row 0
+                // ...and it can be a bot too (a bot-vs-bot game to watch): the rematch keeps it one. It used to come
+                // back as a Player, so "same seats" quietly turned a watched game into one you had to play.
+                if (seat.PlayerType == EPlayerType.AI && Vm.CheckCanSetPlayerType(id))
+                    Vm.SetPlayerType(id, EPlayerType.AI, seat.AiProfile);
+            }
             else
             {
                 if (seat.PlayerType == EPlayerType.Network) continue;
@@ -580,6 +587,9 @@ public sealed class LobbySession : IDisposable
                 id = added.PlayerID;
             }
             _served.Add(id.ID);
+            // The seat card's bot picker reads this: without it a Tactical or Expert bot came back playing as it was
+            // but labelled "Official AI".
+            if (seat.PlayerType == EPlayerType.AI && CanPickBrain) _brains[id.ID] = seat.AiProfile;
             if (seat.TeamNumber != ETeamOption.None) teams.Add((id, seat.TeamNumber));
             if (seat.ColorIndex >= 0) Vm.SetPlayerColor(id, seat.ColorIndex);
             if (seat.Army != null) Vm.UpdateArmyListFile(id, seat.Army);
