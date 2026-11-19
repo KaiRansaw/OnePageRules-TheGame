@@ -75,4 +75,54 @@ public class RuleBandShippedDataTests
             json.Contains("\"allModelsHaveThisRule\"") && !json.Contains("\"mostModelsHaveThisRule\""));
         Assert.That(bad, Is.Empty, "The 3.6.0 text says MOST models.");
     }
+    // Audit 468 (Kai, 2026-11-19: "Audit them next"), batch 1: the "before attacking, pick ..." buffs, debuffs and
+    // marks. Many were built for GF's "pick one" wording and shipped unchanged to the games that print "pick up to 3"
+    // and, in the Quest games, "Only one use per game".
+    private static IEnumerable<(string Where, string Text, JsonElement Ability)> BeforeAttackPicks()
+    {
+        foreach (var d in Definitions())
+        {
+            string? text = OfficialRuleText.OwnText(d.Name, d.Slug);
+            if (text == null) continue;
+            using JsonDocument doc = JsonDocument.Parse(d.Json);
+            if (!doc.RootElement.TryGetProperty("activated", out JsonElement acts)) continue;
+            foreach (JsonElement a in acts.EnumerateArray())
+                if (a.GetProperty("triggerHook").GetString() == "Activation_OnBeforeAttackAction"
+                    && a.TryGetProperty("targetSelector", out JsonElement sel) && sel.ValueKind == JsonValueKind.Object
+                    && sel.GetProperty("targetAffinity").GetString() != "Self")
+                    yield return ($"{d.Slug} / {d.Book} / {d.Name}", text, a.Clone());
+        }
+    }
+
+    [Test]
+    public void BeforeAttackPicks_TakeAsManyUnitsAsTheBookSays()
+    {
+        var bad = BeforeAttackPicks().Where(x =>
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(x.Text, @"\bpick (one|up to (\d+))\b");
+            if (!m.Success) return false;
+            int want = m.Groups[1].Value == "one" ? 1 : int.Parse(m.Groups[2].Value);
+            return x.Ability.GetProperty("targetSelector").GetProperty("maxCount").GetInt32() != want;
+        }).Select(x => x.Where).Distinct().ToList();
+        Assert.That(bad, Is.Empty, "the text says how many units it picks; these take a different number");
+    }
+
+    [Test]
+    public void OnlyOneUsePerGame_IsOncePerGame()
+    {
+        var bad = BeforeAttackPicks().Where(x => x.Text.StartsWith("Only one use per game.")
+            && x.Ability.GetProperty("cost").GetProperty("kind").GetString() != "oncePerGame")
+            .Select(x => x.Where).Distinct().ToList();
+        Assert.That(bad, Is.Empty, "\"Only one use per game\" but usable every activation");
+    }
+
+    [Test]
+    public void EnemyPicksInLineOfSight_NeedLineOfSight()
+    {
+        var bad = BeforeAttackPicks().Where(x => x.Text.Contains("in line of sight")
+            && x.Ability.GetProperty("targetSelector").GetProperty("targetAffinity").GetString() == "Foe"
+            && !x.Ability.GetProperty("targetSelector").GetProperty("requireLineOfSight").GetBoolean())
+            .Select(x => x.Where).Distinct().ToList();
+        Assert.That(bad, Is.Empty, "the text says \"in line of sight\"; these pick through walls");
+    }
 }
