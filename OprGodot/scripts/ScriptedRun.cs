@@ -535,7 +535,10 @@ public partial class ScriptedRun : Node
         var seat = battle.Session.SeatOf(me);
         var request = new FDG.StageResolution.Requests.HordeShopRequest(me, 1, 120, seat?.Faction ?? "", seat?.Name ?? "", objectives)
         {
-            Upgradable = units, GameSystemSlug = FDG.ArmyBuilding.GameSystems.GrimdarkFuture, PointsEarned = 100, PointsPerObjective = 40, PriorityBonus = 20,
+            // The game being played, as the engine's own request says it (HordeShop.cs) - this example used to say
+            // Grimdark Future always, so a Firefight or Skirmish shop opened on the wrong game's book.
+            Upgradable = units, GameSystemSlug = FDG.GameSystemInfo.Slug(battle.Session.Lobby.Vm.GameSystem),
+            AllowedGameSystems = battle.Session.Lobby.Vm.AllowedGameSystems, PointsEarned = 100, PointsPerObjective = 40, PriorityBonus = 20,
         };
         Battle.BattleResolvers.Inbox.OfferFirst(new Battle.HordeShopDecision(request));
         GD.Print("ScriptedRun: horde shop staged");
