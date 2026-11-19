@@ -175,9 +175,8 @@ public partial class SettingsScreen : Control
 
     private static void BuildGameplay(VBoxContainer rows)
     {
-        rows.AddChild(Slider("Game speed",
-            "How fast moves, shots and dice play out. Turn it down to follow the bots' turns more easily. 1.00x is normal.",
-            View.GameSpeed, 0.25, 2, v => View.GameSpeed = v, "x"));
+        // "Game speed" is not offered (Kai, 2026-11-19: hide it for now): the Godot battle plays at one speed and nothing
+        // read the slider. The saved value (View.GameSpeed) stays for the day it does.
         rows.AddChild(Slider("Dice popup time",
             "How long a dice roll stays on screen after it lands. 1.00x is normal. Hovering the dice always holds them.",
             View.DiceLingerScale, 1.0 / 3.0, 2, v => View.DiceLingerScale = v, "x"));
