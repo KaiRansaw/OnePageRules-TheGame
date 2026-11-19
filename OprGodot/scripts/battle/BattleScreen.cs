@@ -296,9 +296,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.T }:
                 ToggleTopView(); break;
             case InputEventKey { Pressed: true, Keycode: Key.Q }:
-                _yaw += 5; ApplyCamera(); break;
+                _yaw += 5 * CameraKeySpeed; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Keycode: Key.E }:
-                _yaw -= 5; ApplyCamera(); break;
+                _yaw -= 5 * CameraKeySpeed; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when Watching:
@@ -374,8 +374,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) dir.X -= 1;
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) dir.X += 1;
         if (dir != Vector2.Zero && GetViewport().GuiGetFocusOwner() is not LineEdit)
-            Pan(dir * (float)delta * _distance / Horizon.DistanceScale * 0.8f);
+            Pan(dir * (float)delta * _distance / Horizon.DistanceScale * 0.8f * CameraKeySpeed);
     }
+
+    /// <summary>Settings -> Camera -> "Camera key speed": how fast the keyboard moves and turns the camera. The slider
+    /// was saved but nothing in the Godot battle read it.</summary>
+    private static float CameraKeySpeed => Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.CameraSpeed, 0.25f, 3f);
 
     // ================================================================== clicks and hover
 
