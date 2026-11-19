@@ -1112,9 +1112,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         return bar;
     }
 
+    private UnitID? _watchedActing;
+
     private void RefreshCard(IUnit? activating)
     {
-        IUnit? show = _selected ?? (activating != null && Session.IsMine(activating.PlayerID) ? activating : null)
+        // Watching bots (Kai, 2026-11-19): with nothing clicked the card follows the unit that is acting, and keeps the
+        // last one between activations - it used to be an empty box, there being no army of your own to fall back on.
+        if (Watching && activating != null) _watchedActing = activating.ID;
+        IUnit? show = _selected ?? (activating != null && (Watching || Session.IsMine(activating.PlayerID)) ? activating : null)
+                      ?? (Watching && _watchedActing is { } last ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(last) && Alive(u)) : null)
                       ?? MyUnits().FirstOrDefault(Alive);
         string sig = show == null ? "" : $"{show.ID.ID}:{LeftOf(show)}:{WoundsLeft(show)}:{show.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{UnitActivation.HasActivated(Session.Table.Progress, show)}";
         if (sig == _cardSig) return;
