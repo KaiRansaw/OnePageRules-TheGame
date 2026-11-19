@@ -3898,7 +3898,7 @@
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -4275,7 +4275,7 @@
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
             "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "minToughValue": 9
           },
           "effect": {
             "kind": "reroll",
@@ -4601,14 +4601,23 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isMelee"
+                }
+              },
+              "right": {
+                "kind": "targetMajorityHasTough",
+                "minToughValue": 9
               }
             },
             "right": {
-              "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "kind": "not",
+              "inner": {
+                "kind": "afterMoving"
+              }
             }
           },
           "effect": {

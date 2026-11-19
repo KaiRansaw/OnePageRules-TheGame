@@ -4164,13 +4164,13 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
           },
           "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -2
+            "kind": "perHitSaveModifier",
+            "onRollValue": 6,
+            "delta": -3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -4190,11 +4190,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {

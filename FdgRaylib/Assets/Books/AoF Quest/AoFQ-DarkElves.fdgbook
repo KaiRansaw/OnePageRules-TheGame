@@ -6871,7 +6871,7 @@
             }
           },
           "effect": {
-            "kind": "addExtraHit",
+            "kind": "addExtraAttackRoll",
             "onRollValue": 6,
             "count": 1
           },
@@ -6893,11 +6893,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -7071,7 +7071,7 @@
             "clear": {
               "kind": "manualOnly"
             },
-            "maxTotal": 2
+            "maxTotal": 6
           },
           "lifetime": "ThisRound",
           "seat": "Actor"
@@ -7083,7 +7083,7 @@
             "tType": {
               "id": "PiercingFrenzyMarker"
             },
-            "minCount": 1
+            "minCount": 3
           },
           "effect": {
             "kind": "tokenScaledRollModifier",
@@ -7092,7 +7092,7 @@
             },
             "rollKind": "Save",
             "delta": -1,
-            "perMarkers": 1
+            "perMarkers": 3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

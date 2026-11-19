@@ -2585,7 +2585,7 @@
             "clear": {
               "kind": "manualOnly"
             },
-            "maxTotal": 2
+            "maxTotal": 6
           },
           "lifetime": "ThisRound",
           "seat": "Actor"
@@ -2597,7 +2597,7 @@
             "tType": {
               "id": "PrecisionFrenzyMarker"
             },
-            "minCount": 1
+            "minCount": 3
           },
           "effect": {
             "kind": "tokenScaledRollModifier",
@@ -2606,7 +2606,7 @@
             },
             "rollKind": "Hit",
             "delta": 1,
-            "perMarkers": 1
+            "perMarkers": 3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -2680,7 +2680,7 @@
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
             "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "minToughValue": 27
           },
           "effect": {
             "kind": "reroll",

@@ -4251,11 +4251,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -4462,7 +4462,7 @@
             "clear": {
               "kind": "manualOnly"
             },
-            "maxTotal": 4
+            "maxTotal": 6
           },
           "lifetime": "ThisRound",
           "seat": "Actor"
@@ -4474,7 +4474,7 @@
             "tType": {
               "id": "PrecisionGrowthMarker"
             },
-            "minCount": 2
+            "minCount": 3
           },
           "effect": {
             "kind": "tokenScaledRollModifier",
@@ -4483,7 +4483,7 @@
             },
             "rollKind": "Hit",
             "delta": 1,
-            "perMarkers": 2
+            "perMarkers": 3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -4607,7 +4607,7 @@
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
             "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "minToughValue": 27
           },
           "effect": {
             "kind": "reroll",
@@ -5028,14 +5028,23 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isMelee"
+                }
+              },
+              "right": {
+                "kind": "targetMajorityHasTough",
+                "minToughValue": 27
               }
             },
             "right": {
-              "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "kind": "not",
+              "inner": {
+                "kind": "afterMoving"
+              }
             }
           },
           "effect": {

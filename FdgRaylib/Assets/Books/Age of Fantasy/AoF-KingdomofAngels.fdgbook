@@ -5904,13 +5904,13 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
           },
           "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -2
+            "kind": "perHitSaveModifier",
+            "onRollValue": 6,
+            "delta": -3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"

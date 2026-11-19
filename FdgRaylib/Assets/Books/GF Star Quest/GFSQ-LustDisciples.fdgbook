@@ -9970,11 +9970,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -10211,7 +10211,7 @@
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
             "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "minToughValue": 27
           },
           "effect": {
             "kind": "reroll",

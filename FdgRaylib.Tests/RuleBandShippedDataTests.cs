@@ -125,4 +125,39 @@ public class RuleBandShippedDataTests
             .Select(x => x.Where).Distinct().ToList();
         Assert.That(bad, Is.Empty, "the text says \"in line of sight\"; these pick through walls");
     }
+    // Audit 468, batch 2: rule by rule against OPR's wording.
+    [Test]
+    public void ToughGates_UseTheNumberTheBookPrints()
+    {
+        List<string> bad = Offenders((text, json) =>
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(text, @"Tough\((\d+)\) or higher");
+            if (!m.Success) return false;
+            var gates = System.Text.RegularExpressions.Regex.Matches(json, "\"minToughValue\":\\s*(\\d+)");
+            return gates.Count > 0 && gates.Any(g => g.Groups[1].Value != m.Groups[1].Value);
+        });
+        Assert.That(bad, Is.Empty, "the text says Tough(3), (9) or (27) - each game its own - and the data gates on another number");
+    }
+
+    [Test]
+    public void MayRollPlusOneAttack_IsAnExtraAttackDie_NotALandedHit()
+    {
+        List<string> bad = Offenders((text, json) =>
+            text.Contains("may roll +1 attack with that weapon") && text.Contains("roll of 6 to hit")
+            && json.Contains("\"addExtraHit\""));
+        Assert.That(bad, Is.Empty, "\"may roll +1 attack\" is a die that still has to hit; these score the hit outright");
+    }
+
+    [Test]
+    public void FrenzyAndGrowthMarkers_StopAtTheBooksMaximum()
+    {
+        List<string> bad = Offenders((text, json) =>
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(text, @"max\. of (two|four|six) (tokens|markers)");
+            if (!m.Success) return false;
+            string want = m.Groups[1].Value switch { "two" => "2", "four" => "4", _ => "6" };
+            return System.Text.RegularExpressions.Regex.Matches(json, "\"maxTotal\":\\s*(\\d+)").Any(g => g.Groups[1].Value != want);
+        });
+        Assert.That(bad, Is.Empty, "a Frenzy / Growth rule collects more or fewer markers than its text allows");
+    }
 }

@@ -5329,9 +5329,8 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "statGreaterOrEqualTo",
-            "stat": "Defense",
-            "statValue": 2
+            "kind": "targetMajorityHasTough",
+            "minToughValue": 3
           },
           "effect": {
             "kind": "rollModifier",

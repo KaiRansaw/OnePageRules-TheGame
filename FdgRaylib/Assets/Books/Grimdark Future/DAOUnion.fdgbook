@@ -7534,14 +7534,23 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isMelee"
+                }
+              },
+              "right": {
+                "kind": "targetMajorityHasTough",
+                "minToughValue": 3
               }
             },
             "right": {
-              "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "kind": "not",
+              "inner": {
+                "kind": "afterMoving"
+              }
             }
           },
           "effect": {

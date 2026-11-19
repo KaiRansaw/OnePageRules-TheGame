@@ -11076,14 +11076,43 @@
       "name": "Entrenched",
       "passive": [
         {
-          "hookID": "Shooting_OnHitRollComplete",
+          "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "mostModelsHaveThisRule"
+            "kind": "and",
+            "left": {
+              "kind": "mostModelsHaveThisRule"
+            },
+            "right": {
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isMelee"
+                }
+              },
+              "right": {
+                "kind": "and",
+                "left": {
+                  "kind": "attackedFromOverInches",
+                  "distanceInches": 12
+                },
+                "right": {
+                  "kind": "not",
+                  "inner": {
+                    "kind": "tokenPresent",
+                    "tType": {
+                      "id": "MovedThisRound"
+                    },
+                    "minCount": 1
+                  }
+                }
+              }
+            }
           },
           "effect": {
             "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": 1
+            "rollKind": "Hit",
+            "delta": -1
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"

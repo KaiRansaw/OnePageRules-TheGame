@@ -3257,40 +3257,53 @@
       "name": "Fortified Growth",
       "passive": [
         {
-          "hookID": "Round_OnRoundEnd",
+          "hookID": "Round_OnRoundStart",
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "tokenPresent",
-                "tType": {
-                  "id": "InReserve"
-                },
-                "minCount": 1
-              }
-            },
-            "right": {
               "kind": "and",
               "left": {
                 "kind": "not",
                 "inner": {
                   "kind": "tokenPresent",
                   "tType": {
-                    "id": "EmbarkedIn"
+                    "id": "InReserve"
                   },
                   "minCount": 1
                 }
               },
               "right": {
-                "kind": "not",
-                "inner": {
-                  "kind": "tokenPresent",
-                  "tType": {
-                    "id": "OffTableFromForcedMove"
-                  },
-                  "minCount": 1
+                "kind": "and",
+                "left": {
+                  "kind": "not",
+                  "inner": {
+                    "kind": "tokenPresent",
+                    "tType": {
+                      "id": "EmbarkedIn"
+                    },
+                    "minCount": 1
+                  }
+                },
+                "right": {
+                  "kind": "not",
+                  "inner": {
+                    "kind": "tokenPresent",
+                    "tType": {
+                      "id": "OffTableFromForcedMove"
+                    },
+                    "minCount": 1
+                  }
                 }
+              }
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Shaken"
+                },
+                "minCount": 1
               }
             }
           },
@@ -3304,8 +3317,7 @@
               "value": 1
             },
             "clear": {
-              "kind": "customHook",
-              "hook": "Morale_OnShakenApplied"
+              "kind": "manualOnly"
             },
             "maxTotal": 4
           },
@@ -3324,7 +3336,7 @@
               "tType": {
                 "id": "FortifiedGrowthMarker"
               },
-              "minCount": 1
+              "minCount": 2
             }
           },
           "effect": {
@@ -3332,7 +3344,7 @@
             "tType": {
               "id": "FortifiedGrowthMarker"
             },
-            "perMarkers": 1,
+            "perMarkers": 2,
             "maxReduction": 2
           },
           "lifetime": "ThisAttack",

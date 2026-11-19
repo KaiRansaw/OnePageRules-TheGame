@@ -598,13 +598,13 @@
       {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "targetMajorityHasTough",
-          "minToughValue": 3
+          "kind": "unmodifiedRollEquals",
+          "dieValue": 6
         },
         "effect": {
-          "kind": "rollModifier",
-          "rollKind": "Save",
-          "delta": -2
+          "kind": "perHitSaveModifier",
+          "onRollValue": 6,
+          "delta": -3
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -614,7 +614,7 @@
     "scope": "Weapon",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Against units where most models have Tough 3+, this weapon gets AP(+2)."
+    "description": "For each unmodified result of 6 to hit, those hits get AP(\u002B3)."
   },
   {
     "name": "Tear",

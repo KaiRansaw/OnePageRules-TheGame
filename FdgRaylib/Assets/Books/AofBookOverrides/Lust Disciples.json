@@ -33,37 +33,15 @@
     "name": "Shatter",
     "passive": [
       {
-        "hookID": "Shooting_OnSaveRollComplete",
-        "condition": {
-          "kind": "always"
-        },
-        "effect": {
-          "kind": "ignoreRule",
-          "ruleName": "Regeneration"
-        },
-        "lifetime": "ThisAttack",
-        "seat": "Actor"
-      },
-      {
         "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "and",
-          "left": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
-          },
-          "right": {
-            "kind": "not",
-            "inner": {
-              "kind": "targetMajorityHasTough",
-              "minToughValue": 10
-            }
-          }
+          "kind": "unmodifiedRollEquals",
+          "dieValue": 6
         },
         "effect": {
-          "kind": "rollModifier",
-          "rollKind": "Save",
-          "delta": -2
+          "kind": "perHitSaveModifier",
+          "onRollValue": 6,
+          "delta": -3
         },
         "lifetime": "ThisAttack",
         "seat": "Actor"
@@ -73,7 +51,7 @@
     "scope": "Weapon",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Ignores the target's Regeneration, and gets AP(+2) against units where most models have Tough 3 to Tough 9."
+    "description": "For each unmodified result of 6 to hit, those hits get AP(\u002B3)."
   },
   {
     "name": "Versatile Attack (Piercing)",
