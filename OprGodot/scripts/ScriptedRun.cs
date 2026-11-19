@@ -104,6 +104,25 @@ public partial class ScriptedRun : Node
             }
             // "key:Down" presses and releases that key (keyboard focus checks); "hover:Name" acts as if the mouse moved onto
             // the button called Name (the menu feel - UiJuice).
+            // "press:Name" left-clicks the button called Name with the real pointer, the way a player does: a toggle button
+            // fires Pressed as well as Toggled, and a button lying under another control doesn't get the click.
+            if (name.StartsWith("press:"))
+            {
+                if (FindButton(GetTree().Root, name[6..]) is not { } target) { GD.PrintErr($"ScriptedRun: no button named '{name[6..]}' on screen."); return; }
+                Vector2 at = target.GetGlobalRect().GetCenter();
+                _mouse = at;
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at });
+                return;
+            }
+            // "ctrlkey:Z" presses the key with Ctrl held (undo, copy, paste, save...).
+            if (name.StartsWith("ctrlkey:") && Enum.TryParse(name[8..], out Key withCtrl))
+            {
+                Input.ParseInputEvent(new InputEventKey { Keycode = withCtrl, PhysicalKeycode = withCtrl, Pressed = true, CtrlPressed = true });
+                Input.ParseInputEvent(new InputEventKey { Keycode = withCtrl, PhysicalKeycode = withCtrl, Pressed = false, CtrlPressed = true });
+                return;
+            }
             if (name.StartsWith("key:") && Enum.TryParse(name[4..], out Key key))
             {
                 Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true });
@@ -117,6 +136,13 @@ public partial class ScriptedRun : Node
                 _mouse = at;
                 GetViewport().WarpMouse(at);
                 Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+                return;
+            }
+            // "lclick" left-clicks where the pointer is (after "mouseat:Name": a real click into a text box or onto a row).
+            if (name == "lclick")
+            {
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = _mouse, GlobalPosition = _mouse, ButtonMask = MouseButtonMask.Left });
+                Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = _mouse, GlobalPosition = _mouse });
                 return;
             }
             if (name == "rclick")

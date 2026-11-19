@@ -268,8 +268,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         _top.AddChild(Ui.Button("Generate...", OpenGenerate, TerrainBook.HasGenerator(_checkFor)
             ? "The Advanced Rulebook's terrain generator: rolls a themed table, then you edit it."
             : $"{GameSystemInfo.DisplayName(_checkFor)}'s book has no terrain generator - pick a game that has one under Book check.").Also(b => { b.Name = "Generate"; b.Disabled = !TerrainBook.HasGenerator(_checkFor); }));
-        _top.AddChild(Ui.Button("Undo", () => { if (Draft.Undo()) AfterUndo(); }, "Undo (Ctrl+Z).").Also(b => b.Disabled = !Draft.CanUndo));
-        _top.AddChild(Ui.Button("Redo", () => { if (Draft.Redo()) AfterUndo(); }, "Redo (Ctrl+Y).").Also(b => b.Disabled = !Draft.CanRedo));
+        _top.AddChild(Ui.Button("Undo", () => { if (Draft.Undo()) AfterUndo(); }, "Undo (Ctrl+Z).").Also(b => { b.Name = "Undo"; b.Disabled = !Draft.CanUndo; }));
+        _top.AddChild(Ui.Button("Redo", () => { if (Draft.Redo()) AfterUndo(); }, "Redo (Ctrl+Y).").Also(b => { b.Name = "Redo"; b.Disabled = !Draft.CanRedo; }));
         _top.AddChild(Ui.Button("Copy", CopyPicked, "Copy the selected pieces (Ctrl+C).").Also(b => { b.Name = "CopyPieces"; b.Disabled = _picked.Count == 0; }));
         _top.AddChild(Ui.Button("Paste", Paste, "Paste the copied pieces, a little down and right (Ctrl+V).").Also(b => { b.Name = "PastePieces"; b.Disabled = _clipboard.Count == 0; }));
         _top.AddChild(Ui.Button("Duplicate", DuplicatePicked, "Copy and paste the selected pieces in one go (Ctrl+D).").Also(b => { b.Name = "DuplicatePieces"; b.Disabled = _picked.Count == 0; }));
@@ -396,7 +396,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         _left.AddChild(also);
         _left.AddChild(HudKit.Text($"{Draft.Pieces.Count} pieces - {Draft.Objectives.Count} objectives - {Draft.Bases.Count} size bases", 13, HudKit.Dim, HudKit.Semi));
         if (Draft.Objectives.Count == 0) _left.AddChild(ForgeWidgets.Wrapped("No objectives: the game rolls D3+2 and places them the usual way.", 12, HudKit.Dim));
-        _left.AddChild(Ui.Button("Clear the table", AskClear, "Remove every piece, objective and size base (undo brings them back).", "BackButton"));
+        _left.AddChild(Ui.Button("Clear the table", AskClear, "Remove every piece, objective and size base (undo brings them back).", "BackButton").Also(b => b.Name = "ClearTable"));
 
         // Book check
         _left.AddChild(HudKit.Heading("Book check", 13));
@@ -1646,6 +1646,28 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
 
     // ================================================================== screenshot driver
 
+    /// <summary>What the editor holds right now, for scripted checks.</summary>
+    public string State =>
+        FormattableString.Invariant($"pieces={Draft.Pieces.Count} picked={_picked.Count} objectives={Draft.Objectives.Count} bases={Draft.Bases.Count} tool={_tool} dirty={Draft.Dirty} undo={Draft.CanUndo} redo={Draft.CanRedo} table={W:0}x{D:0} yaw={_yaw:0.#} pitch={_pitch:0.#} focus={_focus.X:0.#};{_focus.Z:0.#}")
+        + (_sel is { } s ? FormattableString.Invariant($" sel={s.Name}@{s.X:0.##};{s.Z:0.##} size={s.W:0.##}x{s.D:0.##} turned={s.Angle:0.#} locked={s.Locked}") : "")
+        + (_selObjective >= 0 && _selObjective < Draft.Objectives.Count ? FormattableString.Invariant($" objective={Draft.Objectives[_selObjective].X:0.##};{Draft.Objectives[_selObjective].Z:0.##}") : "")
+        + (_selBase >= 0 && _selBase < Draft.Bases.Count ? FormattableString.Invariant($" sizebase={Draft.Bases[_selBase].X:0.##};{Draft.Bases[_selBase].Z:0.##}") : "");
+
+    /// <summary>Real mouse events: press at <paramref name="from"/>, move to <paramref name="to"/> in steps, release.</summary>
+    private static void DriveMouse(MouseButton button, Vector2 from, Vector2 to, bool shift)
+    {
+        MouseButtonMask mask = button == MouseButton.Right ? MouseButtonMask.Right : MouseButtonMask.Left;
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from });
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = true, Position = from, GlobalPosition = from, ShiftPressed = shift, ButtonMask = mask });
+        if (from != to)
+            for (int i = 1; i <= 4; i++)
+            {
+                Vector2 p = from.Lerp(to, i / 4f);
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = p, GlobalPosition = p, ButtonMask = mask, ShiftPressed = shift });
+            }
+        Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = false, Position = to, GlobalPosition = to, ShiftPressed = shift });
+    }
+
     /// <summary>
     /// "place:Kind@x;z", "obj:x;z" (";" because the press list splits on commas), "select:i", "generate:Theme", "rules", "top", "turn:deg", "check:System",
     /// "name:X", "save", "size:i".
@@ -1712,6 +1734,31 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             case "check" when Enum.TryParse(arg, out EGameSystem sys): _checkFor = sys; break;
             case "name": Draft.Name = arg; break;
             case "save": SaveMap(); return;
+            // "click:x;z" / "shiftclick:x;z" press and release the real left button on that table point, "drag:x;z>x2;z2"
+            // drags between two points, "rdrag:dx;dy" right-drags the pointer by that many pixels (the camera), and
+            // "state" prints what the editor holds - so a scripted run can use the mouse the way a player does.
+            case "click" or "shiftclick":
+            {
+                var (x, z) = XZ(arg);
+                Vector2 at = _camera.UnprojectPosition(World(x, z));
+                DriveMouse(MouseButton.Left, at, at, verb == "shiftclick");
+                return;
+            }
+            case "drag" when arg.Split('>') is { Length: 2 } ends:
+            {
+                var (x, z) = XZ(ends[0]);
+                var (x2, z2) = XZ(ends[1]);
+                DriveMouse(MouseButton.Left, _camera.UnprojectPosition(World(x, z)), _camera.UnprojectPosition(World(x2, z2)), false);
+                return;
+            }
+            case "rdrag":
+            {
+                var (dx, dy) = XZ(arg);
+                Vector2 from = _camera.UnprojectPosition(World(W / 2, D / 2));
+                DriveMouse(MouseButton.Right, from, from + new Vector2(dx, dy), false);
+                return;
+            }
+            case "state": GD.Print("MapEditor: " + State); return;
             case "size" when int.TryParse(arg, out int si) && si < TableSizing.Sizes.Count():
                 var size = TableSizing.Sizes.ElementAt(si);
                 SetTableSize(size.W, size.H);
