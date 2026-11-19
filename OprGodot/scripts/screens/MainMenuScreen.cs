@@ -189,7 +189,7 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
         {
             var off = HudKit.ActionButton("Update", "clockwise-rotation", "Offline", "", HudKit.Dim, 96, disabled: true);
             off.CustomMinimumSize = new Vector2(118, 96);
-            off.TooltipText = "Auto update detection is turned off, so the game is not connected to GitHub. Turn it back on (bottom right) to update.";
+            off.TooltipText = "Auto update detection is turned off, so the game is not connected to GitHub. Turn it back on (the switch at the top right) to update.";
             return off;
         }
         var b = HudKit.ActionButton("Update", "clockwise-rotation", available ? "Update!" : "Update", "", available ? HudKit.Lime : HudKit.Teal, 96, selected: available);
