@@ -78,7 +78,6 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     // Kai, 2026-11-18: placing a piece rebuilds the left panel - keep both scroll positions so the model list doesn't
     // jump back to the top.
     private ScrollContainer? _leftScroll;
-    private int _modelScrollY;
     private HBoxContainer _top = null!;
     private Label _status = null!;
 
@@ -361,6 +360,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void LeftPanel()
     {
         int leftY = _leftScroll?.ScrollVertical ?? 0;
+        KeepPalette();
         Clear(_left);
         if (_leftScroll is { } outer) RestoreScroll(outer, leftY);
         _left.AddChild(HudKit.Heading("Pieces (the book's)", 13));
@@ -423,14 +423,47 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     /// Kai, 2026-11-14: the downloaded Warhammer models, matched on the Match terrain screen - each one is a piece:
     /// its size is the model's, its rules the kind it was matched to. Hidden and unmatched pieces are left out.
     /// </summary>
+    // Kai, 2026-11-18: picking or placing a piece must not touch the model list at all (no jump, no flicker) - so the
+    // list is built once and kept, moved back into the rebuilt left panel; only which tile is lit changes. It is built
+    // again only when what it shows changes (the set / kind filters, or the matches being re-read).
+    private VBoxContainer? _palette;
+    private string _paletteSig = "";
+    private readonly Dictionary<int, Button> _paletteButtons = new();
+
+    /// <summary>Takes the kept model list out of the left panel before the panel is cleared, so it survives.</summary>
+    private void KeepPalette()
+    {
+        if (_palette != null && IsInstanceValid(_palette) && _palette.GetParent() == _left) _left.RemoveChild(_palette);
+    }
+
     private void ModelPalette()
     {
         if (WarhammerModels.Library is not { } lib || lib.Entries.Count == 0) return;
-        _left.AddChild(HudKit.Heading("Warhammer models", 13));
+        // Not the library object itself: saving a sink re-reads it, and the list must not be rebuilt for that.
+        string sig = $"{lib.Folder}|{lib.Entries.Count}|{_modelSet}|{_modelKind}";
+        if (sig == _paletteSig && _palette != null && IsInstanceValid(_palette))
+        {
+            _left.AddChild(_palette);
+            foreach (var (id, btn) in _paletteButtons)
+                if (IsInstanceValid(btn)) btn.SetPressedNoSignal(_tool == ETool.Place && _model?.Id == id);
+            return;
+        }
+        if (_palette != null && IsInstanceValid(_palette)) _palette.QueueFree();
+        _paletteButtons.Clear();
+        _paletteSig = sig;
+        var box = _palette = new VBoxContainer { Name = "ModelPalette" };
+        box.AddThemeConstantOverride("separation", 6);
+        _left.AddChild(box);
+        BuildPalette(box, lib);
+    }
+
+    private void BuildPalette(VBoxContainer box, WarhammerTerrainLibrary lib)
+    {
+        box.AddChild(HudKit.Heading("Warhammer models", 13));
         var all = lib.Placeable.ToList();
         if (all.Count == 0)
         {
-            _left.AddChild(ForgeWidgets.Wrapped("None matched yet - Map Maker -> Match terrain models.", 12, HudKit.Dim));
+            box.AddChild(ForgeWidgets.Wrapped("None matched yet - Map Maker -> Match terrain models.", 12, HudKit.Dim));
             return;
         }
         var filters = new HBoxContainer();
@@ -449,7 +482,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         kind.Selected = Math.Max(0, kinds.FindIndex(k => k.Id == _modelKind) + 1);
         kind.ItemSelected += i => { _modelKind = i <= 0 ? "" : kinds[(int)i - 1].Id; Rebuild(); };
         filters.AddChild(kind);
-        _left.AddChild(filters);
+        box.AddChild(filters);
 
         var shown = all.Where(e => (_modelSet < 0 || e.Set == _modelSet) && (_modelKind.Length == 0 || e.Match.Kind == _modelKind))
             .OrderBy(e => e.Match.Kind).ThenBy(e => e.Name).ToList();
@@ -486,16 +519,13 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             tile.AddChild(sub);
             b.AddChild(tile);
             b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
+            _paletteButtons[e.Id] = b;
             list.AddChild(b);
         }
         var scroll = new ScrollContainer { Name = "ModelScroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 470) };
         scroll.AddChild(list);
-        int keep = _modelScrollY;
-        scroll.GetVScrollBar().ValueChanged += v => _modelScrollY = (int)v;
-        // Put the list back where it was once it has been laid out (setting it now would be clamped to an empty list).
-        RestoreScroll(scroll, keep);
-        _left.AddChild(scroll);
-        _left.AddChild(HudKit.Text($"{shown.Count} of {all.Count} matched pieces", 12, HudKit.Dim, HudKit.Semi));
+        box.AddChild(scroll);
+        box.AddChild(HudKit.Text($"{shown.Count} of {all.Count} matched pieces", 12, HudKit.Dim, HudKit.Semi));
     }
 
     // ================================================================== battle mats
@@ -723,11 +753,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
             {
                 var sink = new SpinBox { Name = "SinkModel", MinValue = -4, MaxValue = 4, Step = 0.05, Value = model.Match.Sink, Suffix = "\"",
                     TooltipText = "Above 0 sinks this model into the ground (hides a sculpted base); below 0 raises it (a model sitting too deep). Saved for the model everywhere it's used. Looks only." };
+                string sinkLook = p.Look;
                 sink.ValueChanged += v =>
                 {
-                    model.Match.Sink = (float)v;
-                    model.Match.Checked = true;
-                    try { WarhammerModels.Library?.Save(); } catch (Exception ex) { Say("Couldn't save the sink: " + ex.Message, Palette.WoundsRed); }
+                    // Saving makes WarhammerModels re-read the match file, so the model is fetched fresh every time
+                    // (holding the first copy meant only the first change ever stuck - Kai, 2026-11-18).
+                    if (WarhammerModels.Library is not { } lib || lib.ForLook(sinkLook) is not { } now) return;
+                    now.Match.Sink = (float)v;
+                    now.Match.Checked = true;
+                    try { lib.Save(); } catch (Exception ex) { Say("Couldn't save the sink: " + ex.Message, Palette.WoundsRed); }
                     Sync3D();
                 };
                 _right.AddChild(Row("Sink model", sink));
