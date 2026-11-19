@@ -43,6 +43,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         set { _picked.Clear(); if (value != null) _picked.Add(value); }
     }
     private int _selObjective = -1;
+    // The size base that is selected (click it with Select): it drags and deletes like an objective marker. A size base
+    // could be dropped but never picked up again - only Undo or clearing the whole table got rid of one.
+    private int _selBase = -1;
     private List<MapPiece> _clipboard = new();
     private bool _rulesView, _topView, _grid;
     // Snap step in inches: 1, 0.5, or 0 = off (quarter inches).
@@ -327,7 +330,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     {
         _tool = t;
         if (t != ETool.Measure) { _measureA = _measureB = null; }
-        if (t is ETool.Place or ETool.Objective or ETool.Base) { _picked.Clear(); _selObjective = -1; }
+        if (t is ETool.Place or ETool.Objective or ETool.Base) { _picked.Clear(); _selObjective = -1; _selBase = -1; }
         Say(t switch
         {
             ETool.BoxSelect => "Drag a box over the pieces to select them. Shift adds to the selection.",
@@ -341,7 +344,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
 
     private void AfterUndo()
     {
-        _sel = null; _selObjective = -1;
+        _sel = null; _selObjective = -1; _selBase = -1;
         BuildBoard(); Rebuild();
     }
 
@@ -370,7 +373,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             var b = new Button { Name = "Kind_" + k.Id, Text = k.Name, ToggleMode = true, ButtonPressed = on, FocusMode = FocusModeEnum.None,
                 CustomMinimumSize = new Vector2(126, 34), TooltipText = $"{k.BookLine}\n(Advanced Rulebook 3.6.0)\nClick it, then click the table. Right-click stops placing." };
             b.AddThemeColorOverride("font_color", BattleTable.TerrainColour(k.Rules).Lightened(0.45f));
-            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _model = null; _sel = null; _selObjective = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
+            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _model = null; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
             grid.AddChild(b);
         }
         _left.AddChild(grid);
@@ -514,7 +517,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             sub.MouseFilter = MouseFilterEnum.Ignore;
             tile.AddChild(sub);
             b.AddChild(tile);
-            b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
+            b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
             _paletteButtons[e.Id] = b;
             list.AddChild(b);
         }
@@ -877,6 +880,14 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             _right.AddChild(HudKit.Text($"At {o.X:0.#}\", {o.Z:0.#}\" - drag it to move.", 14, HudKit.Fg, HudKit.Semi));
             _right.AddChild(Ui.Button("Delete", DeleteSelected, "Remove the objective (Del).", "BackButton"));
         }
+        else if (_selBase >= 0 && _selBase < Draft.Bases.Count)
+        {
+            MapBaseMarkerEntry sb = Draft.Bases[_selBase];
+            _right.AddChild(HudKit.Heading("Size base", 13));
+            _right.AddChild(HudKit.Text($"{(sb.Label.Length > 0 ? sb.Label : "Base")} at {sb.X:0.#}\", {sb.Z:0.#}\" - drag it to move.", 14, HudKit.Fg, HudKit.Semi));
+            _right.AddChild(ForgeWidgets.Wrapped("Only to check a unit fits through a gap. The game ignores it.", 13, HudKit.Dim));
+            _right.AddChild(Ui.Button("Delete", DeleteSelected, "Remove the size base (Del).", "BackButton").Also(b => b.Name = "DeleteBase"));
+        }
         else
         {
             _right.AddChild(HudKit.Heading("Selected", 13));
@@ -977,7 +988,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         var copies = Draft.Duplicate(_picked);
         _picked.Clear();
         _picked.AddRange(copies);
-        _selObjective = -1;
+        _selObjective = -1; _selBase = -1;
         Say(copies.Count == 1 ? "Duplicated - drag the copy where you want it." : $"Duplicated {copies.Count} pieces - drag them where you want them.");
         Rebuild();
     }
@@ -1024,7 +1035,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private void AskClear()
     {
         var dlg = new ConfirmationDialog { Title = "Clear the table?", DialogText = "Remove every piece, objective and size base? (Undo brings them back.)", OkButtonText = "Clear" };
-        dlg.Confirmed += () => { Draft.Remember(); Draft.Pieces.Clear(); Draft.Objectives.Clear(); Draft.Bases.Clear(); _picked.Clear(); _selObjective = -1; Rebuild(); dlg.QueueFree(); };
+        dlg.Confirmed += () => { Draft.Remember(); Draft.Pieces.Clear(); Draft.Objectives.Clear(); Draft.Bases.Clear(); _picked.Clear(); _selObjective = -1; _selBase = -1; Rebuild(); dlg.QueueFree(); };
         dlg.Canceled += () => dlg.QueueFree();
         AddChild(dlg);
         dlg.PopupCentered();
@@ -1096,7 +1107,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             _picked.RemoveAll(p => !p.Locked);
             if (kept > 0) Say($"{kept} locked piece{(kept == 1 ? " was" : "s were")} kept - unlock with L to delete.", LockColour);
         }
-        else if (_selObjective >= 0) { Draft.Remember(); Draft.Objectives.RemoveAt(_selObjective); _selObjective = -1; }
+        else if (_selObjective >= 0) { Draft.Remember(); Draft.Objectives.RemoveAt(_selObjective); _selObjective = -1; _selBase = -1; }
+        else if (_selBase >= 0 && _selBase < Draft.Bases.Count) { Draft.Remember(); Draft.Bases.RemoveAt(_selBase); _selBase = -1; }
         Rebuild();
     }
 
@@ -1109,7 +1121,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         _clipboard = copies.Select(c => c.Clone()).ToList();
         _picked.Clear();
         _picked.AddRange(copies);
-        _selObjective = -1;
+        _selObjective = -1; _selBase = -1;
         Rebuild();
     }
 
@@ -1152,11 +1164,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             var lbl = new Label3D { Text = (i + 1).ToString(), FontSize = 64, PixelSize = 0.012f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = World(o.X, o.Z, 1.4f), NoDepthTest = true };
             _marks.AddChild(lbl);
         }
-        foreach (MapBaseMarkerEntry b in Draft.Bases)
+        for (int i = 0; i < Draft.Bases.Count; i++)
         {
+            MapBaseMarkerEntry b = Draft.Bases[i];
             var at = new Node3D { Position = World(b.X, b.Z) };
             _marks.AddChild(at);
-            TableLook.AddBase(at, b.Base.DiameterInches / 2, new Color(0.6f, 0.7f, 0.75f));
+            TableLook.AddBase(at, b.Base.DiameterInches / 2, i == _selBase ? HudKit.Lime : new Color(0.6f, 0.7f, 0.75f));
         }
         if (_grid) DrawGrid();
         if (_measureA is { } ma && _measureB is { } mb) DrawRuler(ma, mb);
@@ -1371,7 +1384,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
                 if (mb.Pressed) LeftDown(mb.Position, mb.ShiftPressed);
                 else if (_boxFrom != null) FinishBox(mb.Position);
-                else { bool was = _dragging; _dragging = false; _resizeCorner = -1; if (was || _selObjective >= 0 || _picked.Count > 0) Rebuild(); }
+                else { bool was = _dragging; _dragging = false; _resizeCorner = -1; if (was || _selObjective >= 0 || _selBase >= 0 || _picked.Count > 0) Rebuild(); }
                 break;
             case InputEventMouseMotion mm when _boxFrom != null:
                 UpdateBox(mm.Position);
@@ -1431,6 +1444,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 Draft.Remember();
                 Draft.Objectives.Add((x, z));
                 _selObjective = Draft.Objectives.Count - 1;
+                _selBase = -1;
                 Rebuild();
                 return;
             case ETool.Base:
@@ -1455,14 +1469,24 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         int obj = Draft.ObjectiveAt(at.X, at.Y);
         if (obj >= 0)
         {
-            _sel = null; _selObjective = obj;
+            _sel = null; _selObjective = obj; _selBase = -1;
             Draft.Remember();
             _dragging = true;
             _dragOffset = Vector2.Zero;
             Rebuild();
             return;
         }
-        _selObjective = -1;
+        int sizeBase = Draft.BaseAt(at.X, at.Y);
+        if (sizeBase >= 0)
+        {
+            _sel = null; _selObjective = -1; _selBase = sizeBase;
+            Draft.Remember();
+            _dragging = true;
+            _dragOffset = Vector2.Zero;
+            Rebuild();
+            return;
+        }
+        _selObjective = -1; _selBase = -1;
         MapPiece? hit = Draft.PieceAt(at.X, at.Y);
         if (hit == null)
         {
@@ -1517,7 +1541,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         var r = new Rect2(a, Vector2.Zero).Expand(screen);
         if (r.Size.X < 4 && r.Size.Y < 4) { Rebuild(); return; }
         if (!_boxAdd) _picked.Clear();
-        _selObjective = -1;
+        _selObjective = -1; _selBase = -1;
         foreach (MapPiece p in Draft.Pieces)
         {
             Vector3 w = World(p.X, p.Z);
@@ -1534,6 +1558,13 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         if (_selObjective >= 0 && _selObjective < Draft.Objectives.Count)
         {
             Draft.Objectives[_selObjective] = (Snap(at.X), Snap(at.Y));
+            Sync3D();
+            return;
+        }
+        if (_selBase >= 0 && _selBase < Draft.Bases.Count)
+        {
+            Draft.Bases[_selBase].X = Snap(at.X);
+            Draft.Bases[_selBase].Z = Snap(at.Y);
             Sync3D();
             return;
         }
@@ -1592,7 +1623,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             case Key.C when k.CtrlPressed: CopyPicked(); break;
             case Key.V when k.CtrlPressed: Paste(); break;
             case Key.D when k.CtrlPressed: if (!k.Echo) DuplicatePicked(); break;
-            case Key.A when k.CtrlPressed: _picked.Clear(); _picked.AddRange(Draft.Pieces); _selObjective = -1; _tool = ETool.Select; Say($"All {_picked.Count} pieces selected."); Rebuild(); break;
+            case Key.A when k.CtrlPressed: _picked.Clear(); _picked.AddRange(Draft.Pieces); _selObjective = -1; _selBase = -1; _tool = ETool.Select; Say($"All {_picked.Count} pieces selected."); Rebuild(); break;
             case Key.S when k.CtrlPressed: SaveMap(); break;
             case Key.Delete or Key.Backspace: DeleteSelected(); break;
             case Key.Escape when _picked.Count > 0 || _measureA != null: _picked.Clear(); _measureA = _measureB = null; Rebuild(); break;
