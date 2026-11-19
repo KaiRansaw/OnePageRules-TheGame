@@ -265,7 +265,7 @@ public partial class BattleTable : Node3D
         var hl = Highlight.Count == 0 ? new List<IUnit>() : Session.Table.Units.Objects.Where(u => Highlight.Contains(u.ID)).ToList();
         static string Sig(IUnit u) => u.ID.ID + (u.GetIsOnBattlefield() ? "" : "off") + string.Concat(u.Models.Where(m => m.GetIsAlive())
             .Select(m => $"{m.Position.x:0.0},{m.Position.z:0.0};"));
-        string sig = (HideSelectedRanges ? "moving|" : "") + (sel == null ? "-" : Sig(sel)) + "|" + (hover == null ? "-" : Sig(hover)) + "|" + string.Join("|", hl.Select(Sig));
+        string sig = (HideSelectedRanges ? "moving|" : "") + (FdgRaylib.Config.UserConfig.Current.View.ShowReachOverlay ? "" : "noreach|") + (sel == null ? "-" : Sig(sel)) + "|" + (hover == null ? "-" : Sig(hover)) + "|" + string.Join("|", hl.Select(Sig));
         if (sig == _outlineSig) return;
         _outlineSig = sig;
 
@@ -297,6 +297,8 @@ public partial class BattleTable : Node3D
         var list = models.ToList();
         var lines = new List<GhostLine>();
         var texts = new List<GhostText>();
+        // Settings -> Gameplay -> "Weapon reach overlay": the outlines were always drawn, whatever the switch said.
+        if (!FdgRaylib.Config.UserConfig.Current.View.ShowReachOverlay) return (lines, texts);
         var ranges = list.SelectMany(x => x.Model.Weapons).Where(w => w.RangeInches > 0)
             .GroupBy(w => w.RangeInches).OrderBy(g => g.Key).ToList();
         for (int i = 0; i < ranges.Count; i++)
