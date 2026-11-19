@@ -213,7 +213,14 @@ public sealed class ViewPreferences
 
     /// <summary>The room around the table (Kai, 2026-11-14): a <c>TableRooms</c> id, "auto" (a room matching the game,
     /// once downloaded) or "" for none.</summary>
-    public string Room { get; set; } = "auto";
+    public string Room { get; set; } = "battlefield";
+
+    /// <summary>Set once a copy has switched itself to the battlefield surroundings (2026-11-18, Kai asked for them):
+    /// a player who then picks a room keeps it.</summary>
+    public bool BattlefieldOffered { get; set; }
+
+    /// <summary>Draw a map's weather (rain, snow, fog...) over the table (Kai, 2026-11-18). Cosmetic.</summary>
+    public bool WeatherEffects { get; set; } = true;
 
     /// <summary>How bright the room behind the table is drawn (0.2 - 1.5).</summary>
     public float RoomBrightness { get; set; } = 0.7f;

@@ -27,6 +27,12 @@ public static class CreditsText
         {
             new Entry("360-degree room photos", "Poly Haven and its photographers", "CC0 - public domain", "https://polyhaven.com"),
         }),
+        new Section("Battlefield and weather", new[]
+        {
+            new Entry("Battlefield sky and ground (DaySkyHDRI071B, Ground037)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
+            new Entry("Weather particle pictures (Particle Pack)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/particle-pack"),
+            new Entry("Rain set-up based on TCA Weather System", "kS222", "MIT", "https://github.com/kS222138/TCA_Weather_System"),
+        }),
         new Section("Icons", new[]
         {
             new Entry("Game icons", "Lorc, Delapouite and sbed - game-icons.net", "CC BY 3.0 (recoloured)", "https://game-icons.net"),

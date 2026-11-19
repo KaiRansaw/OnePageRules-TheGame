@@ -95,7 +95,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         if (refreshed > 0) CallDeferred(nameof(SayRefreshed), refreshed);
         _world = new Node3D { Name = "MapWorld" };
         AddChild(_world);
-        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor));
+        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D);
         _board = new Node3D();
         _pieces = new Node3D();
         _marks = new Node3D();
@@ -104,7 +104,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _world.AddChild(_pieces);
         _world.AddChild(_dressed);
         _world.AddChild(_marks);
-        _camera = new Camera3D { Fov = 44, Current = true, Far = 2000 };
+        _camera = new Camera3D { Fov = 44, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
         _world.AddChild(_camera);
         _ghost = new MeshInstance3D { Visible = false };
         _world.AddChild(_ghost);
@@ -241,6 +241,20 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         _top.AddChild(Ui.Button("Mat: " + matName, OpenMatPicker, mats.Count > 0
             ? "The battle mat the table is drawn with - saved with the map. Players without that picture see the plain felt."
             : "No battle mats downloaded yet: Asset Lab -> Download models... -> Get Warhammer terrain.").Also(b => { b.Name = "MatButton"; b.Disabled = mats.Count == 0 && Draft.Mat.Length == 0; }));
+        // Kai, 2026-11-18: what lies past the table, and the weather over it - both saved with the map, cosmetic.
+        var horizon = new OptionButton { Name = "HorizonPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
+            TooltipText = "What lies beyond the table when Settings -> Around the table is Battlefield: the land, sky and hills. Auto follows the map's terrain style (Generate...). Only for looks." };
+        foreach (string h in FdgRaylib.Terrain.MapAtmosphere.Horizons) horizon.AddItem("Horizon: " + (h.Length == 0 ? "Auto" : h));
+        horizon.Selected = Math.Max(0, FdgRaylib.Terrain.MapAtmosphere.Horizons.ToList().IndexOf(Draft.Horizon));
+        horizon.ItemSelected += i => { Draft.Remember(); Draft.Horizon = FdgRaylib.Terrain.MapAtmosphere.Horizons[(int)i]; Atmosphere(); BuildBoard(); };
+        _top.AddChild(horizon);
+        var weather = new OptionButton { Name = "WeatherPick", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(190, 0),
+            TooltipText = "The weather over the table when the map is played (rain, snow, fog...). Only for looks; players can turn weather off in Settings." };
+        var weathers = FdgRaylib.Terrain.MapAtmosphere.Weathers;
+        foreach (var w in weathers) weather.AddItem("Weather: " + w.Name);
+        weather.Selected = Math.Max(0, weathers.ToList().FindIndex(w => w.Id == Draft.Weather));
+        weather.ItemSelected += i => { Draft.Remember(); Draft.Weather = weathers[(int)i].Id; BuildBoard(); };
+        _top.AddChild(weather);
         _top.AddChild(Ui.Grow());
         var rv = new Button { Name = "RulesView", Text = "Rules view", ToggleMode = true, ButtonPressed = _rulesView, FocusMode = FocusModeEnum.None,
             TooltipText = "Hide the scenery and colour every piece by what it does." };
@@ -863,7 +877,19 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null);
+        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId);
+        Weather.Add(_board, W, D, Draft.Weather);
+    }
+
+    /// <summary>The horizon the map shows: its own pick, else the style it was generated in.</summary>
+    private string HorizonId => Draft.Horizon.Length > 0 ? Draft.Horizon : Draft.GeneratedFrom;
+
+    /// <summary>Re-points the sky and haze after the horizon or table size changes.</summary>
+    private void Atmosphere()
+    {
+        if (TableLook.RoomFor(_checkFor) != null || !Horizon.On) return;
+        if (_world.GetNodeOrNull<WorldEnvironment>("Environment") is { Environment: { } env })
+            Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(HorizonId), W, D);
     }
 
     private void Sync3D()
@@ -1016,6 +1042,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
     }
 
     // ================================================================== camera
+
+    /// <summary>For scripted screenshot checks: sets the camera's tilt (degrees) and distance (inches).</summary>
+    public void SetView(float pitch, float distance) { _pitch = pitch; _distance = distance; _topView = false; ApplyCamera(); }
 
     private void ApplyCamera()
     {

@@ -19,6 +19,8 @@ public static class TableRooms
     public const string Resolution = "4k";
     public const string Auto = "auto";
     public const string None = "";
+    /// <summary>No room: the land goes on past the table to the map's horizon (Kai, 2026-11-18 - the Total War look).</summary>
+    public const string Battlefield = "battlefield";
 
     public enum EKind { Cozy, Grimdark, Fantasy }
 
@@ -57,7 +59,7 @@ public static class TableRooms
     /// </summary>
     public static Room? Pick(string? setting, FDG.EGameSystem? system, string? folder = null)
     {
-        if (string.IsNullOrEmpty(setting)) return null;
+        if (string.IsNullOrEmpty(setting) || setting == Battlefield) return null;
         if (setting != Auto) return ById(setting) is { } r && Have(r, folder) ? r : null;
         if (system == null) return null;
         bool fantasy = system.Value is FDG.EGameSystem.AgeOfFantasy or FDG.EGameSystem.AoFSkirmish or FDG.EGameSystem.AoFQuest;

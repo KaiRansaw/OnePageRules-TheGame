@@ -53,7 +53,7 @@ public static class TableLook
     /// 360-degree photo is drawn all around the table instead of the dark background; the table's own lighting stays the
     /// same, so the rules colours read the same in every room.
     /// </summary>
-    public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null)
+    public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null, string? horizon = null, float tableW = 72, float tableD = 48)
     {
         var env = new Godot.Environment
         {
@@ -67,6 +67,8 @@ public static class TableLook
             env.Sky = new Sky { SkyMaterial = new PanoramaSkyMaterial { Panorama = pano } };
             env.BackgroundEnergyMultiplier = Mathf.Clamp(FdgRaylib.Config.UserConfig.Current.View.RoomBrightness, 0.2f, 1.5f);
         }
+        if (room == null && Battle.Horizon.On)
+            Battle.Horizon.SkyAndHaze(env, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), tableW, tableD);
         parent.AddChild(new WorldEnvironment { Environment = env, Name = "Environment" });
         var sun = new DirectionalLight3D { LightEnergy = 1.2f, LightColor = new Color(1f, 0.95f, 0.88f), ShadowEnabled = true, Name = "Sun" };
         sun.RotationDegrees = new Vector3(-58, 32, 0);
@@ -81,11 +83,14 @@ public static class TableLook
     /// <paramref name="mat"/> is the map's battle mat (<c>wh-mat:&lt;id&gt;</c>): its picture replaces the felt, with the
     /// same grid drawn over it; a computer without the picture gets the felt.
     /// </summary>
-    public static void AddBoard(Node parent, float w, float d, string? mat = null, bool floor = true)
+    public static void AddBoard(Node parent, float w, float d, string? mat = null, bool floor = true, string? horizon = null)
     {
+        // The battlefield (Settings -> Around the table): no table edge or floor - the land runs on to the horizon.
+        bool battlefield = Battle.Horizon.On;
+        if (battlefield && parent is Node3D p3) Battle.Horizon.AddLand(p3, w, d, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon));
         // The dark floor under the table; left out in a room, whose own floor shows instead.
-        if (floor) Mesh(parent, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
-        Mesh(parent, new BoxMesh { Size = new Vector3(w + 2, 3, d + 2) }, Mat(new Color(0.09f, 0.075f, 0.06f), 0.6f), new Vector3(0, -1.55f, 0));
+        if (floor && !battlefield) Mesh(parent, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
+        if (!battlefield) Mesh(parent, new BoxMesh { Size = new Vector3(w + 2, 3, d + 2) }, Mat(new Color(0.09f, 0.075f, 0.06f), 0.6f), new Vector3(0, -1.55f, 0));
         Texture2D cloth = MatTexture(mat, w, d) ?? Felt(w, d);
         Mesh(parent, new PlaneMesh { Size = new Vector2(w, d) }, new StandardMaterial3D { AlbedoTexture = cloth, Roughness = 0.95f }, new Vector3(0, 0.01f, 0));
     }

@@ -72,6 +72,8 @@ public sealed class MapDraft
     public string GeneratedFrom = "";
     /// <summary>The battle mat the table is drawn with (<c>wh-mat:&lt;id&gt;</c>), or "" for the plain felt.</summary>
     public string Mat = "";
+    /// <summary>The horizon theme ("" = follow GeneratedFrom) and the weather (""= clear) - TerrainLayoutFile.Horizon / .Weather.</summary>
+    public string Horizon = "", Weather = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -110,6 +112,8 @@ public sealed class MapDraft
         TableH = f.TableHeightInches;
         GeneratedFrom = f.GeneratedFrom ?? "";
         Mat = f.Mat ?? "";
+        Horizon = f.Horizon ?? "";
+        Weather = f.Weather ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -158,6 +162,8 @@ public sealed class MapDraft
         Name = Name.Trim(),
         GeneratedFrom = GeneratedFrom,
         Mat = Mat,
+        Horizon = Horizon,
+        Weather = Weather,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry

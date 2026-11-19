@@ -75,6 +75,13 @@ public partial class App : Node
 
         // A newly added UI theme goes on once by itself, so a pulled build shows the pack being tried (Hud.Skin).
         string newest = Hud.Skin.All[^1].Id;
+        if (!UserConfig.Current.View.BattlefieldOffered)
+        {
+            // Kai, 2026-11-18: the endless battlefield is the new look - switched on once; a room picked later sticks.
+            UserConfig.Current.View.BattlefieldOffered = true;
+            UserConfig.Current.View.Room = FdgRaylib.Terrain.TableRooms.Battlefield;
+            UserConfig.Save();
+        }
         if (UserConfig.Current.View.UiSkinOffered != newest)
         {
             UserConfig.Current.View.UiSkin = newest;

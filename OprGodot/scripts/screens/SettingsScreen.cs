@@ -104,6 +104,8 @@ public partial class SettingsScreen : Control
             View.ShowAllTokens, on => View.ShowAllTokens = on));
         rows.AddChild(Check("Victory fireworks", "Fireworks in the winner's colours behind the Game Over card.",
             View.ShowVictoryFireworks, on => View.ShowVictoryFireworks = on));
+        rows.AddChild(Check("Weather effects", "Draw a map's weather - rain, snow, fog, a thunderstorm... - over the table. Only for looks; turn it off on a slow computer.",
+            View.WeatherEffects, on => View.WeatherEffects = on));
         RoomRows(rows);
     }
 
@@ -122,6 +124,7 @@ public partial class SettingsScreen : Control
                 pick.SetItemDisabled(pick.ItemCount - 1, disabled);
                 ids.Add(id);
             }
+            Add(TableRooms.Battlefield, "Battlefield - the land goes on past the table");
             Add(TableRooms.Auto, "Auto - grimdark for GF games, fantasy for AoF");
             Add(TableRooms.None, "None - the plain dark background");
             foreach (var r in TableRooms.All)
@@ -133,8 +136,8 @@ public partial class SettingsScreen : Control
         }
         Fill();
         pick.ItemSelected += i => { View.Room = ids[(int)i]; UserConfig.Save(); };
-        rows.AddChild(Row("Room around the table",
-            "A 360-degree photo of a room, all around the battle table and the Map Maker. Auto picks a downloaded room that suits the game. Takes effect from the next game.", pick));
+        rows.AddChild(Row("Around the table",
+            "Battlefield: no table edge - the ground runs on to the map's horizon (its sky, hills and haze). Or a 360-degree photo of a room around the table. Auto picks a downloaded room that suits the game. Takes effect from the next game.", pick));
         rows.AddChild(Slider("Room brightness", "How bright the room behind the table is. The table itself is lit the same either way.",
             View.RoomBrightness, 0.2, 1.5, v => View.RoomBrightness = v, "x"));
 

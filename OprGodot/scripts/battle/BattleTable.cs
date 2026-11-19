@@ -138,7 +138,7 @@ public partial class BattleTable : Node3D
         _modelRoot = new Node3D { Name = "Models" };
         AddChild(_terrainRoot);
         AddChild(_modelRoot);
-        Camera = new Camera3D { Fov = 44, Current = true, Far = 2000 };
+        Camera = new Camera3D { Fov = 44, Current = true, Far = Horizon.On ? Horizon.Reach * 2.5f : 2000 };
         AddChild(Camera);
         LoadUnitModels();
     }
@@ -534,13 +534,17 @@ public partial class BattleTable : Node3D
     private FdgRaylib.Terrain.TableRooms.Room? _room;
     private FdgRaylib.Terrain.TableRooms.Room? Room => _room ??= TableLook.RoomFor(Session.Lobby.Vm.GameSystem);
 
-    private void Environment() => TableLook.AddLighting(this, Room);
+    private void Environment() => TableLook.AddLighting(this, Room, Session.Lobby.Vm.MapHorizon, W, D);
 
     private static StandardMaterial3D Mat(Color c, float rough = 0.85f, Color? emit = null, float emitE = 1f) => TableLook.Mat(c, rough, emit, emitE);
 
     private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos) => TableLook.Mesh(parent, mesh, mat, pos);
 
-    private void Board() => TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null);
+    private void Board()
+    {
+        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon);
+        Weather.Add(this, W, D, Session.Lobby.Vm.MapWeather);
+    }
 
     // ------------------------------------------------------------------ terrain
     private void SyncTerrain()

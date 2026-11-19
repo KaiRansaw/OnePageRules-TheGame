@@ -376,6 +376,21 @@ public partial class ScriptedRun : Node
             }
             // "trimshot:<model file>|<png>" pictures a terrain model with its scenic base cut off (TerrainBaseTrim checks).
             if (name.StartsWith("trimshot:")) { TrimShot(name); return; } // follow with wait:N
+            // "option:WeatherPick|2" picks item 2 of the drop-down named WeatherPick, as if chosen by hand.
+            if (name.StartsWith("option:") && name[7..].Split('|') is [var optName, var optIdx] && int.TryParse(optIdx, out int oi)
+                && GetTree().Root.FindChild(optName, true, false) is OptionButton ob)
+            {
+                ob.Select(oi);
+                ob.EmitSignal(OptionButton.SignalName.ItemSelected, (long)oi);
+                _wait = 30;
+                return;
+            }
+            // "mapcam:12|120" tilts the Map Maker's camera to 12 degrees, 120" back (horizon checks).
+            if (name.StartsWith("mapcam:") && name[7..].Split('|') is [var mp, var md] && Find<Maps.MapEditorScreen>(GetTree().Root) is { } mapEd)
+            {
+                mapEd.SetView(float.Parse(mp, System.Globalization.CultureInfo.InvariantCulture), float.Parse(md, System.Globalization.CultureInfo.InvariantCulture));
+                return;
+            }
             // "selectunit:Hive Guardians" selects the first unit with that name, so its card shows (screenshot checks).
             if (name.StartsWith("selectunit:"))
             {
