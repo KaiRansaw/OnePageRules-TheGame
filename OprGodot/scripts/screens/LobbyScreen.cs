@@ -189,6 +189,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
     {
         Session.Tick();
         TakeLaunch();
+        FitTabs();
         if (_autoLaunch > 0)
         {
             _autoLaunch -= delta;
@@ -279,6 +280,21 @@ public partial class LobbyScreen : Control, Hud.ILooked
             AddTab("Advanced", "Optional rules from this game's Advanced Rulebook.", rows => AdvancedTab(rows, locked));
         if (Vm.HasHostPrivileges) AddTab("Connect", "The address friends type into Join a Game to come to this lobby.", ConnectTab);
         _tabs.CurrentTab = Math.Min(current, _tabs.GetTabCount() - 1);
+    }
+
+    private int _tabFont;
+
+    /// <summary>
+    /// Every settings tab stays in view. A tab bar that runs out of room hides its last tabs behind two small arrows, and
+    /// with the Fantasy look's wider letters that was "Connect" - the address friends type to join. The tab letters step
+    /// down a size at a time until all the tabs fit (a frame or two after the lobby opens).
+    /// </summary>
+    private void FitTabs()
+    {
+        if (!IsVisibleInTree() || !_tabs.GetTabBar().GetOffsetButtonsVisible()) return;
+        if (_tabFont == 0) _tabFont = _tabs.GetThemeFontSize("font_size");
+        if (_tabFont <= 13) return;
+        _tabs.AddThemeFontSizeOverride("font_size", --_tabFont);
     }
 
     private void AddTab(string name, string tooltip, Action<VBoxContainer> build)
