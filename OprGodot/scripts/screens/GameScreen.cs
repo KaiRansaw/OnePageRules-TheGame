@@ -269,8 +269,10 @@ public partial class GameScreen : Control, ILooked, IBackGuard, IOwnBackdrop
         int lists = 0;
         if (ArmyPaths.FolderPath is { } armies)
         {
+            // Counted the way the lobby finds them (ArmyCatalog scans sub-folders too): lists are filed in a folder per
+            // army, so counting only the top of the folder said "4 saved lists" where the lobby offers 26.
             string folder = Path.Combine(armies, ArmyPaths.FolderNameFor(system));
-            if (Directory.Exists(folder)) lists = Directory.GetFiles(folder, "*.fdgarmy").Length;
+            if (Directory.Exists(folder)) lists = Directory.EnumerateFiles(folder, "*.fdgarmy", SearchOption.AllDirectories).Count();
         }
 
         string listWord = GameSystemInfo.IsQuest(system) ? "enemy forces" : "saved lists";
