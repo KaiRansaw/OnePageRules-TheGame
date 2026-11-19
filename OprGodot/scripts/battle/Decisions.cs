@@ -173,7 +173,8 @@ internal static class Book
         if (shooters.Count == 0) return "This unit has no shooting weapons - holding ends its activation.";
         foreach (IUnit u in s.Session.Table.Units.Objects)
         {
-            if (s.Session.IsMine(u.PlayerID) || !u.GetIsOnBattlefield()) continue;
+            // Enemies by team, not "not this computer's": in a hot-seat game both armies are this computer's.
+            if (!s.Session.IsEnemy(unit.PlayerID, u.PlayerID) || !u.GetIsOnBattlefield()) continue;
             foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
                 foreach (IModel m in shooters)
                 {
@@ -269,7 +270,9 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
-        if (s.Table.UnitAt(at) is not { } unit || !s.Session.IsMine(unit.PlayerID)) return false;
+        // Only the units of the player being asked: in a hot-seat game the other player's units are this computer's
+        // too, and a click on one of them is a look at it, not a pick.
+        if (s.Table.UnitAt(at) is not { } unit || !unit.PlayerID.Equals(_r.TargetPlayerID)) return false;
         s.SelectUnit(unit);
         UnitPicked(s, unit);
         return true;
@@ -359,7 +362,7 @@ public sealed class ActionDecision : Decision<string>
         var mine = me.Models.Where(m => m.GetIsAlive()).ToList();
         foreach (IUnit u in _s.Session.Table.Units.Objects)
         {
-            if (_s.Session.IsMine(u.PlayerID) || !u.GetIsOnBattlefield()) continue;
+            if (!_s.Session.IsEnemy(me.PlayerID, u.PlayerID) || !u.GetIsOnBattlefield()) continue;
             foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
                 foreach (IModel m in mine)
                 {
@@ -465,14 +468,16 @@ public sealed class ActionDecision : Decision<string>
 
     public override void UnitPicked(BattleScreen s, IUnit unit)
     {
-        if (!_r.AllowCancel || unit.ID.Equals(_r.ActivatingUnitID) || !s.Session.IsMine(unit.PlayerID)) return;
+        // Another unit of the SAME player (hot-seat: the other player's units are this computer's too - clicking one
+        // to look at it must not throw this unit's action menu away).
+        if (!_r.AllowCancel || unit.ID.Equals(_r.ActivatingUnitID) || !unit.PlayerID.Equals(_r.TargetPlayerID)) return;
         BattleResolvers.PendingActivation = unit;
         Complete(null!);
     }
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
-        if (s.Table.UnitAt(at) is not { } unit || !s.Session.IsMine(unit.PlayerID) || unit.ID.Equals(_r.ActivatingUnitID)) return false;
+        if (s.Table.UnitAt(at) is not { } unit || !unit.PlayerID.Equals(_r.TargetPlayerID) || unit.ID.Equals(_r.ActivatingUnitID)) return false;
         UnitPicked(s, unit);
         return _r.AllowCancel;
     }
@@ -762,7 +767,7 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         IUnit me = Unit;
         var mine = me.Models.Where(m => m.GetIsAlive()).ToList();
         IUnit? nearest = mine.Count == 0 ? null : s.Session.Table.Units.Objects
-            .Where(u => !s.Session.IsMine(u.PlayerID) && u.GetIsOnBattlefield() && u.Models.Any(m => m.GetIsAlive()))
+            .Where(u => s.Session.IsEnemy(me.PlayerID, u.PlayerID) && u.GetIsOnBattlefield() && u.Models.Any(m => m.GetIsAlive()))
             .OrderBy(u => u.Models.Where(m => m.GetIsAlive()).Min(m => Mathf.Pow(m.Position.x - mine[0].Position.x, 2) + Mathf.Pow(m.Position.z - mine[0].Position.z, 2)))
             .FirstOrDefault();
         MovePlanner.Plan? plan = nearest == null ? null
@@ -774,7 +779,8 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
     /// <summary>The move through the turn points so far, then to the pointer (or into contact with an enemy there).</summary>
     private (MovePlanner.Plan? Plan, bool Contact) PlanFor(BattleScreen s, Vector2 at)
     {
-        IUnit? enemy = s.Table.UnitAt(at) is { } target && !s.Session.IsMine(target.PlayerID) && !target.ID.Equals(Unit.ID) ? target : null;
+        // An enemy by team (hot-seat: the other player's units are this computer's too, and must still be chargeable).
+        IUnit? enemy = s.Table.UnitAt(at) is { } target && s.Session.IsEnemy(Unit.PlayerID, target.PlayerID) && !target.ID.Equals(Unit.ID) ? target : null;
         // A charge goes into contact with the enemy pointed at; the table can be clicked first to go round something.
         if (enemy != null && _kind is MoveKind.Charge or null) return (MovePlanner.IntoContact(_r, s.Session.Table, _via, enemy, Cap), true);
         // Advance and Rush may not end in contact (that is a charge).
@@ -1121,7 +1127,9 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
 
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
-        if (s.Table.UnitAt(at) is not { } unit || s.Session.IsMine(unit.PlayerID)) return false;
+        // The shooter's enemies by team. This asked "is it one of this computer's players' units" - so with two people
+        // on one computer no unit could ever be picked as a target, and nothing could be shot.
+        if (s.Table.UnitAt(at) is not { } unit || !s.Session.IsEnemy(Shooter.PlayerID, unit.PlayerID)) return false;
         if (!At(unit.ID).Any())
         {
             string why = _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats)

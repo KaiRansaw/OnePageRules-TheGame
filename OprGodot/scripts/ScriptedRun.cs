@@ -148,6 +148,14 @@ public partial class ScriptedRun : Node
                 GD.Print("ScriptedRun: every seat is a bot");
                 return;
             }
+            // "allplayers" hands every bot seat to a person at this computer (hot-seat: two players, one PC).
+            if (name == "allplayers" && Find<LobbyScreen>(GetTree().Root) is { } seatLobby)
+            {
+                foreach (var p in seatLobby.Session.Vm.PlayerInfos.ToList())
+                    if (p.PlayerType == FDG.Players.EPlayerType.AI) seatLobby.Session.ToggleBot(p);
+                GD.Print("ScriptedRun: every seat is a local player");
+                return;
+            }
             // "army2:<file>" gives the SECOND seat that army (a bot opponent for a scripted game).
             if (name.StartsWith("army2:") && Find<LobbyScreen>(GetTree().Root) is { } lobby2 && lobby2.Session.Vm.PlayerInfos.Count > 1)
             {
@@ -657,8 +665,11 @@ public partial class ScriptedRun : Node
         FDG.IUnit? Pick() => battle.SelectedUnit ?? mine.FirstOrDefault();
         Vector3? world = null;
         if (step == "clickmine") world = mine.Select(u => battle.Table.UnitCentre(u)).FirstOrDefault(c => c != null);
+        // "clicktarget": the open shooting decision's first enemy in reach (whoever owns it - a hot-seat check).
+        else if (step == "clicktarget" && battle.Decisions.Current is Battle.ShootDecision { AnyTarget: { } shootAt })
+            world = battle.Table.UnitCentre(shootAt);
         else if (step == "clickenemy" && Pick() is { } me && battle.Table.UnitCentre(me) is { } from)
-            world = battle.Session.Table.Units.Objects.Where(u => !battle.Session.IsMine(u.PlayerID))
+            world = battle.Session.Table.Units.Objects.Where(u => battle.Session.IsEnemy(me.PlayerID, u.PlayerID))
                 .Select(u => battle.Table.UnitCentre(u)).Where(c => c != null).OrderBy(c => c!.Value.DistanceTo(from)).FirstOrDefault();
         else if (step.StartsWith("clickat:") || step.StartsWith("hoverat:"))
         {

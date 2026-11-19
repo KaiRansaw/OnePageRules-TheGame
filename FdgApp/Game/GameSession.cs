@@ -117,6 +117,14 @@ public sealed class GameSession
 
     public bool IsMine(PlayerID id) => Game.LocalPlayerIDs.Contains(id);
 
+    /// <summary>
+    /// Whether <paramref name="other"/> is on the other side from <paramref name="me"/> - by team, the way the engine
+    /// judges it. "Not one of this computer's players" (<see cref="IsMine"/>) is NOT the same thing: with two people
+    /// on one computer (hot-seat) both armies are this computer's, and an ally played by a bot or a friend is not.
+    /// Anything that asks "can this unit shoot / charge that one" asks this.
+    /// </summary>
+    public bool IsEnemy(PlayerID me, PlayerID other) => FdgRaylib.Placement.TeamAwareness.IsEnemy(Table, me, other);
+
     /// <summary>The Quest campaign mission this game is, or null.</summary>
     public FdgRaylib.Quest.QuestCampaignLaunch? Campaign => Lobby.Campaign;
 
