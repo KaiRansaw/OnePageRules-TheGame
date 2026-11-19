@@ -1919,14 +1919,41 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // RoundLimit, not progress.TotalRounds: before round 1 that always says 4, so a 6-round game's set-up read
         // "Ends after round 4." here while the round counter beside it read "/6".
         int lastRound = RoundLimit(progress);
+        // Horde and the Quest games have panels of their own (Kai, 2026-11-19 - FdgApp ModePanel decides what is on them).
+        List<ModePanel.Row>? modeRows = ModePanel.For(Session.Table, Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.GameMode);
+        Dictionary<PlayerID, int>? vpNow = VictoryPoints();
         string sig = $"{lastRound}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
             + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"
-            + string.Join(",", concedeSeats.Select(c => $"{c.Conceded}{c.Pending}"));
+            + string.Join(",", concedeSeats.Select(c => $"{c.Conceded}{c.Pending}")) + "|"
+            + (vpNow == null ? "" : string.Join(",", vpNow.Values)) + "|" + ModePanel.Signature(modeRows);
         if (sig == _missionSig) return;
         _missionSig = sig;
         // Removed now, not at the end of the frame: a new button can't take the name of one still waiting to go.
         foreach (Node c in _missionBody.GetChildren()) { _missionBody.RemoveChild(c); c.QueueFree(); }
         var vm = Session.Lobby.Vm;
+        if (modeRows != null)
+        {
+            foreach (ModePanel.Row row in modeRows)
+            {
+                var (size, colour, font) = row.Style switch
+                {
+                    ModePanel.EStyle.Title => (16, HudKit.Fg, HudKit.Bold),
+                    ModePanel.EStyle.Book => (12, HudKit.Dim, HudKit.Medium),
+                    ModePanel.EStyle.Dim => (13, HudKit.Dim, HudKit.Semi),
+                    ModePanel.EStyle.Good => (14, HudKit.Lime, HudKit.Semi),
+                    ModePanel.EStyle.Warn => (14, HudKit.Gold, HudKit.Semi),
+                    _ => (14, HudKit.Fg, HudKit.Semi),
+                };
+                var label = HudKit.Text(row.Text, size, colour, font);
+                label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+                label.CustomMinimumSize = new Vector2(10, 0);
+                if (row.Tip != null) { label.TooltipText = row.Tip; label.MouseFilter = MouseFilterEnum.Stop; }
+                _missionBody.AddChild(label);
+            }
+            AddConcede(concedeSeats, progress.RoundCount);
+            _mission.SetSummary(string.Join("  -  ", modeRows.Where(r => r.Style != ModePanel.EStyle.Book).Skip(1).Take(2).Select(r => r.Text)));
+            return;
+        }
         // The standard game's text only fits a standard game. Horde and the Quest games are not won by holding objectives
         // (Horde's book: the mission ends when the defenders are all Shaken or destroyed, every objective is destroyed, or
         // round 12 is finished), the Quest games have no round limit, and the Mission Cards only apply as the engine says
