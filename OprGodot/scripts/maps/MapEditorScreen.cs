@@ -1043,7 +1043,12 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         pick.ItemSelected += i => text.Text = TerrainBook.ThemeText(themes[i], _checkFor);
         col.AddChild(pick);
         col.AddChild(text);
-        col.AddChild(ForgeWidgets.Wrapped($"Takes {TerrainBook.FixedCount(_checkFor)} pieces, then {TerrainBook.ExtraDice(_checkFor, themes[0])}D3 more rolled on 2D6, as the book says. Where they go is up to the editor: spread out, 6\" apart where the table allows.", 13, HudKit.Dim));
+        // The count follows the picked theme: Firefight's Death Planets take 4D3 where its other themes take 6D3, and the
+        // line used to say the first theme's number whatever was picked.
+        string Takes(TerrainBook.ETheme t) => $"Takes {TerrainBook.FixedCount(_checkFor)} pieces, then {TerrainBook.ExtraDice(_checkFor, t)}D3 more rolled on 2D6, as the book says. Where they go is up to the editor: spread out, 6\" apart where the table allows.";
+        var takes = ForgeWidgets.Wrapped(Takes(themes[0]), 13, HudKit.Dim);
+        pick.ItemSelected += i => takes.Text = Takes(themes[i]);
+        col.AddChild(takes);
         // Kai, 2026-11-14: the Warhammer sets as maps - the generated table dressed with one set's models.
         var lib = WarhammerModels.Library;
         var whSets = lib?.Sets.Where(kv => lib.Placeable.Any(e => e.Set == kv.Key && e.Measured)).OrderBy(kv => kv.Key).ToList() ?? new();
