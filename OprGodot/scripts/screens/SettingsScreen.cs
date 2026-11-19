@@ -177,9 +177,8 @@ public partial class SettingsScreen : Control
     {
         // "Game speed" is not offered (Kai, 2026-11-19: hide it for now): the Godot battle plays at one speed and nothing
         // read the slider. The saved value (View.GameSpeed) stays for the day it does.
-        rows.AddChild(Slider("Dice popup time",
-            "How long a dice roll stays on screen after it lands. 1.00x is normal. Hovering the dice always holds them.",
-            View.DiceLingerScale, 1.0 / 3.0, 2, v => View.DiceLingerScale = v, "x"));
+        // "Dice popup time" is not offered either (Kai, 2026-11-19: hide it for now) - nothing in the Godot battle read it.
+        // The saved value (View.DiceLingerScale) stays.
         rows.AddChild(Check("Weapon reach overlay",
             "Shade where a unit's weapons can reach - the unit you are moving or placing, or any unit you hover.",
             View.ShowReachOverlay, on => View.ShowReachOverlay = on));
