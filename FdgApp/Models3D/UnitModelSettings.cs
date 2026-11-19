@@ -27,6 +27,26 @@ public sealed class UnitModelSettings
     /// <summary>Tall the finished model stands, in millimetres, foot to top. 0 = keep the file's own size (1 file unit = 1 inch).</summary>
     public float HeightMm { get; set; }
 
+    /// <summary>
+    /// Bigger or smaller than its real size, in percent (100 = as sculpted). Kai, 2026-11-19: a model made for a 65mm base
+    /// can look lost on the 120mm base Army Forge gives its unit - this lets him grow it, model by model. Applied on top
+    /// of <see cref="HeightMm"/>; sent to GitHub with the rest of the settings.
+    /// </summary>
+    public float SizePercent { get; set; } = 100;
+
+    /// <summary>
+    /// The base the model was sculpted on (Kai, 2026-11-19, option A: the game's base - Army Forge's size - is the one the
+    /// rules measure, so the model's own base is hidden). <see cref="OwnBaseAuto"/> = find it and hide it
+    /// (<see cref="OwnBaseFinder"/>); 0 = keep the model as it is; more = hide this many mm from the bottom up.
+    /// </summary>
+    public float OwnBaseMm { get; set; } = OwnBaseAuto;
+
+    /// <summary><see cref="OwnBaseMm"/>: find the model's own base and hide it.</summary>
+    public const float OwnBaseAuto = -1;
+
+    /// <summary><see cref="SizePercent"/> as a multiplier, kept to a sane range.</summary>
+    [JsonIgnore] public float SizeFactor => Math.Clamp(SizePercent <= 0 ? 100 : SizePercent, 25, 400) / 100f;
+
     /// <summary>Base it is shown on, in millimetres across (round). 0 = no base.</summary>
     public float BaseMm { get; set; } = 25;
 

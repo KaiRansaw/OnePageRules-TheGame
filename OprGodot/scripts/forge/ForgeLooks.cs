@@ -546,7 +546,10 @@ public partial class LookPreview : SubViewportContainer
         if (s.BaseMm > 0) TableLook.AddBase(holder, s.BaseMm / UnitModelSettings.MmPerInch / 2, HudKit.Lime);
         var pivot = new Node3D();
         holder.AddChild(pivot);
-        var body = (Node3D)a.Model.Duplicate();
+        // As on the table: the model's own sculpted base hidden, standing on the game's base (Kai, 2026-11-19).
+        Node3D source = OwnBase.Strip(a.Model, s).Model;
+        var body = (Node3D)source.Duplicate();
+        if (source != a.Model) source.Free();
         pivot.AddChild(body);
         Shown = a.Model; // the unpainted original: the painter reads the model's own colours from it
         ModelPainter.Apply(body, paint);

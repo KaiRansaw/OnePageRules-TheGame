@@ -188,8 +188,14 @@ public partial class BattleTable : Node3D
         if (_modelFiles.TryGetValue(file, out var a)) return a;
         a = Lab.AssetLoader.Load(file);
         if (a.Model == null) { GD.PrintErr($"Unit model not usable: {file}: {a.Error}"); a = null; }
-        _modelFiles[file] = a;
         _modelSettings[file] = UnitModelSettings.Load(file) ?? new UnitModelSettings { HeightMm = 0 };
+        // The model's own sculpted base goes: it stands on the game's base, Army Forge's size (Kai, 2026-11-19).
+        if (a?.Model is { } loaded && !UnitModelSettings.IsTerrain(file))
+        {
+            Node3D stripped = Lab.OwnBase.Strip(loaded, _modelSettings[file]).Model;
+            if (stripped != loaded) { loaded.Free(); a.Model = stripped; }
+        }
+        _modelFiles[file] = a;
         return a;
     }
 

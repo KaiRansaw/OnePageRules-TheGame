@@ -41,7 +41,7 @@ public static class ModelPlacement
         bool tilted = s.TiltForwardDegrees % 90 != 0 || s.TiltSideDegrees % 90 != 0;
         Aabb raw = (tilted ? AssetLoader.ExactBounds(body, holder) : AssetLoader.Bounds(body, holder)) ?? new Aabb(Vector3.Zero, Vector3.One);
         float h = Mathf.Max(raw.Size.Y, 1e-4f);
-        float k = s.HeightMm > 0 ? s.HeightMm / UnitModelSettings.MmPerInch / h : 1f;
+        float k = (s.HeightMm > 0 ? s.HeightMm / UnitModelSettings.MmPerInch / h : 1f) * s.SizeFactor; // Size slider (Kai, 2026-11-19)
         Vector3 centre = raw.GetCenter() * k;
         float footY = (s.BaseMm > 0 ? TableLook.BaseTop : 0f) - raw.Position.Y * k;
         Vector3 offset = s.CentreOnBase ? new Vector3(-centre.X, footY, -centre.Z) : new Vector3(0, footY, 0);

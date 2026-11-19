@@ -37,7 +37,15 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
     private LineEdit _filter = null!;
     private Label _folderLabel = null!, _info = null!, _fps = null!, _saved = null!, _hint = null!;
     private OptionButton _base = null!, _up = null!, _copies = null!, _seat = null!, _light = null!, _anim = null!;
-    private SpinBox _height = null!, _yaw = null!, _tiltFwd = null!, _tiltSide = null!;
+    private SpinBox _height = null!, _yaw = null!, _tiltFwd = null!, _tiltSide = null!, _ownCut = null!;
+    private HSlider _size = null!;
+    private Label _sizeValue = null!, _gameBaseLabel = null!;
+    private OptionButton _ownBase = null!;
+    /// <summary>The open model's unit's base from Army Forge - what the table stands it on - or null when unknown.</summary>
+    private float? _gameBaseMm;
+    /// <summary>What the last rebuild found of the model's own base.</summary>
+    private OwnBase.Result _own;
+    private List<FDG.ArmyBuilding.BookFile>? _books;
     private CheckBox _centre = null!, _showRefs = null!, _showToken = null!, _spin = null!;
     private Control _hudPreview = null!;
     private VBoxContainer _hudSlots = null!;
@@ -216,6 +224,32 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         _height.ValueChanged += v => { if (!_quiet) { _settings.HeightMm = (float)v; Rebuild(); } };
         Row(grid, "Height", _height);
 
+        // Kai, 2026-11-19: grow or shrink a model that looks lost on (or too big for) its Army Forge base.
+        var sizeRow = new HBoxContainer();
+        sizeRow.AddThemeConstantOverride("separation", 6);
+        _size = new HSlider { Name = "Size", MinValue = 50, MaxValue = 250, Step = 1, Value = 100, SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter, TooltipText = "Bigger or smaller than it was sculpted. 100% = its real size. The game's base stays the same - this only changes the model on it." };
+        _sizeValue = HudKit.Text("100%", 14, HudKit.Fg, HudKit.Semi);
+        _sizeValue.CustomMinimumSize = new Vector2(48, 0);
+        _size.ValueChanged += v => { _sizeValue.Text = $"{v:0}%"; if (!_quiet) { _settings.SizePercent = (float)v; Rebuild(); } };
+        sizeRow.AddChild(_size);
+        sizeRow.AddChild(_sizeValue);
+        sizeRow.AddChild(Btn("SizeReset", "100%", "Back to its real size.", () => _size.Value = 100));
+        Row(grid, "Size", sizeRow);
+
+        // Kai, 2026-11-19 (option A): the model's own sculpted base is hidden; it stands on the game's base.
+        var ownRow = new HBoxContainer();
+        ownRow.AddThemeConstantOverride("separation", 6);
+        _ownBase = new OptionButton { Name = "OwnBase", SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "The base the model was sculpted on. Hide: the game finds it and cuts it off, so the model stands on the game's base. Keep: leave the model as it is. Cut at: you say how many mm from the bottom to cut." };
+        _ownBase.AddItem("Hide (auto)");
+        _ownBase.AddItem("Keep it");
+        _ownBase.AddItem("Cut at");
+        _ownBase.ItemSelected += i => { if (!_quiet) { _settings.OwnBaseMm = i switch { 0 => UnitModelSettings.OwnBaseAuto, 1 => 0, _ => Math.Max(0.5f, _own.CutMm > 0 ? _own.CutMm : 3) }; FillSettingBoxes(); Rebuild(); } };
+        ownRow.AddChild(_ownBase);
+        _ownCut = new SpinBox { Name = "OwnBaseCut", MinValue = 0.5, MaxValue = 30, Step = 0.5, Suffix = "mm", CustomMinimumSize = new Vector2(96, 0), TooltipText = "How high the model's own base is: everything below this, from the bottom up, is cut off." };
+        _ownCut.ValueChanged += v => { if (!_quiet && _settings.OwnBaseMm > 0) { _settings.OwnBaseMm = (float)v; Rebuild(); } };
+        ownRow.AddChild(_ownCut);
+        Row(grid, "Own base", ownRow);
+
         _up = new OptionButton { Name = "UpAxis", TooltipText = "Which way the file thinks is up. If the model lies on its back or face, try Z up or Z down." };
         foreach (string s in new[] { "Y up (standard)", "Z up", "Z down", "Upside down", "X up", "X down" }) _up.AddItem(s);
         _up.ItemSelected += i => { if (!_quiet) { _settings.UpAxis = (EUpAxis)(int)i; Rebuild(); } };
@@ -240,6 +274,9 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         grid.AddChild(HudKit.Gap(0));
         grid.AddChild(_centre);
         left.AddChild(grid);
+        _gameBaseLabel = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi);
+        _gameBaseLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        left.AddChild(_gameBaseLabel);
 
         var saveRow = new HBoxContainer();
         saveRow.AddThemeConstantOverride("separation", 6);
@@ -437,6 +474,10 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         if (idx >= 0) _files.Select(idx);
 
         _settings = UnitModelSettings.Load(file)?.Copy() ?? FirstGuess(file, _asset);
+        _gameBaseMm = GameBaseFor(file);
+        _gameBaseLabel.Text = _gameBaseMm is { } gb
+            ? $"Game base: {gb:0.#} mm (Army Forge) - the table stands it on this, whatever Base says."
+            : UnitModelSettings.IsTerrain(file) ? "" : "No Army Forge unit for this folder - shown on the Base above.";
         FillSettingBoxes();
         _saved.Text = File.Exists(UnitModelSettings.PathFor(file)) ? "Saved settings loaded." : "Not saved yet - these are a first guess.";
         _saved.Modulate = File.Exists(UnitModelSettings.PathFor(file)) ? HudKit.Lime : HudKit.Dim;
@@ -514,6 +555,11 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         _tiltFwd.Value = _settings.TiltForwardDegrees;
         _tiltSide.Value = _settings.TiltSideDegrees;
         _centre.ButtonPressed = _settings.CentreOnBase;
+        _size.Value = _settings.SizePercent <= 0 ? 100 : _settings.SizePercent;
+        _sizeValue.Text = $"{_size.Value:0}%";
+        _ownBase.Select(_settings.OwnBaseMm < 0 ? 0 : _settings.OwnBaseMm == 0 ? 1 : 2);
+        _ownCut.Editable = _settings.OwnBaseMm > 0;
+        if (_settings.OwnBaseMm > 0) _ownCut.Value = _settings.OwnBaseMm;
         _quiet = false;
     }
 
@@ -557,7 +603,18 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
 
     private int CopyCount => _copies.Selected switch { 1 => 5, 2 => 10, 3 => 20, 4 => 100, _ => 1 };
     private Color Team => PlayerColorCodes.Options[Math.Max(0, _seat.Selected)].Color is var c ? Color.Color8(c.R, c.G, c.B) : Colors.White;
-    private float BaseInches => _settings.BaseMm / UnitModelSettings.MmPerInch;
+    /// <summary>The base it is shown on: its unit's Army Forge base when that is known (what the table uses), else the saved one.</summary>
+    private float ShownBaseMm => _settings.BaseMm > 0 && _gameBaseMm is { } g ? g : _settings.BaseMm;
+    private float BaseInches => ShownBaseMm / UnitModelSettings.MmPerInch;
+
+    /// <summary>The Army Forge base of the unit whose folder this file is in, or null.</summary>
+    private float? GameBaseFor(string file)
+    {
+        if (UnitModelSettings.IsTerrain(file) || GameBaseLookup.FromKey(SharedModelSettings.KeyFor(file, _root)) is not { } fu) return null;
+        try { _books ??= BookLibrary.Load(); }
+        catch (Exception) { return null; }
+        return GameBaseLookup.BaseMm(_books, fu.Faction, fu.Unit);
+    }
     private float FootprintInches => Mathf.Max(BaseInches, 0.8f);
 
     /// <summary>Rebuilds the models from the open file and the settings.</summary>
@@ -577,6 +634,9 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         }
         _info.Modulate = Colors.White;
 
+        // As on the table: the model's own base cut off (unless kept), standing on the game's base.
+        _own = _asset.IsPicture || UnitModelSettings.IsTerrain(_asset.File) ? new OwnBase.Result(_asset.Model!, null, 0) : OwnBase.Strip(_asset.Model!, _settings);
+        Node3D? template = _asset.IsPicture ? null : _own.Model;
         int n = CopyCount, perRow = Math.Min(n, 10), rows = (n + perRow - 1) / perRow;
         float step = FootprintInches + 1f; // 1" between bases: in coherency, the way a unit is set up
         Transform3D? pivot = null;
@@ -587,13 +647,14 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
             var holder = new Node3D { Position = new Vector3((c - (perRow - 1) / 2f) * step, 0, (r - (rows - 1) / 2f) * step) };
             _group.AddChild(holder);
             if (_settings.BaseMm > 0) TableLook.AddBase(holder, BaseInches / 2, Team);
-            Node3D body = _asset.IsPicture ? Standee(_asset.Picture!) : (Node3D)_asset.Model!.Duplicate();
+            Node3D body = _asset.IsPicture ? Standee(_asset.Picture!) : (Node3D)template!.Duplicate();
             var p = new Node3D { Name = "Pivot" };
             holder.AddChild(p);
             p.AddChild(body);
             if (pivot == null) (pivot, shape) = Normalise(p, body);
             else p.Transform = pivot.Value;
         }
+        if (template != null && template != _asset.Model) template.Free();
         PlayAnimation();
 
         // Its finished size, on a label above the first model.
@@ -668,7 +729,11 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
         }
         lines.Add($"Stands {shape.Size.Y * UnitModelSettings.MmPerInch:0} mm tall, {shape.Size.X * UnitModelSettings.MmPerInch:0} x {shape.Size.Z * UnitModelSettings.MmPerInch:0} mm across");
         if (_settings.BaseMm > 0 && (shape.Size.X > BaseInches * 1.6f || shape.Size.Z > BaseInches * 1.6f))
-            lines.Add($"Hangs well past its {_settings.BaseMm:0.#} mm base - right base size, or a bigger base?");
+            lines.Add($"Hangs well past its {ShownBaseMm:0.#} mm base - try a smaller Size?");
+        if (!a.IsPicture && _settings.BaseMm > 0)
+            lines.Add(_settings.OwnBaseMm == 0 ? "Own base: kept"
+                : _own.CutMm > 0 ? $"Own base: {(_own.Found is { } f ? $"about {f.WidthMm:0} mm across, " : "")}cut off ({_own.CutMm:0.#} mm high)"
+                : "Own base: none found (none on the file, or set Cut at)");
         foreach (string t in a.Textures.Take(4)) lines.Add("Skin: " + t);
         foreach (string w in a.Warnings) lines.Add("! " + w);
         return string.Join("\n", lines);
@@ -803,7 +868,7 @@ public partial class AssetLabScreen : Control, IOwnBackdrop, IBackGuard
     {
         switch (FindChild(box, true, false))
         {
-            case SpinBox sb when double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double d): sb.Value = d; break;
+            case Godot.Range sb when double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double d): sb.Value = d; break;
             case OptionButton ob when int.TryParse(value, out int i): ob.Select(i); ob.EmitSignal(OptionButton.SignalName.ItemSelected, i); break;
             case CheckBox cb: cb.ButtonPressed = value is "1" or "true" or "on"; break;
         }
