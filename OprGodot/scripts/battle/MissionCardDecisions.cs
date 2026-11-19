@@ -256,7 +256,10 @@ public abstract class MissionCardDecisionBase<T> : Decision<T>
     public override string SnapName => "MissionCard" + Moment;
     public override bool HideConfirmBox => true;
 
-    protected EGameSystem System => S?.Session.Table.Progress?.GameSystem ?? EGameSystem.GrimdarkFuture;
+    // The lobby says which game this is. The progress record answers Grimdark Future for every game until round 1,
+    // and the first card decisions (building the deck, the first draw) can come before it - a Firefight or Skirmish
+    // deck was then shown with the big games' card numbers.
+    protected EGameSystem System => S?.Session.Lobby.Vm.GameSystem ?? EGameSystem.GrimdarkFuture;
 
     /// <summary>Which card an option names: "12 Seize 2", "Discard 34 Hold 4", "Send back Bot's Hidden card 1".</summary>
     protected (int? Number, string? Hidden) CardOf(string option)
