@@ -261,6 +261,8 @@ public sealed class HostGameSettings
     public bool FastPlayMelee { get; set; }
     public bool FastPlayShooting { get; set; }
     public bool FastPlaySimplifiedTerrain { get; set; }
+    /// <summary>Volumetric Line of Sight (Advanced Rulebooks), remembered like the other rules toggles.</summary>
+    public bool VolumetricLineOfSight { get; set; }
     public bool ForceOrg { get; set; }
     /// <summary>The Army Forge's Force Org switch (Kai, 2026-11-15) - on unless turned off.</summary>
     public bool ForgeForceOrg { get; set; } = true;
@@ -300,6 +302,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = settings.FastPlayMelee,
         FastPlayShooting       = settings.FastPlayShooting,
         FastPlaySimplifiedTerrain = settings.FastPlaySimplifiedTerrain,
+        VolumetricLineOfSight = settings.VolumetricLineOfSight,
         ForceOrg = settings.ForceOrg,
         NumberOfRounds         = settings.NumberOfRounds,
         KingOfTheHill          = settings.KingOfTheHill,
@@ -335,6 +338,7 @@ public sealed class HostGameSettings
         FastPlayMelee          = viewModel.FastPlayMelee,
         FastPlayShooting       = viewModel.FastPlayShooting,
         FastPlaySimplifiedTerrain = viewModel.FastPlaySimplifiedTerrain,
+        VolumetricLineOfSight = viewModel.VolumetricLineOfSight,
         ForceOrg = viewModel.ForceOrg,
         NumberOfRounds         = viewModel.NumberOfRounds,
         KingOfTheHill          = viewModel.KingOfTheHill,
@@ -375,6 +379,7 @@ public sealed class HostGameSettings
         viewModel.SetUnlimitedSplitFire(UnlimitedSplitFire);
         viewModel.SetFastPlay(FastPlayMovement, FastPlayMelee, FastPlayShooting);
         viewModel.SetFastPlaySimplifiedTerrain(FastPlaySimplifiedTerrain);
+        viewModel.SetVolumetricLineOfSight(VolumetricLineOfSight);
         viewModel.SetForceOrg(ForceOrg);
         viewModel.SetNumberOfRounds(NumberOfRounds);
         viewModel.SetKingOfTheHill(KingOfTheHill);

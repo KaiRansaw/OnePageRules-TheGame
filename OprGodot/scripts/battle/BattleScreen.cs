@@ -151,6 +151,18 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Toast(_table.RulesView ? "Rules view: terrain coloured by its rules. V to go back." : "Rules view off.");
     }
 
+    /// <summary>F / the Sight button: what the selected unit can see, per weapon range (<see cref="BattleTable.SightView"/>).</summary>
+    public void ToggleSightView()
+    {
+        _table.SightView = !_table.SightView;
+        Toast(_table.SightView
+            ? (VolumetricSightOn ? "Sight view (Volumetric line of sight): " : "Sight view: ")
+              + "coloured ground = the selected unit can shoot a normal-sized model there, in the colour of the weapon range that reaches. Dark = in reach but out of sight. F to turn off."
+            : "Sight view off.");
+    }
+
+    private static bool VolumetricSightOn => FDG.Stages.VolumetricSight.On;
+
     public void ToggleTopView()
     {
         _topView = !_topView;
@@ -282,6 +294,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                 TogglePause(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.V }:
                 ToggleRulesView(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.F }:
+                ToggleSightView(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.L }:
                 OpenArmies(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space or Key.Enter or Key.KpEnter }:
@@ -628,6 +642,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         {
             ("TopView", "binoculars", "Top view", "T", ToggleTopView),
             ("RulesView", "radar-sweep", "Rules view", "V", ToggleRulesView),
+            ("SightView", "targeting", "Sight", "F", ToggleSightView),
             ("Report", "scroll-unfurled", "Report", "R", OpenFullReport),
             ("Armies", "stack", "Armies", "L", OpenArmies),
             ("Menu", "hamburger-menu", "Menu", "Esc", OpenMenu),

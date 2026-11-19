@@ -535,6 +535,11 @@ public partial class LobbyScreen : Control, Hud.ILooked
         if (!GameSystemInfo.IsQuest(system) && Session.ArmyCampaign == null)
             Check(rows, "Force Organisation", Vm.ForceOrg, LobbyBookText.ForceOrg(system), locked, v => Vm.SetForceOrg(v));
 
+        // Volumetric Line of Sight (Advanced Rulebooks, Tournament Guidelines) - every game with an Advanced Rulebook.
+        if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
+            Check(rows, "Volumetric Line of Sight", Vm.VolumetricLineOfSight, LobbyBookText.VolumetricLineOfSight, locked,
+                v => Vm.SetVolumetricLineOfSight(v));
+
         if (LobbyDeploymentPreview.KingOfTheHillApplies(system, mode))
             Check(rows, "King of the Hill (3-4 sides)", Vm.KingOfTheHill, LobbyBookText.KingOfTheHill + "\n\n" + LobbyBookText.FreeForAll(system), locked, v => Vm.SetKingOfTheHill(v));
 

@@ -373,6 +373,8 @@ public class UserConfigTests
         public void SetTableSize((float W, float H)? size) => ChosenTableSize = size;
         public bool FastPlaySimplifiedTerrain { get; private set; }
         public void SetFastPlaySimplifiedTerrain(bool enabled) => FastPlaySimplifiedTerrain = enabled;
+        public bool VolumetricLineOfSight { get; private set; }
+        public void SetVolumetricLineOfSight(bool enabled) => VolumetricLineOfSight = enabled;
         public bool ForceOrg { get; private set; }
         public void SetForceOrg(bool enabled) => ForceOrg = enabled;
         public bool KingOfTheHill { get; private set; }

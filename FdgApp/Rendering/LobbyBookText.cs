@@ -166,6 +166,23 @@ internal static class LobbyBookText
         "In this game: units go inside a piece (the whole unit), small pieces hold 6, medium 11, large 21, and leaving " +
         "a unit stays within 6\". Inside can shoot out from any side. Charge a building by touching its wall; everyone strikes.";
 
+    // ── Advanced Rulebook v3.6.0 - Tournament Guidelines, line of sight ──
+
+    /// <summary>The book's own words (GF/AoF p58, GFF/AoFS p55 - identical in all four), then what the game does.</summary>
+    internal const string VolumetricLineOfSight =
+        "Volumetric Line of Sight: Before the game begins, players must assign a height value in inches to all units. " +
+        "Each model occupies a volume of space of that height above its base, determined by its base size. Generally, " +
+        "height can be defined based on the typical size of miniatures mounted on those base sizes. ... Here are some " +
+        "pre-set heights you can use to speed up preparation: 25mm Base - Height 1\", 32mm Base - Height 1.25\", " +
+        "40mm Base - Height 1.5\", 50mm Base - Height 2\", 60mm Base - Height 3\", 100mm Base - Height 4\". " +
+        "To determine line of sight, simply draw a straight line from any point of the model's volume to any point of " +
+        "the target model's volume. If the line doesn't pass through any obstacles or unit volumes, then the model has " +
+        "line of sight.\n" +
+        "In this game: heights come from base size (between two sizes it goes in a straight line; over 100mm it keeps " +
+        "climbing 1\" per 40mm); terrain is as tall as its height. Tall models see over short units and low walls; a " +
+        "target seen over a wall still gets Cover. Off: the classic way - every piece and every other unit blocks, " +
+        "however tall.";
+
     // ── Advanced Rulebook v3.6.0 - Extra Actions ──
 
     internal const string ExtraActionsIntro =

@@ -228,6 +228,7 @@ public partial class BattleTable : Node3D
         try { SyncOutlines(); } catch (InvalidOperationException) { }
         PerfProbe.Stop("outlines", t1);
         t1 = PerfProbe.Start(); SyncGhosts(); PerfProbe.Stop("ghosts", t1);
+        try { SyncSight(); } catch (InvalidOperationException) { }
     }
 
     // ------------------------------------------------------------------ unit outlines and weapon ranges

@@ -1,3 +1,4 @@
+using FDG;
 using Godot;
 
 namespace OprGodot;
@@ -408,6 +409,16 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("mapcam:") && name[7..].Split('|') is [var mp, var md] && Find<Maps.MapEditorScreen>(GetTree().Root) is { } mapEd)
             {
                 mapEd.SetView(float.Parse(mp, System.Globalization.CultureInfo.InvariantCulture), float.Parse(md, System.Globalization.CultureInfo.InvariantCulture));
+                return;
+            }
+            // "selectshooter" selects the first unit on the table with a ranged weapon (sight view checks).
+            if (name == "selectshooter")
+            {
+                var b = Find<Battle.BattleScreen>(GetTree().Root);
+                var unit = b?.Session.Table.Units.Objects.FirstOrDefault(u => u.GetIsOnBattlefield()
+                    && u.Models.Any(m => m.GetIsAlive() && m.Weapons.Any(w => w.RangeInches > 0)));
+                if (unit != null) b!.SelectUnit(unit);
+                GD.Print($"ScriptedRun: selectshooter {(unit != null ? unit.Name : "none")}");
                 return;
             }
             // "selectunit:Hive Guardians" selects the first unit with that name, so its card shows (screenshot checks).
