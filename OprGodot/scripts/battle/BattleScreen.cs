@@ -595,7 +595,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     private readonly Dictionary<string, List<string>> _granters = new(StringComparer.OrdinalIgnoreCase);
 
-    private Button? _pause;
+    private Button? _pause, _results;
 
     /// <summary>Every seat is a bot and this computer hosts it: the screen only watches, and may pause the game.</summary>
     private bool Watching => Session.LocalPlayer == null && Session.Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host;
@@ -683,6 +683,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             menu.AddChild(_pause);
             menu.MoveChild(_pause, 0);
         }
+        // "Look at the table" hides the Game Over card. This button - there once the game has ended - shows it again
+        // (the Raylib build's "Show results"); without it Rematch, Save battle report and a campaign's Continue were
+        // gone for good once the card was closed.
+        _results = HudKit.ActionButton("Results", "flying-flag", "Results", "", HudKit.Teal, 56, labelSize: 11);
+        _results.TooltipText = "Show or hide the Game Over card.";
+        _results.Visible = false;
+        _results.Pressed += () => { if (_gameOver != null && IsInstanceValid(_gameOver)) _gameOver.Visible = !_gameOver.Visible; };
+        menu.AddChild(_results);
+        menu.MoveChild(_results, 0);
         ScreenFrame.Place(this, "TopButtons", menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad), _hud);
 
         // Bottom-left: the selected unit, and beside it the four actions - two panels, so the actions keep their own
@@ -841,6 +850,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
         PerfProbe.Stop("hud.layout", tp);
         if (Session.EndedText != null && _gameOver == null) ShowGameOver();
+        if (_gameOver != null && _results is { Visible: false }) _results.Visible = true;
     }
 
     /// <summary>Kai's frame (Battle.tscn -> Frame) decides where panels are: the army list's scroll takes its box's height.</summary>
@@ -2139,7 +2149,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         rematch.Name = "Rematch";
         var report = Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.");
         report.Name = "SaveReport";
-        var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table.");
+        var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table. The Results button at the top right brings it back.");
         var menu = Ui.Button("Main menu", App.I.ToMainMenu, "Back to the main menu.", "BackButton");
         row.AddChild(rematch);
         row.AddChild(report);
@@ -2193,7 +2203,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         }
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);
-        var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table.");
+        var look = Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table. The Results button at the top right brings it back.");
         var report = Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.");
         report.Name = "SaveReport";
         var cont = Ui.Button("CONTINUE TO CAMPAIGN", App.I.BackTo<Quest.QuestCampaignsScreen>, "Back to the campaign, with this mission recorded.", "CommitButton");
@@ -2250,7 +2260,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         }
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 12);
-        row.AddChild(Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table."));
+        row.AddChild(Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table. The Results button at the top right brings it back."));
         row.AddChild(Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.").Also(x => x.Name = "SaveReport"));
         // #467: a map campaign's battle goes back to the map, which records it and carries the turn on.
         bool onMap = FdgRaylib.Quest.MapCampaignSession.IsMapCampaign(r?.Info);
