@@ -27,6 +27,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     // HUD parts refreshed each tick.
     private Label _round = null!, _roundOf = null!, _turn = null!, _turnLine = null!, _prompt = null!, _promptHint = null!;
     private HBoxContainer _objectiveCounts = null!;
+    private Label? _objectiveHead;
     private VBoxContainer _armyRows = null!, _reportRows = null!, _missionBody = null!;
     private Label _armyHead = null!;
     private PanelContainer _unitBlock = null!, _actionBlock = null!;
@@ -552,7 +553,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         for (int i = 0; i < 2 && i < sides.Count; i++)
         {
             string name = Session.SeatOf(sides[i])?.Name.ToUpperInvariant() ?? (i == 0 ? "SIDE 1" : "SIDE 2");
-            if (_armyTabs[i] != null && _armyTabs[i].Text != name) _armyTabs[i].Text = name;
+            if (_armyTabs[i] != null && _armyTabs[i].Text != name)
+            {
+                _armyTabs[i].Text = name;
+                _armyTabs[i].TooltipText = $"{Session.SeatOf(sides[i])?.Name ?? name}'s units - click one to see its card.";
+            }
         }
         return Session.Table.Units.Objects.Where(u => u.PlayerID.Equals(sides[0]) != second).ToList();
     }
@@ -642,7 +647,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         roundRow.AddChild(new ColorRect { Color = HudKit.Edge, CustomMinimumSize = new Vector2(1, 34), SizeFlagsVertical = SizeFlags.ShrinkCenter });
         var o = new VBoxContainer();
         o.AddThemeConstantOverride("separation", 0);
-        o.AddChild(HudKit.Text("OBJECTIVES", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
+        _objectiveHead = HudKit.Text("OBJECTIVES", 11, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2));
+        o.AddChild(_objectiveHead);
         _objectiveCounts = new HBoxContainer();
         _objectiveCounts.AddThemeConstantOverride("separation", 10);
         o.AddChild(_objectiveCounts);
@@ -792,14 +798,31 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var objectives = Session.Table.Objectives.Objects.ToList();
         var held = Session.Seats.Select(seat => (seat, n: objectives.Count(ob => ob.OwnerID is { } owner && owner.Equals(seat.Id)))).ToList();
         int neutral = objectives.Count(ob => ob.OwnerID == null);
-        string objSig = string.Join(",", held.Select(h => $"{h.seat.Id}:{h.seat.Name}:{h.n}:{_table.SeatColour(h.seat.Id).ToHtml()}")) + "|" + neutral;
+        // A mission card game is won on victory points, so those are the numbers here (Kai, 2026-11-19); objectives
+        // held move to the hover.
+        Dictionary<PlayerID, int>? vp = VictoryPoints();
+        string objSig = string.Join(",", held.Select(h => $"{h.seat.Id}:{h.seat.Name}:{h.n}:{_table.SeatColour(h.seat.Id).ToHtml()}")) + "|" + neutral
+            + (vp == null ? "" : "|vp:" + string.Join(",", Session.Seats.Select(s => vp.GetValueOrDefault(s.Id))));
         if (objSig != _objectiveSig)
         {
             _objectiveSig = objSig;
             foreach (Node c in _objectiveCounts.GetChildren()) c.QueueFree();
-            foreach (var (seat, n) in held)
-                _objectiveCounts.AddChild(Count(n, _table.SeatColour(seat.Id), $"{seat.Name} holds {n}"));
-            _objectiveCounts.AddChild(Count(neutral, new Color(0.85f, 0.88f, 0.9f), $"{neutral} held by nobody"));
+            if (_objectiveHead != null) _objectiveHead.Text = vp != null ? "VICTORY POINTS" : "OBJECTIVES";
+            if (vp != null)
+            {
+                foreach (var (seat, n) in held)
+                {
+                    int points = vp.GetValueOrDefault(seat.Id);
+                    _objectiveCounts.AddChild(Points(points, _table.SeatColour(seat.Id),
+                        $"{seat.Name}: {points} victory point{(points == 1 ? "" : "s")} - holds {n} objective{(n == 1 ? "" : "s")}"));
+                }
+            }
+            else
+            {
+                foreach (var (seat, n) in held)
+                    _objectiveCounts.AddChild(Count(n, _table.SeatColour(seat.Id), $"{seat.Name} holds {n}"));
+                _objectiveCounts.AddChild(Count(neutral, new Color(0.85f, 0.88f, 0.9f), $"{neutral} held by nobody"));
+            }
         }
 
         PerfProbe.Stop("hud.objectives", tp); tp = PerfProbe.Start();
@@ -920,6 +943,31 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     }
 
     private readonly Button[] _armyTabs = new Button[2];
+
+    /// <summary>
+    /// Each seat's victory points in a mission card game - what that game is won on - or null when this is not one
+    /// (then objectives held are the score). The lobby's settings say which, as they do for the Mission panel.
+    /// </summary>
+    private Dictionary<PlayerID, int>? VictoryPoints()
+    {
+        var vm = Session.Lobby.Vm;
+        if (vm.GameMode != FDG.EGameMode.Standard || vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
+            || !FDG.Missions.MissionCardCatalog.Available(vm.GameSystem)) return null;
+        FDG.Missions.MissionCardState? cards = GameProgressUtilities.MissionCards(Session.Table.DataStore);
+        var slots = Session.Table.Players.Objects.Where(p => p.IsFilled).ToList();
+        return Session.Seats.ToDictionary(s => s.Id,
+            s => slots.FirstOrDefault(p => p.PlayerID.Equals(s.Id)) is { } slot && cards != null ? cards.Vp.GetValueOrDefault(slot.SlotID) : 0);
+    }
+
+    /// <summary>A seat's victory points in the round box: the number and "VP", in the seat's colour.</summary>
+    private static Control Points(int n, Color c, string tip)
+    {
+        var h = new HBoxContainer { TooltipText = tip, MouseFilter = MouseFilterEnum.Stop };
+        h.AddThemeConstantOverride("separation", 3);
+        h.AddChild(HudKit.Text(n.ToString(), 20, c, HudKit.Bold));
+        h.AddChild(HudKit.Text("VP", 12, c, HudKit.Bold));
+        return h;
+    }
 
     private static Control Count(int n, Color c, string tip)
     {
@@ -1897,11 +1945,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (ends.Length + won.Length > 0)
             _missionBody.AddChild(HudKit.Text((ends + " " + won).Trim(), 13, HudKit.Dim, HudKit.Semi));
         var scores = progress.Scores;
-        string summary = string.Join("  -  ", Session.Seats.Select(s => $"{s.Name} {scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount}"));
+        Dictionary<PlayerID, int>? vp = VictoryPoints();
+        string summary = string.Join("  -  ", Session.Seats.Select(s => vp != null ? $"{s.Name} {vp.GetValueOrDefault(s.Id)} VP"
+            : $"{s.Name} {scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount}"));
         foreach (GameSession.Seat s in Session.Seats)
         {
             int n = scores.FirstOrDefault(x => x.PlayerID.Equals(s.Id)).ObjectiveCount;
-            _missionBody.AddChild(HudKit.Text($"{s.Name}: {n} objective{(n == 1 ? "" : "s")}", 15, _table.SeatColour(s.Id), HudKit.Semi));
+            string line = vp != null ? $"{s.Name}: {vp.GetValueOrDefault(s.Id)} VP  ({n} objective{(n == 1 ? "" : "s")} held)"
+                : $"{s.Name}: {n} objective{(n == 1 ? "" : "s")}";
+            _missionBody.AddChild(HudKit.Text(line, 15, _table.SeatColour(s.Id), HudKit.Semi));
         }
         AddConcede(concedeSeats, progress.RoundCount);
         _mission.SetSummary(summary);
@@ -2159,13 +2211,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var grid = new GridContainer { Columns = 4, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
         grid.AddThemeConstantOverride("h_separation", 28);
         grid.AddThemeConstantOverride("v_separation", 4);
-        foreach (string h in new[] { "", "OBJECTIVES", "UNITS LEFT", "POINTS LEFT" })
+        // A mission card game is decided on victory points, so that is the first column there (Kai, 2026-11-19).
+        Dictionary<PlayerID, int>? vp = VictoryPoints();
+        foreach (string h in new[] { "", vp != null ? "VICTORY POINTS" : "OBJECTIVES", "UNITS LEFT", "POINTS LEFT" })
             grid.AddChild(HudKit.Text(h, 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2), HorizontalAlignment.Center));
         var scores = Session.Table.Progress.Scores;
         foreach (GameSession.Seat seat in Session.Seats)
         {
             var units = Session.Table.Units.Objects.Where(u => u.PlayerID.Equals(seat.Id) && u.Models.Any(m => m.GetIsAlive())).ToList();
-            int obj = scores.FirstOrDefault(x => x.PlayerID.Equals(seat.Id)).ObjectiveCount;
+            int obj = vp != null ? vp.GetValueOrDefault(seat.Id) : scores.FirstOrDefault(x => x.PlayerID.Equals(seat.Id)).ObjectiveCount;
             grid.AddChild(HudKit.Text(seat.Name, 20, _table.SeatColour(seat.Id), HudKit.Bold));
             grid.AddChild(HudKit.Text(obj.ToString(), 26, HudKit.Fg, HudKit.Exo(800), HorizontalAlignment.Center));
             grid.AddChild(HudKit.Text(units.Count.ToString(), 20, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center));
