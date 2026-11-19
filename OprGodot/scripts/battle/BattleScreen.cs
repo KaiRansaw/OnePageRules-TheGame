@@ -211,6 +211,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is InputEventMouse) return;
+        // A hidden screen still gets unhandled keys. With Settings open over the battle (Esc menu -> Settings) every
+        // key meant for Settings was played on the table underneath: Esc stepped back out of the open decision or
+        // opened the Esc menu again (and Settings stayed up), 1-9 pressed action buttons, Space confirmed a move.
+        if (!IsVisibleInTree()) return;
         TableKeys(e);
     }
 
@@ -362,6 +366,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!IsVisibleInTree()) return;   // not while another screen (Settings) is open over the battle
         // WASD / arrows pan, at a speed that suits the zoom.
         Vector2 dir = Vector2.Zero;
         if (Input.IsKeyPressed(Key.W) || Input.IsKeyPressed(Key.Up)) dir.Y -= 1;
