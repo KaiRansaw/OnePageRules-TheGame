@@ -143,6 +143,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         railPanel.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
         railPanel.OffsetLeft = 16 + 290 + 8; railPanel.OffsetTop = 92;
         hud.AddChild(railPanel);
+        // The left panel is as wide as its widest row (the Objective / Size base / base size row), which is wider than
+        // the 290 it is given - so a rail parked at 290 lay over the right-hand piece buttons ("Lake (shallow)", "River
+        // (shallow)"). The rail follows the panel's real right edge instead.
+        leftPanel.Resized += () => railPanel.Position = new Vector2(leftPanel.Position.X + leftPanel.Size.X + 8, railPanel.Position.Y);
 
         _right = new VBoxContainer();
         _right.AddThemeConstantOverride("separation", 6);
