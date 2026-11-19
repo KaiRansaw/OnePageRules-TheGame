@@ -156,8 +156,27 @@ public partial class App : Node
         Control leaving = _screens.Pop();
         _looks.Remove(leaving);
         Reveal(_screens.Peek());
+        if (leaving is SettingsScreen) SettingsClosed();
         if (ScriptedRun.IsRequested) leaving.QueueFree();
         else Hud.UiJuice.ScreenOut(leaving, leaving.QueueFree);
+    }
+
+    /// <summary>Settings just closed: every open screen that depends on them redoes what they change, and everything
+    /// redraws (the UI theme's art is picked as a control draws).</summary>
+    private void SettingsClosed()
+    {
+        foreach (Control screen in _screens.ToList())
+            if (screen is Screens.ISettingsAware aware)
+            {
+                try { aware.SettingsChanged(); }
+                catch (Exception e) { GD.PrintErr($"Applying settings to {screen.Name}: {e.Message}"); }
+            }
+        void Redraw(Node n)
+        {
+            if (n is CanvasItem c) c.QueueRedraw();
+            foreach (Node child in n.GetChildren()) Redraw(child);
+        }
+        foreach (Control screen in _screens) Redraw(screen);
     }
 
     /// <summary>Shows a screen again that was under the one closing, with the same fade-in a new one gets.</summary>

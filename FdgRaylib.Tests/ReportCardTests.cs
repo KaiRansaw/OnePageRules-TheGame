@@ -56,7 +56,7 @@ public class ReportCardTests
         Assert.That(card.Subline, Is.EqualTo("Charged 7\" into Assault Grunts. Assault Grunts routed."));
         Assert.That(card.Attacks.Select(a => a.Verb), Is.EqualTo(new[] { "attacked", "struck back at" }));
         Assert.That(card.Attacks[0].Steps.Select(s => $"{s.Value} {s.Label}"),
-            Is.EqualTo(new[] { "20 ATTACKS", "9 HIT 4+", "3 SAVED 5+", "6 DIED" }));
+            Is.EqualTo(new[] { "20 ATTACKS", "9 HIT 4+", "3 SAVED 5+", "6 WOUNDS", "6 DIED" }));
         Assert.That(card.Attacks[1].Notes, Does.Contain("Rending"));
         Assert.That(card.After.Single().Tag, Is.EqualTo("ROUTED"), "the test and its result are one row");
     }
@@ -79,6 +79,23 @@ public class ReportCardTests
         Assert.That(card.Headline, Is.EqualTo("Orc Warriors shot Assault Grunts"));
         Assert.That(card.Attacks[0].Steps.Select(s => s.Label), Is.EqualTo(new[] { "ATTACKS", "HIT", "SAVED", "WOUNDS" }));
         Assert.That(card.Attacks[0].Notes, Is.EqualTo(new[] { "Bad Shot -1" }), "the unit's own Quality is not a note");
+    }
+
+    /// <summary>Kai, 2026-11-18: Spotter Gunners into a Tough(12) model - he had to count by hand that it took the right
+    /// damage. The card shows the wounds that actually landed (Deadly and the like included) next to the deaths.</summary>
+    [Test]
+    public void TheWoundsThatLanded_AreTotalled_EvenWhenAToughModelDies()
+    {
+        var shot = Line(BattleReport.Kind.Attack, "", Orcs, Grunts,
+            new BattleReport.Outcome(false, 9, 18, 4, 1, false, "Guns", true, 5, 0f, Dealt: 12f),
+            new[] { new BattleReport.Roll("Orc Warriors", Orcs, "Roll to Hit - Rifle", 4, "9 hits", new List<int>(), new List<string>()) },
+            title: new[] { U(Orcs), new BattleReport.Piece(" shoots "), U(Grunts) });
+        var block = new BattleReport.Block(2, Line(BattleReport.Kind.Activation, "", title: new[] { U(Orcs) }) with { Units = new[] { Orcs } }, new[] { shot });
+
+        ReportCard.Card card = ReportCard.For(block)!;
+
+        Assert.That(card.Attacks[0].Steps.Select(s => $"{s.Value} {s.Label}").Skip(3), Is.EqualTo(new[] { "12 WOUNDS", "1 DIED" }),
+            "the wounds dealt are the ones that landed (12), not the failed saves (4)");
     }
 
     [Test]

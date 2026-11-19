@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware
 {
     public GameSession Session { get; set; } = null!;
     public OprGodot.Hud.Looks.ELook Look => OprGodot.Hud.Looks.For(Session.Lobby.Vm.GameSystem);
@@ -134,6 +134,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
     }
 
     // ================================================================== camera
+
+    /// <summary>Back from Settings (opened from the Esc menu): the table is set again under the new settings.</summary>
+    public void SettingsChanged()
+    {
+        _table.Restage();
+        ApplyCamera();
+    }
 
     private void ApplyCamera()
     {
@@ -1388,9 +1395,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                 if (!mine) row.AddChild(HudKit.Text(NameOf(l.Attacker), 15, SideOf(l.Attacker), HudKit.Semi));
                 if (!mine) row.AddChild(HudKit.Text(a.Melee ? "struck back at" : "shot", 14, HudKit.Dim, HudKit.Medium));
                 row.AddChild(HudKit.Text(NameOf(l.Target, l.TargetName ?? "the target"), 15, SideOf(l.Target), HudKit.Semi));
-                string result = a.ModelsLost > 0 ? $"-{a.ModelsLost} model{(a.ModelsLost == 1 ? "" : "s")}"
-                    : a.Wounds > 0.01f ? $"-{a.Wounds:0} wound{(a.Wounds < 1.5f ? "" : "s")}" : "no damage";
-                row.AddChild(HudKit.Text(result, 15, a.ModelsLost > 0 || a.Wounds > 0.01f ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
+                // Kai, 2026-11-18: always the wounds the attack dealt in total, plus the models it killed.
+                float dealt = a.WoundsDealt;
+                string result = dealt <= 0.01f && a.ModelsLost == 0 ? "no damage"
+                    : $"{dealt:0.#} wound{(Math.Abs(dealt - 1) < 0.01f ? "" : "s")}" + (a.ModelsLost > 0 ? $", -{a.ModelsLost} model{(a.ModelsLost == 1 ? "" : "s")}" : "");
+                row.AddChild(HudKit.Text(result, 15, a.ModelsLost > 0 || dealt > 0.01f ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
                 if (a.Routed) row.AddChild(HudKit.Chip("ROUTED", Palette.WoundsRed, true, 11));
                 v.AddChild(row);
                 // Kai, 2026-11-18 (bot vs bot): just the weapons shot, what hit, what the defence saved, and the wounds.
@@ -1399,7 +1408,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
                     var nums = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
                     nums.AddChild(HudKit.Gap(50));
                     string saved = a.HasSaves ? $"  -  {a.Saves:0.#} saved" : "";
-                    var text = HudKit.Text($"{a.Weapons}:  {a.Attacks:0.#} attacks  -  {a.Hits:0.#} hit{saved}  -  {a.Wounds:0.#} wound{(Math.Abs(a.Wounds - 1) < 0.01f ? "" : "s")}",
+                    string died = a.ModelsLost > 0 ? $"  -  {a.ModelsLost} died" : "";
+                    var text = HudKit.Text($"{a.Weapons}:  {a.Attacks:0.#} attacks  -  {a.Hits:0.#} hit{saved}  -  {a.WoundsDealt:0.#} wound{(Math.Abs(a.WoundsDealt - 1) < 0.01f ? "" : "s")} dealt{died}",
                         12, HudKit.Dim, HudKit.Medium);
                     text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
                     text.CustomMinimumSize = new Vector2(10, 0);
@@ -1921,6 +1931,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked
         Button Big(string text, Action go, string tip, string variation = "BackButton")
         {
             var b = Ui.Button(text, go, tip, variation);
+            b.Name = "Menu" + new string(text.Where(char.IsLetterOrDigit).ToArray());
             b.CustomMinimumSize = new Vector2(0, 48);
             v.AddChild(b);
             return b;

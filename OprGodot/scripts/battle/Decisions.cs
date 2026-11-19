@@ -1126,7 +1126,10 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
         {
             string why = _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats)
                 .Where(t => t.TargetUnit.GetValue().ID.Equals(unit.ID)).Select(t => t.UnselectableReason).FirstOrDefault(r => r != null)
-                ?? "out of range or out of sight";
+                ?? (_r.WeaponOptions.Select(w => w.DormantLineOfSightRule).FirstOrDefault(r => r != null) is { } dormant
+                    // Kai, 2026-11-18: an Indirect weapon after a move - the book only lets it fire out of sight on a Hold.
+                    ? $"out of range or out of sight ({dormant} only fires at enemies out of sight on a Hold action - this unit moved)"
+                    : "out of range or out of sight");
             s.Toast($"Can't shoot {unit.Name}: {why}");
             return true;
         }

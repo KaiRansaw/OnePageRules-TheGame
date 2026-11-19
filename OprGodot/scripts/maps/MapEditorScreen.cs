@@ -20,7 +20,7 @@ namespace OprGodot.Maps;
 /// The map itself (undo, generator, book check, saving) is <see cref="MapDraft"/> in FdgApp. The table is flat for now
 /// (heights later, Kai's call); a piece's height is only how tall its block is drawn.
 /// </summary>
-public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
+public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screens.ISettingsAware
 {
     public MapDraft Draft { get; set; } = MapDraft.New(72, 48);
 
@@ -709,6 +709,22 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop
         AddChild(veil);
         HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), scroll), LayoutPreset.Center);
         _ = FillMatThumbs(veil, pics);
+    }
+
+    /// <summary>Back from Settings (Kai, 2026-11-18: settings take effect at once): room or battlefield, weather, room
+    /// brightness and the lens are set again; the map is untouched.</summary>
+    public void SettingsChanged()
+    {
+        TableLook.RemoveLighting(_world);
+        TableLook.AddLighting(_world, TableLook.RoomFor(_checkFor), HorizonId, W, D, Horizon.On, Draft.Sky);
+        Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
+        BuildBoard();
+        _camera.Fov = Horizon.Lens;
+        _camera.Far = Horizon.On ? Horizon.Reach * 2.5f : 2000;
+        foreach (var (_, look) in _looks.Values) look.QueueFree();
+        _looks.Clear();
+        Sync3D();
+        ApplyCamera();
     }
 
     /// <summary>The sky and light changed: sky, haze and sun set again, then the weather dims the new light.</summary>

@@ -53,6 +53,14 @@ public static class TableLook
     /// 360-degree photo is drawn all around the table instead of the dark background; the table's own lighting stays the
     /// same, so the rules colours read the same in every room.
     /// </summary>
+    /// <summary>Takes away what <see cref="AddLighting"/> put under <paramref name="parent"/> (Settings changed - Kai,
+    /// 2026-11-18: settings take effect the moment you leave the Settings screen).</summary>
+    public static void RemoveLighting(Node parent)
+    {
+        foreach (string n in new[] { "Environment", "Sun", "Rim" })
+            if (parent.GetNodeOrNull(n) is { } node) { parent.RemoveChild(node); node.QueueFree(); }
+    }
+
     public static void AddLighting(Node parent, FdgRaylib.Terrain.TableRooms.Room? room = null, string? horizon = null, float tableW = 72, float tableD = 48, bool battlefield = false, string? sky = null)
     {
         var env = new Godot.Environment

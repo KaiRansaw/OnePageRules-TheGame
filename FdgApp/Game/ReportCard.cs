@@ -89,10 +89,12 @@ public static class ReportCard
         steps.Add(new Step(Num(a.Hits), "HIT" + Need(hitRolls)));
         if (a.HasSaves) steps.Add(new Step(Num(a.Saves), "SAVED" + Need(saveRolls)));
         if (a.Ignored > 0.01f) steps.Add(new Step(Num(a.Ignored), "SHRUGGED OFF"));
-        steps.Add(a.ModelsLost > 0
-            ? new Step(a.ModelsLost.ToString(CultureInfo.InvariantCulture), "DIED", true, true)
-            : a.Wounds > 0.01f ? new Step(Num(a.Wounds), a.Wounds < 1.5f ? "WOUND" : "WOUNDS", true, true)
-            : new Step("0", "DAMAGE", true));
+        // Kai, 2026-11-18: always the total wounds the attack dealt (so a Tough model's damage needn't be counted by hand),
+        // then the models it killed.
+        float dealt = a.WoundsDealt;
+        if (dealt > 0.01f) steps.Add(new Step(Num(dealt), dealt < 1.5f ? "WOUND" : "WOUNDS", true, true));
+        if (a.ModelsLost > 0) steps.Add(new Step(a.ModelsLost.ToString(CultureInfo.InvariantCulture), "DIED", true, true));
+        if (dealt <= 0.01f && a.ModelsLost == 0) steps.Add(new Step("0", "DAMAGE", true));
         return new AttackRow(l.Attacker, by, verb, l.Target, target, a.Melee, steps, Notes(l, hitRolls, saveRolls));
     }
 

@@ -61,7 +61,12 @@ public sealed class BattleReport : IPresentationSink
 
     /// <summary>What an attack did, as numbers (the block view shows these, not the sentence).</summary>
     public sealed record Outcome(bool Melee, float Hits, float Attacks, float Wounds, int ModelsLost, bool Routed, string Weapons,
-        bool HasSaves = false, float Saves = 0f, float Ignored = 0f);
+        bool HasSaves = false, float Saves = 0f, float Ignored = 0f, float Dealt = 0f)
+    {
+        /// <summary>The wounds the attack actually dealt (Kai, 2026-11-18): what landed on the models - Deadly and the
+        /// like included, overkill on a dying model not - else, from older reports, the failed saves.</summary>
+        public float WoundsDealt => Dealt > 0f ? Dealt : Wounds;
+    }
 
     /// <summary>
     /// One activation as the report's block view shows it (Kai, 2026-11-11, mockup A): who, what they did,
@@ -333,11 +338,17 @@ public sealed class BattleReport : IPresentationSink
                 break;
             }
 
+            case ModelWoundedBeat hurt:
+                // Kai, 2026-11-18: the wounds an attack actually dealt, summed (a Tough model can soak several).
+                if (open != null && hurt.Wounds > 0f) { open.Dealt += hurt.Wounds; Version++; }
+                break;
+
             case ModelDiedBeat died:
             {
                 if (open != null && (open.TargetUnit == null || open.TargetUnit.ID.Equals(died.Unit)))
                 {
                     open.Lost++;
+                    open.Dealt += died.Wounds;
                     if (open.TargetUnit == null && open.TargetName.Length == 0) open.TargetName = died.UnitName;
                     Version++;
                     break;
@@ -554,6 +565,8 @@ public sealed class BattleReport : IPresentationSink
         public readonly List<string> Weapons = new();
         public float Hits, Attacks, Saves, SaveTotal, Ignored;
         public int Lost;
+        /// <summary>The wounds that actually landed on the target's models (from the wounded / died beats).</summary>
+        public float Dealt;
         public char Last;
         // loss lines that merge
         public string? LossUnit;
@@ -580,7 +593,7 @@ public sealed class BattleReport : IPresentationSink
             }
             Outcome? outcome = Kind == Kind.Attack && Heading.Length == 0
                 ? new Outcome(Melee, Hits, Attacks, HasSaves ? MathF.Max(0f, SaveTotal - Saves - Ignored) : 0f, Lost, Routed, string.Join(", ", Weapons),
-                    HasSaves, Saves, Ignored)
+                    HasSaves, Saves, Ignored, Dealt)
                 : null;
             return new Line(Id, Kind, Round, title, body, Colour, Loud, Attacker, Target, Player, Units.ToList(), FromAt, ToAt,
                 MovedFrom.ToList(), MovedTo.ToList(), Rolls.ToList(), Details.ToList(), outcome, MovedInches,
@@ -594,7 +607,7 @@ public sealed class BattleReport : IPresentationSink
             if (HasHits) res.Append($"{Num(Hits)}/{Num(Attacks)} hit. ");
             if (HasSaves)
             {
-                float wounds = MathF.Max(0f, SaveTotal - Saves - Ignored);
+                float wounds = Dealt > 0f ? Dealt : MathF.Max(0f, SaveTotal - Saves - Ignored);
                 res.Append($"{target} {(TargetName.EndsWith('s') ? "save" : "saves")} {Num(Saves)}/{Num(SaveTotal)}");
                 if (Ignored > 0f) res.Append($", ignores {Num(Ignored)}");
                 res.Append(wounds > 0f ? $", taking {Num(wounds)} {Plural(wounds, "wound", "wounds")}" : ", taking no wounds");
@@ -602,7 +615,7 @@ public sealed class BattleReport : IPresentationSink
                 res.Append('.');
             }
             else if (HasHits && Hits <= 0f) res.Append("No damage.");
-            else if (Lost > 0) res.Append($"{target} loses {Lost} {Plural(Lost, "model", "models")}.");
+            else if (Lost > 0) res.Append($"{target} {(Dealt > 0f ? $"takes {Num(Dealt)} {Plural(Dealt, "wound", "wounds")} and " : "")}loses {Lost} {Plural(Lost, "model", "models")}.");
             if (Routed) res.Append($" {target} routs!");
             return res.ToString().Trim();
         }

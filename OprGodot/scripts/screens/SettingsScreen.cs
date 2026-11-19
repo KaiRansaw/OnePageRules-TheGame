@@ -137,7 +137,7 @@ public partial class SettingsScreen : Control
         Fill();
         pick.ItemSelected += i => { View.Room = ids[(int)i]; UserConfig.Save(); };
         rows.AddChild(Row("Around the table",
-            "Battlefield: no table edge - the ground runs on to the map's horizon (its sky, hills and haze). Or a 360-degree photo of a room around the table. Auto picks a downloaded room that suits the game. Takes effect from the next game.", pick));
+            "Battlefield: no table edge - the ground runs on to the map's horizon (its sky, hills and haze). Or a 360-degree photo of a room around the table. Auto picks a downloaded room that suits the game. Takes effect when you leave Settings.", pick));
         rows.AddChild(Slider("Room brightness", "How bright the room behind the table is. The table itself is lit the same either way.",
             View.RoomBrightness, 0.2, 1.5, v => View.RoomBrightness = v, "x"));
 

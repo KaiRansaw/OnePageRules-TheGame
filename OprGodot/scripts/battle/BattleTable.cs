@@ -133,6 +133,8 @@ public partial class BattleTable : Node3D
         W = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES;
         D = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
         Environment();
+        _boardRoot = new Node3D { Name = "Board" };
+        AddChild(_boardRoot);
         Board();
         _terrainRoot = new Node3D { Name = "Terrain" };
         _modelRoot = new Node3D { Name = "Models" };
@@ -546,10 +548,38 @@ public partial class BattleTable : Node3D
 
     private static MeshInstance3D Mesh(Node parent, Mesh mesh, Material mat, Vector3 pos) => TableLook.Mesh(parent, mesh, mat, pos);
 
+    private Node3D _boardRoot = null!;
+    private bool _modelsShown = UserConfig.Current.View.ShowUnitModels;
+
+    /// <summary>
+    /// Settings changed (Kai, 2026-11-18): the battlefield is set again under the new settings - room or battlefield,
+    /// weather on or off, room brightness, the lens - and the 3D models swap in or out. The game itself is untouched.
+    /// </summary>
+    public void Restage()
+    {
+        TableLook.RemoveLighting(this);
+        _room = null;
+        Environment();
+        foreach (Node n in _boardRoot.GetChildren()) { _boardRoot.RemoveChild(n); n.QueueFree(); }
+        Board();
+        Camera.Fov = Horizon.Lens;
+        Camera.Far = Horizon.On ? Horizon.Reach * 2.5f : 2000;
+        if (_modelsShown != UserConfig.Current.View.ShowUnitModels)
+        {
+            _modelsShown = UserConfig.Current.View.ShowUnitModels;
+            _library = null;
+            _modelFiles.Clear();
+            _modelSettings.Clear();
+            LoadUnitModels();
+            foreach (ModelView v in _models.Values) v.Root.QueueFree();
+            _models.Clear();   // the next frame builds every model again, with or without its 3D model
+        }
+    }
+
     private void Board()
     {
-        TableLook.AddBoard(this, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon, battlefield: Horizon.On, ground: Session.Lobby.Vm.MapGround);
-        Weather.Add(this, W, D, Session.Lobby.Vm.MapWeather);
+        TableLook.AddBoard(_boardRoot, W, D, Session.Lobby.Vm.MapMat, floor: Room == null, horizon: Session.Lobby.Vm.MapHorizon, battlefield: Horizon.On, ground: Session.Lobby.Vm.MapGround);
+        Weather.Add(_boardRoot, W, D, Session.Lobby.Vm.MapWeather);
     }
 
     // ------------------------------------------------------------------ terrain
