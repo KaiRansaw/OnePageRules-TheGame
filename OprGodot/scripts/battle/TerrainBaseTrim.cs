@@ -136,7 +136,7 @@ public static class TerrainBaseTrim
     public static bool Verbose;
     private static void Debug(string why) { if (Verbose) GD.Print("TerrainBaseTrim: " + why); }
 
-    private static int[] Indices(Godot.Collections.Array arrays, int vertexCount)
+    internal static int[] Indices(Godot.Collections.Array arrays, int vertexCount)
     {
         Variant ix = arrays[(int)Mesh.ArrayType.Index];
         if (ix.VariantType != Variant.Type.Nil)
@@ -148,7 +148,7 @@ public static class TerrainBaseTrim
     }
 
     /// <summary>The node's transform relative to <paramref name="root"/>, without needing either in the scene tree.</summary>
-    private static Transform3D RelativeTo(Node3D root, Node3D node)
+    internal static Transform3D RelativeTo(Node3D root, Node3D node)
     {
         Transform3D t = Transform3D.Identity;
         for (Node? n = node; n != null && n != root; n = n.GetParent())

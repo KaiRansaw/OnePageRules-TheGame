@@ -63,6 +63,7 @@ public static class WarhammerModels
     public static void Forget(string file)
     {
         Templates.Remove(file);
+        TerrainSolidShape.Forget(file);
     }
 
     /// <summary>
@@ -109,9 +110,10 @@ public static class WarhammerModels
         pivot.Position = new Vector3(-c.X * sx, -box.Position.Y * sy, -c.Z * sz);
         // Sunk into the ground by the model's own setting (Match terrain / Map Maker), so a sculpted base goes under it.
         holder.Position = new Vector3(centre.X, -(sink ?? entry.Match.Sink), centre.Y);
-        // Turn the model's +X onto the footprint's first edge (its width), the same way the outlines are drawn - checked
-        // against them in the Map Maker's top view (2026-11-14).
-        holder.Rotation = new Vector3(0, Mathf.Atan2(across.Y, across.X), 0);
+        // Turn the model's +X onto the footprint's first edge (its width), the same way the outlines are drawn.
+        // Kai, 2026-11-19: a turned piece's model sat turned the OTHER way from its footprint. A turn about Godot's Y
+        // carries +X to (cos, -sin) in x/z, so the angle is taken against -y - as TerrainDresser.YawFor does.
+        holder.Rotation = new Vector3(0, Mathf.Atan2(-across.Y, across.X), 0);
         return true;
     }
 
@@ -131,7 +133,7 @@ public static class WarhammerModels
     }
 
     /// <summary>A model loaded once and copied for every piece that shows it (some are 17 MB).</summary>
-    private static Node3D? Template(string file)
+    internal static Node3D? Template(string file)
     {
         if (Templates.TryGetValue(file, out Node3D? have)) return have;
         Node3D? model = File.Exists(file) ? AssetLoader.Load(file).Model : null;

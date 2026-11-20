@@ -1242,13 +1242,27 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     {
         bool sel = _picked.Contains(p);
         Color c = BattleTable.TerrainColour(p.Rules);
-        var root = new Node3D { Position = World(p.X, p.Z), RotationDegrees = new Vector3(0, -p.Angle, 0) };
+        // Turned by +Angle: the table's z runs the other way to Godot's (World), so the engine's turn shows as a positive
+        // turn here. It was -Angle, which drew every turned outline (and the Rules view) mirrored against the piece the
+        // game actually plays - and against its model, now that the model turns the game's way (Kai, 2026-11-19).
+        var root = new Node3D { Position = World(p.X, p.Z), RotationDegrees = new Vector3(0, p.Angle, 0) };
         _pieces.AddChild(root);
         if (_rulesView)
         {
             Color rc = TableLook.RulesColour(p.Rules);
-            Mesh flat = p.Round ? new CylinderMesh { TopRadius = p.W / 2, BottomRadius = p.W / 2, Height = 0.12f } : new BoxMesh { Size = new Vector3(p.W, 0.12f, p.D) };
-            TableLook.Mesh(root, flat, TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(0, 0.07f, 0));
+            // A model piece that stops models or sight plays only on its solid parts (Kai, 2026-11-19) - show those.
+            if (TerrainSolids.Applies(p) && TerrainSolids.Provider?.Invoke(p.Look) is { Count: > 0 } parts)
+                foreach (var (u0, v0, u1, v1) in parts)
+                {
+                    float cx = (-0.5f + (u0 + u1) / 2) * p.W, cz = (0.5f - (v0 + v1) / 2) * p.D;
+                    TableLook.Mesh(root, new BoxMesh { Size = new Vector3((u1 - u0) * p.W, 0.12f, (v1 - v0) * p.D) },
+                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(cx, 0.07f, -cz));
+                }
+            else
+            {
+                Mesh flat = p.Round ? new CylinderMesh { TopRadius = p.W / 2, BottomRadius = p.W / 2, Height = 0.12f } : new BoxMesh { Size = new Vector3(p.W, 0.12f, p.D) };
+                TableLook.Mesh(root, flat, TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(0, 0.07f, 0));
+            }
             root.AddChild(new Label3D { Text = TableLook.RulesShort(p.Rules), FontSize = 48, PixelSize = 0.011f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0, 1.2f, 0), NoDepthTest = true, Modulate = rc.Lightened(0.5f) });
         }
         else if (Dress(p))

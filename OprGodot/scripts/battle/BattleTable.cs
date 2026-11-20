@@ -636,8 +636,11 @@ public partial class BattleTable : Node3D
         int seed = FdgRaylib.Terrain.TerrainLooks.SeedFor(first.Average(p => p.X), first.Average(p => p.Z), t.Name);
         var holder = new Node3D();
         _terrainRoot.AddChild(holder);
-        // Kai, 2026-11-14: a Warhammer model the map placed shows as itself, when this computer has it.
-        if (WarhammerModels.Dress(holder, t.Look, polys[0]))
+        // Kai, 2026-11-14: a Warhammer model the map placed shows as itself, when this computer has it - over the whole
+        // footprint it was placed on, when the rules play only on its solid parts (2026-11-19).
+        IZone drawn = (t as FDG.TerrainData)?.DrawShape ?? t.Shape;
+        var drawnPolys = ZoneOutlines.Polygons(drawn).Select(poly => poly.Select(p => new Vector2(p.X - W / 2, D / 2 - p.Z)).ToArray()).ToList();
+        if (drawnPolys.Count > 0 && WarhammerModels.Dress(holder, t.Look, drawnPolys[0]))
         {
             nodes.Add(holder);
             return true;

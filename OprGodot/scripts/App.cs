@@ -44,6 +44,8 @@ public partial class App : Node
 
         // Shared with the Raylib build: same file, same player name, same last host address.
         UserConfig.EnsureExists();
+        // A Warhammer model's solid parts become its piece's rules shape when a map is saved (Kai, 2026-11-19).
+        Battle.TerrainSolidShape.Register();
         // Kai's model facings and picture framing go into the game's own files (Assets/Models3D) so every download
         // gets them. Running from the repo, copy what is on this PC into those files now, off the main thread.
         if (FdgRaylib.Models3D.SharedModelSettings.IsAuthority)

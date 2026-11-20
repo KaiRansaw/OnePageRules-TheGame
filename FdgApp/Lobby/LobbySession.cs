@@ -538,6 +538,9 @@ public sealed class LobbySession : IDisposable
     {
         bool resume = Vm.IsResumeMode;
         string? fail;
+        // A map saved before its models' solid parts were worked out (or since re-matched) gets them now, so the
+        // game plays an L-shaped building as an L (2026-11-19). The host's file is the one the game reads.
+        if (!resume && Vm.HasHostPrivileges && HasMap) Terrain.TerrainSolids.RefreshFile(Vm.TerrainLayoutPath!);
         bool started = resume ? Vm.TryResumeGame(out fail) : Vm.TryLaunchGame(out fail);
         LastLaunchError = started ? null : (fail ?? "Launch failed.");
         if (started)

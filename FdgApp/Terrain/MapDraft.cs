@@ -164,7 +164,9 @@ public sealed class MapDraft
         ?? TerrainBook.Kinds.FirstOrDefault(k => k.Rules == p.Rules)?.Id
         ?? (p.Rules.HasFlag(ETerrainType.Blocking) ? "Building" : "Barricade");
 
-    public TerrainLayoutFile ToLayout() => new()
+    /// <summary>The map as a file. <paramref name="withSolids"/>: work out each model piece's solid parts
+    /// (<see cref="TerrainSolids"/>) - left out of the editor's change tracking, which compares snapshots.</summary>
+    public TerrainLayoutFile ToLayout(bool withSolids = true) => new()
     {
         Name = Name.Trim(),
         GeneratedFrom = GeneratedFrom,
@@ -179,13 +181,14 @@ public sealed class MapDraft
         Pieces = Pieces.Select(p => new TerrainPieceEntry
         {
             Name = p.Name, TerrainType = p.Rules, Shape = p.ToZone(), HeightInches = p.Height, Points = p.Points, Kind = p.Kind, Look = p.Look, Locked = p.Locked,
+            Solid = withSolids ? TerrainSolids.For(p) : null,
         }).ToList(),
         Objectives = Objectives.Select(o => new MapObjectiveEntry { X = o.X, Z = o.Z }).ToList(),
         BaseMarkers = Bases.ToList(),
         DeploymentZones = new List<MapDeploymentZoneEntry>(), // the lobby decides deployment (Kai, 2026-11-07)
     };
 
-    public string Snapshot() => TerrainLoader.SerializeToJson(ToLayout());
+    public string Snapshot() => TerrainLoader.SerializeToJson(ToLayout(withSolids: false));
     public bool Dirty => Snapshot() != _saved;
 
     /// <summary>Why the map can't be saved yet, or null.</summary>
