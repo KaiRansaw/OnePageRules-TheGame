@@ -50,8 +50,18 @@ already covered by 2.69, aura summaries that are just shorter). The other 554 ro
 - Guards: `ToughGates_UseTheNumberTheBookPrints`, `MayRollPlusOneAttack_IsAnExtraAttackDie_NotALandedHit`,
   `FrenzyAndGrowthMarkers_StopAtTheBooksMaximum`. Rule fire-lint's tough opponent is now Tough(27).
 
-**Still open:**
-- Vengeance (GF / AoF): should give as many tokens as the unit had models with the rule.
-- Extended Buff Range, Quest and Skirmish variants ("within 6\" of a Hero", "only one use per game").
+**Batch 3 (Build 2.93):**
+- Vengeance (GF, GFF, AoF, AoFS): as many tokens as models had the rule at the start of the game. The item lands on
+  the unit, so the list compiler records how many models bought it (`UnitFileEntry.RuleCarriers`, summed when two
+  halves combine) and the unit keeps it in play (`UnitData.StartingRuleCarriers`, read by
+  `ValueSource.StartingRuleCarrierCount`). An army file with no record gives 1, as before. Quest: one marker, as
+  their books say.
+- Extended Buff Range, 3.6.0 wording in every game: a Hero's 12" friendly pick reaches a unit with the rule within
+  24" of another unit with the rule that holds the Hero (GF / AoF) or is within 6" of it (GFF / AoFS / Quest). Quest:
+  once per game - judgement call: the relay unit (the one near the Hero) is the one whose use is spent.
+- Guards: `VengeanceAndBuffRangeShippedDataTests`, engine `VengeanceRuleIntegrationTests`,
+  `ExtendedBuffRangeRuleIntegrationTests`.
+
+**Still open:** nothing from the read.
 - "Nearest" picks stay the existing house rule (the player is trusted). Dangerous Terrain Debuff (Immediate) is
   built as an immediate test, which matches the text.

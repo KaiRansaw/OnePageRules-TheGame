@@ -75,9 +75,9 @@ public class VengeanceShippedDataTests
         Assert.That(effect.TType, Is.EqualTo(TokenType.PersistentHitBonus),
             "'+1 to hit for the rest of the game' - persistent, not the spendable sibling that a single " +
             "attack claims and removes");
-        Assert.That(effect.Count, Is.InstanceOf<ValueSource.Literal>());
-        Assert.That(((ValueSource.Literal)effect.Count).Value, Is.EqualTo(1),
-            "one Honor-Bound item per unit - see EveryCarrier_BuysItThroughAnAffectsOneSection");
+        Assert.That(effect.Count, Is.InstanceOf<ValueSource.StartingRuleCarrierCount>(),
+            "#468, 3.6.0: as many tokens as models with the rule at the start - one per Honor-Bound bought, so a " +
+            "combined unit that bought it on both halves gives two (VengeanceAndBuffRangeShippedDataTests)");
         Assert.That(effect.Clear, Is.InstanceOf<TokenClearTrigger.ManualOnly>(),
             "an OwnerDestroyed marker would be self-cancelling: the placer is dead by construction");
         Assert.That(effect.MaxTotal, Is.EqualTo(0),

@@ -134,7 +134,8 @@
         },
         "effect": {
           "kind": "enableBuffRelay",
-          "rangeInches": 12.0
+          "rangeInches": 12.0,
+          "targetWithinInches": 24.0
         },
         "lifetime": "UntilEndOfGame",
         "seat": "Actor"
@@ -8023,8 +8024,7 @@
             "id": "PersistentHitBonusMarker"
           },
           "count": {
-            "kind": "literal",
-            "value": 1
+            "kind": "startingRuleCarrierCount"
           },
           "clear": {
             "kind": "manualOnly"
