@@ -14,8 +14,7 @@ namespace OprGodot.Battle;
 public static class GroundBlend
 {
     /// <summary>Which layers are drawn (letters s, d, t). BACKBURNER (Kai, 2026-11-18): off until the built-in terrain set
-    /// is finalised, then Kai picks from the comparison. Never applied to Warhammer models (callers skip them). The worn
-    /// ground still needs its lighting fixed (some halos came out near-black - their triangles face down).</summary>
+    /// is finalised, then Kai picks from the comparison. Never applied to Warhammer models (callers skip them).</summary>
     public static string Layers = "";
 
     public static void Add(Node3D holder, IReadOnlyList<Vector2[]> polygons, string kind, int seed, FDG.TerrainBook.ETheme theme)
@@ -40,12 +39,20 @@ public static class GroundBlend
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
         void V(Vector2 p, float a) { st.SetColor(new Color(1, 1, 1, a)); st.SetNormal(Vector3.Up); st.AddVertex(new Vector3(p.X, lift, p.Y)); }
+        // Every triangle wound to face up (as TerrainDresser's Mound does): an outline can run either way round, and a
+        // face seen from its back is lit from below - that was the near-black halos.
+        void Tri(Vector2 p0, float a0, Vector2 p1, float a1, Vector2 p2, float a2)
+        {
+            var v0 = new Vector3(p0.X, 0, p0.Y); var v1 = new Vector3(p1.X, 0, p1.Y); var v2 = new Vector3(p2.X, 0, p2.Y);
+            if ((v1 - v0).Cross(v2 - v0).Y < 0) { (p1, p2) = (p2, p1); (a1, a2) = (a2, a1); }
+            V(p0, a0); V(p1, a1); V(p2, a2);
+        }
         for (int i = 0; i < poly.Length; i++)
         {
             Vector2 a = poly[i], b = poly[(i + 1) % poly.Length];
-            V(c, alpha); V(a, alpha); V(b, alpha);
-            V(a, alpha); V(Out(a), 0); V(Out(b), 0);
-            V(a, alpha); V(Out(b), 0); V(b, alpha);
+            Tri(c, alpha, a, alpha, b, alpha);
+            Tri(a, alpha, Out(a), 0, Out(b), 0);
+            Tri(a, alpha, Out(b), 0, b, alpha);
         }
         var mi = TableLook.Mesh(holder, st.Commit(), mat, Vector3.Zero);
         mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;

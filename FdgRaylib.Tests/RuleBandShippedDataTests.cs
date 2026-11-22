@@ -160,4 +160,19 @@ public class RuleBandShippedDataTests
         });
         Assert.That(bad, Is.Empty, "a Frenzy / Growth rule collects more or fewer markers than its text allows");
     }
+
+    // 2026-11-22: "If most models in this unit are within 1" of terrain, THIS MODEL gets +1 to hit" - a per-model
+    // attack bonus like Good Fighter, so a Hero carrying it inside a unit without it still gets it. An every-model
+    // gate broke exactly that case. (Grounded Speed keeps its gate on purpose: a unit moves together, so the extra
+    // move only helps when every model has it.)
+    [Test]
+    public void PerModelHitBonus_WithATerrainCheck_IsNotGatedOnEveryModel()
+    {
+        List<string> bad = Offenders((text, json) =>
+            text.StartsWith("If most models in this unit are within", StringComparison.Ordinal)
+            && text.Contains("this model gets +1 to hit")
+            && json.Contains("allModelsHaveThisRule"));
+        Assert.That(bad, Is.Empty, "a per-model hit bonus needs only the unit's terrain check.");
+        Assert.That(Definitions().Count(d => d.Name == "Grounded Precision"), Is.GreaterThan(0), "control: the rule still ships");
+    }
 }

@@ -33,8 +33,6 @@ public class GroundedShippedDataTests
 
     [TestCase("Grounded Reinforcement", EHookID.Shooting_OnHitRollComplete, ERuleSeat.Subject,
         ERollKind.Save, 1)]
-    [TestCase("Grounded Precision", EHookID.Shooting_OnHitRollModifier, ERuleSeat.Actor,
-        ERollKind.Hit, 1)]
     [TestCase("Grounded Stealth", EHookID.Shooting_OnHitRollModifier, ERuleSeat.Subject,
         ERollKind.Hit, -1)]
     public void EachRule_GatesOnTerrain_AndAppliesTheRightModifierAtTheRightHookAndSeat(
@@ -57,6 +55,22 @@ public class GroundedShippedDataTests
         var mod = (Effect.RollModifier)entry.Effect;
         Assert.That(mod.RollKind, Is.EqualTo(roll));
         Assert.That(mod.Delta, Is.EqualTo(delta));
+    }
+
+    // "If most models in this unit are within 1" of terrain, this model gets +1 to hit rolls when attacking" - a per-model
+    // bonus with no "most models have this rule" clause (2026-11-22): only the terrain gate, so a joined Hero carrying it
+    // gets it in a unit that doesn't.
+    [Test]
+    public void GroundedPrecision_GatesOnTerrainOnly_ForTheModelThatHasIt()
+    {
+        HookEntry entry = Definition("Grounded Precision").Passive.Single();
+        Assert.That(entry.HookID, Is.EqualTo(EHookID.Shooting_OnHitRollModifier));
+        Assert.That(entry.Seat, Is.EqualTo(ERuleSeat.Actor));
+        Assert.That(entry.Condition, Is.InstanceOf<Condition.MostModelsWithinInchesOfTerrain>(), "no every-model clause in 3.6.0.");
+        Assert.That(((Condition.MostModelsWithinInchesOfTerrain)entry.Condition).DistanceInches, Is.EqualTo(1f));
+        var mod = (Effect.RollModifier)entry.Effect;
+        Assert.That(mod.RollKind, Is.EqualTo(ERollKind.Hit));
+        Assert.That(mod.Delta, Is.EqualTo(1));
     }
 
     [TestCase("Grounded Reinforcement Aura", "Grounded Reinforcement")]

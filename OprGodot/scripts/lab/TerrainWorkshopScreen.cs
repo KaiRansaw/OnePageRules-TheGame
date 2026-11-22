@@ -583,6 +583,11 @@ public partial class TerrainWorkshopScreen : Control
             case "size": var wd = arg.Split(';'); _round.ButtonPressed = false; _piece.Round = false; _w.Value = double.Parse(wd[0], inv); _d.Value = double.Parse(wd[1], inv); break;
             case "style": SwitchStyle(arg); break;
             case "save": Save(); break;
+            case "open" when TerrainPieces.All.FirstOrDefault(x => x.Id == arg) is { } op:
+                if (op.Style != _style) SwitchStyle(op.Style);
+                Load(op.Copy());
+                break;
+            case "view": var cv = arg.Split(';').Select(x => float.Parse(x, inv)).ToArray(); _yaw = cv[0]; _pitch = cv[1]; _dist = cv[2]; ApplyCamera(); break;
             case "pick": Select(int.Parse(arg)); break;
             case "delete": TerrainPieces.Delete(_piece); Load(NewPiece(_style)); break;
         }

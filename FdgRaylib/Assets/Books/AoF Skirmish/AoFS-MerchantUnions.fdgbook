@@ -4620,14 +4620,8 @@
         {
           "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "allModelsHaveThisRule"
-            },
-            "right": {
-              "kind": "mostModelsWithinInchesOfTerrain",
-              "distanceInches": 1
-            }
+            "kind": "mostModelsWithinInchesOfTerrain",
+            "distanceInches": 1
           },
           "effect": {
             "kind": "rollModifier",

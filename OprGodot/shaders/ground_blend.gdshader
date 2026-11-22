@@ -20,6 +20,8 @@ void fragment() {
 	float lum = dot(g, vec3(0.3, 0.55, 0.15));
 	ALBEDO = mix(g, vec3(lum) * 1.4 * dirt.rgb, 0.8);
 	ROUGHNESS = 1.0;
+	// Always lit as ground facing up, whichever way the triangles are wound (a back face flips NORMAL and goes dark).
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	float n = texture(noise, world.xz / 14.0).r;
 	float edge = COLOR.a;
 	ALPHA = clamp(smoothstep(0.0, 1.0, edge * 1.6 - (1.0 - n) * 0.9), 0.0, 1.0) * strength;

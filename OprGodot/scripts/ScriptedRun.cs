@@ -415,6 +415,39 @@ public partial class ScriptedRun : Node
             // "trimshot:<model file>|<png>" pictures a terrain model with its scenic base cut off (TerrainBaseTrim checks).
             if (name.StartsWith("trimshot:")) { TrimShot(name); return; } // follow with wait:N
             // "terrainboard:<spec.json>|<out folder>" pictures candidate terrain models on the table (Lab.TerrainBoard), then quits.
+            if (name.StartsWith("blend:"))
+            {
+                // Dev tool: switch the ground blend layers (s shade, d worn ground, t tufts; "blend:" = off) for screenshots.
+                Battle.GroundBlend.Layers = name[6..];
+                // The blend only draws on the battlefield look; switch it on for this run (not saved).
+                if (Battle.GroundBlend.Layers.Length > 0)
+                    FdgRaylib.Config.UserConfig.Current.View.Room = FdgRaylib.Terrain.TableRooms.Battlefield;
+                GD.Print($"ScriptedRun: ground blend '{Battle.GroundBlend.Layers}'");
+                _wait = 5;
+                return;
+            }
+            if (name.StartsWith("measuremodels:"))
+            {
+                // Dev tool: every built-in terrain model's size at scale 1 (model units), for laying out pieces.
+                var rows = new List<string>();
+                var space = new Node3D();
+                GetTree().Root.AddChild(space);
+                foreach (var m in Battle.PieceModels.Catalogue)
+                {
+                    if (Battle.PieceModels.Instance(m.Path) is not { } n) { rows.Add($"{{\"p\":\"{m.Path}\",\"missing\":true}}"); continue; }
+                    space.AddChild(n);
+                    if (OprGodot.Lab.AssetLoader.Bounds(n, space) is { } b)
+                        rows.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                            "{{\"p\":\"{0}\",\"g\":\"{1}\",\"x0\":{2:0.###},\"y0\":{3:0.###},\"z0\":{4:0.###},\"x1\":{5:0.###},\"y1\":{6:0.###},\"z1\":{7:0.###}}}",
+                            m.Path, m.Group, b.Position.X, b.Position.Y, b.Position.Z, b.End.X, b.End.Y, b.End.Z));
+                    n.Free();
+                }
+                space.QueueFree();
+                System.IO.File.WriteAllText(name[14..], "[\n" + string.Join(",\n", rows) + "\n]\n");
+                GD.Print($"ScriptedRun: measured {rows.Count} models");
+                _wait = 5;
+                return;
+            }
             if (name.StartsWith("terrainboard:") && name[13..].Split('|') is [var tbSpec, var tbOut])
             {
                 var board = new Lab.TerrainBoard(tbSpec, tbOut);

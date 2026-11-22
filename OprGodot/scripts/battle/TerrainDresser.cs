@@ -245,13 +245,16 @@ public static partial class TerrainDresser
     }
 
     /// <summary>Props round the edge of the footprint (rocks round a pond, stones by the lava).</summary>
-    private static readonly Prop[] Tufts =
+    // Grass tufts and small dark pebbles from the stylised nature set (Kai, 2026-11-18: the old Kenney stones read as
+    // white spots on the felt). Sizes are model units -> inches, about a third of true scale so they stay ankle-high.
+    private static readonly (string Model, float Min, float Max)[] Tufts =
     {
-        new("nature/grass_large", 0.35f, 0.7f), new("nature/grass_leafsLarge", 0.3f, 0.6f), new("nature/plant_bush", 0.4f, 0.8f),
-        new("nature/stone_smallA", 0.15f, 0.35f), new("nature/rock_smallA", 0.15f, 0.3f), new("nature/stone_smallC", 0.12f, 0.3f),
+        ("stylised/nature/models/Grass_Common_Short.gltf", 0.25f, 0.4f), ("stylised/nature/models/Grass_Wispy_Short.gltf", 0.25f, 0.4f),
+        ("stylised/nature/models/Clover_1.gltf", 0.3f, 0.45f), ("stylised/nature/models/Grass_Common_Short.gltf", 0.2f, 0.35f),
+        ("stylised/nature/models/Pebble_Round_2.gltf", 0.5f, 0.8f), ("stylised/nature/models/Pebble_Round_4.gltf", 0.5f, 0.8f),
     };
 
-    /// <summary>Life-size grass tufts and stones along a footprint's edge, half in and half out, so the piece's edge
+    /// <summary>Small grass tufts and pebbles along a footprint's edge, half in and half out, so the piece's edge
     /// melts into the field (see <see cref="Battle.GroundBlend"/>).</summary>
     public static void EdgeTufts(Node3D root, Vector2[] poly, Random rng)
     {
@@ -263,8 +266,12 @@ public static partial class TerrainDresser
             Vector2 edge = OnEdge(poly, (float)rng.NextDouble());
             Vector2 d = (edge - c).Normalized();
             Vector2 p = edge + d * (float)(rng.NextDouble() * 2.2 - 0.6);
-            var prop = Tufts[rng.Next(Tufts.Length)];
-            PlaceTall(root, prop.File, new Vector3(p.X, 0, p.Y), (float)rng.NextDouble() * Mathf.Tau, Lerp(prop, rng), 1.2f);
+            var t = Tufts[rng.Next(Tufts.Length)];
+            PieceModels.Place(root, new FdgRaylib.Terrain.TerrainPieces.Item
+            {
+                Model = t.Model, X = p.X, Z = p.Y, Turn = (float)rng.NextDouble() * 360f,
+                Scale = t.Min + (float)rng.NextDouble() * (t.Max - t.Min),
+            });
         }
     }
 
