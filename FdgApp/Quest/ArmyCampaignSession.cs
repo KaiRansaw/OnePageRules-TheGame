@@ -510,7 +510,19 @@ public sealed class ArmyCampaignSession
     public string? PickEnemyForMe(Draft d)
     {
         var candidates = EnemyCandidates(d);
-        if (candidates.Count == 0) return "No other army in the folder fits the treasury - build the enemy instead.";
+        if (candidates.Count == 0)
+        {
+            // Nothing saved fits (a fresh Skirmish or Firefight install has no lists that small): build one, the same
+            // way the map campaign builds its rivals and the lobby's Random Army does - a random book of this game,
+            // a legal starting army bought at the book's campaign prices.
+            var taken = new List<string>();
+            if (d.Name.Trim().Length > 0) taken.Add(d.Name.Trim());
+            if (MapCampaignSession.BuildRival(System, _rng, taken) is not { } built)
+                return "No saved army fits the treasury and no book could make one - build the enemy instead.";
+            d.Enemy = built.Army;
+            d.EnemyName = built.Name;
+            return null;
+        }
         Entry pick = candidates[_rng.Next(candidates.Count)];
         if (StrikeTeamFiles.Load(pick.Path) is not { } copy) return "Couldn't read that army file.";
         d.Enemy = copy;

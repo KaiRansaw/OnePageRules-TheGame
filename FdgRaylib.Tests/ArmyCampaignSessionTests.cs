@@ -88,6 +88,22 @@ public class ArmyCampaignSessionTests
         Assert.That(s.ListRow(you).Line, Does.StartWith("0 / 5 VP - 0 missions"));
     }
 
+    // 2026-11-22 bug hunt: "Pick one for me" in a game with no saved list small enough (Skirmish, Firefight on a fresh
+    // install) said "build the enemy instead". It now builds one like the map campaign's rivals and the lobby's Random
+    // Army, so it always answers with a legal starting army - in every game, whatever is saved.
+    [TestCase(EGameSystem.AoFSkirmish)]
+    [TestCase(EGameSystem.GFFirefight)]
+    [TestCase(EGameSystem.GrimdarkFuture)]
+    public void PickOneForMe_AlwaysFindsALegalEnemy(EGameSystem game)
+    {
+        var s = new ArmyCampaignSession(game, new Random(5));
+        var d = new ArmyCampaignSession.Draft { Name = "Test Wardens" };
+        Assert.That(s.PickEnemyForMe(d), Is.Null);
+        Assert.That(d.Enemy, Is.Not.Null);
+        Assert.That(s.CannotStart(d.Enemy!), Is.Null, "a legal campaign start");
+        Assert.That(d.EnemyName.Trim(), Is.Not.Empty.And.Not.EqualTo("Test Wardens"));
+    }
+
     [Test]
     public void NewProblem_WalksTheTabs()
     {

@@ -140,6 +140,13 @@ public class ArmyCatalogTests
         foreach (string file in files)
         {
             var full = JsonSerializer.Deserialize<ArmyListFile>(File.ReadAllText(file), RuleJson.Options);
+            // A campaign army (anyone who has played a campaign has some under armies/Campaigns) is left out of the
+            // index on purpose (#447) - it must never be offered as an ordinary army. Not a shipped list either.
+            if (full?.StrikeTeam != null)
+            {
+                Assert.That(ArmyCatalog.ReadEntry(file), Is.Null, $"{Path.GetFileName(file)}: campaign armies stay out of the index");
+                continue;
+            }
             ArmyCatalogEntry? indexed = ArmyCatalog.ReadEntry(file);
 
             Assert.That(indexed, Is.Not.Null, $"{Path.GetFileName(file)} failed to index");
