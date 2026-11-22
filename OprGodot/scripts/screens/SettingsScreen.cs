@@ -93,6 +93,13 @@ public partial class SettingsScreen : Control
         themes.Selected = Math.Max(0, ids.IndexOf(View.UiSkin));
         themes.ItemSelected += i => Hud.Skin.Set(ids[(int)i]);
         rows.AddChild(Row("UI theme", "The art on every panel and button. Each pack has a Grimdark colouring and an Age of Fantasy one. Classic = the plain cut-corner panels. Changes straight away.", themes));
+        // Kai, 2026-11-21: both built-in terrain sets in the game, the player picks.
+        var tstyle = new OptionButton { Name = "TerrainStyle" };
+        tstyle.AddItem("Stylised (painted look)");
+        tstyle.AddItem("Realistic (photo-scanned)");
+        tstyle.Selected = View.TerrainStyle == FdgRaylib.Terrain.TerrainPieces.Realistic ? 1 : 0;
+        tstyle.ItemSelected += i => { View.TerrainStyle = i == 1 ? FdgRaylib.Terrain.TerrainPieces.Realistic : FdgRaylib.Terrain.TerrainPieces.Stylised; FdgRaylib.Config.UserConfig.Save(); };
+        rows.AddChild(Row("Terrain style", "Which set of built-in terrain models the table uses. A terrain kind with no hand-built piece in that style yet keeps the older look. Your Warhammer terrain is not affected. Takes effect from the next game.", tstyle));
         rows.AddChild(Check("3D unit models", "Show the models you downloaded in the Asset Lab on the battle table. Off: everyone is the plain token (quicker on a slow computer). Takes effect from the next game.",
             View.ShowUnitModels, on => View.ShowUnitModels = on));
         rows.AddChild(Check("Unit labels", "Show each unit's name over it on the table.",

@@ -385,6 +385,7 @@ public partial class ScriptedRun : Node
             // "mm:<command>" the map list, "me:<command>" the map editor.
             if (name.StartsWith("mm:") && Find<Maps.MapMakerScreen>(GetTree().Root) is { } mm && mm.Visible) { mm.Drive(name[3..]); _wait = 20; return; }
             if (name.StartsWith("me:") && Find<Maps.MapEditorScreen>(GetTree().Root) is { } me && me.Visible) { me.Drive(name[3..]); _wait = 20; return; }
+            if (name.StartsWith("ws:") && Find<Lab.TerrainWorkshopScreen>(GetTree().Root) is { } ws && ws.Visible) { ws.Drive(name[3..]); _wait = 20; return; }
             if (name.StartsWith("ms:") && Find<Campaign.MissionSetupScreen>(GetTree().Root) is { } ms && ms.Visible) { ms.Drive(name[3..]); _wait = 20; return; }
             if (name.StartsWith("partypick:") && int.TryParse(name[10..], out int pn) && Find<Quest.HeroPartyPopup>(GetTree().Root) is { } party) { party.PickFirst(pn); _wait = 20; return; }
             if (name.StartsWith("forge:") && Find<Forge.ArmyForgeScreen>(GetTree().Root) is { } forge)
@@ -413,6 +414,15 @@ public partial class ScriptedRun : Node
             }
             // "trimshot:<model file>|<png>" pictures a terrain model with its scenic base cut off (TerrainBaseTrim checks).
             if (name.StartsWith("trimshot:")) { TrimShot(name); return; } // follow with wait:N
+            // "terrainboard:<spec.json>|<out folder>" pictures candidate terrain models on the table (Lab.TerrainBoard), then quits.
+            if (name.StartsWith("terrainboard:") && name[13..].Split('|') is [var tbSpec, var tbOut])
+            {
+                var board = new Lab.TerrainBoard(tbSpec, tbOut);
+                board.Done += () => GetTree().Quit();
+                AddChild(board);
+                _wait = int.MaxValue;
+                return;
+            }
             // "option:WeatherPick|2" picks item 2 of the drop-down named WeatherPick, as if chosen by hand.
             if (name.StartsWith("option:") && name[7..].Split('|') is [var optName, var optIdx] && int.TryParse(optIdx, out int oi)
                 && GetTree().Root.FindChild(optName, true, false) is OptionButton ob)

@@ -59,6 +59,9 @@ public static class CreditsText
         new Section("Terrain models (shipped with the game)", new[]
         {
             new Entry("Nature, Castle, Fantasy Town, City (Industrial), Space and Survival kits", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl"),
+            new Entry("Stylized Nature, Medieval Village, Fantasy Props and Modular Sci-Fi MegaKits (terrain)", "Quaternius", "CC0 1.0 (public domain)", "https://quaternius.com"),
+            new Entry("LowPoly Apocalyptic Buildings (terrain)", "Majadroid (Maik Hoffmann); textures from cc0textures.com", "CC0 1.0 (public domain)", "https://opengameart.org/content/3d-apocalyptic-building-city-cc0"),
+            new Entry("Realistic terrain models (rocks, trees, plants, props, fort)", "Poly Haven", "CC0 1.0 (public domain)", "https://polyhaven.com"),
             new Entry("Medieval Village MegaKit", "Quaternius", "CC0 1.0 (public domain)", "https://quaternius.com"),
         }, "Free to use without credit - credited anyway. The Nature Kit's colours are toned down in the game."),
         new Section("3D models (downloaded by you, never shipped)", new[]

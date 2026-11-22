@@ -23,6 +23,8 @@ public static class SharedSettingsSync
     {
         SharedModelSettings.RelativePath, PictureFraming.ShippedRelativePath,
         ModelMatches.ShippedRelativePath, WarhammerTerrainLibrary.ShippedRelativePath,
+        // Kai's hand-built terrain pieces (Asset Lab, Terrain Workshop) - a folder; git adds what is in it.
+        Terrain.TerrainPieces.RelativeFolder,
     };
 
     /// <summary>Copies this PC's settings into the shipped files. Returns how many models' settings it holds (-1: not the repo).</summary>
@@ -61,7 +63,7 @@ public static class SharedSettingsSync
         SharedModelSettings.Flush();
         string repo = Path.GetFullPath(Path.Combine(AppAssets.Root, ".."));
         string[] paths = ShippedFiles.Select(f => Path.GetRelativePath(repo, Path.Combine(AppAssets.AssetsFolder, f)).Replace('\\', '/'))
-            .Where(p => File.Exists(Path.Combine(repo, p))).ToArray();
+            .Where(p => File.Exists(Path.Combine(repo, p)) || Directory.Exists(Path.Combine(repo, p))).ToArray();
         if (paths.Length == 0) return "Nothing to send yet.";
 
         var add = Git(repo, new[] { "add", "--" }.Concat(paths));
@@ -79,7 +81,7 @@ public static class SharedSettingsSync
             push = Git(repo, new[] { "push" });
             if (push.Code != 0) return "Saved on this PC, but the push failed - send Claude a screenshot. " + push.Text;
         }
-        return $"Sent to GitHub: settings for {n} models, picture framing, model and terrain matches. Pull on the other computer to get them.";
+        return $"Sent to GitHub: settings for {n} models, picture framing, model and terrain matches, terrain pieces. Pull on the other computer to get them.";
     }
 
     private static (int Code, string Text) Git(string repo, IEnumerable<string> args)

@@ -222,6 +222,11 @@ public sealed class ViewPreferences
     /// <summary>Draw a map's weather (rain, snow, fog...) over the table (Kai, 2026-11-18). Cosmetic.</summary>
     public bool WeatherEffects { get; set; } = true;
 
+    /// <summary>Which built-in terrain models the table uses (Kai, 2026-11-21: both sets in the game "so people can have
+    /// options"): <c>stylised</c> (Quaternius / Majadroid) or <c>realistic</c> (Poly Haven). Kinds with no hand-built
+    /// piece in that style fall back to the older scatter looks.</summary>
+    public string TerrainStyle { get; set; } = "stylised";
+
     /// <summary>How bright the room behind the table is drawn (0.2 - 1.5).</summary>
     public float RoomBrightness { get; set; } = 0.7f;
 }

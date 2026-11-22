@@ -458,7 +458,7 @@ public static partial class TerrainDresser
 
     /// <summary>A footprint's own frame: its middle, its long side's direction <see cref="U"/> (and across,
     /// <see cref="V"/>) and its length along each.</summary>
-    private readonly record struct Frame(Vector2 Centre, Vector2 U, Vector2 V, float Lu, float Lv)
+    internal readonly record struct Frame(Vector2 Centre, Vector2 U, Vector2 V, float Lu, float Lv)
     {
         public static Frame Of(Vector2[] poly)
         {
@@ -490,7 +490,7 @@ public static partial class TerrainDresser
     }
 
     /// <summary>The Y rotation that turns a model's own +X onto <paramref name="dir"/> (world XZ).</summary>
-    private static float YawFor(Vector2 dir) => Mathf.Atan2(-dir.Y, dir.X);
+    internal static float YawFor(Vector2 dir) => Mathf.Atan2(-dir.Y, dir.X);
 
     private static float Aspect(Aabb box) =>
         Mathf.Max(box.Size.X, box.Size.Z) / Mathf.Max(0.001f, Mathf.Min(box.Size.X, box.Size.Z));

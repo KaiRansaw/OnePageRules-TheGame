@@ -32,7 +32,7 @@ public partial class LabHome : PanelContainer
         new("models", "3D models", "Download the Warhammer models for each army, match them to OPR units, and check they face the right way.", "stack"),
         new("pictures", "Unit pictures", "OPR's own pictures for every unit, from Army Forge, and pictures made from the models. Shown on the unit cards and army lists.", "binoculars"),
         new("mine", "Your pictures", "Your backdrops, game tiles and army pictures for the menus - the picture manager.", "flying-flag"),
-        new("terrain", "Terrain", "Warhammer terrain pieces and table mats, and what each piece is on a map.", "position-marker"),
+        new("terrain", "Terrain", "The game's own terrain pieces (Terrain Workshop), Warhammer terrain pieces and table mats, and what each piece is on a map.", "position-marker"),
         new("storage", "Storage", "How much space each kind of download takes, and clearing what's no longer needed.", "gears"),
     };
 
@@ -60,7 +60,8 @@ public partial class LabHome : PanelContainer
         },
         "terrain" => new Tool[]
         {
-            new("Home_GetTerrain", "Download terrain...", "Warhammer terrain pieces and table mats: the Download models window's \"Get Warhammer terrain\".", () => _lab.OpenDownloads(), true),
+            new("Home_TerrainWorkshop", "Terrain Workshop", "Build the game's own terrain pieces: pick a kind (forest, ruins, wall...), stand stylised or realistic models on its footprint, save. Maps and battles use them.", () => App.I.Open<TerrainWorkshopScreen>(Scenes.TerrainWorkshop), true),
+            new("Home_GetTerrain", "Download terrain...", "Warhammer terrain pieces and table mats: the Download models window's \"Get Warhammer terrain\".", () => _lab.OpenDownloads()),
             new("Home_MatchTerrain", "Match terrain models", "Say what each downloaded terrain piece is (Ruins, Barricade, Forest...) so it can go on maps. The same screen as in the Map Maker.", () => App.I.Open<Maps.MatchTerrainScreen>(Scenes.MatchTerrain)),
             new("Home_BrowseTerrain", "Browse terrain", "Every downloaded terrain piece on the real table.", () => ShowViewer(FdgRaylib.Terrain.WarhammerTerrain.ModelsFolderName)),
         },
