@@ -27,7 +27,11 @@ public static class TerrainSolidShape
     private static readonly Dictionary<string, (string Sig, IReadOnlyList<(float U0, float V0, float U1, float V1)>? Parts)> Cache = new();
 
     /// <summary>Hooks the shape into map saving (App start-up).</summary>
-    public static void Register() => TerrainSolids.Provider = For;
+    public static void Register()
+    {
+        TerrainSolids.Provider = For;
+        TerrainSolids.PieceProvider = ForPiece;
+    }
 
     /// <summary>Forget a model's shape (its file or base setting changed).</summary>
     public static void Forget(string file)
@@ -77,6 +81,16 @@ public static class TerrainSolidShape
         float clearY = box.Position.Y + (sinkInches + ClearInches) / sy;
         float cell = Mathf.Max(box.Size.X, box.Size.Z) / Cells;
         int nx = Math.Max(1, Mathf.CeilToInt(box.Size.X / cell)), nz = Math.Max(1, Mathf.CeilToInt(box.Size.Z / cell));
+        var grid = Raster(meshes, box, cell, clearY, nx, nz);
+        grid = Erode(Dilate(grid));
+        return Rectangles(grid, nx, nz, cell, box);
+    }
+
+
+    /// <summary>The cells of a top-down grid over <paramref name="box"/> that something stands in above
+    /// <paramref name="clearY"/>.</summary>
+    private static bool[,] Raster(List<(ArrayMesh Mesh, Transform3D ToUp)> meshes, Aabb box, float cell, float clearY, int nx, int nz)
+    {
         var grid = new bool[nx, nz];
 
         void Mark(float x, float z)
@@ -136,8 +150,56 @@ public static class TerrainSolidShape
                 }
         }
 
-        grid = Erode(Dilate(grid));
-        return Rectangles(grid, nx, nz, cell, box);
+        return grid;
+    }
+
+    private static readonly Dictionary<string, IReadOnlyList<(float, float, float, float)>?> PieceCache = new();
+
+    /// <summary>
+    /// The solid parts of a map piece set to one of the game's hand-built pieces, as table rectangles: the piece is
+    /// dressed onto the footprint exactly as the table draws it, everything over <see cref="ClearInches"/> high is solid,
+    /// and only what lies inside the footprint counts (the rules never reach past it).
+    /// </summary>
+    public static IReadOnlyList<(float X0, float Z0, float X1, float Z1)>? ForPiece(MapPiece p)
+    {
+        if (TerrainPieces.ById(p.Look) is not { } piece) return null;
+        string key = $"{p.Look}|{p.X:0.###}|{p.Z:0.###}|{p.W:0.###}|{p.D:0.###}|{p.Angle:0.###}|{p.Round}|{Newtonsoft.Json.JsonConvert.SerializeObject(piece)}";
+        if (PieceCache.TryGetValue(key, out var have)) return have;
+        IReadOnlyList<(float, float, float, float)>? result = null;
+        var root = new Node3D();
+        try
+        {
+            if (FdgRaylib.Rendering.ZoneOutlines.Polygons(p.ToZone()).FirstOrDefault() is { Length: >= 3 } outline)
+            {
+                // Table x / -z: the same handedness the table draws in (it only shifts by half the table).
+                Vector2[] poly = outline.Select(q => new Vector2(q.X, -q.Z)).ToArray();
+                if (PieceModels.Dress(root, poly, piece.Kind, p.Look, TerrainLooks.ETheme.Grimdark, 0))
+                {
+                    var meshes = new List<(ArrayMesh, Transform3D)>();
+                    foreach (MeshInstance3D mi in AssetLoader.All<MeshInstance3D>(root))
+                        if (mi.Mesh is ArrayMesh am && mi.Visible) meshes.Add((am, TerrainBaseTrim.RelativeTo(root, mi)));
+                    float minX = poly.Min(v => v.X), maxX = poly.Max(v => v.X), minZ = poly.Min(v => v.Y), maxZ = poly.Max(v => v.Y);
+                    var box = new Aabb(new Vector3(minX, 0, minZ), new Vector3(Mathf.Max(0.01f, maxX - minX), 1, Mathf.Max(0.01f, maxZ - minZ)));
+                    float cell = Mathf.Max(box.Size.X, box.Size.Z) / Cells;
+                    int nx = Math.Max(1, Mathf.CeilToInt(box.Size.X / cell)), nz = Math.Max(1, Mathf.CeilToInt(box.Size.Z / cell));
+                    if (meshes.Count > 0)
+                    {
+                        var grid = Erode(Dilate(Raster(meshes, box, cell, ClearInches, nx, nz)));
+                        for (int i = 0; i < nx; i++)
+                            for (int j = 0; j < nz; j++)
+                                if (grid[i, j] && !Geometry2D.IsPointInPolygon(new Vector2(minX + (i + 0.5f) * cell, minZ + (j + 0.5f) * cell), poly))
+                                    grid[i, j] = false;
+                        result = Rectangles(grid, nx, nz, cell, box)
+                            .Select(r => (minX + r.U0 * box.Size.X, -(minZ + r.V1 * box.Size.Z), minX + r.U1 * box.Size.X, -(minZ + r.V0 * box.Size.Z)))
+                            .ToList();
+                    }
+                }
+            }
+        }
+        catch (Exception e) { GD.Print($"TerrainSolidShape: piece {p.Look}: {e.Message}"); }
+        finally { root.Free(); }
+        PieceCache[key] = result;
+        return result;
     }
 
     private static bool[,] Dilate(bool[,] g) => Step(g, grow: true);

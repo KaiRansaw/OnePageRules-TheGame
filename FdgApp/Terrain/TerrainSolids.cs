@@ -17,15 +17,36 @@ public static class TerrainSolids
     /// <summary>The solid parts of the model a look names, or null when unknown.</summary>
     public static Func<string, IReadOnlyList<(float U0, float V0, float U1, float V1)>?>? Provider { get; set; }
 
+    /// <summary>
+    /// For a map piece the map maker set to one of the game's own hand-built pieces (look "piece:&lt;id&gt;", the Terrain
+    /// Workshop): its solid parts as table rectangles (x0, z0, x1, z1, inches, table axes), or null when unknown. Only an
+    /// explicitly picked piece counts - an automatic pick depends on each player's terrain style and pieces, and the rules
+    /// shape must be the same for everyone.
+    /// </summary>
+    public static Func<MapPiece, IReadOnlyList<(float X0, float Z0, float X1, float Z1)>?>? PieceProvider { get; set; }
+
+    private static bool Stops(MapPiece p) => p.Rules.HasFlag(ETerrainType.Impassible) || p.Rules.HasFlag(ETerrainType.Blocking);
+
+    /// <summary>A piece set to one of the game's hand-built pieces by name.</summary>
+    public static bool IsPiece(MapPiece p) => p.Look.StartsWith(TerrainPieces.LookPrefix, StringComparison.Ordinal);
+
     /// <summary>Which pieces play on their model's solid parts: those whose rules stop models or sight.</summary>
     public static bool Applies(MapPiece p) =>
-        p.Raw == null && !p.Round && WarhammerTerrainLibrary.IdOf(p.Look) != null
-        && (p.Rules.HasFlag(ETerrainType.Impassible) || p.Rules.HasFlag(ETerrainType.Blocking));
+        p.Raw == null && Stops(p)
+        && ((!p.Round && WarhammerTerrainLibrary.IdOf(p.Look) != null) || IsPiece(p));
 
     /// <summary>The rules shape of a piece drawn as a model, or null to play the whole footprint.</summary>
     public static IZone? For(MapPiece p)
     {
-        if (!Applies(p) || Provider?.Invoke(p.Look) is not { Count: > 0 } parts) return null;
+        if (!Applies(p)) return null;
+        if (IsPiece(p))
+        {
+            if (PieceProvider?.Invoke(p) is not { Count: > 0 } rects) return null;
+            var zones = rects.Where(r => r.X1 - r.X0 > 0.01f && r.Z1 - r.Z0 > 0.01f)
+                .Select(r => (IZone)new RectangularZone(r.X0, r.X1, r.Z0, r.Z1)).ToList();
+            return zones.Count switch { 0 => null, 1 => zones[0], _ => new CompositeZone(zones) };
+        }
+        if (Provider?.Invoke(p.Look) is not { Count: > 0 } parts) return null;
         return FromParts(p, parts);
     }
 
@@ -59,7 +80,7 @@ public static class TerrainSolids
     /// </summary>
     public static bool RefreshFile(string path)
     {
-        if (Provider == null || !File.Exists(path)) return false;
+        if ((Provider == null && PieceProvider == null) || !File.Exists(path)) return false;
         try
         {
             MapDraft? draft = MapDraft.Load(path, out _);

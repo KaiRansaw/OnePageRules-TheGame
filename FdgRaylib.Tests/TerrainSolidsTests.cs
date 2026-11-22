@@ -61,4 +61,56 @@ public class TerrainSolidsTests
         }
         finally { TerrainSolids.Provider = saved; }
     }
+
+    // Kai, 2026-11-21: a map piece set to one of the game's own hand-built pieces (Terrain Workshop) plays only where its
+    // models stand, the same for every player; an automatic look stays the whole footprint (each player's style differs).
+    private static MapPiece Building(string look, ETerrainType rules = ETerrainType.Impassible | ETerrainType.Blocking) => new()
+    {
+        Kind = "Building", Name = "House", Look = look, Rules = rules, X = 24, Z = 24, W = 6, D = 6,
+    };
+
+    private static readonly IReadOnlyList<(float, float, float, float)> LRects = new[] { (21f, 26.5f, 27f, 27f), (21f, 21f, 21.5f, 27f) };
+
+    [Test]
+    public void NamedPiece_PlaysOnItsSolidRectangles()
+    {
+        var saved = TerrainSolids.PieceProvider;
+        try
+        {
+            TerrainSolids.PieceProvider = p => p.Look == "piece:l-house" ? LRects : null;
+            IZone? z = TerrainSolids.For(Building("piece:l-house"));
+            Assert.That(z, Is.Not.Null);
+            Assert.That(z!.IsPointWithinZone(new Float2(24f, 26.8f)), Is.True, "the back wall");
+            Assert.That(z.IsPointWithinZone(new Float2(21.2f, 23f)), Is.True, "the side wall");
+            Assert.That(z.IsPointWithinZone(new Float2(24f, 24f)), Is.False, "the open middle");
+            Assert.That(z.IsPointWithinZone(new Float2(26.8f, 21.2f)), Is.False, "the open corner");
+        }
+        finally { TerrainSolids.PieceProvider = saved; }
+    }
+
+    [Test]
+    public void AutoLook_OrCoverOnlyPiece_KeepsTheWholeFootprint()
+    {
+        var saved = TerrainSolids.PieceProvider;
+        try
+        {
+            TerrainSolids.PieceProvider = _ => LRects;
+            Assert.That(TerrainSolids.For(Building("")), Is.Null, "automatic look: each player's own style");
+            Assert.That(TerrainSolids.For(Building("piece:l-house", ETerrainType.Cover)), Is.Null, "nothing to stop");
+            Assert.That(TerrainSolids.Applies(Building("piece:l-house")), Is.True);
+        }
+        finally { TerrainSolids.PieceProvider = saved; }
+    }
+
+    [Test]
+    public void NamedPiece_WithNoProviderAnswer_KeepsTheWholeFootprint()
+    {
+        var saved = TerrainSolids.PieceProvider;
+        try
+        {
+            TerrainSolids.PieceProvider = _ => null;
+            Assert.That(TerrainSolids.For(Building("piece:missing")), Is.Null);
+        }
+        finally { TerrainSolids.PieceProvider = saved; }
+    }
 }

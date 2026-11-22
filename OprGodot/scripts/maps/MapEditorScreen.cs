@@ -819,21 +819,28 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             else if (WarhammerTerrainLibrary.IdOf(p.Look) != null)
                 _right.AddChild(ForgeWidgets.Wrapped("A Warhammer model this computer doesn't have - shown as the plain piece.", 12, HudKit.Dim));
             bool modelPiece = WarhammerTerrainLibrary.IdOf(p.Look) != null;
-            var looks = new List<TerrainLooks.Look>(); // stand-ins only for now - real looks come from the Terrain Lab
-            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Cosmetic - the rules don't change. Auto lets the game pick." };
+            // The game's own hand-built pieces of this kind (Asset Lab -> Terrain Workshop), for this game. Auto = each
+            // player sees a fitting piece in their own terrain style; a named piece is the same for everyone, and a
+            // piece that stops models or sight then plays only on its solid parts.
+            var looks = TerrainPieces.All.Where(tp => tp.Kind.Equals(KindOf(p), StringComparison.OrdinalIgnoreCase) && tp.Suits(Theme))
+                .OrderBy(tp => tp.Style).ThenBy(tp => tp.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Auto: each player sees one of the game's pieces for this kind in their own Terrain style (Settings), or the plain stand-in. Pick a piece to show the same one to everyone - then a piece that stops models or sight plays only where its models stand." };
             look.AddItem("Auto");
-            foreach (var l in looks) look.AddItem(l.Name);
-            int li = looks.ToList().FindIndex(l => l.Id == p.Look);
+            foreach (var l in looks) look.AddItem($"{l.Name} ({(l.Style == TerrainPieces.Realistic ? "realistic" : "stylised")}, {l.W:0.#}x{l.D:0.#}\")");
+            int li = looks.FindIndex(l => TerrainPieces.LookPrefix + l.Id == p.Look);
             look.Selected = li < 0 ? 0 : li + 1;
             look.ItemSelected += i =>
             {
                 Draft.Remember();
-                p.Look = i <= 0 ? "" : looks[(int)i - 1].Id;
-                Sync3D();
+                p.Look = i <= 0 ? "" : TerrainPieces.LookPrefix + looks[(int)i - 1].Id;
+                Rebuild();
             };
             look.Disabled = looks.Count == 0;
             if (!modelPiece) _right.AddChild(Row("Look", look));
-            if (!modelPiece) _right.AddChild(ForgeWidgets.Wrapped($"Plain stand-in models for now, in {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} colours (the Book check game). Real looks come from the Terrain Lab.", 11, HudKit.Dim));
+            if (!modelPiece && looks.Count == 0)
+                _right.AddChild(ForgeWidgets.Wrapped($"No terrain pieces of this kind for {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} yet - shown as the plain stand-in. Build some in Asset Lab -> Terrain -> Terrain Workshop.", 11, HudKit.Dim));
+            else if (!modelPiece && TerrainPieces.ById(p.Look) == null && TerrainSolids.IsPiece(p))
+                _right.AddChild(ForgeWidgets.Wrapped("A terrain piece this computer doesn't have - shown as the plain piece.", 11, HudKit.Dim));
 
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
@@ -1253,7 +1260,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         {
             Color rc = TableLook.RulesColour(p.Rules);
             // A model piece that stops models or sight plays only on its solid parts (Kai, 2026-11-19) - show those.
-            if (TerrainSolids.Applies(p) && TerrainSolids.Provider?.Invoke(p.Look) is { Count: > 0 } parts)
+            if (TerrainSolids.IsPiece(p) && TerrainSolids.Applies(p) && TerrainSolids.PieceProvider?.Invoke(p) is { Count: > 0 } rects)
+                foreach (var (x0, z0, x1, z1) in rects) // table rectangles, not turned with the piece
+                    TableLook.Mesh(_pieces, new BoxMesh { Size = new Vector3(x1 - x0, 0.12f, z1 - z0) },
+                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), World((x0 + x1) / 2, (z0 + z1) / 2) + new Vector3(0, 0.07f, 0));
+            else if (!TerrainSolids.IsPiece(p) && TerrainSolids.Applies(p) && TerrainSolids.Provider?.Invoke(p.Look) is { Count: > 0 } parts)
                 foreach (var (u0, v0, u1, v1) in parts)
                 {
                     float cx = (-0.5f + (u0 + u1) / 2) * p.W, cz = (0.5f - (v0 + v1) / 2) * p.D;
@@ -1725,6 +1736,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 BuildBoard();
                 break;
             case "mats": OpenMatPicker(); return;
+            case "look" when _sel is { } lp: Draft.Remember(); lp.Look = arg; break;
             case "rules": _rulesView = !_rulesView; break;
             case "top": ToggleTopView(); break;
             case "turn" when _sel is { } ts && float.TryParse(arg, out float deg): ts.Angle = deg; break;

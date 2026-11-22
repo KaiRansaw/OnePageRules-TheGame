@@ -478,10 +478,13 @@ public static partial class TerrainDresser
                     minU = Mathf.Min(minU, a); maxU = Mathf.Max(maxU, a); minV = Mathf.Min(minV, b); maxV = Mathf.Max(maxV, b);
                 }
                 float area = (maxU - minU) * (maxV - minV);
-                if (area >= bestArea - 1e-4f) continue;
+                if (area >= bestArea - 1e-3f * Mathf.Max(1f, bestArea == float.MaxValue ? 1f : bestArea)) continue;
                 bestArea = area;
                 Vector2 c = u * (minU + maxU) / 2 + v * (minV + maxV) / 2;
-                best = maxU - minU >= maxV - minV
+                // A near-tie (a square) must always break the same way, or the same footprint gets a frame turned 90
+                // degrees depending on where it sits on the table - and a piece's solid parts would no longer match
+                // the models drawn on it.
+                best = maxU - minU >= maxV - minV - 1e-3f
                     ? new Frame(c, u, v, maxU - minU, maxV - minV)
                     : new Frame(c, v, -u, maxV - minV, maxU - minU);
             }
