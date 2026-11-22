@@ -251,16 +251,22 @@ public class AoFQuestHeroDataTests
     [Test]
     public void TheRulesFile_SaysWhatIsMissingRatherThanGuessingIt()
     {
-        // AoF: Quest's shop list, injury table and level-1 stat line live in its Campaign Builder, which
-        // OPR serves through no API endpoint and which is not among the project's books. They are empty
-        // on purpose. This test exists so that "empty" cannot quietly become "invented" later, and so
-        // the day the book arrives, it fails and says so.
-        Assert.That(AoF.Rules.Consumables, Is.Empty,
-            "AoF: Quest's shop items are not available - if they have been added, the shop should read "
-            + "them and this pin should be replaced by a real agreement test like Star Quest's");
-        // #418, later the same day: Kai added the v2.1.0 Beginners Guide and Campaign Builder, so the
-        // injury table IS available now and is typed from the book. The shop list still is not - no OPR
-        // book prints it for either Quest system.
+        // AoF: Quest's shop list was found on 2026-11-22 in Army Forge's own data (/api/quest/rules/7 - the list
+        // its Hero Builder shop reads): 33 items, the same rules as Star Quest's under fantasy names. So the old
+        // "must stay empty" pin is replaced by the agreement test it asked for: every AoF item is the engine's
+        // item under the name QuestItemSkin gives it, at the same tier, and every engine item is in the list.
+        Assert.That(AoF.Rules.Consumables, Has.Count.EqualTo(FDG.Quest.QuestItems.All.Count), "33 items in both games");
+        foreach (var c in AoF.Rules.Consumables)
+        {
+            var item = FDG.Quest.QuestItems.Find(c.Name);
+            Assert.That(item, Is.Not.Null, $"'{c.Name}' has rules");
+            Assert.That(FDG.Quest.QuestItemSkin.Name(EGameSystem.AoFQuest, item!.Name), Is.EqualTo(c.Name), "the shop shows Army Forge's name");
+            Assert.That(c.Tier ?? 0, Is.EqualTo(item.Tier), $"'{c.Name}' is sold at the same tier");
+        }
+        // The class features carry AoF: Quest's names too (Monk's Meditation, not Sentinel Meditation), and each
+        // is a skill the engine knows.
+        foreach (string feat in FDG.Quest.QuestItemSkin.AllAoFSkillNames)
+            Assert.That(AoF.Rules.Skills.Any(k => k.Name == feat), $"'{feat}' is in the AoF: Quest data");
         Assert.That(AoF.Rules.Injuries.Select(i => i.Name), Is.EquivalentTo(new[]
         {
             "Chest Wound", "Blinded Eye", "Smashed Leg", "Broken Arm", "Spinal Injury", "Crushed Spirit",
