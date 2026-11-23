@@ -439,6 +439,50 @@ public partial class BattleTable : Node3D
 
     public void ClearGhosts(string layer) => SetGhosts(layer, Array.Empty<Ghost>());
 
+    private Node3D? _tops;
+
+    /// <summary>
+    /// Kai, 2026-11-22 (climbing): while a unit moves, every climbable top its models could stand on - a part over 1"
+    /// tall (shorter is the table) where a base of <paramref name="baseRadius"/> sits flat - is lit up at its height.
+    /// 0 clears them.
+    /// </summary>
+    public void ShowStandableTops(float baseRadius)
+    {
+        _tops?.QueueFree();
+        _tops = null;
+        if (baseRadius <= 0f) return;
+        List<ITerrain> terrain = Session.Table.Terrain.Objects.ToList();
+        var mat = TableLook.SharedMat(new Color(0.45f, 1f, 0.55f, 0.32f), 0.5f, new Color(0.45f, 1f, 0.55f), 0.6f, unshaded: true);
+        foreach (ITerrain t in terrain)
+        {
+            if (!t.TerrainType.HasFlag(ETerrainType.Climbable) || t.TerrainType.HasFlag(ETerrainType.Impassible)) continue;
+            foreach (IZone part in FDG.ZoneExtensions.Primitives(t.Shape))
+            {
+                (RectangularZone? r, float angle, FDG.Float2 pivot) = part switch
+                {
+                    RotatedZoneWrapper { Inner: RectangularZone rr } w => (rr, w.AngleDegrees, w.Pivot),
+                    RectangularZone rr => (rr, 0f, default(FDG.Float2)),
+                    _ => (null, 0f, default),
+                };
+                if (r == null) continue;
+                FDG.Float2 c = new((r.Left + r.Right) / 2f, (r.Bottom + r.Top) / 2f);
+                if (angle != 0f) c = FDG.ZoneExtensions.RotateAround(c, pivot, angle);
+                float h = Climbing.ClimbableGroundAt(terrain, c);
+                if (h <= Climbing.IgnoredInches || !Climbing.MayEndAt(c, baseRadius, terrain)) continue;
+                _tops ??= new Node3D { Name = "StandableTops" };
+                var box = new MeshInstance3D
+                {
+                    Mesh = new BoxMesh { Size = new Vector3(r.Right - r.Left, 0.06f, r.Top - r.Bottom) },
+                    MaterialOverride = mat,
+                    Position = World(c.X, c.Y, h + 0.04f),
+                    RotationDegrees = new Vector3(0, angle, 0),
+                };
+                _tops.AddChild(box);
+            }
+        }
+        if (_tops != null) AddChild(_tops);
+    }
+
     private void SyncGhosts()
     {
         List<(Layer L, List<Ghost> G, List<GhostLine> Li, List<GhostText> T)> work = new();
@@ -463,7 +507,8 @@ public partial class BattleTable : Node3D
                 Mesh mesh = g.Ring
                     ? TableLook.SharedMesh($"ghostring:{g.Radius}", () => new TorusMesh { InnerRadius = g.Radius - 0.08f, OuterRadius = g.Radius + 0.08f, Rings = 96, RingSegments = 6 })
                     : TableLook.SharedMesh($"ghostdisc:{g.Radius}", () => new CylinderMesh { TopRadius = g.Radius, BottomRadius = g.Radius, Height = 0.12f });
-                Mesh(layer.Root, mesh, mat, World(g.X, g.Z, 0.08f));
+                // Heights (2026-11-22): a preview disc sits on whatever the model would stand on.
+                Mesh(layer.Root, mesh, mat, World(g.X, g.Z, 0.08f + Climbing.StandingHeight(Session.Table.Terrain.Objects, new FDG.Float2(g.X, g.Z))));
             }
             if (LinesMesh(lines) is { } merged) layer.Root.AddChild(merged);
             foreach (GhostText t in texts)
@@ -761,6 +806,8 @@ public partial class BattleTable : Node3D
     {
         var live = new HashSet<ModelID>();
         Func<IUnit, bool> activated = UnitActivation.Checker(Session.Table.Progress); // once per frame, not per unit
+        // Heights (2026-11-22): a model stands on the Climbable / Steep piece under it (FDG.Climbing).
+        List<ITerrain> ground = Session.Table.Terrain.Objects.ToList();
         foreach (IUnit unit in Session.Table.Units.Objects)
         {
             bool mine = Session.IsMine(unit.PlayerID);
@@ -778,9 +825,9 @@ public partial class BattleTable : Node3D
                 {
                     view = MakeModel(m, unit);
                     _models[m.ID] = view;
-                    view!.Root.Position = World(p);
+                    view!.Root.Position = World(Climbing.Standing(ground, p));
                 }
-                Vector3 target = World(p);
+                Vector3 target = World(Climbing.Standing(ground, p));
                 // Perf sweep (2026-11-15): a model that has arrived is left alone - writing the same transform to
                 // every model every frame made Godot re-propagate each model's whole node tree.
                 Vector3 at = view!.Root.Position;

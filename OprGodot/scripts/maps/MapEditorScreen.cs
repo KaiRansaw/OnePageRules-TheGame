@@ -871,7 +871,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             {
                 var f = flag;
                 string note = TerrainBook.NeedsHeights(f) ? "  (needs heights - later)"
-                    : f == ETerrainType.Climbable && TerrainBook.Plays(f, _checkFor) ? (p.Height > TerrainBook.ClimbableMaxInches ? "  (over 3\": Impassable)" : "  (3\" or less: crossable)") : !TerrainBook.Plays(f, _checkFor) ? $"  (not in {GameSystemInfo.DisplayName(_checkFor)})" : "";
+                    : f == ETerrainType.Climbable && TerrainBook.Plays(f, _checkFor) ? (p.Height > TerrainBook.ClimbableMaxInches ? "  (over 3\": Impassable)" : "  (3\" or less: climbed, up and down cost movement)") : !TerrainBook.Plays(f, _checkFor) ? $"  (not in {GameSystemInfo.DisplayName(_checkFor)})" : "";
                 var cb = new CheckBox { Name = "Rule_" + f, Text = TerrainBook.RuleName(f) + note, ButtonPressed = p.Rules.HasFlag(f), FocusMode = FocusModeEnum.None,
                     TooltipText = TerrainBook.RuleName(f).ToUpperInvariant() + " TERRAIN\n" + TerrainBook.RuleText(f) };
                 cb.Toggled += on => { Draft.Remember(); p.Rules = on ? p.Rules | f : p.Rules & ~f; Rebuild(); };

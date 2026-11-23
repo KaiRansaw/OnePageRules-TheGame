@@ -25,7 +25,9 @@ public static class TerrainSolids
     /// </summary>
     public static Func<MapPiece, IReadOnlyList<(float X0, float Z0, float X1, float Z1, float H)>?>? PieceProvider { get; set; }
 
-    private static bool Stops(MapPiece p) => p.Rules.HasFlag(ETerrainType.Impassible) || p.Rules.HasFlag(ETerrainType.Blocking);
+    // Climbable too (2026-11-22): a wall is climbed where the model actually stands, at the model's own heights.
+    private static bool Stops(MapPiece p) => p.Rules.HasFlag(ETerrainType.Impassible) || p.Rules.HasFlag(ETerrainType.Blocking)
+        || p.Rules.HasFlag(ETerrainType.Climbable);
 
     /// <summary>A piece set to one of the game's hand-built pieces by name.</summary>
     public static bool IsPiece(MapPiece p) => p.Look.StartsWith(TerrainPieces.LookPrefix, StringComparison.Ordinal);

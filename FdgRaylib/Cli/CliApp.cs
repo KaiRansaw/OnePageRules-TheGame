@@ -39,6 +39,10 @@ public class CliApp
     // #413 --all-ai on the lobby path: slot 0 is a bot too, so a game plays itself end to end.
     private readonly bool _allAi;
 
+    /// <summary>--terrain-layout &lt;file&gt; (2026-11-22, heights sweep): play on a saved map instead of the default
+    /// layout, so bot games can be run over climbable walls and hills.</summary>
+    public static string? TerrainLayoutPath { get; set; }
+
     public CliApp(bool headless, int slowDelayMs = 0, int? diceSeed = null,
         EAiProfile aiProfile = EAiProfile.SoloRules, bool allAi = false)
     {
@@ -163,6 +167,11 @@ public class CliApp
         gameSettings.RandomnessType = ERandomnessType.Realistic;
         gameSettings.ObjectivePlacementMode = EObjectivePlacementMode.AutoPlaced;
         gameSettings.DiceSeed = _diceSeed;
+        if (!string.IsNullOrEmpty(TerrainLayoutPath))
+        {
+            gameSettings.TerrainPlacementMode = ETerrainPlacementMode.LoadFromFile;
+            gameSettings.TerrainLayoutPath = TerrainLayoutPath;
+        }
 
         // #413: a scripted run overrides what it names and leaves the rest at the engine default.
         if (Scripted is { } setup)

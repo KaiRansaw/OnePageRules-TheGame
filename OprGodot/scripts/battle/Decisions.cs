@@ -759,8 +759,13 @@ public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntr
         return base.RightClick(s);
     }
 
-    public override void Shown(BattleScreen s) { _s = s; s.SelectUnit(Unit); s.Table.HideSelectedRanges = true; }
-    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.ClearGhosts("picked"); s.Table.ClearGhosts("faults"); s.Table.HideSelectedRanges = false; }
+    public override void Shown(BattleScreen s)
+    {
+        _s = s; s.SelectUnit(Unit); s.Table.HideSelectedRanges = true;
+        // Kai, 2026-11-22: while moving, the tops this unit's models can stand on light up.
+        s.Table.ShowStandableTops(Unit.Models.Where(m => m.RemainingWounds > 0).Select(m => m.BaseShape.BoundingRadiusInches).DefaultIfEmpty(0.5f).Max());
+    }
+    public override void Closed(BattleScreen s) { s.Table.ClearGhosts("move"); s.Table.ClearGhosts("moverange"); s.Table.ClearGhosts("picked"); s.Table.ClearGhosts("faults"); s.Table.HideSelectedRanges = false; s.Table.ShowStandableTops(0f); }
 
     public override void AutoPlay(BattleScreen s)
     {

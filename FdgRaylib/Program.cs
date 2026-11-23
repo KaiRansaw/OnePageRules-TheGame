@@ -76,6 +76,8 @@ if (slowIdx >= 0)
 
 // --seed <int> (#193): seeds the whole game — dice, decisive rolls, objective auto-placement, and each
 // AI player's own stream. Same seed + same build => identical game. Overrides a seed saved in a scenario.
+int terrainIdx = Array.IndexOf(args, "--terrain-layout");
+if (terrainIdx >= 0 && terrainIdx + 1 < args.Length) FdgRaylib.Cli.CliApp.TerrainLayoutPath = Path.GetFullPath(args[terrainIdx + 1]);
 int? diceSeed = null;
 int seedIdx = Array.IndexOf(args, "--seed");
 if (seedIdx >= 0 && seedIdx + 1 < args.Length && int.TryParse(args[seedIdx + 1], out int parsedSeed))
