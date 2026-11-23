@@ -8538,7 +8538,7 @@
       "baseModelCount": 1,
       "minModels": 1,
       "maxModels": 1,
-      "basePointCost": 980,
+      "basePointCost": 970,
       "base": {
         "shape": "Circle",
         "diameterInches": 4.7244096,
@@ -8548,25 +8548,11 @@
       "weapons": [
         {
           "name": "Claws",
-          "quantity": 2,
+          "quantity": 4,
           "rangeInches": 0,
           "attacks": 9,
           "armorPenetration": 0,
           "specialRules": []
-        },
-        {
-          "name": "Great Smashing Club",
-          "quantity": 1,
-          "rangeInches": 0,
-          "attacks": 3,
-          "armorPenetration": 2,
-          "specialRules": [
-            {
-              "kind": "coreNumeric",
-              "name": "Blast",
-              "numericValue": 6
-            }
-          ]
         }
       ],
       "rules": [
@@ -8592,22 +8578,54 @@
       "items": [],
       "sections": [
         {
-          "id": "6qaNUyQ",
-          "label": "Replace Great Smashing Club and 2x Claws",
+          "id": "Mg_RFmC",
+          "label": "Replace 4x Claws",
           "variant": "Replace",
           "affects": "One",
           "targets": [
-            "Great Smashing Club",
-            "2x Claws"
+            "4x Claws"
           ],
           "maxApplications": 0,
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
             {
+              "id": "swF0EgSJZ0",
+              "label": "2x Claws (A9), Great Smashing Club (A3, AP(2), Blast(6))",
+              "cost": 10,
+              "costUnpriced": false,
+              "weaponsGained": [
+                {
+                  "name": "Claws",
+                  "quantity": 2,
+                  "rangeInches": 0,
+                  "attacks": 9,
+                  "armorPenetration": 0,
+                  "specialRules": []
+                },
+                {
+                  "name": "Great Smashing Club",
+                  "quantity": 1,
+                  "rangeInches": 0,
+                  "attacks": 3,
+                  "armorPenetration": 2,
+                  "specialRules": [
+                    {
+                      "kind": "coreNumeric",
+                      "name": "Blast",
+                      "numericValue": 6
+                    }
+                  ]
+                }
+              ],
+              "rulesGained": [],
+              "itemsGained": [],
+              "modelsGained": 0
+            },
+            {
               "id": "dNDGHs3u60",
               "label": "Assault Bug-Spewer Cannon (12\u0022, A9, Blast(3), Assault), 2x Claws (A9)",
-              "cost": 120,
+              "cost": 125,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -8644,7 +8662,7 @@
             {
               "id": "Yab7NY_V8v",
               "label": "Bug-Spewer Cannon (24\u0022, A6, AP(1), Blast(6)), Stomp (A12, AP(1))",
-              "cost": 150,
+              "cost": 155,
               "costUnpriced": false,
               "weaponsGained": [
                 {
@@ -8677,7 +8695,7 @@
           ]
         },
         {
-          "id": "EGYXUwy",
+          "id": "F1ItloC",
           "label": "Replace Bug-Spewer Cannon",
           "variant": "Replace",
           "affects": "One",
@@ -8812,7 +8830,7 @@
           ]
         },
         {
-          "id": "F4Ag2I5",
+          "id": "p_ft8O9",
           "label": "Replace Assault Bug-Spewer Cannon",
           "variant": "Replace",
           "affects": "One",
@@ -8968,7 +8986,7 @@
           ]
         },
         {
-          "id": "0izlLDl",
+          "id": "t9qdh3T",
           "label": "Replace Great Smashing Club",
           "variant": "Replace",
           "affects": "One",
@@ -9054,7 +9072,7 @@
           ]
         },
         {
-          "id": "eC8IBQX",
+          "id": "ZoddnKV",
           "label": "Replace any Claws",
           "variant": "Replace",
           "affects": "Any",
@@ -9185,7 +9203,7 @@
           ]
         },
         {
-          "id": "B34Clii",
+          "id": "3mL9lAK",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -9243,7 +9261,7 @@
           ]
         },
         {
-          "id": "79vwPqH",
+          "id": "p3QkMCR",
           "label": "Upgrade with one",
           "variant": "Upgrade",
           "affects": "One",
@@ -9252,6 +9270,27 @@
           "minPicks": 0,
           "maxPicks": 1,
           "options": [
+            {
+              "id": "37RpQAC4",
+              "label": "Combat Bio-Engineer (Furious)",
+              "cost": 45,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Combat Bio-Engineer",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Furious"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            },
             {
               "id": "NoK_mkbV",
               "label": "Psychic Synapses (Caster(3))",
@@ -9268,27 +9307,6 @@
                       "kind": "coreNumeric",
                       "name": "Caster",
                       "numericValue": 3
-                    }
-                  ]
-                }
-              ],
-              "modelsGained": 0
-            },
-            {
-              "id": "37RpQAC4",
-              "label": "Combat Bio-Engineer (Furious)",
-              "cost": 50,
-              "costUnpriced": false,
-              "weaponsGained": [],
-              "rulesGained": [],
-              "itemsGained": [
-                {
-                  "name": "Combat Bio-Engineer",
-                  "quantity": 1,
-                  "rules": [
-                    {
-                      "kind": "core",
-                      "name": "Furious"
                     }
                   ]
                 }

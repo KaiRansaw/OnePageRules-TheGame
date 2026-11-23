@@ -12,8 +12,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -466,8 +466,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -565,7 +565,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 24 inches in line of sight and place X markers on it. Attackers may remove markers from it before rolling to hit, gaining \u002B1 to hit per removed marker."
+      "description": "Only one use per game. Once per game, during this model\u0027s activation, before attacking, place X tokens on one enemy unit within 24\u0022 and in line of sight, or one token on X enemy units within 24\u0022 and in line of sight. When attacking, friendly units may remove one token from their target before rolling to hit to get \u002B1 to hit rolls."
     },
     {
       "name": "Repel Ambushers",
@@ -609,7 +609,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Quick Shot."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Quick Shot. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Anti-Cover",
@@ -709,7 +709,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves \u002B1 inch when using Advance, and \u002B2 inches when using Rush/Charge."
+      "description": "Moves \u002B1\u0022 when using Advance, and \u002B2\u0022 when using Rush/Charge."
     },
     {
       "name": "Enhanced Runner",
@@ -730,7 +730,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Advance",
-            "distanceInches": 2,
+            "distanceInches": 1,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -752,7 +752,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Rush",
-            "distanceInches": 4,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -774,7 +774,7 @@
           "effect": {
             "kind": "movementBonus",
             "actionType": "Charge",
-            "distanceInches": 4,
+            "distanceInches": 2,
             "minResultInches": 0
           },
           "lifetime": "ThisActivation",
@@ -785,7 +785,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Runner, it moves \u002B2 inches on Advance and \u002B4 inches on Rush/Charge from Runner (instead of only \u002B1 inches and \u002B2 inches)."
+      "description": "If this model has Runner, it moves \u002B2\u0022 on Advance and \u002B4\u0022 on Rush/Charge from Runner (instead of only \u002B1\u0022 and \u002B2\u0022)."
     },
     {
       "name": "Enhanced Runner Aura",
@@ -807,7 +807,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Runner."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Runner. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Rapid Charge Mark",
@@ -816,12 +816,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -841,7 +841,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, mark one enemy unit within 18 inches in line of sight; attacks against it count as having Rapid Charge."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets Rapid Charge against once (next time the effect would apply)."
     },
     {
       "name": "Quick Shot",

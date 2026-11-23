@@ -12,8 +12,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -477,6 +477,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Repel Ambushers": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -548,6 +551,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Rapid Advance": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -601,6 +607,10 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Repel Ambushers": 1,
+        "Precision Fighter": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -831,8 +841,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -898,9 +908,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Tough": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.952756,
         "widthInches": 1.8110236,
         "heightInches": 2.952756
       },
@@ -1011,8 +1024,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -1213,8 +1226,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1295,8 +1308,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1351,8 +1364,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1430,8 +1443,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1499,8 +1512,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1566,13 +1579,12 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "unmodifiedRollEquals",
-            "dieValue": 6
+            "kind": "targetAboveHalfStrength"
           },
           "effect": {
-            "kind": "perHitSaveModifier",
-            "onRollValue": 6,
-            "delta": -4
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -1582,7 +1594,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "An unmodified 6 to hit gives the attack AP(\u002B4)."
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), those hits get AP(\u002B1)."
     },
     {
       "name": "Clan Warrior",
@@ -1594,7 +1606,7 @@
             "dieValue": 6
           },
           "effect": {
-            "kind": "addExtraHit",
+            "kind": "addExtraAttackRoll",
             "onRollValue": 6,
             "count": 1
           },
@@ -1606,7 +1618,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule doesn\u0027t apply to newly generated attacks."
     },
     {
       "name": "Precision Fighter",
@@ -1629,7 +1641,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Precision Fighter Aura",
@@ -1651,7 +1663,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Increased Shooting Range Mark",
@@ -1660,12 +1672,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1685,7 +1697,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Increased Shooting Range."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units get \u002B6\u0022 range on their weapons when shooting against once (next time the effect would apply)."
     },
     {
       "name": "Bounding",
@@ -1711,7 +1723,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Casting Buff",
@@ -1747,7 +1759,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one friendly model within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
     },
     {
       "name": "Repel Ambushers",
@@ -1823,7 +1835,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is destroyed, place a marker on the unit that destroyed it. Friendly units get \u002B1 to hit rolls against that unit for the rest of the game."
+      "description": "When this Hero becomes unconscious, place one Vengeance marker on the unit that made it unconscious. Friendly units get \u002BX to hit rolls with their weapons when attacking that unit, where X is the number of markers on it."
     },
     {
       "name": "Anti-Cover",
@@ -1935,6 +1947,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Clan Warrior"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Clan Warrior"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
@@ -1964,7 +1989,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Versatile Expert",
@@ -2046,7 +2071,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Marksman."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Piercing Marksman. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Counter in Melee Aura",
@@ -2068,7 +2093,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Counter on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "\u002B6\u0022 range on their weapons when shooting",
@@ -2113,7 +2138,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Anti-Cover."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Anti-Cover on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Clan Warrior Aura",
@@ -2135,7 +2160,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Clan Warrior."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Clan Warrior. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -2184,7 +2209,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Versatile Expert (Precision)",
@@ -2207,7 +2232,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Piercing Marksman",
@@ -2240,7 +2265,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+      "description": "When shooting at enemies over 9\u0022 away, this model\u0027s weapons get AP(\u002B1)."
     },
     {
       "name": "Counter in Melee",
@@ -2272,7 +2297,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     }
   ],
   "spells": [

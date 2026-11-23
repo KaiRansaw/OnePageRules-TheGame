@@ -11,9 +11,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Scout": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -375,6 +378,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Mind Control": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -506,8 +512,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -561,8 +567,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -694,6 +700,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Stealth": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -834,8 +843,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -878,9 +887,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Transport": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -943,8 +955,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1007,8 +1019,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1089,13 +1101,13 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
           },
           "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -2
+            "kind": "perHitSaveModifier",
+            "onRollValue": 6,
+            "delta": -3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -1105,7 +1117,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Against units where most models have Tough 3\u002B, this weapon gets AP(\u002B2)."
+      "description": "For each unmodified result of 6 to hit, those hits get AP(\u002B3)."
     },
     {
       "name": "Disintegrate",
@@ -1125,9 +1137,8 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "statGreaterOrEqualTo",
-            "stat": "Defense",
-            "statValue": 2
+            "kind": "targetMajorityHasTough",
+            "minToughValue": 27
           },
           "effect": {
             "kind": "rollModifier",
@@ -1142,7 +1153,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores Regeneration. Against units with Defense 2\u002B, this weapon gets AP(\u002B2)."
+      "description": "Ignores Regeneration, and when attacking units where most models have Tough(27) or higher, this weapon gets AP(\u002B2)."
     },
     {
       "name": "Scrapper",
@@ -1168,7 +1179,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "The defender must re-roll unmodified Defense 6s."
+      "description": "When attacking, targets must re-roll unmodified Defense results of 6 when blocking hits from this model\u0027s weapons."
     },
     {
       "name": "Precision Fighter Aura",
@@ -1190,7 +1201,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding",
@@ -1216,7 +1227,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Precision Tag",
@@ -1260,7 +1271,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 24 inches in line of sight and place X markers on it. Attackers may remove markers from it before rolling to hit, gaining \u002B1 to hit per removed marker."
+      "description": "Only one use per game. Once per game, during this model\u0027s activation, before attacking, place X tokens on one enemy unit within 24\u0022 and in line of sight, or one token on X enemy units within 24\u0022 and in line of sight. When attacking, friendly units may remove one token from their target before rolling to hit to get \u002B1 to hit rolls."
     },
     {
       "name": "Morale Debuff",
@@ -1269,12 +1280,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1296,7 +1307,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to morale test rolls once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to Morale Test rolls once (next time the effect would apply)."
     },
     {
       "name": "Heavy Impact",
@@ -1322,7 +1333,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Repel Ambushers",
@@ -1404,12 +1415,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1434,7 +1445,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which must take a morale test. If failed you may move it by up to 6\u0022 in a straight line in any direction."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which must take a Morale Test. If failed you may move it by up to 6\u0022 in a straight line in any direction. Units may only be moved once per round in this way."
     },
     {
       "name": "Anti-Cover",
@@ -1540,6 +1551,19 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Scrapper"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Scrapper"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
@@ -1569,7 +1593,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Enhanced Scrapper Aura",
@@ -1591,7 +1615,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Scrapper."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Scrapper. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Precision Fighter",
@@ -1614,7 +1638,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     }
   ],
   "spells": [

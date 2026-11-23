@@ -12,8 +12,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -952,8 +952,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -1328,8 +1328,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1400,8 +1400,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1473,8 +1473,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1569,7 +1569,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+      "description": "Counts as having Ambush, but may be deployed anywhere over 3\u0022 away from enemy unit."
     },
     {
       "name": "Melee Slayer",
@@ -1579,11 +1579,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -1599,7 +1599,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Regeneration Buff",
@@ -1608,12 +1608,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 12,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Friend",
             "requireLineOfSight": false,
             "requiredToken": null,
@@ -1634,7 +1634,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Regeneration for its next relevant roll."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Regeneration once (next time the effect would apply)."
     },
     {
       "name": "Precision Fighting Mark",
@@ -1643,12 +1643,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1668,7 +1668,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets \u002B1 to hit rolls in melee."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units get \u002B1 to hit rolls in melee against once (next time the effect would apply)."
     },
     {
       "name": "Piercing Frenzy",
@@ -1690,7 +1690,7 @@
             "clear": {
               "kind": "manualOnly"
             },
-            "maxTotal": 2
+            "maxTotal": 6
           },
           "lifetime": "ThisRound",
           "seat": "Actor"
@@ -1702,7 +1702,7 @@
             "tType": {
               "id": "PiercingFrenzyMarker"
             },
-            "minCount": 1
+            "minCount": 3
           },
           "effect": {
             "kind": "tokenScaledRollModifier",
@@ -1711,7 +1711,7 @@
             },
             "rollKind": "Save",
             "delta": -1,
-            "perMarkers": 1
+            "perMarkers": 3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -1721,7 +1721,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Gains a marker when it fully destroys an enemy unit (max 2); each marker adds AP(\u002B1) to its attacks for the rest of the game."
+      "description": "Place one marker on this unit when it fully destroys an enemy unit, up to a max. of six markers. For every three markers all models with this rule in this unit get AP(\u002B1) when attacking. All markers are removed once the next wave of reinforcements is deployed."
     },
     {
       "name": "Heavy Impact",
@@ -1747,7 +1747,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Regenerative Strength",
@@ -1774,7 +1774,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Place one marker on this model when it ignores a wound. When in melee, pick one of its weapons to get \u002BX attacks, where X is the number of markers on it."
+      "description": "Place one token on this model when it ignores a wound. Once per round, when it\u0027s this model\u0027s turn to strike in melee, roll as many dice as tokens on it before attacking, unless this unit is Fatigued. For each 4\u002B the target takes one wound."
     },
     {
       "name": "Anti-Cover",
@@ -1892,7 +1892,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Bravery."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Piercing Marksman Aura",
@@ -1914,7 +1914,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Marksman."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Piercing Marksman. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Harassing Aura",
@@ -1936,7 +1936,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Harassing."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Harassing. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Harassing",
@@ -1974,7 +1974,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per round, this model may move by up to 3 inches after shooting or being in melee."
+      "description": "Once per round, this model may move by up to 3\u0022 after shooting or being in melee."
     },
     {
       "name": "Enhanced Harassing",
@@ -1984,7 +1984,7 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             },
             "right": {
               "kind": "unitHasRule",
@@ -2005,7 +2005,7 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             },
             "right": {
               "kind": "unitHasRule",
@@ -2020,13 +2020,51 @@
           },
           "lifetime": "ThisActivation",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Melee_OnPostMelee",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Harassing"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Harassing"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnPostShoot",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Harassing"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Harassing"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Actor"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Harassing, they may move by up to 6 inches from Harassing (instead of only 3)."
+      "description": "If most models in this unit have Harassing, they may move by up to 6\u0022 from Harassing (instead of only 3\u0022)."
     },
     {
       "name": "Defense",
@@ -2098,7 +2136,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get \u002B1 to Morale Test rolls."
+      "description": "Units where most models have this rule get \u002B1 to Morale Test rolls."
     },
     {
       "name": "Piercing Marksman",
@@ -2131,7 +2169,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model\u0027s weapons get AP(\u002B1)."
+      "description": "When shooting at enemies over 9\u0022 away, this model\u0027s weapons get AP(\u002B1)."
     }
   ],
   "spells": [

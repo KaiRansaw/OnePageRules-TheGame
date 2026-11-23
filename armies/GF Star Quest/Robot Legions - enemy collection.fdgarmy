@@ -488,9 +488,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Scout": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -643,6 +646,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Ravage": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.968504,
@@ -695,6 +701,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Stealth Buff": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -760,6 +769,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Unstoppable when Shooting": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -818,8 +830,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -927,8 +939,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -986,8 +998,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1050,6 +1062,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Ravage": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.968504,
@@ -1160,6 +1175,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Protection Feat": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -1273,8 +1291,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1336,8 +1354,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1477,8 +1495,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1550,8 +1568,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1683,8 +1701,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1770,8 +1788,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1855,6 +1873,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Enhanced Self-Repair Buff": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 2.3622048,
@@ -1945,7 +1966,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+      "description": "Counts as having Ambush, but may be deployed anywhere over 3\u0022 away from enemy unit."
     },
     {
       "name": "Stealth Buff",
@@ -1954,12 +1975,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 12,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Friend",
             "requireLineOfSight": false,
             "requiredToken": null,
@@ -1980,7 +2001,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022, which gets Stealth once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Stealth once (next time the effect would apply)."
     },
     {
       "name": "Shatter",
@@ -1988,13 +2009,13 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "targetMajorityHasTough",
-            "minToughValue": 3
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
           },
           "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Save",
-            "delta": -2
+            "kind": "perHitSaveModifier",
+            "onRollValue": 6,
+            "delta": -3
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -2004,7 +2025,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Against units where most models have Tough 3\u002B, this weapon gets AP(\u002B2)."
+      "description": "For each unmodified result of 6 to hit, those hits get AP(\u002B3)."
     },
     {
       "name": "Self-Repair",
@@ -2012,7 +2033,7 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -2026,7 +2047,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores each wound on a roll of 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. On a 6\u002B it is ignored."
     },
     {
       "name": "Swift",
@@ -2048,7 +2069,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores the movement penalty for Difficult terrain (as Strider)."
+      "description": "This model may ignore the Slow rule."
     },
     {
       "name": "Swift Buff",
@@ -2057,12 +2078,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 12,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Friend",
             "requireLineOfSight": false,
             "requiredToken": null,
@@ -2083,7 +2104,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12 inches, which gains Swift for its next relevant roll."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Swift once (next time the effect would apply)."
     },
     {
       "name": "Indirect Mark",
@@ -2092,12 +2113,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -2117,7 +2138,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Indirect."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets Indirect on their weapons against once (next time the effect would apply)."
     },
     {
       "name": "Casting Buff",
@@ -2153,7 +2174,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one friendly unit within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
+      "description": "Once per activation, before attacking, pick one friendly model within 12\u0022 with Caster, which gets \u002B1 to casting rolls once (next time the effect would apply)."
     },
     {
       "name": "Protection Feat",
@@ -2188,7 +2209,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, when this unit activates, it may brace: until its next activation it rolls one die per wound it takes, ignoring each on a 5\u002B."
+      "description": "Once per game, when this unit takes wounds and most of its models have this rule, you may use this rule and roll one die per wound, and on a 5\u002B it is ignored."
     },
     {
       "name": "Protection Feat Aura",
@@ -2210,7 +2231,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Protection Feat."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Protection Feat. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Repel Ambushers",
@@ -2266,7 +2287,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game, when this model is activated, you may place a new unit of X fully within 6\u0022 of it."
+      "description": "Add a friendly AI unit of X to the party, which is deployed as if it were a hero. This unit is activated after all Heroes, and follows the AI activation rules."
     },
     {
       "name": "Reanimation Aura",
@@ -2288,7 +2309,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Reanimation."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Reanimation. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Ambushing Piercing Shot",
@@ -2361,7 +2382,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get No Retreat."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get No Retreat. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Anti-Cover",
@@ -2441,12 +2462,31 @@
               "ruleName": "Self-Repair"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Self-Repair"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Self-Repair"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -2479,7 +2519,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Counts as having Hero, and this model may only be taken once per army."
+      "description": "This hero may only be taken once per party."
     },
     {
       "name": "Piercing Charge Aura",
@@ -2501,7 +2541,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Piercing Charge."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Piercing Charge. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Self-Repair Buff",
@@ -2510,12 +2550,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 12,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Friend",
             "requireLineOfSight": false,
             "requiredToken": null,
@@ -2536,7 +2576,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, one friendly unit within 12 inches gets Enhanced Self-Repair until the end of its next activation."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 friendly units within 12\u0022, which gets Enhanced Self-Repair once (next time the effect would apply)."
     },
     {
       "name": "Indirect on their weapons",
@@ -2651,7 +2691,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule fails a morale test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
+      "description": "When a unit where most models have this rule fails a Morale Test that causes it to be Shaken or Routed, the test counts as passed instead. Then, roll as many dice as the number of wounds it would take to fully destroy it, and for each result of 1-3 the unit takes one wound, which can\u0027t be ignored."
     },
     {
       "name": "Piercing Charge",

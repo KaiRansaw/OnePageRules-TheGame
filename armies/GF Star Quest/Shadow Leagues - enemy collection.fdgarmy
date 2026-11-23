@@ -433,8 +433,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -508,12 +508,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -535,7 +535,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to hit rolls when attacking once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to hit rolls when attacking once (next time the effect would apply)."
     },
     {
       "name": "Repel Ambushers",
@@ -720,7 +720,7 @@
         {
           "hookID": "Shooting_OnRangeCheck",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "rangeModifier",
@@ -733,7 +733,7 @@
         {
           "hookID": "Movement_OnChargeDeclared",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "movementBonus",
@@ -749,7 +749,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule is targeted by an enemy unit for shooting/charging, that enemy unit gets -4 inches/-2 inches range to a min. of 6 inches."
+      "description": "When a unit where most models have this rule is targeted by an enemy unit for shooting/charging, that enemy unit gets -4\u0022/-2\u0022 range to a min. of 6\u0022."
     },
     {
       "name": "Enhanced Shadow Operative",
@@ -763,7 +763,7 @@
               "ruleName": "Shadow Operative"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -783,7 +783,7 @@
               "ruleName": "Shadow Operative"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -794,13 +794,51 @@
           },
           "lifetime": "ThisActivation",
           "seat": "Subject"
+        },
+        {
+          "hookID": "Movement_OnChargeDeclared",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Shadow Operative"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Shadow Operative"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnRangeCheck",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Shadow Operative"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Shadow Operative"
+          },
+          "lifetime": "ThisActivation",
+          "seat": "Subject"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Shadow Operative, enemy units shooting/charging it get -8 inches/-4 inches range to a min. of 6 inches from Shadow Operative (instead of only -4 inches/-2 inches)."
+      "description": "If most models in this unit have Shadow Operative, enemy units shooting/charging it get -8\u0022/-4\u0022 range to a min. of 6\u0022 from Shadow Operative (instead of only -4\u0022/-2\u0022)."
     },
     {
       "name": "Enhanced Shadow Operative Aura",
@@ -822,7 +860,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Shadow Operative."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Shadow Operative. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "AP(1) on its weapons when attacking",
@@ -845,7 +883,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s weapons get AP(\u002B1) when attacking."
+      "description": "Targets get -X to Defense rolls when blocking hits."
     }
   ],
   "spells": [

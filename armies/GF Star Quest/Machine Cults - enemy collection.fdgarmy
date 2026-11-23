@@ -365,9 +365,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Scout": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -676,6 +679,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Flying": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -795,8 +801,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -857,8 +863,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -925,8 +931,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -988,8 +994,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -1041,8 +1047,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1099,8 +1105,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1154,8 +1160,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1235,11 +1241,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -1255,7 +1261,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Machine-Fog",
@@ -1265,11 +1271,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -1285,7 +1292,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "If most models in this unit have this rule, enemy units shooting/charging them from over 9\u0022/6\u0022 away get -1 to hit rolls ."
     },
     {
       "name": "Rending when Shooting Aura",
@@ -1307,7 +1314,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Rending when shooting."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Rending on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding",
@@ -1333,7 +1340,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Piercing Debuff",
@@ -1342,12 +1349,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1368,7 +1375,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which loses AP(\u002B1) when attacking once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which loses AP(1) on its weapons when attacking once (next time the effect would apply)."
     },
     {
       "name": "Anti-Cover",
@@ -1424,7 +1431,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores Cover, and when attacking units with most models within 1 inch of terrain, this weapon gets AP(\u002B1)."
+      "description": "Ignores Cover, and when attacking units with most models within 1\u0022 of terrain, this weapon gets AP(\u002B1)."
     },
     {
       "name": "Enhanced Machine-Fog",
@@ -1438,7 +1445,7 @@
               "ruleName": "Machine-Fog"
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -1448,13 +1455,32 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Machine-Fog"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Machine-Fog"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Machine-Fog, enemies attacking them always get -1 to hit rolls from Machine-Fog (instead of only when shooting/charging from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Machine-Fog, enemies attacking them always get -1 to hit rolls from Machine-Fog (instead of only when shooting/charging from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Versatile Warrior",
@@ -1514,7 +1540,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9 inches/6 inches away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, when shooting/charging enemies over 9\u0022/6\u0022 away, all models with this rule in it either get AP(\u002B1) or get \u002B1 to hit rolls."
     },
     {
       "name": "Crossing Strike",
@@ -1577,7 +1603,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If a unit where most models have this rule has most of them within 1 inch of terrain, enemies get -1 to hit rolls when attacking them."
+      "description": "If a unit where most models have this rule has most of them within 1\u0022 of terrain, enemies get -1 to hit rolls when attacking them."
     },
     {
       "name": "Enhanced Machine-Fog Aura",
@@ -1599,7 +1625,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Machine-Fog."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Machine-Fog. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -1673,7 +1699,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting, an unmodified 6 to hit gives the attack AP(\u002B4), and the attack ignores Regeneration."
+      "description": "This model gets Rending on its weapons when shooting."
     },
     {
       "name": "Piercing Debuff Effect",
@@ -1719,7 +1745,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "AP(\u002B1) when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     },
     {
       "name": "Versatile Attack (Precision)",
@@ -1743,7 +1769,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when shooting or charging enemies over 9 inches away, for this activation."
+      "description": "\u002B1 to hit when shooting/charging enemies over 9 inches/6 inches away, for this activation."
     }
   ],
   "spells": [

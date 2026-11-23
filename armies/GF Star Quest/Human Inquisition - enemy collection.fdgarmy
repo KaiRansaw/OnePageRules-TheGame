@@ -11,6 +11,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Fortified": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -303,6 +306,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Fortified": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -407,6 +413,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Fortified": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -790,8 +799,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1004,8 +1013,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1140,8 +1149,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1316,7 +1325,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "One model in this unit casts spells with as many spell tokens per round as there are models with this rule in the unit. Unspent tokens are lost at the end of the round."
+      "description": "This model counts as having Caster(1)."
     },
     {
       "name": "Spell Accumulator",
@@ -1370,7 +1379,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Gets X accumulator tokens at the start of each round, but can\u0027t hold more than 6 tokens at once. Casters from other friendly units within 12\u0022 may spend this unit\u0027s accumulator tokens as if they were their own spell tokens. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Gets X accumulator tokens at the start of each round, but can\u0027t hold more than 6 tokens at once. Casters from other friendly units within 12\u0022 may spend this model\u0027s accumulator tokens as if they were their own spell tokens."
     },
     {
       "name": "Spell Conduit",
@@ -1400,7 +1409,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this unit\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
+      "description": "Casters within 12\u0022 that are from other friendly units may cast spells as if they were in this model\u0027s position, and get \u002B1 to casting rolls when doing so. Friendly casters may only use this rule if this unit isn\u0027t Shaken."
     },
     {
       "name": "Infiltrate",
@@ -1425,7 +1434,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Kept in reserve; may arrive from round 2 onward, placed anywhere over 3\u0022 from enemy units."
+      "description": "Counts as having Ambush, but may be deployed anywhere over 3\u0022 away from enemy unit."
     },
     {
       "name": "Precision Fighter Aura",
@@ -1447,7 +1456,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Precision Shooter Aura",
@@ -1469,7 +1478,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Shooter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding",
@@ -1495,7 +1504,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Bounding Aura",
@@ -1517,7 +1526,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Bounding."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Bounding. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defensive Growth Aura",
@@ -1539,7 +1548,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Defensive Growth."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Defensive Growth. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Piercing Tag",
@@ -1583,7 +1592,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Once per game during its activation: pick one enemy within 24 inches in line of sight and place X markers on it. Attackers may remove markers from it before it rolls to block, gaining AP(\u002B1) per removed marker."
+      "description": "Only one use per game. Once per game, during this model\u0027s activation, before attacking, place X tokens on one enemy unit within 24\u0022 and in line of sight, or one token on X enemy units within 24\u0022 and in line of sight. When attacking, friendly units may remove one token from their target before rolling to block to get AP(\u002B1) on their weapons."
     },
     {
       "name": "Repel Ambushers",
@@ -1640,7 +1649,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, if all models in this unit have this rule, it may be activated even if it had already activated this round (stops being fatigued when activated for the second time). Only up to one third of the units in the army with this rule at the beginning of the game (rounding up) may use it in a single round."
+      "description": "Once per game, if all models in this unit have this rule, it may be activated even if it had already activated this round (stops being Fatigued when activated again). Only up to one third of the units in the army with this rule at the beginning of the game (rounding up) may use it in a single round."
     },
     {
       "name": "Takedown Shot",
@@ -1742,7 +1751,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight and roll X dice; for each 2\u002B it takes one hit with AP(1)."
+      "description": "Only one use per game. Counts as having Infiltrate. The first time this unit is activated, pick one enemy unit within 6\u0022 in line of sight, and roll X dice. For each 2\u002B it takes one hit with AP(1)."
     },
     {
       "name": "Anti-Cover",
@@ -1809,7 +1818,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Spell Drain",
@@ -1849,7 +1858,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy model within 18 inches in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
     },
     {
       "name": "Quick Throw",
@@ -1893,7 +1902,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Bravery."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Spell Resistance Aura",
@@ -1915,7 +1924,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Spell Resistance."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Spell Resistance. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -1964,7 +1973,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Precision Shooter",
@@ -1990,7 +1999,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls when shooting."
+      "description": "This model gets \u002B1 to hit rolls when shooting."
     },
     {
       "name": "Defensive Growth",
@@ -2064,7 +2073,7 @@
             "clear": {
               "kind": "manualOnly"
             },
-            "maxTotal": 4
+            "maxTotal": 6
           },
           "lifetime": "ThisRound",
           "seat": "Actor"
@@ -2081,7 +2090,7 @@
               "tType": {
                 "id": "DefensiveGrowthMarker"
               },
-              "minCount": 2
+              "minCount": 3
             }
           },
           "effect": {
@@ -2091,7 +2100,7 @@
             },
             "rollKind": "Save",
             "delta": 1,
-            "perMarkers": 2
+            "perMarkers": 3
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -2101,7 +2110,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If all models have this rule: gains a marker at the start of each round while on the table and not Shaken (max 4); every two markers add \u002B1 to Defense rolls."
+      "description": "If all models in this unit have this rule, place one marker on it at the beginning of each round if it\u0027s on the table and isn\u0027t Shaken, up to a max. of six markers. For every three markers, models with this rule in this unit get \u002B1 to Defense rolls. All markers are removed once the next wave of reinforcements is deployed."
     },
     {
       "name": "Bravery",
@@ -2124,7 +2133,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get \u002B1 to Morale Test rolls."
+      "description": "Units where most models have this rule get \u002B1 to Morale Test rolls."
     }
   ],
   "spells": [

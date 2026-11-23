@@ -347,8 +347,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -519,7 +519,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Repel Ambushers",
@@ -563,7 +563,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Quick Shot."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Quick Shot. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Instinctive",
@@ -639,7 +639,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
+      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, then it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
     },
     {
       "name": "Anti-Cover",
@@ -668,51 +668,9 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
-              }
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 9
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
-          },
-          "effect": {
-            "kind": "addExtraHit",
-            "onRollValue": 6,
-            "count": 1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Shooting_OnHitRollComplete",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "isMelee"
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 6
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "addExtraHit",
@@ -727,7 +685,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model shoots/charges enemies over 9/6 inches away, unmodified results of 6 to hit deal 1 extra hit."
+      "description": "When this model shoots/charges enemies over 9\u0022/6\u0022 away, unmodified result of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
     },
     {
       "name": "Enhanced Berserker",
@@ -752,13 +710,26 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Berserker"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Berserker"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Berserker, the target always takes hits on unmodified hit results of 6 from Berserker (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Berserker, the target always takes hits on unmodified hit results of 6 from Berserker (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Pierce",
@@ -825,7 +796,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Berserker."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Berserker. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "AP(\u002B1) on their weapons in melee",
@@ -848,7 +819,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s weapons get AP(\u002B1) in melee."
+      "description": "Targets get -X to Defense rolls when blocking hits."
     },
     {
       "name": "Piercing Fighting Mark",
@@ -857,12 +828,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -882,7 +853,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, mark one enemy unit within 18 inches in line of sight; attacks against it count as having Piercing Fighter."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets AP(\u002B1) on their weapons in melee against once (next time the effect would apply)."
     },
     {
       "name": "Precision Fighter",
@@ -905,7 +876,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Quick Shot",
@@ -949,7 +920,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) in melee."
+      "description": "This model gets AP(\u002B1) on its weapons in melee."
     }
   ],
   "spells": [

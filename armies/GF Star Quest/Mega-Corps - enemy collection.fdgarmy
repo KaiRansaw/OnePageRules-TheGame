@@ -11,6 +11,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -52,6 +55,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -93,6 +99,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 0.984252,
@@ -316,6 +325,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -559,7 +571,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Ranged Slayer."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Ranged Slayer. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Increased Shooting Range Mark",
@@ -568,12 +580,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -593,7 +605,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Increased Shooting Range."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units get \u002B6\u0022 range on their weapons when shooting against once (next time the effect would apply)."
     },
     {
       "name": "Versatile Reach Aura",
@@ -615,7 +627,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Versatile Reach."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Versatile Reach. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Steadfast",
@@ -632,7 +644,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -650,7 +662,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this unit is Shaken at the start of the round, roll one die. On a 4\u002B it stops being Shaken."
+      "description": "If a unit where most models have this rule is Shaken at the beginning of the round, roll one die. On a 4\u002B, it stops being Shaken."
     },
     {
       "name": "Repel Ambushers",
@@ -773,7 +785,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting at enemies over 9 inches away, this model gets \u002B1 to hit rolls."
+      "description": "When shooting at enemies over 9\u0022 away, this model gets \u002B1 to hit rolls."
     },
     {
       "name": "Enhanced Cyber-Eyes",
@@ -791,13 +803,26 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Cyber-Eyes"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Cyber-Eyes"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Cyber-Eyes, it always gets \u002B1 to hit rolls from Cyber-Eyes (instead of only when shooting over 9 inches away)."
+      "description": "If this model has Cyber-Eyes, it always gets \u002B1 to hit rolls from Cyber-Eyes (instead of only when shooting over 9\u0022 away)."
     },
     {
       "name": "Decimate",
@@ -868,7 +893,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Cyber-Eyes."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Cyber-Eyes. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -904,14 +929,23 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
+              "kind": "and",
+              "left": {
+                "kind": "not",
+                "inner": {
+                  "kind": "isMelee"
+                }
+              },
+              "right": {
+                "kind": "targetMajorityHasTough",
+                "minToughValue": 27
               }
             },
             "right": {
-              "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "kind": "not",
+              "inner": {
+                "kind": "afterMoving"
+              }
             }
           },
           "effect": {
@@ -927,7 +961,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s ranged attacks get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "When using Hold actions and shooting, this model\u0027s weapons get AP(\u002B2) if most models in the target have Tough(27) or higher."
     },
     {
       "name": "Versatile Reach",
@@ -987,7 +1021,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect until the end of the activation: it gets either \u002B4 inches range when shooting, or moves \u002B2 inches when charging."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Versatile Reach (Range)",
@@ -1010,7 +1044,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B4 inches range when shooting, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Versatile Reach (Charge)",
@@ -1035,7 +1069,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves \u002B2 inches when charging, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     }
   ],
   "spells": [

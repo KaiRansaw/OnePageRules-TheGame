@@ -292,6 +292,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -711,6 +714,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -804,6 +810,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Defense": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -857,6 +866,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Ravage": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.5748031,
@@ -909,8 +921,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.952756,
         "widthInches": 1.8110236,
         "heightInches": 2.952756
       },
@@ -1077,8 +1089,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1197,9 +1209,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Fast": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 3.543307,
         "widthInches": 2.047244,
         "heightInches": 3.543307
       },
@@ -1274,8 +1289,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1424,8 +1439,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -1527,8 +1542,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1582,8 +1597,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1668,8 +1683,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1767,8 +1782,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -1866,11 +1881,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -1886,7 +1901,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Bloodborn",
@@ -1898,7 +1913,7 @@
             "dieValue": 6
           },
           "effect": {
-            "kind": "addExtraHit",
+            "kind": "addExtraAttackRoll",
             "onRollValue": 6,
             "count": 1
           },
@@ -1910,7 +1925,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Each unmodified 6 to hit scores an extra hit."
+      "description": "For each unmodified roll of 6 to hit when attacking, this model may roll \u002B1 attack with that weapon. This rule doesn\u0027t apply to newly generated attacks."
     },
     {
       "name": "Unstoppable Mark",
@@ -1919,12 +1934,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1944,7 +1959,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Unstoppable."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets Unstoppable on their weapons against once (next time the effect would apply)."
     },
     {
       "name": "Versatile Reach Aura",
@@ -1966,7 +1981,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Versatile Reach."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Versatile Reach. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Anti-Cover",
@@ -2030,6 +2045,19 @@
             "kind": "addExtraHit",
             "onRollValue": 6,
             "count": 1
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Bloodborn"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Bloodborn"
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -2166,7 +2194,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Bravery."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get \u002B1 to Morale Test rolls. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Unstoppable on their weapons when shooting",
@@ -2211,7 +2239,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Bloodborn."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Bloodborn. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -2297,7 +2325,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect until the end of the activation: it gets either \u002B4 inches range when shooting, or moves \u002B2 inches when charging."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Versatile Expert (Piercing)",
@@ -2320,7 +2348,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Versatile Expert (Precision)",
@@ -2343,7 +2371,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Bravery",
@@ -2366,7 +2394,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get \u002B1 to Morale Test rolls."
+      "description": "Units where most models have this rule get \u002B1 to Morale Test rolls."
     },
     {
       "name": "Versatile Reach (Range)",
@@ -2389,7 +2417,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B4 inches range when shooting, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Versatile Reach (Charge)",
@@ -2414,7 +2442,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves \u002B2 inches when charging, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     }
   ],
   "spells": [

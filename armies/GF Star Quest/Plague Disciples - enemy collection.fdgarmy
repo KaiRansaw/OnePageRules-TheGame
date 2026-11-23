@@ -151,6 +151,9 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Fast": 1
+      },
       "base": {
         "shape": "Circle",
         "diameterInches": 1.2598425,
@@ -628,8 +631,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.3622048,
         "widthInches": 1.3779528,
         "heightInches": 2.3622048
       },
@@ -729,8 +732,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -846,8 +849,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 3.543307,
         "widthInches": 2.047244,
         "heightInches": 3.543307
       },
@@ -1000,8 +1003,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1056,8 +1059,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1116,8 +1119,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -1184,8 +1187,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1261,8 +1264,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.889764,
         "widthInches": 4.92126,
         "heightInches": 6.889764
       },
@@ -1375,7 +1378,7 @@
         {
           "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "effect": {
             "kind": "ignoreWoundOnRoll",
@@ -1389,7 +1392,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores each wound on a roll of 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. On a 6\u002B it is ignored."
     },
     {
       "name": "Versatile Defense Aura",
@@ -1411,7 +1414,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Versatile Defense."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Versatile Defense. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Steadfast Aura",
@@ -1433,7 +1436,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Steadfast."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Steadfast. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Bounding Aura",
@@ -1455,7 +1458,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Bounding."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Bounding. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Heavy Impact",
@@ -1481,7 +1484,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "On charging into contact, rolls X bonus dice that score automatic hits with AP(1) before melee swings."
+      "description": "Counts as having Impact(X) with hits that have AP(1)."
     },
     {
       "name": "Dangerous Terrain Debuff",
@@ -1490,12 +1493,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -1516,7 +1519,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which counts as being in Dangerous Terrain once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which counts as being in Dangerous terrain once (next time the effect would apply)."
     },
     {
       "name": "Anti-Cover",
@@ -1557,6 +1560,25 @@
           "effect": {
             "kind": "ignoreWoundOnRoll",
             "minRoll": 5
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Plaguebound"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Plaguebound"
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
@@ -1715,7 +1737,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Spell Resistance."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Spell Resistance. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Plaguebound Aura",
@@ -1737,7 +1759,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Plaguebound."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Plaguebound. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Defense",
@@ -1790,7 +1812,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -1815,7 +1837,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         },
@@ -1840,7 +1862,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -1865,7 +1887,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         }
@@ -1873,7 +1895,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where all models have this rule is deployed or activated, pick one effect until the unit\u0027s next activation: when shot or charged from over 9 inches away, it either gets \u002B1 to defense rolls, or enemies get -1 to hit rolls against it."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     },
     {
       "name": "Steadfast",
@@ -1890,7 +1912,7 @@
               "minCount": 1
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -1908,7 +1930,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this unit is Shaken at the start of the round, roll one die. On a 4\u002B it stops being Shaken."
+      "description": "If a unit where most models have this rule is Shaken at the beginning of the round, roll one die. On a 4\u002B, it stops being Shaken."
     },
     {
       "name": "Bounding",
@@ -1934,7 +1956,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Dangerous Terrain Debuff Effect",
@@ -1979,7 +2001,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Versatile Expert (Precision)",
@@ -2002,7 +2024,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit when attacking, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation all models with this rule in this unit either get AP(\u002B1) when attacking, or get \u002B1 to hit rolls when attacking."
     },
     {
       "name": "Spell Resistance",
@@ -2048,7 +2070,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Versatile Defense (Guard)",
@@ -2058,11 +2080,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -2078,7 +2101,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit gets \u002B1 to defense rolls when shot or charged from over 9 inches away."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     },
     {
       "name": "Versatile Defense (Evasion)",
@@ -2088,11 +2111,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -2108,7 +2132,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     }
   ],
   "spells": [
