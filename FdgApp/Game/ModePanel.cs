@@ -31,8 +31,40 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
+            EGameMode.Standard => ExtraMission(table),
             _ => null,
         };
+    }
+
+    // ------------------------------------------------------------------ Extra Missions (Advanced Rulebooks 3.6.0)
+
+    /// <summary>The mission being played, how it is won, and what is going on with its markers (Kai, 2026-11-22).</summary>
+    private static List<Row>? ExtraMission(ITableState table)
+    {
+        if (GameProgressUtilities.ExtraMission(table.DataStore) is not { } state || state.Mission == FDG.Missions.EExtraMission.None)
+            return null;
+        FDG.Missions.ExtraMissionInfo info = FDG.Missions.ExtraMissionCatalog.Of(state.Mission);
+        var seats = table.Players.Objects.Where(p => p.IsFilled).ToDictionary(p => p.SlotID, p => p.Name);
+        string Seat(int slot) => seats.TryGetValue(slot, out string? n) ? n : "A player";
+        var rows = new List<Row> { new(info.Name, EStyle.Title, info.BookText) };
+        rows.Add(new(info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
+            EStyle.Dim, info.BookText));
+        if (info.Progressive)
+            foreach ((int slot, string name) in seats.OrderBy(s => s.Key))
+                rows.Add(new($"{name}: {state.Vp.GetValueOrDefault(slot)} VP", EStyle.Line));
+        foreach (FDG.Missions.CarriedMarker carried in state.Carried)
+        {
+            string unit = table.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == carried.Unit)?.Name ?? "A unit";
+            rows.Add(new($"{unit} ({Seat(carried.Slot)}) carries a marker", EStyle.Good,
+                "Dropped if the unit is Shaken or destroyed."));
+        }
+        foreach (FDG.Missions.OwnedMarker owned in state.Owned)
+            rows.Add(owned.Destroyed
+                ? new($"{Seat(owned.Slot)}'s marker: destroyed in round {owned.DestroyedInRound}", EStyle.Warn)
+                : new($"{Seat(owned.Slot)}'s marker: intact", EStyle.Line));
+        if (state.Mission == FDG.Missions.EExtraMission.MoshPit)
+            rows.Add(new(state.FirstSeizer >= 0 ? $"First to seize: {Seat(state.FirstSeizer)}" : "Nobody has seized the marker yet", EStyle.Dim));
+        return rows;
     }
 
     /// <summary>A short text that changes whenever the rows would - the panel is rebuilt only then.</summary>

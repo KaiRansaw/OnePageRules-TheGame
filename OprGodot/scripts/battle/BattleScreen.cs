@@ -951,6 +951,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     private Dictionary<PlayerID, int>? VictoryPoints()
     {
         var vm = Session.Lobby.Vm;
+        // A progressive Extra Mission (Pitched Battle, Domination...) is won on VP too (Kai, 2026-11-22).
+        if (GameProgressUtilities.ExtraMission(Session.Table.DataStore) is { } mission
+            && mission.Mission != FDG.Missions.EExtraMission.None && FDG.Missions.ExtraMissionCatalog.Of(mission.Mission).Progressive)
+        {
+            var seats = Session.Table.Players.Objects.Where(p => p.IsFilled).ToList();
+            return Session.Seats.ToDictionary(s => s.Id,
+                s => seats.FirstOrDefault(p => p.PlayerID.Equals(s.Id)) is { } slot ? mission.Vp.GetValueOrDefault(slot.SlotID) : 0);
+        }
         if (vm.GameMode != FDG.EGameMode.Standard || vm.MissionCardGame == FDG.Missions.EMissionCardGame.Off
             || !FDG.Missions.MissionCardCatalog.Available(vm.GameSystem)) return null;
         FDG.Missions.MissionCardState? cards = GameProgressUtilities.MissionCards(Session.Table.DataStore);

@@ -351,6 +351,10 @@ public class UserConfigTests
         public void SetDeploymentStyle(EDeploymentStyle style) => DeploymentStyle = style;
         public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
         public void SetMissionCardGame(FDG.Missions.EMissionCardGame game) => MissionCardGame = game;
+        public FDG.Missions.EExtraMission ExtraMission { get; set; }
+        public void SetExtraMission(FDG.Missions.EExtraMission mission) => ExtraMission = mission;
+        public bool SolidBuildings { get; set; }
+        public void SetSolidBuildings(bool enabled) => SolidBuildings = enabled;
         public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }

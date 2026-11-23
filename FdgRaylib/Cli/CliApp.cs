@@ -43,6 +43,10 @@ public class CliApp
     /// layout, so bot games can be run over climbable walls and hills.</summary>
     public static string? TerrainLayoutPath { get; set; }
 
+    /// <summary>--extra-mission &lt;name&gt; / --solid-buildings (2026-11-22): play an Advanced Rulebook mission headless.</summary>
+    public static FDG.Missions.EExtraMission ExtraMission { get; set; }
+    public static bool SolidBuildings { get; set; }
+
     public CliApp(bool headless, int slowDelayMs = 0, int? diceSeed = null,
         EAiProfile aiProfile = EAiProfile.SoloRules, bool allAi = false)
     {
@@ -167,6 +171,8 @@ public class CliApp
         gameSettings.RandomnessType = ERandomnessType.Realistic;
         gameSettings.ObjectivePlacementMode = EObjectivePlacementMode.AutoPlaced;
         gameSettings.DiceSeed = _diceSeed;
+        gameSettings.ExtraMission = ExtraMission;
+        gameSettings.SolidBuildings = SolidBuildings;
         if (!string.IsNullOrEmpty(TerrainLayoutPath))
         {
             gameSettings.TerrainPlacementMode = ETerrainPlacementMode.LoadFromFile;

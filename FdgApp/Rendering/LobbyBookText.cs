@@ -169,6 +169,18 @@ internal static class LobbyBookText
     // ── Advanced Rulebook v3.6.0 - Tournament Guidelines, line of sight ──
 
     /// <summary>The book's own words (GF/AoF p58, GFF/AoFS p55 - identical in all four), then what the game does.</summary>
+    /// <summary>Advanced Rulebook v3.6.0 p33 (GF / AoF; the same in GFF / AoFS), then what the game does.</summary>
+    internal const string SolidBuildings =
+        "Solid Buildings: Usually, solid buildings would be treated as a piece of Sight Blocking and Impassable terrain, however " +
+        "with these rules your units will be able to enter and defend them. Solid buildings may hold up to X friendly models or " +
+        "Heroes with up to Tough(6), and non-Heroes with up to Tough(3) which occupy 3 spaces each. Units may enter/exit by using " +
+        "any move action, getting into contact with the building to enter, and staying within 6\" when exiting, however units may " +
+        "not both enter and exit a building as part of the same activation. ... Units inside of solid buildings count as being in " +
+        "Cover ... When charging units inside a building, only one unit inside of it is targeted, and the defender may choose which.\n" +
+        "In this game: every Building piece that is Impassable and Sight Blocking (and any piece the map maker ticked as a solid " +
+        "building) can be entered - small ones hold 6, medium 11, large 21. Every side has firing ports. The optional Building " +
+        "Destruction and Collateral Damage are not used. (Simplified Terrain already makes every piece one.)";
+
     internal const string VolumetricLineOfSight =
         "Volumetric Line of Sight: Before the game begins, players must assign a height value in inches to all units. " +
         "Each model occupies a volume of space of that height above its base, determined by its base size. Generally, " +

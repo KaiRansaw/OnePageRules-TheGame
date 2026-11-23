@@ -487,6 +487,15 @@ public partial class LobbyScreen : Control, Hud.ILooked
         if (LobbyDeploymentPreview.MissionCardsApply(system, mode))
             Row(rows, "Mission cards", LobbyBookText.MissionCardsIntro + "\nHover an entry for that game type.",
                 Choice(Enum.GetValues<FDG.Missions.EMissionCardGame>(), Vm.MissionCardGame, FDG.Missions.MissionCardCatalog.Name, LobbyBookText.MissionCards, locked, g => Vm.SetMissionCardGame(g)));
+
+        // Extra Missions (Advanced Rulebooks 3.6.0, Kai 2026-11-22). Mission Cards bring their own objectives and scoring,
+        // so the mission is the core one while they are on.
+        if (mode == EGameMode.Standard && FDG.Missions.ExtraMissionCatalog.Available(system))
+            Row(rows, "Mission", "The Advanced Rulebook's Extra Missions: how many objectives there are, where they go, and how the game is won. "
+                + "Duel is the core rules' mission. Not used with Mission cards. Hover an entry for the book's words.",
+                Choice(FDG.Missions.ExtraMissionCatalog.LobbyOrder.ToArray(), Vm.ExtraMission, FDG.Missions.ExtraMissionCatalog.Name,
+                    FDG.Missions.ExtraMissionCatalog.Text, locked || Vm.MissionCardGame != FDG.Missions.EMissionCardGame.Off,
+                    m => Vm.SetExtraMission(m)));
     }
 
     private static string TableBackgroundName(ETableBackground b) => b == ETableBackground.MarsLike ? "Mars-Like" : b.ToString();
@@ -557,6 +566,11 @@ public partial class LobbyScreen : Control, Hud.ILooked
         if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
             Check(rows, "Volumetric Line of Sight", Vm.VolumetricLineOfSight, LobbyBookText.VolumetricLineOfSight, locked,
                 v => Vm.SetVolumetricLineOfSight(v));
+
+        // Advanced Terrain - Solid Buildings (Kai, 2026-11-22).
+        if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
+            Check(rows, "Solid Buildings", Vm.SolidBuildings, LobbyBookText.SolidBuildings, locked || Vm.FastPlaySimplifiedTerrain,
+                v => Vm.SetSolidBuildings(v));
 
         if (LobbyDeploymentPreview.KingOfTheHillApplies(system, mode))
             Check(rows, "King of the Hill (3-4 sides)", Vm.KingOfTheHill, LobbyBookText.KingOfTheHill + "\n\n" + LobbyBookText.FreeForAll(system), locked, v => Vm.SetKingOfTheHill(v));

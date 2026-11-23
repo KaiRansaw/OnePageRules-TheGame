@@ -290,6 +290,8 @@ public sealed class HostGameSettings
     public EChallengeBonuses ChallengeBonuses { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
+    public FDG.Missions.EExtraMission ExtraMission { get; set; }
+    public bool SolidBuildings { get; set; }
 
     public bool FriendlyUnitsMayOverlap { get; set; }
 
@@ -333,6 +335,8 @@ public sealed class HostGameSettings
         ChallengeBonuses       = settings.ChallengeBonuses,
         DeploymentStyle        = settings.DeploymentStyle,
         MissionCardGame        = settings.MissionCardGame,
+        ExtraMission           = settings.ExtraMission,
+        SolidBuildings         = settings.SolidBuildings,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
@@ -369,6 +373,8 @@ public sealed class HostGameSettings
         ChallengeBonuses       = viewModel.ChallengeBonuses,
         DeploymentStyle        = viewModel.DeploymentStyle,
         MissionCardGame        = viewModel.MissionCardGame,
+        ExtraMission           = viewModel.ExtraMission,
+        SolidBuildings         = viewModel.SolidBuildings,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
@@ -410,6 +416,8 @@ public sealed class HostGameSettings
         viewModel.SetChallengeBonuses(ChallengeBonuses);
         viewModel.SetDeploymentStyle(DeploymentStyle);
         viewModel.SetMissionCardGame(MissionCardGame);
+        viewModel.SetExtraMission(ExtraMission);
+        viewModel.SetSolidBuildings(SolidBuildings);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }
