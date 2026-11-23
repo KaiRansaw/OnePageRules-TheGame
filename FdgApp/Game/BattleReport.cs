@@ -57,7 +57,8 @@ public sealed class BattleReport : IPresentationSink
         Position? FromAt, Position? ToAt,
         IReadOnlyList<Spot> MovedFrom, IReadOnlyList<Spot> MovedTo,
         IReadOnlyList<Roll> Rolls, IReadOnlyList<string> Details,
-        Outcome? Attack = null, float MovedInches = 0f, string? TargetName = null);
+        Outcome? Attack = null, float MovedInches = 0f, string? TargetName = null,
+        CriticalHitBeat? Critical = null);
 
     /// <summary>What an attack did, as numbers (the block view shows these, not the sentence).</summary>
     public sealed record Outcome(bool Melee, float Hits, float Attacks, float Wounds, int ModelsLost, bool Routed, string Weapons,
@@ -424,6 +425,21 @@ public sealed class BattleReport : IPresentationSink
                 break;
 
             // Everything the game says out loud: a rule used, an item, a condition, an objective seized.
+            case CriticalHitBeat c:
+            {
+                // Part of the attack it came from: its block shows the table with the roll picked out.
+                if (open != null && open.Kind == Kind.Attack && (c.AttackerUnit == null || open.Attacker == null || open.Attacker.Value.Equals(c.AttackerUnit.Value)))
+                {
+                    open.Critical = c;
+                    Version++;
+                    break;
+                }
+                var e = new Entry { Kind = Kind.Line, Colour = new TextColor(166, 214, 58, 255), Critical = c };
+                e.Title.Add(new Piece($"Critical Hit - {c.TableName}: {c.Die} = {(c.Picked >= 0 && c.Picked < c.Rows.Count ? c.Rows[c.Picked].Name : "")}. {c.Result}."));
+                Add(e);
+                break;
+            }
+
             case BannerBeat b:
             {
                 string text = (b.BannerText ?? "").Trim();
@@ -572,6 +588,8 @@ public sealed class BattleReport : IPresentationSink
         public string? LossUnit;
         public int LossCount;
         public float MovedInches;
+        /// <summary>Critical Hits: the critical this attack dealt, with its table (one per fight at most).</summary>
+        public CriticalHitBeat? Critical;
 
         public Line Freeze()
         {
@@ -597,7 +615,7 @@ public sealed class BattleReport : IPresentationSink
                 : null;
             return new Line(Id, Kind, Round, title, body, Colour, Loud, Attacker, Target, Player, Units.ToList(), FromAt, ToAt,
                 MovedFrom.ToList(), MovedTo.ToList(), Rolls.ToList(), Details.ToList(), outcome, MovedInches,
-                TargetName.Length > 0 ? TargetName : null);
+                TargetName.Length > 0 ? TargetName : null, Critical);
         }
 
         private string AttackSummary()

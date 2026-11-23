@@ -509,7 +509,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             var (unit, items) = s.Detail(idx);
             RosterUnit? roster = s.Roster(bu.RosterUnitId);
             Title(col, "IN YOUR ARMY", unit, roster);
-            ForgeWidgets.Gear(_s!.Glossary, col, unit, items, null);
+            ForgeWidgets.Gear(_s!.Glossary, col, unit, items, null, FDG.GameSystemInfo.FromSlug(_s.System));
 
             foreach (ListIssue i in issues.Where(x => x.UnitIndex == idx))
                 col.AddChild(ForgeWidgets.Wrapped(i.Message, 14, i.Severity == ListIssueSeverity.Error ? Palette.WoundsRed : Palette.HitsYellow));
@@ -580,7 +580,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         {
             var (card, items) = s.RosterCards[rid];
             Title(col, "FROM THE ROSTER", card, roster);
-            ForgeWidgets.Gear(_s!.Glossary, col, card, items, null);
+            ForgeWidgets.Gear(_s!.Glossary, col, card, items, null, FDG.GameSystemInfo.FromSlug(_s.System));
             col.AddChild(HudKit.Text("Base: " + ForgeRules.BaseSummary(roster.Base), 14, HudKit.Dim, HudKit.Semi));
             if (ForgeRules.IsCaster(roster) && s.Book.Spells.Count > 0) Spells(col);
             if (roster.Sections.Count > 0)

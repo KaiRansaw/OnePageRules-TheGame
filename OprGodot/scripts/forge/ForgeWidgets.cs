@@ -77,7 +77,8 @@ internal static class ForgeWidgets
 
     /// <summary>Stat chips, the weapon table, wargear and rules (hover = the book's wording). Weapons and rules not
     /// in <paramref name="before"/> are drawn green with "(new)" - the upgrade editor's live sheet.</summary>
-    public static void Gear(RuleGlossary glossary, VBoxContainer col, UnitFileEntry unit, List<ItemEntry> items, UnitFileEntry? before)
+    public static void Gear(RuleGlossary glossary, VBoxContainer col, UnitFileEntry unit, List<ItemEntry> items, UnitFileEntry? before,
+        FDG.EGameSystem? system = null)
     {
         var stats = new HFlowContainer();
         stats.AddThemeConstantOverride("h_separation", 6);
@@ -103,6 +104,15 @@ internal static class ForgeWidgets
                 name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
                 name.AutowrapMode = TextServer.AutowrapMode.WordSmart;
                 name.CustomMinimumSize = new Vector2(120, 0);
+                // Critical Hits (Kai, 2026-11-23, mockup 2): in the two games that print it, which table the weapon
+                // rolls on when the lobby turns on "By weapon type".
+                if (system is { } sys && FDG.CriticalHits.BooksHaveIt(sys))
+                {
+                    bool ranged = w.RangeInches > 0, melee = !ranged || w.SpecialRules.Any(r => r.PrintableName.StartsWith("Assault", StringComparison.OrdinalIgnoreCase));
+                    name.MouseFilter = MouseFilterEnum.Stop;
+                    name.TooltipText = $"{w.Name}\n\nWith the Advanced rule Critical Hits (by weapon type):\n"
+                        + FDG.CriticalHits.WeaponTableText(sys, w.Name, ranged, melee, typed: true);
+                }
                 grid.AddChild(name);
                 grid.AddChild(HudKit.Text(ForgeRules.RangeText(w.RangeInches), 14, c, HudKit.Semi));
                 grid.AddChild(HudKit.Text(ForgeRules.AttacksText(w.Attacks), 14, c, HudKit.Semi));

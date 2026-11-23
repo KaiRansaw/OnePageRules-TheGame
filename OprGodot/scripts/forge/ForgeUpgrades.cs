@@ -86,7 +86,7 @@ public partial class ArmyForgeScreen
         var right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         right.AddThemeConstantOverride("separation", 10);
         right.AddChild(HudKit.Heading("The unit with these upgrades", 16));
-        ForgeWidgets.Gear(_s!.Glossary, right, unit, items, _upgradeBefore);
+        ForgeWidgets.Gear(_s!.Glossary, right, unit, items, _upgradeBefore, FDG.GameSystemInfo.FromSlug(_s.System));
         right.AddChild(ForgeWidgets.Wrapped("Changes show green until you press Done.", 14, HudKit.Dim));
         var rs = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         right.SizeFlagsVertical = SizeFlags.ExpandFill;

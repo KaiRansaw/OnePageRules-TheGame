@@ -106,4 +106,16 @@ public class ReportCardTests
     public void AMoveOnly_HasNoCard() =>
         Assert.That(ReportCard.For(new BattleReport.Block(2, Line(BattleReport.Kind.Activation, "", title: new[] { U(Orcs) }) with { Units = new[] { Orcs } },
             new[] { Line(BattleReport.Kind.Move, "moves 6\"", moved: 6, title: new[] { U(Orcs) }) with { Units = new[] { Orcs } } })), Is.Null);
+
+    [Test]
+    public void ACritical_RidesOnItsAttackRow()
+    {
+        var crit = new FDG.Presentation.Beats.CriticalHitBeat(Orcs, Grunts, "Orc Warriors", "Assault Grunts", "Choppa", "Bladed", 6,
+            new[] { new FDG.Presentation.Beats.CriticalRow("1-3", "Unprotected Area", "x"), new FDG.Presentation.Beats.CriticalRow("4-5", "Blade Storm", "y"),
+                new FDG.Presentation.Beats.CriticalRow("6", "Sliced", "z") }, 2, "1 hit at AP(+4)");
+        var fight = Fight(Orcs, Grunts, 10, 5, 2, 3, 4, 5) with { Critical = crit };
+        var block = new BattleReport.Block(2, Line(BattleReport.Kind.Activation, "", title: new[] { U(Orcs) }) with { Units = new[] { Orcs } }, new[] { fight });
+        ReportCard.Card card = ReportCard.For(block)!;
+        Assert.That(card.Attacks[0].Critical, Is.SameAs(crit));
+    }
 }

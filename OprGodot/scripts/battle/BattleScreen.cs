@@ -89,9 +89,63 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     // Attacks arrive on the engine thread; the table effect is played on the next frame.
     private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.Presentation.Beats.AttackBeat> _shots = new();
+    private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.Presentation.Beats.CriticalHitBeat> _crits = new();
     private void OnBeat(FDG.Presentation.PresentationBeat beat)
     {
         if (beat is FDG.Presentation.Beats.AttackBeat a && _shots.Count < 64) _shots.Enqueue(a);
+        if (beat is FDG.Presentation.Beats.CriticalHitBeat c && _crits.Count < 16) _crits.Enqueue(c);
+    }
+
+    private VBoxContainer? _critStack;
+
+    /// <summary>
+    /// Critical Hits (Kai, 2026-11-23, mockup 1): the roll shown with its whole table, the result picked out, beside
+    /// the battle report. Stays a few seconds; the same table is in the attack's report block afterwards.
+    /// </summary>
+    private void ShowCritical(FDG.Presentation.Beats.CriticalHitBeat c)
+    {
+        if (_critStack == null || !IsInstanceValid(_critStack))
+        {
+            _critStack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, GrowVertical = GrowDirection.Begin, GrowHorizontal = GrowDirection.Begin };
+            _critStack.AddThemeConstantOverride("separation", 6);
+            HudKit.Place(_hud, _critStack, LayoutPreset.BottomRight, new Vector2(-Pad - 390, -Pad));
+        }
+        var v = new VBoxContainer { CustomMinimumSize = new Vector2(420, 0), MouseFilter = MouseFilterEnum.Ignore };
+        v.AddThemeConstantOverride("separation", 4);
+        var head = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        head.AddChild(HudKit.Text($"CRITICAL HIT - {c.TableName.ToUpperInvariant()}", 18, HudKit.Lime, HudKit.Exo(800)));
+        head.AddChild(HudKit.Grow());
+        head.AddChild(HudKit.Text($"{c.AttackerName} -> {c.TargetName}", 13, HudKit.Dim, HudKit.Semi));
+        v.AddChild(head);
+        v.AddChild(Wrapped($"{c.WeaponName} rolled a 6 to hit - one critical per fight. The die: {c.Die}", 14, HudKit.Dim, HudKit.Medium));
+        v.AddChild(CriticalTable(c));
+        v.AddChild(Wrapped("Result: " + c.Result, 15, HudKit.Fg, HudKit.Semi));
+        var panel = HudKit.Panel(Tight(10), v);
+        panel.MouseFilter = MouseFilterEnum.Ignore;
+        _critStack.AddChild(panel);
+        while (_critStack.GetChildCount() > 3) _critStack.GetChild(0).QueueFree();
+        GetTree().CreateTimer(7.0).Timeout += () => { if (IsInstanceValid(panel)) panel.QueueFree(); };
+    }
+
+    /// <summary>A critical table's three rows, the one rolled picked out (also used in the report's block card).</summary>
+    private static Control CriticalTable(FDG.Presentation.Beats.CriticalHitBeat c)
+    {
+        var grid = new GridContainer { Columns = 3, MouseFilter = MouseFilterEnum.Ignore };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 2);
+        for (int i = 0; i < c.Rows.Count; i++)
+        {
+            bool picked = i == c.Picked;
+            Color col = picked ? HudKit.Lime : HudKit.Dim;
+            Font font = picked ? HudKit.Bold : HudKit.Medium;
+            grid.AddChild(HudKit.Text((picked ? "> " : "  ") + c.Rows[i].Range, 14, col, HudKit.Bold));
+            grid.AddChild(HudKit.Text(c.Rows[i].Name, 14, picked ? HudKit.Lime : HudKit.Fg, font));
+            var text = HudKit.Text(c.Rows[i].Text, 13, picked ? HudKit.Fg : HudKit.Dim, font);
+            text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            text.CustomMinimumSize = new Vector2(230, 0);
+            grid.AddChild(text);
+        }
+        return grid;
     }
 
     public BattleTable Table => _table;
@@ -123,6 +177,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (_cardBlock != null && _blockCard != null && IsInstanceValid(_blockCard) && Input.IsKeyPressed(Key.Alt) != _cardDice)
             ShowBlockCard(_cardBlock);
         while (_shots.TryDequeue(out var shot)) _table.Shots(shot.From, shot.To, shot.VolleyCount, shot.IsMelee);
+        while (_crits.TryDequeue(out var crit)) ShowCritical(crit);
         if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
         {
             Decisions.Prompt();
@@ -1292,6 +1347,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
                 name.TooltipText = string.Join("\n\n", weaponRules.Select(BookText));
                 name.MouseFilter = MouseFilterEnum.Stop;
             }
+            // Critical Hits (Kai, 2026-11-23, mockup 2): which table this weapon rolls on.
+            if (FDG.CriticalHits.OnFor(Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.AdvancedRules))
+            {
+                bool ranged = g.Key.RangeInches > 0, melee = !ranged || weaponRules.Any(r => r.RequestedName.StartsWith("Assault", StringComparison.OrdinalIgnoreCase));
+                string table = FDG.CriticalHits.WeaponTableText(Session.Lobby.Vm.GameSystem, g.Key.Name, ranged, melee,
+                    FDG.CriticalHits.TypedFor(Session.Lobby.Vm.AdvancedRules));
+                name.TooltipText = string.IsNullOrEmpty(name.TooltipText) ? $"{g.Key.Name}\n\n{table}" : name.TooltipText + "\n\n" + table;
+                name.MouseFilter = MouseFilterEnum.Stop;
+            }
             grid.AddChild(cell);
             grid.AddChild(HudKit.Text(g.Key.RangeInches > 0 ? $"{g.Key.RangeInches:0}\"" : "-", 15, g.Key.RangeInches > 0 ? HudKit.Lime : HudKit.Dim, HudKit.Bold));
             grid.AddChild(HudKit.Text($"A{g.Key.Attacks}", 15, HudKit.Fg, HudKit.Bold));
@@ -1709,6 +1773,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
                 }
                 v.AddChild(steps);
                 foreach (string note in a.Notes) v.AddChild(Wrapped(note, 13, Palette.RuleGold, HudKit.Semi));
+                if (a.Critical is { } crit)
+                {
+                    // Kai, 2026-11-23 (mockup 4): the critical, its table and the roll picked out.
+                    v.AddChild(HudKit.Chip($"CRITICAL - {(crit.Picked >= 0 && crit.Picked < crit.Rows.Count ? crit.Rows[crit.Picked].Name : crit.TableName).ToUpperInvariant()}", HudKit.Lime, true, 12));
+                    v.AddChild(Wrapped($"{crit.TableName} table, {crit.WeaponName} - the die: {crit.Die}", 13, HudKit.Dim, HudKit.Semi));
+                    v.AddChild(CriticalTable(crit));
+                    v.AddChild(Wrapped(crit.Result, 13, HudKit.Fg, HudKit.Semi));
+                }
             }
             if (card.After.Count > 0)
             {

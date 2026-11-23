@@ -22,7 +22,7 @@ public static class ReportCard
     public sealed record Step(string Value, string Label, bool Final = false, bool Hurt = false);
 
     public sealed record AttackRow(UnitID? By, string ByName, string Verb, UnitID? Target, string TargetName, bool Melee,
-        IReadOnlyList<Step> Steps, IReadOnlyList<string> Notes);
+        IReadOnlyList<Step> Steps, IReadOnlyList<string> Notes, FDG.Presentation.Beats.CriticalHitBeat? Critical = null);
 
     /// <summary>A line after the fighting. <see cref="Tag"/>: ROUTED, SHAKEN, HELD or null; <see cref="Bad"/> colours it.</summary>
     public sealed record AfterRow(string Text, string? Tag, bool Bad);
@@ -95,7 +95,7 @@ public static class ReportCard
         if (dealt > 0.01f) steps.Add(new Step(Num(dealt), dealt < 1.5f ? "WOUND" : "WOUNDS", true, true));
         if (a.ModelsLost > 0) steps.Add(new Step(a.ModelsLost.ToString(CultureInfo.InvariantCulture), "DIED", true, true));
         if (dealt <= 0.01f && a.ModelsLost == 0) steps.Add(new Step("0", "DAMAGE", true));
-        return new AttackRow(l.Attacker, by, verb, l.Target, target, a.Melee, steps, Notes(l, hitRolls, saveRolls));
+        return new AttackRow(l.Attacker, by, verb, l.Target, target, a.Melee, steps, Notes(l, hitRolls, saveRolls), l.Critical);
     }
 
     /// <summary>The rules that changed the dice, in a few words each: Rending, Precise +1, Regeneration: 1 ignored...</summary>

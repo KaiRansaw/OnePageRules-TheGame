@@ -654,7 +654,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
                 if (!open) continue;
                 foreach (FDG.AdvancedRuleOption option in FDG.AdvancedRules.In(chapter, system))
                     Check(rows, option.Name, (Vm.AdvancedRules & option.Flag) != 0,
-                        option.Name + ": " + option.BookText + "\n\nIn this game: " + option.GameText, locked, v =>
+                        option.Name + ": " + option.BookText + "\n\nIn this game: " + option.GameText
+                        + (option.Flag == FDG.EAdvancedRules.CriticalHitsByWeaponType ? "\n\n" + FDG.CriticalHits.AllTablesText(system) : ""), locked, v =>
                         {
                             FDG.EAdvancedRules now = Vm.AdvancedRules;
                             Vm.SetAdvancedRules(v ? now | option.Flag : now & ~option.Flag);
