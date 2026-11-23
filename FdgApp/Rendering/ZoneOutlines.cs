@@ -38,6 +38,15 @@ public static class ZoneOutlines
                     return (c.Center.X + MathF.Cos(a) * c.Radius, c.Center.Y + MathF.Sin(a) * c.Radius);
                 }).ToArray());
                 break;
+            case TableEdgeBandZone band:
+                foreach (IZone part in band.Bands) Add(part, into);
+                break;
+            case MissionPlacementZone mission:
+                // The area (the whole table when it has none) and each keep-out circle.
+                if (mission.Include != null) Add(mission.Include, into);
+                else Add(new RectangularZone(0f, mission.TableWidthInches, 0f, mission.TableHeightInches), into);
+                foreach (CircularZone hole in mission.Holes) Add(hole, into);
+                break;
             case CompositeZone composite:
                 foreach (IZone part in composite.Parts) Add(part, into);
                 break;

@@ -28,6 +28,12 @@ public class BotVsBotLaunchTests
         foreach (var p in session.Vm.PlayerInfos.ToList())
             if (p.PlayerType == EPlayerType.Local) session.ToggleBot(p);
         session.Tick();
+        // The lobby opens on the last saved settings; pin the ones that change how long set-up takes, so the 30s wait
+        // below is about this test and not whatever mission or deployment the machine last played.
+        session.Vm.SetExtraMission(FDG.Missions.EExtraMission.None);
+        session.Vm.SetMissionCardGame(FDG.Missions.EMissionCardGame.Off);
+        session.Vm.SetDeploymentStyle(FDG.EDeploymentStyle.Core);
+        session.Tick();
         Assume.That(session.Vm.PlayerInfos.All(p => p.PlayerType == EPlayerType.AI && p.ArmyListSummary.IsAssigned),
             "needs two bots with armies");
 

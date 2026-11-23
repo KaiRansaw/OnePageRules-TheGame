@@ -47,6 +47,7 @@ public static class ModePanel
         var seats = table.Players.Objects.Where(p => p.IsFilled).ToDictionary(p => p.SlotID, p => p.Name);
         string Seat(int slot) => seats.TryGetValue(slot, out string? n) ? n : "A player";
         var rows = new List<Row> { new(info.Name, EStyle.Title, info.BookText) };
+        if (info.AttackDefend) return AttackDefendRows(table, state, info, rows);
         rows.Add(new(info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
             EStyle.Dim, info.BookText));
         if (info.Progressive)
@@ -64,6 +65,59 @@ public static class ModePanel
                 : new($"{Seat(owned.Slot)}'s marker: intact", EStyle.Line));
         if (state.Mission == FDG.Missions.EExtraMission.MoshPit)
             rows.Add(new(state.FirstSeizer >= 0 ? $"First to seize: {Seat(state.FirstSeizer)}" : "Nobody has seized the marker yet", EStyle.Dim));
+        return rows;
+    }
+
+    /// <summary>Attack &amp; Defend: who attacks and defends, how the mission is won, and where the prize is now.</summary>
+    private static List<Row> AttackDefendRows(ITableState table, FDG.Missions.ExtraMissionState state,
+        FDG.Missions.ExtraMissionInfo info, List<Row> rows)
+    {
+        string Side(int team) => table.Players.Objects.Where(p => p.IsFilled && p.TeamNumber == team)
+            .Select(p => p.Name).DefaultIfEmpty($"Team {team}").Aggregate((a, b) => a + " & " + b);
+        if (state.AttackerTeam >= 0)
+            rows.Add(new($"Attacker: {Side(state.AttackerTeam)} - Defender: {Side(state.DefenderTeam)}", EStyle.Line,
+                FDG.Missions.ExtraMissionCatalog.RolesText));
+        else
+            rows.Add(new("Attacker and defender are rolled for before the markers go down.", EStyle.Dim));
+        string goal = state.Mission switch
+        {
+            FDG.Missions.EExtraMission.TheRaid or FDG.Missions.EExtraMission.LastStand => "After round 6, whoever controls the marker wins.",
+            FDG.Missions.EExtraMission.Ambush => "After round 6, whoever controls the most markers wins.",
+            FDG.Missions.EExtraMission.SmashAndGrab => "After round 6, the attacker wins if the relic is within 6\" of a table edge.",
+            FDG.Missions.EExtraMission.TheRescue => "After round 6, the attacker wins if the marker is within 6\" of a table edge.",
+            FDG.Missions.EExtraMission.VipEscort => "After round 6, the defender wins if the marker is within 6\" of the far long edge.",
+            _ => "",
+        };
+        rows.Add(new(goal, EStyle.Dim, info.BookText));
+
+        float w = GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, h = GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
+        float Edge(Position p) => MathF.Min(MathF.Min(p.x, w - p.x), MathF.Min(p.z, h - p.z));
+        foreach (FDG.Missions.CarriedMarker carried in state.Carried)
+        {
+            IUnit? unit = table.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == carried.Unit);
+            float near = unit?.Models.Where(m => m.GetIsAlive()).Select(m => Edge(m.Position)).DefaultIfEmpty(99f).Min() ?? 99f;
+            rows.Add(new($"{unit?.Name ?? "A unit"} carries the {(state.Mission == FDG.Missions.EExtraMission.SmashAndGrab ? "relic" : "marker")} - {near:0}\" from an edge",
+                near <= 6f ? EStyle.Good : EStyle.Line, "Dropped if the unit is Shaken or destroyed."));
+        }
+        if (state.Mission == FDG.Missions.EExtraMission.SmashAndGrab && state.Carried.Count == 0)
+            rows.Add(state.RelicRevealed && state.RelicX is float rx && state.RelicZ is float rz
+                ? new($"The relic lies on the table, {Edge(new Position(rx, rz)):0}\" from an edge", EStyle.Warn)
+                : new("The relic is still hidden among the markers (one is a trap).", EStyle.Dim,
+                    "When an attacking unit seizes a marker it is revealed: a trap deals 2D3 hits, a decoy is removed, the relic is carried."));
+        if (state.Mission == FDG.Missions.EExtraMission.VipEscort && table.Objectives.Objects.FirstOrDefault() is { } vip)
+        {
+            float far = state.VipFromLowEdge == false ? vip.Position.z : h - vip.Position.z;
+            rows.Add(new($"Marker: {far:0}\" from the far edge", far <= 6f ? EStyle.Good : EStyle.Line,
+                "At the start of each round the defender may move it up to 12\" if they control it."));
+        }
+        if (state.MissionReserve.Count > 0)
+        {
+            var names = state.MissionReserve.Select(id => table.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == id)?.Name)
+                .Where(n => n != null).ToList();
+            rows.Add(new($"In reserves: {names.Count} unit{(names.Count == 1 ? "" : "s")}", EStyle.Line,
+                (state.Mission == FDG.Missions.EExtraMission.LastStand ? "Each arrives on a 6 at the start of a round, within 12\" of a table edge."
+                    : "Each arrives on a 4+ at the start of each round after the first, within 12\" of a table edge.") + "\n" + string.Join("\n", names)));
+        }
         return rows;
     }
 

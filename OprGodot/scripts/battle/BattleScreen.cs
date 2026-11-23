@@ -927,7 +927,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (progress.RoundCount != null) return progress.TotalRounds;
         var vm = Session.Lobby.Vm;
         int limit = FDG.StateMachine.HordeRules.RoundLimit(vm.GameMode);
-        return limit == GameWideConstants.NUMBER_OF_ROUNDS && vm.NumberOfRounds is int n && n > 0 ? n : limit;
+        if (limit == GameWideConstants.NUMBER_OF_ROUNDS && vm.NumberOfRounds is int n && n > 0) return n;
+        // Attack & Defend missions last 6 rounds.
+        if (limit == GameWideConstants.NUMBER_OF_ROUNDS && vm.GameMode == EGameMode.Standard
+            && FDG.Missions.ExtraMissionCatalog.IsAttackDefend(vm.ExtraMission)) return FDG.Missions.AttackDefend.Rounds;
+        return limit;
     }
 
     private IUnit? _lastActivating;
