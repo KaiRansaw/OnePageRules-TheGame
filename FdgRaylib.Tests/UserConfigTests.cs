@@ -36,6 +36,20 @@ public class UserConfigTests
 
     // ── Defaults ───────────────────────────────────────────────────────────────────────────
 
+    // 3D sight on by default since heights are read from the models (Kai, 2026-11-22). A file saved before then had the
+    // tick off only because that was the old default, so it starts on once; after that the player's choice stands.
+    [Test]
+    public void VolumetricSight_IsOnForNewAndOldFiles_ButAChosenOffIsKept()
+    {
+        Assert.That(new UserConfig().HostSettings.VolumetricLineOfSight, Is.True);
+        string old = PathFor("old.json");
+        File.WriteAllText(old, "{ \"HostSettings\": { \"VolumetricLineOfSight\": false } }");
+        Assert.That(UserConfig.LoadFrom(old).HostSettings.VolumetricLineOfSight, Is.True, "an old file's off was the old default");
+        string chosen = PathFor("chosen.json");
+        File.WriteAllText(chosen, "{ \"HostSettings\": { \"VolumetricLineOfSight\": false, \"VolumetricDefaulted\": true } }");
+        Assert.That(UserConfig.LoadFrom(chosen).HostSettings.VolumetricLineOfSight, Is.False, "turned off since: kept off");
+    }
+
     [Test]
     public void MissingFile_ReadsAsDefaults()
     {

@@ -426,6 +426,24 @@ public partial class ScriptedRun : Node
                 _wait = 5;
                 return;
             }
+            if (name.StartsWith("pieceheights:"))
+            {
+                // Dev tool: every built-in piece's solid parts and how tall each stands (heights read from the models).
+                var rows = new List<string>();
+                foreach (var pc in FdgRaylib.Terrain.TerrainPieces.All)
+                {
+                    var hp = new FdgRaylib.Terrain.MapPiece { Kind = pc.Kind, Name = pc.Name, Look = FdgRaylib.Terrain.TerrainPieces.LookPrefix + pc.Id,
+                        Rules = FDG.ETerrainType.Impassible | FDG.ETerrainType.Blocking, X = 24, Z = 24, W = pc.W, D = pc.D, Round = pc.Round };
+                    var parts = Battle.TerrainSolidShape.ForPiece(hp);
+                    string hs = parts == null ? "none" : string.Join(" ", parts.GroupBy(r => r.H).OrderBy(g => g.Key)
+                        .Select(g => string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0:0.##}in x{1}", g.Key, g.Count())));
+                    rows.Add($"{pc.Id} ({pc.Style}) parts={parts?.Count ?? 0}: {hs}");
+                }
+                System.IO.File.WriteAllText(name[13..], string.Join("\n", rows) + "\n");
+                GD.Print($"ScriptedRun: piece heights for {rows.Count} pieces");
+                _wait = 5;
+                return;
+            }
             if (name.StartsWith("measuremodels:"))
             {
                 // Dev tool: every built-in terrain model's size at scale 1 (model units), for laying out pieces.

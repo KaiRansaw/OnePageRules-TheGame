@@ -154,7 +154,14 @@ public sealed class UserConfig
         try
         {
             if (!File.Exists(path)) return new UserConfig();
-            return JsonSerializer.Deserialize<UserConfig>(File.ReadAllText(path), Json) ?? new UserConfig();
+            string text = File.ReadAllText(path);
+            UserConfig config = JsonSerializer.Deserialize<UserConfig>(text, Json) ?? new UserConfig();
+            if (!text.Contains("\"" + nameof(HostGameSettings.VolumetricDefaulted) + "\"", StringComparison.OrdinalIgnoreCase))
+            {
+                config.HostSettings.VolumetricLineOfSight = true;
+                config.HostSettings.VolumetricDefaulted = true;
+            }
+            return config;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -266,8 +273,13 @@ public sealed class HostGameSettings
     public bool FastPlayMelee { get; set; }
     public bool FastPlayShooting { get; set; }
     public bool FastPlaySimplifiedTerrain { get; set; }
-    /// <summary>Volumetric Line of Sight (Advanced Rulebooks), remembered like the other rules toggles.</summary>
-    public bool VolumetricLineOfSight { get; set; }
+    /// <summary>Volumetric Line of Sight (Advanced Rulebooks), remembered like the other rules toggles. On by default
+    /// since terrain heights are read from the models (Kai, 2026-11-22: "Yes, 3D sight").</summary>
+    public bool VolumetricLineOfSight { get; set; } = true;
+    /// <summary>Whether this file has had 3D sight turned on once as the new default (2026-11-22), so a file saved
+    /// before then - with the tick off only because it used to be off by default - starts with it on. After that
+    /// the player's own choice is kept.</summary>
+    public bool VolumetricDefaulted { get; set; } = true;
     public bool ForceOrg { get; set; }
     /// <summary>The Army Forge's Force Org switch (Kai, 2026-11-15) - on unless turned off.</summary>
     public bool ForgeForceOrg { get; set; } = true;
@@ -282,7 +294,12 @@ public sealed class HostGameSettings
     public bool FriendlyUnitsMayOverlap { get; set; }
 
     /// <summary>The engine's own defaults - one source of truth for what a fresh config holds.</summary>
-    public static HostGameSettings FromDefaults() => From(GameSettings.GetDefault());
+    public static HostGameSettings FromDefaults()
+    {
+        HostGameSettings settings = From(GameSettings.GetDefault());
+        settings.VolumetricLineOfSight = true; // 3D sight on for a new player (2026-11-22)
+        return settings;
+    }
 
     public static HostGameSettings From(GameSettings settings) => new()
     {

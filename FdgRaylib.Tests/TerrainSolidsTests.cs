@@ -16,7 +16,7 @@ public class TerrainSolidsTests
     };
 
     // A strip along the model's +X end (u 0.9-1) and one along its first row (v 0-0.1).
-    private static readonly IReadOnlyList<(float, float, float, float)> Parts = new[] { (0.9f, 0f, 1f, 1f), (0f, 0f, 1f, 0.1f) };
+    private static readonly IReadOnlyList<(float, float, float, float, float)> Parts = new[] { (0.9f, 0f, 1f, 1f, 0f), (0f, 0f, 1f, 0.1f, 0f) };
 
     [Test]
     public void Unturned_UIsAlongTheWidth_AndVStartsAtTheFarEdge()
@@ -69,7 +69,7 @@ public class TerrainSolidsTests
         Kind = "Building", Name = "House", Look = look, Rules = rules, X = 24, Z = 24, W = 6, D = 6,
     };
 
-    private static readonly IReadOnlyList<(float, float, float, float)> LRects = new[] { (21f, 26.5f, 27f, 27f), (21f, 21f, 21.5f, 27f) };
+    private static readonly IReadOnlyList<(float, float, float, float, float)> LRects = new[] { (21f, 26.5f, 27f, 27f, 0f), (21f, 21f, 21.5f, 27f, 0f) };
 
     [Test]
     public void NamedPiece_PlaysOnItsSolidRectangles()
@@ -112,5 +112,43 @@ public class TerrainSolidsTests
             Assert.That(TerrainSolids.For(Building("piece:missing")), Is.Null);
         }
         finally { TerrainSolids.PieceProvider = saved; }
+    }
+
+    // Heights read from the models (Kai, 2026-11-22): each part keeps how tall the model stands there, through saving.
+    private static readonly IReadOnlyList<(float, float, float, float, float)> TallAndLow =
+        new[] { (21f, 26.5f, 27f, 27f, 5.2f), (21f, 21f, 27f, 22f, 0.75f) };
+
+    [Test]
+    public void PartHeights_AreKept_AndSurviveSaving()
+    {
+        var saved = TerrainSolids.PieceProvider;
+        try
+        {
+            TerrainSolids.PieceProvider = _ => TallAndLow;
+            var draft = MapDraft.New(72, 48);
+            draft.Pieces.Add(Building("piece:ruin"));
+            var layout = draft.ToLayout();
+            string json = FdgRaylib.Cli.TerrainLoader.SerializeToJson(layout);
+            string path = Path.Combine(Path.GetTempPath(), $"heights-{Guid.NewGuid():N}.json");
+            File.WriteAllText(path, json);
+            try
+            {
+                var back = FDG.SaveLoad.TerrainLayoutLoader.TryLoadFromFile(path, out string? error);
+                Assert.That(back, Is.Not.Null, error);
+                var parts = ((CompositeZone)back!.Pieces[0].Solid!).Parts.Cast<RaisedRectZone>().ToList();
+                Assert.That(parts.Select(r => r.HeightInches), Is.EqualTo(new[] { 5.25f, 0.75f }), "kept to a quarter inch");
+            }
+            finally { File.Delete(path); }
+        }
+        finally { TerrainSolids.PieceProvider = saved; }
+    }
+
+    [Test]
+    public void TurnedPiece_KeepsItsPartHeights()
+    {
+        var p = Piece(30);
+        IZone z = TerrainSolids.FromParts(p, new[] { (0f, 0f, 1f, 0.5f, 3f), (0f, 0.5f, 1f, 1f, 1f) });
+        var parts = ((CompositeZone)z).Parts.Cast<RotatedZoneWrapper>().Select(w => ((RaisedRectZone)w.Inner).HeightInches);
+        Assert.That(parts, Is.EquivalentTo(new[] { 3f, 1f }));
     }
 }

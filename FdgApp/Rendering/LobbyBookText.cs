@@ -179,7 +179,8 @@ internal static class LobbyBookText
         "the target model's volume. If the line doesn't pass through any obstacles or unit volumes, then the model has " +
         "line of sight.\n" +
         "In this game: heights come from base size (between two sizes it goes in a straight line; over 100mm it keeps " +
-        "climbing 1\" per 40mm); terrain is as tall as its height. Tall models see over short units and low walls; a " +
+        "climbing 1\" per 40mm); terrain is as tall as its height, and a piece built from models is as tall as the " +
+        "model is at each spot (see over a ruin's low rubble, not its tall wall). On by default. Tall models see over short units and low walls; a " +
         "target seen over a wall still gets Cover. Off: the classic way - every piece and every other unit blocks, " +
         "however tall.";
 

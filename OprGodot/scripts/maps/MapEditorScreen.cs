@@ -1247,6 +1247,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         return true;
     }
 
+    /// <summary>How tall a solid part is drawn in the Rules view: the height the model stands to there (heights read
+    /// from the models, Kai 2026-11-22), so you can see which parts a model can see over.</summary>
+    private static float PartTall(float h) => h > 0f ? Mathf.Max(0.12f, Mathf.Ceil(h * 4f) / 4f) : 0.12f;
+
     private void DrawPiece(MapPiece p)
     {
         bool sel = _picked.Contains(p);
@@ -1261,15 +1265,15 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             Color rc = TableLook.RulesColour(p.Rules);
             // A model piece that stops models or sight plays only on its solid parts (Kai, 2026-11-19) - show those.
             if (TerrainSolids.IsPiece(p) && TerrainSolids.Applies(p) && TerrainSolids.PieceProvider?.Invoke(p) is { Count: > 0 } rects)
-                foreach (var (x0, z0, x1, z1) in rects) // table rectangles, not turned with the piece
-                    TableLook.Mesh(_pieces, new BoxMesh { Size = new Vector3(x1 - x0, 0.12f, z1 - z0) },
-                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), World((x0 + x1) / 2, (z0 + z1) / 2) + new Vector3(0, 0.07f, 0));
+                foreach (var (x0, z0, x1, z1, h) in rects) // table rectangles, not turned with the piece
+                    TableLook.Mesh(_pieces, new BoxMesh { Size = new Vector3(x1 - x0, PartTall(h), z1 - z0) },
+                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), World((x0 + x1) / 2, (z0 + z1) / 2) + new Vector3(0, PartTall(h) / 2 + 0.01f, 0));
             else if (!TerrainSolids.IsPiece(p) && TerrainSolids.Applies(p) && TerrainSolids.Provider?.Invoke(p.Look) is { Count: > 0 } parts)
-                foreach (var (u0, v0, u1, v1) in parts)
+                foreach (var (u0, v0, u1, v1, h) in parts)
                 {
                     float cx = (-0.5f + (u0 + u1) / 2) * p.W, cz = (0.5f - (v0 + v1) / 2) * p.D;
-                    TableLook.Mesh(root, new BoxMesh { Size = new Vector3((u1 - u0) * p.W, 0.12f, (v1 - v0) * p.D) },
-                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(cx, 0.07f, -cz));
+                    TableLook.Mesh(root, new BoxMesh { Size = new Vector3((u1 - u0) * p.W, PartTall(h), (v1 - v0) * p.D) },
+                        TableLook.Mat(rc with { A = 0.55f }, 0.6f, rc, 0.5f), new Vector3(cx, PartTall(h) / 2 + 0.01f, -cz));
                 }
             else
             {
