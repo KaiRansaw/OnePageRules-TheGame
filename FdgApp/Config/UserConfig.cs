@@ -292,6 +292,8 @@ public sealed class HostGameSettings
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
     public FDG.Missions.EExtraMission ExtraMission { get; set; }
     public bool SolidBuildings { get; set; }
+    public FDG.Missions.ESideMissionPlay SideMissions { get; set; }
+    public FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
 
     public bool FriendlyUnitsMayOverlap { get; set; }
 
@@ -337,6 +339,8 @@ public sealed class HostGameSettings
         MissionCardGame        = settings.MissionCardGame,
         ExtraMission           = settings.ExtraMission,
         SolidBuildings         = settings.SolidBuildings,
+        SideMissions           = settings.SideMissions,
+        SideMissionPick        = settings.SideMissionPick,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
@@ -375,6 +379,8 @@ public sealed class HostGameSettings
         MissionCardGame        = viewModel.MissionCardGame,
         ExtraMission           = viewModel.ExtraMission,
         SolidBuildings         = viewModel.SolidBuildings,
+        SideMissions           = viewModel.SideMissions,
+        SideMissionPick        = viewModel.SideMissionPick,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
@@ -418,6 +424,8 @@ public sealed class HostGameSettings
         viewModel.SetMissionCardGame(MissionCardGame);
         viewModel.SetExtraMission(ExtraMission);
         viewModel.SetSolidBuildings(SolidBuildings);
+        viewModel.SetSideMissions(SideMissions);
+        viewModel.SetSideMissionPick(SideMissionPick);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }

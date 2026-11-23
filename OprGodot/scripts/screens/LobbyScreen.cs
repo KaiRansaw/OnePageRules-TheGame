@@ -232,7 +232,10 @@ public partial class LobbyScreen : Control, Hud.ILooked
             + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#"
             + string.Join(",", players.Select(p => Session.PartyOf(p.PlayerID).Count));
         string settingsJson = JsonSerializer.Serialize(HostGameSettings.CaptureFrom(Vm));
+        // Settings that add, remove or lock other rows (Mission cards lock the Mission; Attack & Defend locks
+        // Side-missions; a side-mission style adds its pick row) rebuild the tabs for the host too.
         string settingsSig = $"{Vm.GameSystem}|{Vm.GameMode}|{Session.CanEdit}|{players.Count}|{_fastPlayOn}|{_extraActionsOn}|{Vm.TerrainPlacementMode}|{Vm.TerrainLayoutPath}|"
+            + $"{Vm.MissionCardGame}|{FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission)}|{Vm.SideMissions == FDG.Missions.ESideMissionPlay.Off}|{FDG.Missions.SideMissionCatalog.IsDash(Vm.SideMissions)}|"
             + (Session.CanEdit ? "" : settingsJson);
 
         if (force || seatSig != _seatSig)
@@ -496,6 +499,22 @@ public partial class LobbyScreen : Control, Hud.ILooked
                 Choice(FDG.Missions.ExtraMissionCatalog.LobbyOrder.ToArray(), Vm.ExtraMission, FDG.Missions.ExtraMissionCatalog.Name,
                     FDG.Missions.ExtraMissionCatalog.Text, locked || Vm.MissionCardGame != FDG.Missions.EMissionCardGame.Off,
                     m => Vm.SetExtraMission(m)));
+
+        // Side-Missions (Advanced Rulebooks 3.6.0): extra objectives worth VP; scoring becomes victory points.
+        if (mode == EGameMode.Standard && FDG.Missions.SideMissionCatalog.Available(system))
+        {
+            bool sideLocked = locked || Vm.MissionCardGame != FDG.Missions.EMissionCardGame.Off
+                || FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission);
+            Row(rows, "Side-missions", "The Advanced Rulebook's Side-Missions: extra goals (36 of them, in 6 categories) worth victory points. "
+                + "With them on, the game is won on VP - markers held plus side-missions done. Not with Mission cards or Attack & Defend missions. Hover an entry for the book's words.\n"
+                + FDG.Missions.SideMissionCatalog.ScoringText,
+                Choice(Enum.GetValues<FDG.Missions.ESideMissionPlay>(), Vm.SideMissions, FDG.Missions.SideMissionCatalog.PlayName,
+                    FDG.Missions.SideMissionCatalog.PlayText, sideLocked, p => Vm.SetSideMissions(p)));
+            if (Vm.SideMissions != FDG.Missions.ESideMissionPlay.Off && !FDG.Missions.SideMissionCatalog.IsDash(Vm.SideMissions))
+                Row(rows, "Side-mission pick", "How each side-mission is chosen. Hover an entry for the book's words.",
+                    Choice(Enum.GetValues<FDG.Missions.ESideMissionPick>(), Vm.SideMissionPick, FDG.Missions.SideMissionCatalog.PickName,
+                        FDG.Missions.SideMissionCatalog.PickText, sideLocked, p => Vm.SetSideMissionPick(p)));
+        }
     }
 
     private static string TableBackgroundName(ETableBackground b) => b == ETableBackground.MarsLike ? "Mars-Like" : b.ToString();

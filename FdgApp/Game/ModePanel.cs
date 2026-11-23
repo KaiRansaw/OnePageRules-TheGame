@@ -24,16 +24,59 @@ public static class ModePanel
     public sealed record Row(string Text, EStyle Style, string? Tip = null);
 
     /// <summary>The panel's rows for this game, or null when the game is not one of these modes.</summary>
-    public static List<Row>? For(ITableState table, EGameSystem system, EGameMode mode)
+    /// <param name="viewers">The players at this screen; a side's secret side-missions are named only to them (none =
+    /// watching the bots: everything shows).</param>
+    public static List<Row>? For(ITableState table, EGameSystem system, EGameMode mode, IReadOnlyCollection<FDG.PlayerID>? viewers = null)
     {
         return mode switch
         {
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => ExtraMission(table),
+            EGameMode.Standard => Combine(ExtraMission(table), SideMissionRows(table, system, viewers)),
             _ => null,
         };
+    }
+
+    private static List<Row>? Combine(List<Row>? a, List<Row>? b) =>
+        a == null ? b : b == null ? a : a.Concat(b).ToList();
+
+    // ------------------------------------------------------------------ Side-Missions (Advanced Rulebooks 3.6.0)
+
+    /// <summary>Side-missions in play: the open ones by name, each side's secret ones to that side only, VP so far.</summary>
+    private static List<Row>? SideMissionRows(ITableState table, EGameSystem system, IReadOnlyCollection<FDG.PlayerID>? viewers)
+    {
+        if (GameProgressUtilities.SideMissions(table.DataStore) is not { } s || s.Play == FDG.Missions.ESideMissionPlay.Off)
+            return null;
+        string Side(int team) => table.Players.Objects.Where(p => p.IsFilled && p.TeamNumber == team)
+            .Select(p => p.Name).DefaultIfEmpty($"Team {team}").Aggregate((x, y) => x + " & " + y);
+        var myTeams = viewers == null || viewers.Count == 0 ? null
+            : table.Players.Objects.Where(p => p.IsFilled && viewers.Contains(p.PlayerID)).Select(p => p.TeamNumber).ToHashSet();
+        var rows = new List<Row> { new("Side-missions: " + FDG.Missions.SideMissionCatalog.PlayName(s.Play), EStyle.Title,
+            FDG.Missions.SideMissionCatalog.PlayText(s.Play) + "\n" + FDG.Missions.SideMissionCatalog.ScoringText) };
+        if (!s.Chosen)
+        {
+            rows.Add(new("Chosen at the start of round 1.", EStyle.Dim));
+            return rows;
+        }
+        foreach (FDG.Missions.SideMissionEntry e in s.Missions.Where(e => !e.Done || e.ScoredByTeams.Count > 0))
+        {
+            FDG.Missions.SideMissionInfo info = FDG.Missions.SideMissionCatalog.Of(system, e.Id);
+            bool visible = e.OwnerTeam < 0 || myTeams == null || myTeams.Contains(e.OwnerTeam);
+            string who = e.OwnerTeam < 0 ? "" : $" ({Side(e.OwnerTeam)}, secret)";
+            if (!visible)
+            {
+                rows.Add(new($"{Side(e.OwnerTeam)}: a secret side-mission", EStyle.Dim));
+                continue;
+            }
+            string scored = e.ScoredByTeams.Count > 0 ? $" - scored by {string.Join(" & ", e.ScoredByTeams.Select(Side))}" : "";
+            rows.Add(new($"{info.Name}{who}{scored}", e.ScoredByTeams.Count > 0 ? EStyle.Good : EStyle.Line,
+                $"{FDG.Missions.SideMissionCatalog.CategoryName(info.Category)}: {info.Text}"));
+        }
+        if (s.Vp.Count > 0)
+            foreach (var team in table.Players.Objects.Where(p => p.IsFilled).Select(p => p.TeamNumber).Distinct().OrderBy(t => t))
+                rows.Add(new($"{Side(team)}: {s.Vp.GetValueOrDefault(team)} VP so far", EStyle.Line));
+        return rows;
     }
 
     // ------------------------------------------------------------------ Extra Missions (Advanced Rulebooks 3.6.0)

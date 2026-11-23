@@ -80,6 +80,13 @@ int missionIdx = Array.IndexOf(args, "--extra-mission");
 if (missionIdx >= 0 && missionIdx + 1 < args.Length && Enum.TryParse(args[missionIdx + 1], ignoreCase: true, out FDG.Missions.EExtraMission em))
     FdgRaylib.Cli.CliApp.ExtraMission = em;
 if (Array.IndexOf(args, "--solid-buildings") >= 0) FdgRaylib.Cli.CliApp.SolidBuildings = true;
+// --side-missions <ESideMissionPlay> [--side-mission-pick <ESideMissionPick>]: Advanced Rulebooks side-missions.
+int sideIdx = Array.IndexOf(args, "--side-missions");
+if (sideIdx >= 0 && sideIdx + 1 < args.Length && Enum.TryParse(args[sideIdx + 1], ignoreCase: true, out FDG.Missions.ESideMissionPlay sm))
+    FdgRaylib.Cli.CliApp.SideMissions = sm;
+int sidePickIdx = Array.IndexOf(args, "--side-mission-pick");
+if (sidePickIdx >= 0 && sidePickIdx + 1 < args.Length && Enum.TryParse(args[sidePickIdx + 1], ignoreCase: true, out FDG.Missions.ESideMissionPick sp))
+    FdgRaylib.Cli.CliApp.SideMissionPick = sp;
 int terrainIdx = Array.IndexOf(args, "--terrain-layout");
 if (terrainIdx >= 0 && terrainIdx + 1 < args.Length) FdgRaylib.Cli.CliApp.TerrainLayoutPath = Path.GetFullPath(args[terrainIdx + 1]);
 int? diceSeed = null;

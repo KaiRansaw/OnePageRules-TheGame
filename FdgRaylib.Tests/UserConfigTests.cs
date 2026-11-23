@@ -355,6 +355,10 @@ public class UserConfigTests
         public void SetExtraMission(FDG.Missions.EExtraMission mission) => ExtraMission = mission;
         public bool SolidBuildings { get; set; }
         public void SetSolidBuildings(bool enabled) => SolidBuildings = enabled;
+        public FDG.Missions.ESideMissionPlay SideMissions { get; set; }
+        public void SetSideMissions(FDG.Missions.ESideMissionPlay play) => SideMissions = play;
+        public FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
+        public void SetSideMissionPick(FDG.Missions.ESideMissionPick pick) => SideMissionPick = pick;
         public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }

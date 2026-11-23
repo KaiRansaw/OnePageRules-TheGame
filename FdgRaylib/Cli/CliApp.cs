@@ -46,6 +46,8 @@ public class CliApp
     /// <summary>--extra-mission &lt;name&gt; / --solid-buildings (2026-11-22): play an Advanced Rulebook mission headless.</summary>
     public static FDG.Missions.EExtraMission ExtraMission { get; set; }
     public static bool SolidBuildings { get; set; }
+    public static FDG.Missions.ESideMissionPlay SideMissions { get; set; }
+    public static FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
 
     public CliApp(bool headless, int slowDelayMs = 0, int? diceSeed = null,
         EAiProfile aiProfile = EAiProfile.SoloRules, bool allAi = false)
@@ -173,6 +175,8 @@ public class CliApp
         gameSettings.DiceSeed = _diceSeed;
         gameSettings.ExtraMission = ExtraMission;
         gameSettings.SolidBuildings = SolidBuildings;
+        gameSettings.SideMissions = SideMissions;
+        gameSettings.SideMissionPick = SideMissionPick;
         if (!string.IsNullOrEmpty(TerrainLayoutPath))
         {
             gameSettings.TerrainPlacementMode = ETerrainPlacementMode.LoadFromFile;

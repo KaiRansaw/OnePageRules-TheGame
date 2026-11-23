@@ -955,6 +955,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     private Dictionary<PlayerID, int>? VictoryPoints()
     {
         var vm = Session.Lobby.Vm;
+        // Side-missions: the game is won on VP (scored by side; each seat shows its side's).
+        if (GameProgressUtilities.SideMissions(Session.Table.DataStore) is { Play: not FDG.Missions.ESideMissionPlay.Off, Chosen: true } side)
+        {
+            var seatsBySide = Session.Table.Players.Objects.Where(p => p.IsFilled).ToList();
+            return Session.Seats.ToDictionary(s => s.Id,
+                s => seatsBySide.FirstOrDefault(p => p.PlayerID.Equals(s.Id)) is { } slot ? side.Vp.GetValueOrDefault(slot.TeamNumber) : 0);
+        }
         // A progressive Extra Mission (Pitched Battle, Domination...) is won on VP too (Kai, 2026-11-22).
         if (GameProgressUtilities.ExtraMission(Session.Table.DataStore) is { } mission
             && mission.Mission != FDG.Missions.EExtraMission.None && FDG.Missions.ExtraMissionCatalog.Of(mission.Mission).Progressive)
@@ -1932,7 +1939,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // "Ends after round 4." here while the round counter beside it read "/6".
         int lastRound = RoundLimit(progress);
         // Horde and the Quest games have panels of their own (Kai, 2026-11-19 - FdgApp ModePanel decides what is on them).
-        List<ModePanel.Row>? modeRows = ModePanel.For(Session.Table, Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.GameMode);
+        List<ModePanel.Row>? modeRows = ModePanel.For(Session.Table, Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.GameMode, Session.Game.LocalPlayerIDs);
         Dictionary<PlayerID, int>? vpNow = VictoryPoints();
         string sig = $"{lastRound}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
             + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"
