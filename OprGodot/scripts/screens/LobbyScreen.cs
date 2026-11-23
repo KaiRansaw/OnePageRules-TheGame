@@ -660,6 +660,17 @@ public partial class LobbyScreen : Control, Hud.ILooked
                             FDG.EAdvancedRules now = Vm.AdvancedRules;
                             Vm.SetAdvancedRules(v ? now | option.Flag : now & ~option.Flag);
                         }, 24);
+                // Battlefield Effects: which Special Condition - the book's roll, or one picked (bits in AdvancedRules).
+                if (chapter == FDG.AdvancedRules.BattlefieldEffectsChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.SpecialConditions) != 0)
+                {
+                    var settings = new FDG.GameSettings { GameSystem = system, AdvancedRules = Vm.AdvancedRules };
+                    var codes = Enumerable.Range(0, 13).ToList();
+                    Row(rows, "Special condition", "Pick the condition, or let the book's dice decide before round 1.",
+                        Choice(codes, FDG.BattlefieldEffects.Picked(settings),
+                            c => c == 0 ? "Roll for it (book)" : FDG.BattlefieldEffects.Name(c, system),
+                            c => c == 0 ? "1-2 None, 3-4 Geological, 5-6 Mysterious, then a die." : FDG.BattlefieldEffects.Text(c, system),
+                            locked, c => Vm.SetAdvancedRules(FDG.BattlefieldEffects.WithPick(Vm.AdvancedRules, c))));
+                }
             }
     }
 

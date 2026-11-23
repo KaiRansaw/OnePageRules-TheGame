@@ -127,7 +127,7 @@ public static class ModelRoster
     {
         const float Epsilon = DistanceEpsilon;
         float max = cappedByTerrain
-            ? MathF.Min(maxDistanceInches, GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES)
+            ? MathF.Min(maxDistanceInches, GameWideConstants.DifficultTerrainMoveCapInches)
             : maxDistanceInches;
         return new ModelRosterRow(ordinal, movedInches, max,
             InRush: movedInches + Epsilon >= maxAdvanceInches,

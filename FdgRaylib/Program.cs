@@ -97,6 +97,10 @@ if (advancedIdx >= 0 && advancedIdx + 1 < args.Length)
             if (string.Equals(chapter.Replace(" ", ""), part, StringComparison.OrdinalIgnoreCase))
                 FdgRaylib.Cli.CliApp.AdvancedRules |= FDG.AdvancedRules.ChapterFlags(chapter);
     }
+// --special-condition <1-12>: Battlefield Effects - play this Special Condition (turns the option on).
+int conditionIdx = Array.IndexOf(args, "--special-condition");
+if (conditionIdx >= 0 && conditionIdx + 1 < args.Length && int.TryParse(args[conditionIdx + 1], out int condition))
+    FdgRaylib.Cli.CliApp.AdvancedRules = FDG.BattlefieldEffects.WithPick(FdgRaylib.Cli.CliApp.AdvancedRules | FDG.EAdvancedRules.SpecialConditions, condition);
 // --attacker <team>: Attack & Defend - the attacking team (-1 = roll-off, the default).
 int attackerIdx = Array.IndexOf(args, "--attacker");
 if (attackerIdx >= 0 && attackerIdx + 1 < args.Length && int.TryParse(args[attackerIdx + 1], out int attackerTeam))

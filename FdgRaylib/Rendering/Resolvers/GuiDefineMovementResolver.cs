@@ -669,7 +669,7 @@ public class GuiDefineMovementResolver
             float ringAdvance = maxAdvance, ringRush = maxRush, ringCharge = maxCharge;
             if (difficultActive && CountsForDifficult(request, _selectedModel) && committedCrossedDifficult.Contains(_selectedModel))
             {
-                float cap = GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES;
+                float cap = GameWideConstants.DifficultTerrainMoveCapInches;
                 ringAdvance = MathF.Min(ringAdvance, cap);
                 ringRush    = MathF.Min(ringRush, cap);
                 ringCharge  = MathF.Min(ringCharge, cap);
@@ -823,7 +823,7 @@ public class GuiDefineMovementResolver
             // #317: the difficult-terrain shortfall - the pose this move would have taken without the clamp,
             // drawn first so the live ghost paints over it where the two overlap.
             var shortfallHint = DifficultShortfallPlan.Build(difficultClampKind, allowedIgnoringDifficult - allowed,
-                GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES);
+                GameWideConstants.DifficultTerrainMoveCapInches);
             if (shortfallHint.Show)
             {
                 var wouldBe = new Position(anchor.x + dx / dist * allowedIgnoringDifficult,
@@ -1199,7 +1199,7 @@ public class GuiDefineMovementResolver
             // capped at 6" total - fold that into its group budget (the clamp margin keeps the plan's
             // budget-limited steps under what ClampTravelForDifficultTerrain will allow below).
             if (difficultActive && CountsForDifficult(request, m) && committedCrossedDifficult.Contains(m))
-                cap = MathF.Min(cap, GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES
+                cap = MathF.Min(cap, GameWideConstants.DifficultTerrainMoveCapInches
                     - MovementUtilities.DIFFICULT_TERRAIN_CLAMP_MARGIN_INCHES);
             budgets.Add(cap - pt.GetTotalDistanceMoved(m) - GroupMoveSafetyMargin);
         }
@@ -1518,7 +1518,7 @@ public class GuiDefineMovementResolver
             var groupHint = DifficultShortfallPlan.Build(
                 _frameDifficultCrossing ? MovementUtilities.EDifficultClampKind.CappedCrossing
                                         : MovementUtilities.EDifficultClampKind.StoppedShortOfEdge,
-                maxShortfall, GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES);
+                maxShortfall, GameWideConstants.DifficultTerrainMoveCapInches);
             if (shortfallCount > 0 && groupHint.Show)
                 DrawTerrainReasonLabel(dl, new Position(labelX / shortfallCount, labelZ / shortfallCount),
                     labelRadius, groupHint.Header, groupHint.Detail, ShortfallTextCol);
@@ -1718,7 +1718,7 @@ public class GuiDefineMovementResolver
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.75f, 0.75f, 0.78f, 1f));
             ImGui.TextWrapped("Difficult terrain: moving through it caps this move at "
-                + $"{FormatInches(GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES)}\" total");
+                + $"{FormatInches(GameWideConstants.DifficultTerrainMoveCapInches)}\" total");
             ImGui.PopStyleColor();
         }
         if (difficultStopped)

@@ -33,13 +33,25 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(ExtraMission(table), SideMissionRows(table, system, viewers)),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table), SideMissionRows(table, system, viewers)), Condition(table, system)),
             _ => null,
         };
     }
 
     private static List<Row>? Combine(List<Row>? a, List<Row>? b) =>
         a == null ? b : b == null ? a : a.Concat(b).ToList();
+
+    // ------------------------------------------------------------------ Battlefield Effects (Advanced Rulebooks 3.6.0)
+
+    /// <summary>The Special Condition in force, its book text on hover.</summary>
+    private static List<Row>? Condition(ITableState table, EGameSystem system)
+    {
+        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.Battlefield is not { Settled: true } b) return null;
+        if (b.Condition == 0) return new List<Row> { new("Special condition: none", EStyle.Dim) };
+        string text = FDG.BattlefieldEffects.Text(b.Condition, system)
+            + (b.Condition == FDG.BattlefieldEffects.DarkSkies ? $"\nRolled: -{b.DarkSkies}\" range." : "");
+        return new List<Row> { new($"Special condition: {FDG.BattlefieldEffects.Name(b.Condition, system)}", EStyle.Title, text) };
+    }
 
     // ------------------------------------------------------------------ Side-Missions (Advanced Rulebooks 3.6.0)
 
