@@ -87,6 +87,10 @@ if (sideIdx >= 0 && sideIdx + 1 < args.Length && Enum.TryParse(args[sideIdx + 1]
 int sidePickIdx = Array.IndexOf(args, "--side-mission-pick");
 if (sidePickIdx >= 0 && sidePickIdx + 1 < args.Length && Enum.TryParse(args[sidePickIdx + 1], ignoreCase: true, out FDG.Missions.ESideMissionPick sp))
     FdgRaylib.Cli.CliApp.SideMissionPick = sp;
+// --attacker <team>: Attack & Defend - the attacking team (-1 = roll-off, the default).
+int attackerIdx = Array.IndexOf(args, "--attacker");
+if (attackerIdx >= 0 && attackerIdx + 1 < args.Length && int.TryParse(args[attackerIdx + 1], out int attackerTeam))
+    FdgRaylib.Cli.CliApp.AttackerTeam = attackerTeam;
 int terrainIdx = Array.IndexOf(args, "--terrain-layout");
 if (terrainIdx >= 0 && terrainIdx + 1 < args.Length) FdgRaylib.Cli.CliApp.TerrainLayoutPath = Path.GetFullPath(args[terrainIdx + 1]);
 int? diceSeed = null;

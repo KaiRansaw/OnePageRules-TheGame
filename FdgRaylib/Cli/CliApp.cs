@@ -49,6 +49,9 @@ public class CliApp
     public static FDG.Missions.ESideMissionPlay SideMissions { get; set; }
     public static FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
 
+    /// <summary>Attack &amp; Defend: the attacking team (-1 = the book's roll-off, the default here so sweeps vary).</summary>
+    public static int AttackerTeam { get; set; } = -1;
+
     public CliApp(bool headless, int slowDelayMs = 0, int? diceSeed = null,
         EAiProfile aiProfile = EAiProfile.SoloRules, bool allAi = false)
     {
@@ -177,6 +180,7 @@ public class CliApp
         gameSettings.SolidBuildings = SolidBuildings;
         gameSettings.SideMissions = SideMissions;
         gameSettings.SideMissionPick = SideMissionPick;
+        gameSettings.AttackerTeam = AttackerTeam;
         if (!string.IsNullOrEmpty(TerrainLayoutPath))
         {
             gameSettings.TerrainPlacementMode = ETerrainPlacementMode.LoadFromFile;

@@ -121,7 +121,7 @@ public partial class LobbyScreen : IBackGuard
     {
         IReadOnlyList<ArmyCatalogEntry> armies = Session.Armies();
         string currentKey = LobbySession.ArmyKey(info.ArmyListSummary);
-        int limit = Vm.ArmyPoints;
+        int limit = Session.PointsLimitFor(info.PlayerID);
 
         PickerShell($"Choose army - {info.PlayerName}", out VBoxContainer left, out VBoxContainer right, out HBoxContainer footer);
 

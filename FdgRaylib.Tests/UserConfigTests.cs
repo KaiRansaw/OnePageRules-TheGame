@@ -359,6 +359,8 @@ public class UserConfigTests
         public void SetSideMissions(FDG.Missions.ESideMissionPlay play) => SideMissions = play;
         public FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
         public void SetSideMissionPick(FDG.Missions.ESideMissionPick pick) => SideMissionPick = pick;
+        public int AttackerTeam { get; set; }
+        public void SetAttackerTeam(int team) => AttackerTeam = team;
         public bool FastPlayShooting { get; set; }
 
         public bool FriendlyUnitsMayOverlap { get; set; }

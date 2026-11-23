@@ -229,13 +229,15 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
         string seatSig = string.Join("|", players.Select(p =>
             $"{p.PlayerID.ID}:{p.PlayerName}:{p.PlayerType}:{p.TeamNumber}:{p.ColorIndex}:{p.ArmyListSummary.ArmyName}:{p.ArmyListSummary.FactionName}:{p.ArmyListSummary.PointCost}:{p.ArmyListSummary.IsAssigned}"))
-            + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#"
+            + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#{Vm.ExtraMission}#{Vm.AttackerTeam}#"
             + string.Join(",", players.Select(p => Session.PartyOf(p.PlayerID).Count));
         string settingsJson = JsonSerializer.Serialize(HostGameSettings.CaptureFrom(Vm));
         // Settings that add, remove or lock other rows (Mission cards lock the Mission; Attack & Defend locks
         // Side-missions; a side-mission style adds its pick row) rebuild the tabs for the host too.
         string settingsSig = $"{Vm.GameSystem}|{Vm.GameMode}|{Session.CanEdit}|{players.Count}|{_fastPlayOn}|{_extraActionsOn}|{Vm.TerrainPlacementMode}|{Vm.TerrainLayoutPath}|"
             + $"{Vm.MissionCardGame}|{FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission)}|{Vm.SideMissions == FDG.Missions.ESideMissionPlay.Off}|{FDG.Missions.SideMissionCatalog.IsDash(Vm.SideMissions)}|"
+            + (FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission)
+                ? $"{Vm.ExtraMission}|{Vm.ArmyPoints}|" + string.Join(",", players.Select(p => $"{p.PlayerName}:{p.TeamNumber}")) : "")
             + (Session.CanEdit ? "" : settingsJson);
 
         if (force || seatSig != _seatSig)
@@ -499,6 +501,29 @@ public partial class LobbyScreen : Control, Hud.ILooked
                 Choice(FDG.Missions.ExtraMissionCatalog.LobbyOrder.ToArray(), Vm.ExtraMission, FDG.Missions.ExtraMissionCatalog.Name,
                     FDG.Missions.ExtraMissionCatalog.Text, locked || Vm.MissionCardGame != FDG.Missions.EMissionCardGame.Off,
                     m => Vm.SetExtraMission(m)));
+
+        // Attack & Defend: who attacks, picked here so the lists can be built to the attacker's extra points (Kai, 2026-11-23).
+        if (mode == EGameMode.Standard && FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission))
+        {
+            var teams = Vm.PlayerInfos.Select(p => (int)p.TeamNumber).Where(t => t > 0).Distinct().OrderBy(t => t).ToList();
+            string TeamLabel(int t)
+            {
+                if (t < 0) return "Roll-off at the start";
+                string names = string.Join(", ", Vm.PlayerInfos.Where(p => (int)p.TeamNumber == t).Select(p => p.PlayerName));
+                return names.Length > 0 ? $"{names} attacks" : $"Team {t} attacks";
+            }
+            int current = FDG.Missions.AttackDefend.AttackerOf(Vm.AttackerTeam);
+            var options = new List<int> { -1 };
+            options.AddRange(teams);
+            if (!options.Contains(current)) options.Add(current);
+            bool bonus = FDG.Missions.ExtraMissionCatalog.Of(Vm.ExtraMission).AttackerBonusPoints;
+            Row(rows, "Attacker", "Who attacks in this Attack & Defend mission. The book has the players roll off at the start; picking here lets the lists be built for it."
+                + (bonus ? $"\nThis mission gives the attacking army 25% more points: the attacker's seat may take up to {FDG.Missions.AttackDefend.PointsLimit(Vm.ArmyPoints, Vm.ExtraMission, 1, 1)} pts." : ""),
+                Choice(options.ToArray(), current, TeamLabel,
+                    t => t < 0 ? "The book's way: roll off when the game starts; the winner picks attacker or defender. The lists are built to the same points."
+                        : teams.Contains(t) ? $"{TeamLabel(t)}; the other side defends (sets up the marker(s))." : "That side is not in the game - the roll-off is used.",
+                    locked, t => Vm.SetAttackerTeam(t)));
+        }
 
         // Side-Missions (Advanced Rulebooks 3.6.0): extra objectives worth VP; scoring becomes victory points.
         if (mode == EGameMode.Standard && FDG.Missions.SideMissionCatalog.Available(system))
@@ -780,12 +805,14 @@ public partial class LobbyScreen : Control, Hud.ILooked
             var facts = new HBoxContainer();
             facts.AddThemeConstantOverride("separation", 8);
             facts.AddChild(HudKit.Text(s.IsAssigned ? s.FactionName : "-", 16, HudKit.Dim, HudKit.Semi));
-            ELobbyPointsStatus status = LobbyPointsStatus.Classify(s.IsAssigned, s.PointCost, Vm.ArmyPoints);
+            int seatLimit = Session.PointsLimitFor(info.PlayerID);
+            ELobbyPointsStatus status = LobbyPointsStatus.Classify(s.IsAssigned, s.PointCost, seatLimit);
             bool quest = GameSystemInfo.IsQuest(Vm.GameSystem);
-            var pts = HudKit.Text(quest ? $"{s.PointCost} pts" : $"{s.PointCost} / {Vm.ArmyPoints} pts", 16,
+            var pts = HudKit.Text(quest ? $"{s.PointCost} pts" : $"{s.PointCost} / {seatLimit} pts", 16,
                 !s.IsAssigned || quest ? HudKit.Dim : status == ELobbyPointsStatus.Over ? Palette.WoundsRed : status == ELobbyPointsStatus.Under ? Palette.HitsYellow : HudKit.Lime, HudKit.Bold);
             pts.TooltipText = quest ? "The enemy collection: the waves are drawn from it to each wave's points, by the mission's rules."
-                : LobbyPointsStatus.Tooltip(status, s.PointCost, Vm.ArmyPoints) ?? "Within the points limit.";
+                : (LobbyPointsStatus.Tooltip(status, s.PointCost, seatLimit) ?? "Within the points limit.")
+                  + (seatLimit != Vm.ArmyPoints ? "\nThe attacker: the book gives the attacking army 25% more points than the defender." : "");
             pts.MouseFilter = MouseFilterEnum.Stop;
             facts.AddChild(HudKit.Grow());
             facts.AddChild(pts);

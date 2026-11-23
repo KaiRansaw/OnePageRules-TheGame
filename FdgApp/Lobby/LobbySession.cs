@@ -311,6 +311,14 @@ public sealed class LobbySession : IDisposable
         }
     }
 
+    /// <summary>A seat's points limit - the game's points, or more for an Attack &amp; Defend attacker
+    /// (<see cref="FDG.Missions.AttackDefend.PointsLimit"/>).</summary>
+    public int PointsLimitFor(PlayerID playerID)
+    {
+        ETeamOption team = Vm.PlayerInfos.FirstOrDefault(p => p.PlayerID.Equals(playerID))?.TeamNumber ?? ETeamOption.None;
+        return FDG.Missions.AttackDefend.PointsLimit(Vm.ArmyPoints, Vm.ExtraMission, Vm.AttackerTeam, (int)team);
+    }
+
     /// <summary>Rolls the next army for a seat: closest to the points limit first, never one another seat
     /// holds, never repeating until the seat has seen them all.</summary>
     public void RollArmy(PlayerID playerID)
@@ -322,7 +330,7 @@ public sealed class LobbySession : IDisposable
             .Where(p => p.PlayerID != playerID && p.ArmyListSummary.IsAssigned)
             .Select(p => ArmyCatalogEntry.KeyFor(p.ArmyListSummary.ArmyName, p.ArmyListSummary.FactionName, p.ArmyListSummary.PointCost))
             .ToHashSet();
-        if (_picker.PickNext(playerID.ID, Vm.ArmyPoints, Vm.AllowedGameSystems, inUseByOthers) is { } pick
+        if (_picker.PickNext(playerID.ID, PointsLimitFor(playerID), Vm.AllowedGameSystems, inUseByOthers) is { } pick
             && LoadArmyFile(pick.Path) is { } army)
         {
             RollProblem = null;
@@ -331,7 +339,7 @@ public sealed class LobbySession : IDisposable
         }
 
         // #395: no saved army of this game (Firefight and Skirmish ship with none) - make one up from a random book.
-        if (MadeUpArmy(Vm.GameSystem, Vm.ArmyPoints, Random.Shared, Vm.ForceOrg) is { } made)
+        if (MadeUpArmy(Vm.GameSystem, PointsLimitFor(playerID), Random.Shared, Vm.ForceOrg) is { } made)
         {
             RollProblem = null;
             Vm.UpdateArmyListFile(playerID, made);

@@ -295,6 +295,9 @@ public sealed class HostGameSettings
     public FDG.Missions.ESideMissionPlay SideMissions { get; set; }
     public FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
 
+    /// <summary>Attack &amp; Defend: the team that attacks (0 = team 1, -1 = the roll-off).</summary>
+    public int AttackerTeam { get; set; }
+
     public bool FriendlyUnitsMayOverlap { get; set; }
 
     /// <summary>The engine's own defaults - one source of truth for what a fresh config holds.</summary>
@@ -341,6 +344,7 @@ public sealed class HostGameSettings
         SolidBuildings         = settings.SolidBuildings,
         SideMissions           = settings.SideMissions,
         SideMissionPick        = settings.SideMissionPick,
+        AttackerTeam           = settings.AttackerTeam,
         FriendlyUnitsMayOverlap = settings.FriendlyUnitsMayOverlap,
     };
 
@@ -381,6 +385,7 @@ public sealed class HostGameSettings
         SolidBuildings         = viewModel.SolidBuildings,
         SideMissions           = viewModel.SideMissions,
         SideMissionPick        = viewModel.SideMissionPick,
+        AttackerTeam           = viewModel.AttackerTeam,
         FriendlyUnitsMayOverlap = viewModel.FriendlyUnitsMayOverlap,
     };
 
@@ -426,6 +431,7 @@ public sealed class HostGameSettings
         viewModel.SetSolidBuildings(SolidBuildings);
         viewModel.SetSideMissions(SideMissions);
         viewModel.SetSideMissionPick(SideMissionPick);
+        viewModel.SetAttackerTeam(AttackerTeam);
         viewModel.SetFriendlyUnitsMayOverlap(FriendlyUnitsMayOverlap);
     }
 }
