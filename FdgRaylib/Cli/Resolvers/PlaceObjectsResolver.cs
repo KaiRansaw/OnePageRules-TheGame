@@ -38,7 +38,7 @@ public class PlaceObjectsResolver<T> : IStageResolver<PlaceObjectsRequest<T>, Ca
         int total = request.ModelsToPlace.Count;
 
         _impassibleTerrain = _tableState?.Terrain.Objects
-            .Where(t => t.TerrainType.HasFlag(ETerrainType.Impassible))
+            .Where(t => t.TerrainType.HasFlag(ETerrainType.Impassible) || t.TerrainType.HasFlag(ETerrainType.Climbable))
             .ToList() ?? (IReadOnlyList<ITerrain>)Array.Empty<ITerrain>();
 
         _selfModels = new HashSet<object>(ReferenceEqualityComparer.Instance);

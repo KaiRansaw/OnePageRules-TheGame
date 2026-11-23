@@ -1,203 +1,247 @@
 {
   "Name": "Climbing Test",
+  "TableWidthInches": 72,
+  "TableHeightInches": 48,
   "Pieces": [
     {
       "Name": "Wall",
       "TerrainType": 513,
       "Shape": {
         "$type": "rectangularZone",
-        "Left": 14,
-        "Right": 22,
-        "Bottom": 23.5,
-        "Top": 24.5
-      },
-      "HeightInches": 2.0
-    },
-    {
-      "Name": "Wall",
-      "TerrainType": 513,
-      "Shape": {
-        "$type": "rectangularZone",
-        "Left": 30,
-        "Right": 38,
-        "Bottom": 23.5,
-        "Top": 24.5
-      },
-      "HeightInches": 2.0
-    },
-    {
-      "Name": "Wall",
-      "TerrainType": 513,
-      "Shape": {
-        "$type": "rectangularZone",
-        "Left": 46,
-        "Right": 54,
-        "Bottom": 23.5,
-        "Top": 24.5
-      },
-      "HeightInches": 2.0
-    },
-    {
-      "Name": "Wall",
-      "TerrainType": 513,
-      "Shape": {
-        "$type": "rectangularZone",
-        "Left": 60,
-        "Right": 68,
-        "Bottom": 23.5,
-        "Top": 24.5
-      },
-      "HeightInches": 2.0
-    },
-    {
-      "Name": "Hill",
-      "TerrainType": 257,
-      "Shape": {
-        "$type": "rectangularZone",
         "Left": 4,
-        "Right": 12,
-        "Bottom": 16,
-        "Top": 30
+        "Right": 14,
+        "Bottom": 23.5,
+        "Top": 24.5
       },
-      "HeightInches": 1.5
+      "HeightInches": 2.0
+    },
+    {
+      "Name": "Wall",
+      "TerrainType": 513,
+      "Shape": {
+        "$type": "rectangularZone",
+        "Left": 22,
+        "Right": 32,
+        "Bottom": 23.5,
+        "Top": 24.5
+      },
+      "HeightInches": 2.0
+    },
+    {
+      "Name": "Wall",
+      "TerrainType": 513,
+      "Shape": {
+        "$type": "rectangularZone",
+        "Left": 40,
+        "Right": 50,
+        "Bottom": 23.5,
+        "Top": 24.5
+      },
+      "HeightInches": 2.0
+    },
+    {
+      "Name": "Wall",
+      "TerrainType": 513,
+      "Shape": {
+        "$type": "rectangularZone",
+        "Left": 58,
+        "Right": 68,
+        "Bottom": 23.5,
+        "Top": 24.5
+      },
+      "HeightInches": 2.0
+    },
+    {
+      "Name": "Ruin",
+      "TerrainType": 513,
+      "Shape": {
+        "$type": "zone.composite",
+        "Parts": [
+          {
+            "$type": "zone.raisedRect",
+            "Left": 14,
+            "Right": 22,
+            "Bottom": 13,
+            "Top": 14,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 14,
+            "Right": 15,
+            "Bottom": 14,
+            "Top": 21,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 15,
+            "Right": 22,
+            "Bottom": 14,
+            "Top": 21,
+            "HeightInches": 1.5
+          }
+        ]
+      },
+      "Solid": {
+        "$type": "zone.composite",
+        "Parts": [
+          {
+            "$type": "zone.raisedRect",
+            "Left": 14,
+            "Right": 22,
+            "Bottom": 13,
+            "Top": 14,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 14,
+            "Right": 15,
+            "Bottom": 14,
+            "Top": 21,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 15,
+            "Right": 22,
+            "Bottom": 14,
+            "Top": 21,
+            "HeightInches": 1.5
+          }
+        ]
+      },
+      "HeightInches": 2.5
+    },
+    {
+      "Name": "Ruin",
+      "TerrainType": 513,
+      "Shape": {
+        "$type": "zone.composite",
+        "Parts": [
+          {
+            "$type": "zone.raisedRect",
+            "Left": 45,
+            "Right": 53,
+            "Bottom": 27,
+            "Top": 28,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 45,
+            "Right": 46,
+            "Bottom": 28,
+            "Top": 35,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 46,
+            "Right": 53,
+            "Bottom": 28,
+            "Top": 35,
+            "HeightInches": 1.5
+          }
+        ]
+      },
+      "Solid": {
+        "$type": "zone.composite",
+        "Parts": [
+          {
+            "$type": "zone.raisedRect",
+            "Left": 45,
+            "Right": 53,
+            "Bottom": 27,
+            "Top": 28,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 45,
+            "Right": 46,
+            "Bottom": 28,
+            "Top": 35,
+            "HeightInches": 2.5
+          },
+          {
+            "$type": "zone.raisedRect",
+            "Left": 46,
+            "Right": 53,
+            "Bottom": 28,
+            "Top": 35,
+            "HeightInches": 1.5
+          }
+        ]
+      },
+      "HeightInches": 2.5
     },
     {
       "Name": "Hill",
       "TerrainType": 257,
       "Shape": {
         "$type": "rectangularZone",
-        "Left": 60,
-        "Right": 68,
-        "Bottom": 18,
-        "Top": 32
+        "Left": 32.4,
+        "Right": 40.4,
+        "Bottom": 12.0,
+        "Top": 20.0
       },
-      "HeightInches": 1.5
+      "HeightInches": 2.0
     },
     {
-      "Name": "Ruin",
-      "TerrainType": 513,
+      "Name": "Hill",
+      "TerrainType": 257,
       "Shape": {
-        "$type": "zone.composite",
-        "Parts": [
-          {
-            "$type": "zone.raisedRect",
-            "Left": 24,
-            "Right": 30,
-            "Bottom": 14,
-            "Top": 15,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 24,
-            "Right": 25,
-            "Bottom": 15,
-            "Top": 20,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 25,
-            "Right": 30,
-            "Bottom": 15,
-            "Top": 20,
-            "HeightInches": 1.5
-          }
-        ]
+        "$type": "rectangularZone",
+        "Left": 8.64,
+        "Right": 16.64,
+        "Bottom": 28.0,
+        "Top": 36.0
       },
-      "Solid": {
-        "$type": "zone.composite",
-        "Parts": [
-          {
-            "$type": "zone.raisedRect",
-            "Left": 24,
-            "Right": 30,
-            "Bottom": 14,
-            "Top": 15,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 24,
-            "Right": 25,
-            "Bottom": 15,
-            "Top": 20,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 25,
-            "Right": 30,
-            "Bottom": 15,
-            "Top": 20,
-            "HeightInches": 1.5
-          }
-        ]
-      },
-      "HeightInches": 2.5
+      "HeightInches": 2.0
     },
     {
-      "Name": "Ruin",
-      "TerrainType": 513,
+      "Name": "Hill",
+      "TerrainType": 257,
       "Shape": {
-        "$type": "zone.composite",
-        "Parts": [
-          {
-            "$type": "zone.raisedRect",
-            "Left": 40,
-            "Right": 46,
-            "Bottom": 30,
-            "Top": 31,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 40,
-            "Right": 41,
-            "Bottom": 31,
-            "Top": 36,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 41,
-            "Right": 46,
-            "Bottom": 31,
-            "Top": 36,
-            "HeightInches": 1.5
-          }
-        ]
+        "$type": "rectangularZone",
+        "Left": 50.4,
+        "Right": 58.4,
+        "Bottom": 2,
+        "Top": 9
       },
-      "Solid": {
-        "$type": "zone.composite",
-        "Parts": [
-          {
-            "$type": "zone.raisedRect",
-            "Left": 40,
-            "Right": 46,
-            "Bottom": 30,
-            "Top": 31,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 40,
-            "Right": 41,
-            "Bottom": 31,
-            "Top": 36,
-            "HeightInches": 2.5
-          },
-          {
-            "$type": "zone.raisedRect",
-            "Left": 41,
-            "Right": 46,
-            "Bottom": 31,
-            "Top": 36,
-            "HeightInches": 1.5
-          }
-        ]
+      "HeightInches": 3.0
+    },
+    {
+      "Name": "Hill",
+      "TerrainType": 257,
+      "Shape": {
+        "$type": "rectangularZone",
+        "Left": 14.4,
+        "Right": 22.4,
+        "Bottom": 39,
+        "Top": 46
       },
-      "HeightInches": 2.5
+      "HeightInches": 3.0
+    }
+  ],
+  "Objectives": [
+    {
+      "X": 19,
+      "Z": 18
+    },
+    {
+      "X": 50,
+      "Z": 32
+    },
+    {
+      "X": 36.4,
+      "Z": 16.0
+    },
+    {
+      "X": 12.64,
+      "Z": 32.0
     }
   ]
 }
