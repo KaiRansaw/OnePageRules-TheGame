@@ -845,7 +845,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
             if (!p.Round) _right.AddChild(Row("Turned", Spin(p.Angle, -180, 180, v => p.Angle = v, 5, "deg")));
-            _right.AddChild(Row("Rules height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall the piece counts as for the rules - it doesn't move the model. The table is flat for now, so height only matters to Climbable: over 3\" tall it counts as Impassable."));
+            _right.AddChild(Row("Rules height", Spin(p.Height, 0, 12, v => p.Height = v, 0.5f)).Also(r => r.TooltipText = "How tall the piece counts as for the rules when it has no model of its own to read heights from. Climbable over 3\" counts as Impassable; up to 3\" it is climbed and stood on; with 3D sight models see over lower pieces."));
             // Kai, 2026-11-18: sink a Warhammer model so its sculpted base goes under the ground. Saved on the MODEL (its
             // match), so every piece using it - here, on other maps, in battle - follows.
             if (modelPiece && WarhammerModels.Library?.ForLook(p.Look) is { } model)

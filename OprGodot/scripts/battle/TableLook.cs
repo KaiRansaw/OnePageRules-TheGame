@@ -27,7 +27,7 @@ public static class TableLook
         : string.Join("+", TerrainBook.RuleFlags.Where(f => t.HasFlag(f)).Select(f => f switch
         {
             ETerrainType.Impassible => "Imp", ETerrainType.Blocking => "Blocks", ETerrainType.Difficult => "Diff",
-            ETerrainType.Dangerous => "Dang", ETerrainType.Unstable => "Unst", ETerrainType.Climbable => "Climb", _ => f.ToString(),
+            ETerrainType.Dangerous => "Dang", ETerrainType.Unstable => "Unst", ETerrainType.Climbable => "Climb", ETerrainType.SolidBuilding => "Bldg", _ => f.ToString(),
         }));
 
 
