@@ -146,7 +146,7 @@ public class ModelRosterTests
             maxDistanceInches: 12f, cappedByTerrain: true);
 
         Assert.That(capped.MaxInches,
-            Is.EqualTo(GameWideConstants.DIFFICULT_TERRAIN_MOVE_CAP_INCHES).Within(0.001f),
+            Is.EqualTo(GameWideConstants.DifficultTerrainMoveCapInches).Within(0.001f),
             "#155: a committed path through difficult terrain is held to 6\" - the row must not promise 12\"");
     }
 
