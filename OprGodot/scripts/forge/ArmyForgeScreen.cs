@@ -697,15 +697,31 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             string? p = s.PathFor(box.Text);
             where.Text = p == null ? "No armies folder found." : (File.Exists(p) ? "Replaces " : "Saves as ") + Path.GetFileName(p) + $" in armies\\{ArmyPaths.FolderNameFor(s.GameSystemEnum)}";
         }
-        box.TextChanged += _ => Where();
+        bool confirmedReplace = false;
+        box.TextChanged += _ => { confirmedReplace = false; Where(); };
         Where();
         d.AddChild(col);
         void Do()
         {
             if (box.Text.Trim().Length == 0) return;
+            string name = box.Text.Trim();
+            // Kai's to-do: saving over a list with the same name asked nothing. Ask once before replacing it.
+            if (s.PathFor(name) is { } existing && File.Exists(existing) && !confirmedReplace)
+            {
+                var ask = new ConfirmationDialog
+                {
+                    Name = "ReplaceArmy", Title = "Replace army?", OkButtonText = "Replace", CancelButtonText = "Cancel",
+                    DialogText = $"A list called {Path.GetFileNameWithoutExtension(existing)} is already saved. Replace it with this one?",
+                };
+                ask.Confirmed += () => { confirmedReplace = true; ask.QueueFree(); Do(); };
+                ask.Canceled += () => { ask.QueueFree(); d.PopupCentered(); box.GrabFocus(); };
+                AddChild(ask);
+                ask.PopupCentered();
+                return;
+            }
             try
             {
-                string path = s.Save(box.Text.Trim());
+                string path = s.Save(name);
                 Status($"Saved {Path.GetFileName(path)} - it's in the {ForgeSession.SystemName(s.System)} lobby's army list.", Palette.Lime);
             }
             catch (Exception e) { Status("SAVE FAILED - " + e.Message, Palette.WoundsRed); }

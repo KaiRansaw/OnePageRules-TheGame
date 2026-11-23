@@ -407,6 +407,8 @@ public class UserConfigTests
         public void SetPickDangerousTerrain(bool enabled) => PickDangerousTerrain = enabled;
         public EExtraActions ExtraActions { get; private set; }
         public void SetExtraActions(EExtraActions actions) => ExtraActions = actions;
+        public EAdvancedRules AdvancedRules { get; private set; }
+        public void SetAdvancedRules(EAdvancedRules rules) => AdvancedRules = rules;
         public EChallengeBonuses ChallengeBonuses { get; private set; }
         public void SetChallengeBonuses(EChallengeBonuses bonuses) => ChallengeBonuses = bonuses;
 

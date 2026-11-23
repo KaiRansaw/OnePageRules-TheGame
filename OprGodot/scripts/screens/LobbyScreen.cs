@@ -40,6 +40,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
     private string _seatSig = "", _settingsSig = "", _valueSig = "";
     private double _poll;
     private bool _fastPlayOn, _extraActionsOn;
+    private readonly HashSet<string> _advancedOpen = new();
 
     // The two settings a typed / picked value lives in, refreshed in place so typing isn't interrupted.
     private SpinBox? _points;
@@ -234,7 +235,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
         string settingsJson = JsonSerializer.Serialize(HostGameSettings.CaptureFrom(Vm));
         // Settings that add, remove or lock other rows (Mission cards lock the Mission; Attack & Defend locks
         // Side-missions; a side-mission style adds its pick row) rebuild the tabs for the host too.
-        string settingsSig = $"{Vm.GameSystem}|{Vm.GameMode}|{Session.CanEdit}|{players.Count}|{_fastPlayOn}|{_extraActionsOn}|{Vm.TerrainPlacementMode}|{Vm.TerrainLayoutPath}|"
+        string settingsSig = $"{Vm.GameSystem}|{Vm.GameMode}|{Session.CanEdit}|{players.Count}|{_fastPlayOn}|{_extraActionsOn}|{string.Join(",", _advancedOpen)}|{(ulong)Vm.AdvancedRules}|{Vm.TerrainPlacementMode}|{Vm.TerrainLayoutPath}|"
             + $"{Vm.MissionCardGame}|{FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission)}|{Vm.SideMissions == FDG.Missions.ESideMissionPlay.Off}|{FDG.Missions.SideMissionCatalog.IsDash(Vm.SideMissions)}|"
             + (FDG.Missions.ExtraMissionCatalog.IsAttackDefend(Vm.ExtraMission)
                 ? $"{Vm.ExtraMission}|{Vm.ArmyPoints}|" + string.Join(",", players.Select(p => $"{p.PlayerName}:{p.TeamNumber}")) : "")
@@ -636,6 +637,29 @@ public partial class LobbyScreen : Control, Hud.ILooked
                         Vm.SetExtraActions(v ? now | flag : now & ~flag);
                     }, 24);
         }
+
+        // The rest of the Advanced Rulebook's optional systems (Kai, 2026-11-23: "do everything"): a tick box per
+        // chapter, then one per option, each hover the book's words and then what the game does.
+        if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
+            foreach (string chapter in FDG.AdvancedRules.Chapters(system))
+            {
+                FDG.EAdvancedRules ticked = Vm.AdvancedRules & FDG.AdvancedRules.ChapterFlags(chapter);
+                bool open = _advancedOpen.Contains(chapter) || ticked != FDG.EAdvancedRules.None;
+                Check(rows, chapter, open, FDG.AdvancedRules.ChapterIntro.GetValueOrDefault(chapter, "") + "\nTurn it on, then tick the ones you want.",
+                    locked, v =>
+                    {
+                        if (v) _advancedOpen.Add(chapter);
+                        else { _advancedOpen.Remove(chapter); Vm.SetAdvancedRules(Vm.AdvancedRules & ~FDG.AdvancedRules.ChapterFlags(chapter)); }
+                    });
+                if (!open) continue;
+                foreach (FDG.AdvancedRuleOption option in FDG.AdvancedRules.In(chapter, system))
+                    Check(rows, option.Name, (Vm.AdvancedRules & option.Flag) != 0,
+                        option.Name + ": " + option.BookText + "\n\nIn this game: " + option.GameText, locked, v =>
+                        {
+                            FDG.EAdvancedRules now = Vm.AdvancedRules;
+                            Vm.SetAdvancedRules(v ? now | option.Flag : now & ~option.Flag);
+                        }, 24);
+            }
     }
 
     private static void ConnectTab(VBoxContainer rows)

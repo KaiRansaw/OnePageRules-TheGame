@@ -49,6 +49,9 @@ public class CliApp
     public static FDG.Missions.ESideMissionPlay SideMissions { get; set; }
     public static FDG.Missions.ESideMissionPick SideMissionPick { get; set; }
 
+    /// <summary>The Advanced Rulebook options to play with (<c>--advanced Frenzy,Panic</c>).</summary>
+    public static FDG.EAdvancedRules AdvancedRules { get; set; }
+
     /// <summary>Attack &amp; Defend: the attacking team (-1 = the book's roll-off, the default here so sweeps vary).</summary>
     public static int AttackerTeam { get; set; } = -1;
 
@@ -181,6 +184,7 @@ public class CliApp
         gameSettings.SideMissions = SideMissions;
         gameSettings.SideMissionPick = SideMissionPick;
         gameSettings.AttackerTeam = AttackerTeam;
+        gameSettings.AdvancedRules = AdvancedRules;
         if (!string.IsNullOrEmpty(TerrainLayoutPath))
         {
             gameSettings.TerrainPlacementMode = ETerrainPlacementMode.LoadFromFile;

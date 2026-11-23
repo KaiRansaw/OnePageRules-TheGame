@@ -91,8 +91,7 @@ public static class ModePanel
         string Seat(int slot) => seats.TryGetValue(slot, out string? n) ? n : "A player";
         var rows = new List<Row> { new(info.Name, EStyle.Title, info.BookText) };
         if (info.AttackDefend) return AttackDefendRows(table, state, info, rows);
-        rows.Add(new(info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
-            EStyle.Dim, info.BookText));
+        rows.Add(new(GoalLine(state.Mission, info), EStyle.Dim, info.BookText));
         if (info.Progressive)
             foreach ((int slot, string name) in seats.OrderBy(s => s.Key))
                 rows.Add(new($"{name}: {state.Vp.GetValueOrDefault(slot)} VP", EStyle.Line));
@@ -110,6 +109,16 @@ public static class ModePanel
             rows.Add(new(state.FirstSeizer >= 0 ? $"First to seize: {Seat(state.FirstSeizer)}" : "Nobody has seized the marker yet", EStyle.Dim));
         return rows;
     }
+
+    /// <summary>How an Extra Mission is won, in one line (the hover has the book's text).</summary>
+    internal static string GoalLine(FDG.Missions.EExtraMission mission, FDG.Missions.ExtraMissionInfo info) => mission switch
+    {
+        FDG.Missions.EExtraMission.Sabotage => "Win by destroying the enemy's marker while keeping yours.",
+        FDG.Missions.EExtraMission.KingOfTheHill => "Whoever controls the marker after the last round wins.",
+        FDG.Missions.EExtraMission.Demolition => "Each round: X VP if your marker stands, X VP when you destroy theirs (X = the round).",
+        FDG.Missions.EExtraMission.MoshPit => "Each round: X VP for holding the marker, X more if you seized it first (X = the round).",
+        _ => info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
+    };
 
     /// <summary>Attack &amp; Defend: who attacks and defends, how the mission is won, and where the prize is now.</summary>
     private static List<Row> AttackDefendRows(ITableState table, FDG.Missions.ExtraMissionState state,

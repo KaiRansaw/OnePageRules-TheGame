@@ -87,6 +87,16 @@ if (sideIdx >= 0 && sideIdx + 1 < args.Length && Enum.TryParse(args[sideIdx + 1]
 int sidePickIdx = Array.IndexOf(args, "--side-mission-pick");
 if (sidePickIdx >= 0 && sidePickIdx + 1 < args.Length && Enum.TryParse(args[sidePickIdx + 1], ignoreCase: true, out FDG.Missions.ESideMissionPick sp))
     FdgRaylib.Cli.CliApp.SideMissionPick = sp;
+// --advanced <a,b,...>: Advanced Rulebook options (EAdvancedRules names, or a chapter: "UnitPsychology").
+int advancedIdx = Array.IndexOf(args, "--advanced");
+if (advancedIdx >= 0 && advancedIdx + 1 < args.Length)
+    foreach (string part in args[advancedIdx + 1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        if (Enum.TryParse(part, ignoreCase: true, out FDG.EAdvancedRules one)) FdgRaylib.Cli.CliApp.AdvancedRules |= one;
+        else foreach (string chapter in FDG.AdvancedRules.Catalog.Select(o => o.Chapter).Distinct())
+            if (string.Equals(chapter.Replace(" ", ""), part, StringComparison.OrdinalIgnoreCase))
+                FdgRaylib.Cli.CliApp.AdvancedRules |= FDG.AdvancedRules.ChapterFlags(chapter);
+    }
 // --attacker <team>: Attack & Defend - the attacking team (-1 = roll-off, the default).
 int attackerIdx = Array.IndexOf(args, "--attacker");
 if (attackerIdx >= 0 && attackerIdx + 1 < args.Length && int.TryParse(args[attackerIdx + 1], out int attackerTeam))

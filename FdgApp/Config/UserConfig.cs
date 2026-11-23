@@ -287,6 +287,9 @@ public sealed class HostGameSettings
     public bool KingOfTheHill { get; set; }
     public bool PickDangerousTerrain { get; set; }
     public EExtraActions ExtraActions { get; set; }
+
+    /// <summary>The optional Advanced Rulebook systems ticked last time.</summary>
+    public EAdvancedRules AdvancedRules { get; set; }
     public EChallengeBonuses ChallengeBonuses { get; set; }
     public EDeploymentStyle DeploymentStyle { get; set; }
     public FDG.Missions.EMissionCardGame MissionCardGame { get; set; }
@@ -337,6 +340,7 @@ public sealed class HostGameSettings
         KingOfTheHill          = settings.KingOfTheHill,
         PickDangerousTerrain   = settings.PickDangerousTerrain,
         ExtraActions           = settings.ExtraActions,
+        AdvancedRules          = settings.AdvancedRules,
         ChallengeBonuses       = settings.ChallengeBonuses,
         DeploymentStyle        = settings.DeploymentStyle,
         MissionCardGame        = settings.MissionCardGame,
@@ -378,6 +382,7 @@ public sealed class HostGameSettings
         KingOfTheHill          = viewModel.KingOfTheHill,
         PickDangerousTerrain   = viewModel.PickDangerousTerrain,
         ExtraActions           = viewModel.ExtraActions,
+        AdvancedRules          = viewModel.AdvancedRules,
         ChallengeBonuses       = viewModel.ChallengeBonuses,
         DeploymentStyle        = viewModel.DeploymentStyle,
         MissionCardGame        = viewModel.MissionCardGame,
@@ -424,6 +429,7 @@ public sealed class HostGameSettings
         viewModel.SetKingOfTheHill(KingOfTheHill);
         viewModel.SetPickDangerousTerrain(PickDangerousTerrain);
         viewModel.SetExtraActions(ExtraActions);
+        viewModel.SetAdvancedRules(AdvancedRules);
         viewModel.SetChallengeBonuses(ChallengeBonuses);
         viewModel.SetDeploymentStyle(DeploymentStyle);
         viewModel.SetMissionCardGame(MissionCardGame);
