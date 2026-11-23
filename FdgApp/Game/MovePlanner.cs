@@ -321,6 +321,7 @@ public static class MovePlanner
     public static List<(ModelID Id, string Reason)> ProblemModels(DefineMovementPathRequest request, ITableState table, List<ModelMoveEntry> moves)
     {
         IUnit me = request.UnitDataBinding.GetValue();
+        using var pushed = request.Pushed ? Climbing.Pushed() : null;
         MovementUtilities.ValidatePaths(moves,
             entry => { var (_, rush, maxDist) = request.PlayerBudgetFor(entry.Model.GetValue().ID); return new ModelMoveBudget(rush, maxDist); },
             Footprints(table, me, request.TargetPlayerID, enemy: true), request.CanMoveThroughEnemies, request.IgnoresDifficultTerrain,
