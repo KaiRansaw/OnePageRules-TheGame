@@ -63,6 +63,20 @@ public static class ModePanel
         foreach ((string key, int code) in b.ObjectiveEffects.Where(e => e.Value >= 3))
             rows.Add(new($"Objective at {key}: {FDG.BattlefieldEffects.ObjectiveEffectName(code, system)}", EStyle.Warn,
                 FDG.BattlefieldEffects.ObjectiveEffectText(code)));
+        // Random Events: this round's event, what lasts the mission, and the markers on the table.
+        if (b.RoundEvent > 0)
+            rows.Add(new($"Event this round: {FDG.BattlefieldEffects.EventName(b.RoundEvent, system)}", EStyle.Warn,
+                FDG.BattlefieldEffects.EventText(b.RoundEvent, system)));
+        if (b.Fauna)
+            rows.Add(new($"Event: {FDG.BattlefieldEffects.EventName(22, system)}", EStyle.Warn, FDG.BattlefieldEffects.EventText(22, system)));
+        if (b.MistQuarters.Count > 0)
+            rows.Add(new($"Event: {FDG.BattlefieldEffects.EventName(56, system)} ({b.MistQuarters.Count} quarter{(b.MistQuarters.Count == 1 ? "" : "s")})",
+                EStyle.Warn, FDG.BattlefieldEffects.EventText(56, system)));
+        if (b.RiggedPiece != null)
+            rows.Add(new("Event: a piece of terrain is Rigged to Blow (secret)", EStyle.Warn, FDG.BattlefieldEffects.EventText(43, system)));
+        foreach (FDG.EventMarker m in b.Markers)
+            rows.Add(new($"Marker: {FDG.BattlefieldEffects.EventName(m.Code, system)} at ({m.X:0}\", {m.Z:0}\")", EStyle.Warn,
+                FDG.BattlefieldEffects.EventText(m.Code, system)));
         return rows.Count == 0 ? null : rows;
     }
 
