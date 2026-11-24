@@ -46,11 +46,24 @@ public static class ModePanel
     /// <summary>The Special Condition in force, its book text on hover.</summary>
     private static List<Row>? Condition(ITableState table, EGameSystem system)
     {
-        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.Battlefield is not { Settled: true } b) return null;
-        if (b.Condition == 0) return new List<Row> { new("Special condition: none", EStyle.Dim) };
-        string text = FDG.BattlefieldEffects.Text(b.Condition, system)
-            + (b.Condition == FDG.BattlefieldEffects.DarkSkies ? $"\nRolled: -{b.DarkSkies}\" range." : "");
-        return new List<Row> { new($"Special condition: {FDG.BattlefieldEffects.Name(b.Condition, system)}", EStyle.Title, text) };
+        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.Battlefield is not { } b) return null;
+        var rows = new List<Row>();
+        if (b.Settled && b.Condition == 0) rows.Add(new("Special condition: none", EStyle.Dim));
+        else if (b.Settled)
+        {
+            string text = FDG.BattlefieldEffects.Text(b.Condition, system)
+                + (b.Condition == FDG.BattlefieldEffects.DarkSkies ? $"\nRolled: -{b.DarkSkies}\" range." : "");
+            rows.Add(new($"Special condition: {FDG.BattlefieldEffects.Name(b.Condition, system)}", EStyle.Title, text));
+        }
+        // Terrain & Objective Effects rolled so far.
+        var pieces = table.Terrain.Objects.ToList();
+        foreach ((int i, int code) in b.TerrainEffects.Where(e => e.Value >= 3))
+            rows.Add(new($"{(i < pieces.Count && !string.IsNullOrWhiteSpace(pieces[i].Name) ? pieces[i].Name : "Terrain")}: {FDG.BattlefieldEffects.TerrainEffectName(code, system)}",
+                EStyle.Warn, FDG.BattlefieldEffects.TerrainEffectText(code)));
+        foreach ((string key, int code) in b.ObjectiveEffects.Where(e => e.Value >= 3))
+            rows.Add(new($"Objective at {key}: {FDG.BattlefieldEffects.ObjectiveEffectName(code, system)}", EStyle.Warn,
+                FDG.BattlefieldEffects.ObjectiveEffectText(code)));
+        return rows.Count == 0 ? null : rows;
     }
 
     // ------------------------------------------------------------------ Side-Missions (Advanced Rulebooks 3.6.0)
