@@ -20,6 +20,8 @@ public enum PadDo
     /// <summary>Godot's own menu handling (move highlight, press, back) - listed so the Controls tab can show it.</summary>
     Native,
     Click, RightClick, Key, TogglePointer, Info, PrevTab, NextTab, ScrollUp, ScrollDown,
+    /// <summary>Battle: jump the pointer to the previous / next pickable unit, or select the next ready unit.</summary>
+    PrevTarget, NextTarget, NextUnit,
 }
 
 /// <summary>One line of the controller layout: which button, where, and what it does in plain words.</summary>
@@ -66,17 +68,17 @@ public static class Pad
         // Battle: on top of the pointer. Right stick turns/tilts the camera, triggers zoom, the pointer at the
         // screen edge pans it. The rest press the battle's own keys.
         new("bat.confirm", PadButton.X,      PadContext.Battle, "Confirm the move / shot (Space)", PadDo.Key, Key.Space),
-        new("bat.next",    PadButton.Y,      PadContext.Battle, "Next ready unit (Tab)", PadDo.Key, Key.Tab),
-        new("bat.report",  PadButton.LB,     PadContext.Battle, "Battle report (R)", PadDo.Key, Key.R),
-        new("bat.armies",  PadButton.RB,     PadContext.Battle, "Army lists (L)", PadDo.Key, Key.L),
+        new("bat.next",    PadButton.Y,      PadContext.Battle, "Next ready unit - the pointer jumps to it", PadDo.NextUnit),
+        new("bat.tprev",   PadButton.LB,     PadContext.Battle, "Previous target - jumps to the units you can pick right now (else enemies)", PadDo.PrevTarget),
+        new("bat.tnext",   PadButton.RB,     PadContext.Battle, "Next target - shooting: enemies in range; activating: your ready units", PadDo.NextTarget),
         new("bat.zoomout", PadButton.LT,     PadContext.Battle, "Zoom out", PadDo.ScrollDown),
         new("bat.zoomin",  PadButton.RT,     PadContext.Battle, "Zoom in", PadDo.ScrollUp),
         new("bat.act1",    PadButton.DUp,    PadContext.Battle, "Action 1 - Hold (1)", PadDo.Key, Key.Key1),
         new("bat.act2",    PadButton.DRight, PadContext.Battle, "Action 2 - Advance (2)", PadDo.Key, Key.Key2),
         new("bat.act3",    PadButton.DLeft,  PadContext.Battle, "Action 3 - Rush (3)", PadDo.Key, Key.Key3),
         new("bat.act4",    PadButton.DDown,  PadContext.Battle, "Action 4 - Charge (4)", PadDo.Key, Key.Key4),
-        new("bat.top",     PadButton.Back,   PadContext.Battle, "Top view (T)", PadDo.Key, Key.T),
-        new("bat.sight",   PadButton.RStick, PadContext.Battle, "Sight view (F)", PadDo.Key, Key.F),
+        new("bat.report",  PadButton.Back,   PadContext.Battle, "Battle report (R)", PadDo.Key, Key.R),
+        new("bat.top",     PadButton.RStick, PadContext.Battle, "Top view (T)", PadDo.Key, Key.T),
     };
 
     /// <summary>The saved override for an action, if Kai has set one.</summary>

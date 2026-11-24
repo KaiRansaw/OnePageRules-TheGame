@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets
 {
     public GameSession Session { get; set; } = null!;
 
@@ -457,6 +457,62 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (pan != Vector2.Zero)
             Pan(pan * (float)dt * _distance / Horizon.DistanceScale * 0.8f * Mathf.Clamp(Pads.Pad.Prefs.CameraSpeed, 0.25f, 3f));
     }
+
+    // ================================================================== controller targets (Kai, 2026-11-24: XCOM-style)
+
+    private UnitID? _padTarget;
+
+    /// <summary>What LB / RB step through: the units the open decision lets you pick (shooting targets, units to
+    /// activate, charge / melee targets...), else every enemy on the table - nearest the selected unit first.</summary>
+    private List<IUnit> PadTargetList()
+    {
+        bool Placed(IUnit u) => Alive(u) && _table.UnitCentre(u) != null;
+        List<IUnit> list;
+        if (Decisions.Current is ShootDecision shoot) list = shoot.Targets.Where(Placed).ToList();
+        else
+        {
+            list = Session.Table.Units.Objects.Where(u => Placed(u) && Decisions.ListMark(u) is { Pickable: true }).ToList();
+            if (list.Count == 0) list = Session.Table.Units.Objects.Where(u => Placed(u) && !Session.IsMine(u.PlayerID)).ToList();
+        }
+        Vector3 from = (_selected != null ? _table.UnitCentre(_selected) : null) ?? _focus;
+        return list.OrderBy(u => (_table.UnitCentre(u)!.Value - from).LengthSquared()).ToList();
+    }
+
+    /// <summary>Where a unit is on screen; the camera slides to it first when it is off screen or near the edge.</summary>
+    private Vector2? PadScreenOf(IUnit u)
+    {
+        if (_table.UnitCentre(u) is not { } c) return null;
+        Vector2 view = GetViewportRect().Size;
+        Rect2 safe = new Rect2(view * 0.12f, view * 0.76f);
+        if (_table.Camera.IsPositionBehind(c) || !safe.HasPoint(_table.Camera.UnprojectPosition(c))) FocusOn(c);
+        return _table.Camera.UnprojectPosition(c);
+    }
+
+    public Vector2? PadCycle(int dir)
+    {
+        List<IUnit> list = PadTargetList();
+        if (list.Count == 0) return null;
+        int at = _padTarget is { } id ? list.FindIndex(u => u.ID.Equals(id)) : -1;
+        int next = at < 0 ? (dir > 0 ? 0 : list.Count - 1) : (at + dir + list.Count) % list.Count;
+        _padTarget = list[next].ID;
+        return PadScreenOf(list[next]);
+    }
+
+    public Vector2? PadNextUnit()
+    {
+        SelectNextReady();
+        _padTarget = null;
+        return _selected != null ? PadScreenOf(_selected) : null;
+    }
+
+    public Vector2? PadSnap(Vector2 at)
+    {
+        // Only onto something the open decision can pick, so placing and moving models stays free.
+        if (_table.UnitAt(at) is not { } u || !PadTargetList().Any(t => t.ID.Equals(u.ID))) return null;
+        return _table.UnitCentre(u) is { } c && !_table.Camera.IsPositionBehind(c) ? _table.Camera.UnprojectPosition(c) : null;
+    }
+
+    public bool PadOverTarget(Vector2 at) => _table.UnitAt(at) is { } u && Decisions.Current != null && PadTargetList().Any(t => t.ID.Equals(u.ID));
 
     /// <summary>Settings -> Camera -> "Camera key speed": how fast the keyboard moves and turns the camera. The slider
     /// was saved but nothing in the Godot battle read it.</summary>

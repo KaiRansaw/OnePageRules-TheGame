@@ -990,6 +990,9 @@ public sealed class ShootDecision : Decision<CancellableResult<RangedAttackChoic
     /// <summary>Some enemy a weapon can fire at now (the test driver hovers it for the odds photo).</summary>
     public IUnit ShooterUnit => Shooter;
     public IUnit? AnyTarget => _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats).FirstOrDefault(CanFire)?.TargetUnit.GetValue();
+    /// <summary>Every enemy some weapon can fire at now (the controller's LB / RB cycle through them).</summary>
+    public IEnumerable<IUnit> Targets => _r.WeaponOptions.SelectMany(w => w.WeaponTargetStats).Where(CanFire)
+        .Select(t => t.TargetUnit.GetValue()).GroupBy(u => u.ID).Select(g => g.First());
 
     public override string Prompt => _r.DeclareFirst ? $"{Shooter.Name} - declare shots" : $"{Shooter.Name} - shoot";
     public override string Hint => _target != null ? "Space to confirm - click another enemy to change - right-click to clear."

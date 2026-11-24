@@ -112,6 +112,7 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("ptr.right") }, "Step back"));
             hints.Add((new[] { B("bat.confirm") }, "Confirm"));
             hints.Add((new[] { B("bat.next") }, "Next unit"));
+            hints.Add((new[] { B("bat.tprev"), B("bat.tnext") }, "Targets"));
             hints.Add((new[] { PadButton.DUp }, "Actions"));
             hints.Add((new[] { B("ptr.esc") }, "Menu"));
         }

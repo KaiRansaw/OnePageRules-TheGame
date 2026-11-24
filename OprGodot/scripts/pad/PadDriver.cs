@@ -11,6 +11,20 @@ public interface IPadCamera
     void PadCamera(Vector2 look, Vector2 pan, double dt);
 }
 
+/// <summary>A screen whose pointer can jump between units, XCOM-style (the battle). Each returns where the pointer
+/// should go on screen, or null for nowhere.</summary>
+public interface IPadTargets
+{
+    /// <summary>LB / RB: the previous / next unit the open decision can pick (else the next enemy).</summary>
+    Vector2? PadCycle(int dir);
+    /// <summary>Y: select the next ready unit of yours.</summary>
+    Vector2? PadNextUnit();
+    /// <summary>Stick let go here: the centre of a pickable unit under it, to settle on.</summary>
+    Vector2? PadSnap(Vector2 at);
+    /// <summary>The pointer is over a pickable unit (it slows down there).</summary>
+    bool PadOverTarget(Vector2 at);
+}
+
 /// <summary>A screen that wants the controller pointer from the start rather than the menu highlight.</summary>
 public interface IPadPointerScreen { }
 
@@ -207,6 +221,9 @@ public partial class PadDriver : Node
                 break;
             case PadDo.PrevTab: if (pressed) SwitchTab(-1); break;
             case PadDo.NextTab: if (pressed) SwitchTab(+1); break;
+            case PadDo.PrevTarget: if (pressed && App.I.TopScreen is IPadTargets pt) GlideTo(pt.PadCycle(-1)); break;
+            case PadDo.NextTarget: if (pressed && App.I.TopScreen is IPadTargets nt) GlideTo(nt.PadCycle(+1)); break;
+            case PadDo.NextUnit: if (pressed && App.I.TopScreen is IPadTargets nu) GlideTo(nu.PadNextUnit()); break;
             case PadDo.ScrollUp: _scrollHeld = pressed ? -1 : (_scrollHeld == -1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
             case PadDo.ScrollDown: _scrollHeld = pressed ? 1 : (_scrollHeld == 1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
         }
@@ -341,12 +358,39 @@ public partial class PadDriver : Node
         SendMotion(Vector2.Zero);
     }
 
+    private Vector2? _glide;
+    private bool _stickWasMoving;
+
+    /// <summary>Sends the pointer smoothly to a spot (a target picked with LB / RB, a unit settled on).</summary>
+    private void GlideTo(Vector2? at)
+    {
+        if (at is not { } p) return;
+        Vector2 size = ViewSize;
+        _glide = new Vector2(Math.Clamp(p.X, 0, size.X - 1), Math.Clamp(p.Y, 0, size.Y - 1));
+    }
+
     private void MovePointer(Vector2 stick, double delta)
     {
-        if (stick == Vector2.Zero) return;
+        if (stick != Vector2.Zero) { _glide = null; _stickWasMoving = true; }
+        else
+        {
+            // Let go of the stick over something pickable: settle on its middle, so A takes it.
+            if (_stickWasMoving && App.I.TopScreen is IPadTargets snap) GlideTo(snap.PadSnap(_ptr));
+            _stickWasMoving = false;
+            if (_glide is { } g)
+            {
+                Vector2 to = _ptr.DistanceTo(g) < 2 ? g : _ptr.Lerp(g, (float)Math.Min(1, delta * 16));
+                if (to == g) _glide = null;
+                Vector2 r = to - _ptr;
+                _ptr = to;
+                if (r != Vector2.Zero) SendMotion(r);
+            }
+            return;
+        }
         // A curve: small pushes for fine aim, a full push crosses the screen in about 1.6 s. Slower over a button.
         float curve = Mathf.Pow(stick.Length(), 2.2f);
-        bool overButton = GetViewport().GuiGetHoveredControl() is BaseButton or Slider { Editable: true };
+        bool overButton = GetViewport().GuiGetHoveredControl() is BaseButton or Slider { Editable: true }
+            || (App.I.TopScreen is IPadTargets tg && tg.PadOverTarget(_ptr));
         float speed = 1200f * Math.Clamp(Pad.Prefs.PointerSpeed, 0.25f, 3f) * curve * (overButton ? 0.6f : 1f);
         Vector2 moved = stick.Normalized() * speed * (float)delta;
         Vector2 size = ViewSize;
