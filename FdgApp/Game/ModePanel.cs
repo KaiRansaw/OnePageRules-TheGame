@@ -33,7 +33,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), CommandPointRows(table, system))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), CommandPointRows(table, system))),
             _ => null,
         };
     }
@@ -139,7 +139,7 @@ public static class ModePanel
     // ------------------------------------------------------------------ Extra Missions (Advanced Rulebooks 3.6.0)
 
     /// <summary>The mission being played, how it is won, and what is going on with its markers (Kai, 2026-11-22).</summary>
-    private static List<Row>? ExtraMission(ITableState table)
+    private static List<Row>? ExtraMission(ITableState table, EGameSystem system)
     {
         if (GameProgressUtilities.ExtraMission(table.DataStore) is not { } state || state.Mission == FDG.Missions.EExtraMission.None)
             return null;
@@ -163,7 +163,7 @@ public static class ModePanel
                 ? new($"{Seat(owned.Slot)}'s marker: destroyed in round {owned.DestroyedInRound}", EStyle.Warn)
                 : new($"{Seat(owned.Slot)}'s marker: intact", EStyle.Line));
         if (state.Twists is { } twists)
-            foreach ((string text, string hover) in FDG.Missions.TwistsGambits.PanelLines(table, twists))
+            foreach ((string text, string hover) in FDG.Missions.TwistsGambits.PanelLines(table, twists, system))
                 rows.Add(new(text, text.StartsWith("Twist") ? EStyle.Good : EStyle.Line, hover == "" ? null : hover));
         if (state.Mission == FDG.Missions.EExtraMission.MoshPit)
             rows.Add(new(state.FirstSeizer >= 0 ? $"First to seize: {Seat(state.FirstSeizer)}" : "Nobody has seized the marker yet", EStyle.Dim));
@@ -176,7 +176,7 @@ public static class ModePanel
         FDG.Missions.EExtraMission.Sabotage => "Win by destroying the enemy's marker while keeping yours.",
         FDG.Missions.EExtraMission.KingOfTheHill => "Whoever controls the marker after the last round wins.",
         FDG.Missions.EExtraMission.Demolition => "Each round: X VP if your marker stands, X VP when you destroy theirs (X = the round).",
-        FDG.Missions.EExtraMission.TwistsAndGambits => "Each round: 1 VP per enemy unit destroyed, per objective held, and for holding more. Most VP after round 4 wins.",
+        FDG.Missions.EExtraMission.TwistsAndGambits => "Each round: 1 VP per enemy unit destroyed, per objective held, and for holding more; 4 VP per gambit scored. Most VP after round 4 wins.",
         FDG.Missions.EExtraMission.MoshPit => "Each round: X VP for holding the marker, X more if you seized it first (X = the round).",
         _ => info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
     };
