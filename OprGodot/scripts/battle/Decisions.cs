@@ -1790,7 +1790,7 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
 
     public override string Prompt => _spell < 0 ? $"{Caster.Name} - cast a spell" : $"{Caster.Name} - {_r.Spells[_spell].Label}";
     public override string Hint => _spell < 0
-        ? $"{_r.AvailableTokens} spell token{(_r.AvailableTokens == 1 ? "" : "s")}" + (_r.AvailablePower > 0 ? $", {_r.AvailablePower} Power" : "")
+        ? (_r.DicePool ? $"Magic pool: {_r.AvailableTokens} dice" : $"{_r.AvailableTokens} spell token{(_r.AvailableTokens == 1 ? "" : "s")}") + (_r.AvailablePower > 0 ? $", {_r.AvailablePower} Power" : "")
           + $". Casts on {_r.BaseThreshold}+{(_r.Spells.Any(x => x.Needed != null) ? " on 2D6" : "")}." + (_r.RelaysInRange.Count > 0 ? $" Relays in range: {string.Join(", ", _r.RelaysInRange.Select(x => $"{x.UnitName} +{x.RollBonus}"))}." : "")
         : "Spend extra to push the roll - each one is +1."
           + (_r.HinderTokensInRange > 0 ? $" Enemy casters nearby hold {_r.HinderTokensInRange} token(s) to hinder you." : "");
@@ -1817,6 +1817,17 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
             int affordable = Math.Max(0, _r.AvailableTokens - spell.Cost);
             int useful = _r.MaxUsefulBoost;
             var rows = new List<ChoiceRow>();
+            if (_r.DicePool)
+            {
+                // Magic Pools: how many pool dice to roll - at least the spell's value.
+                for (int t = 0; t <= affordable; t++)
+                {
+                    int extra = t;
+                    rows.Add(new ChoiceRow($"Roll {spell.Cost + t} dice", $"Needs {spell.Cost} successes. {_r.AvailableTokens - spell.Cost - t} dice left in the pool after.",
+                        true, null, () => Complete(new ChooseSpellReply(_spell, extra, 0))));
+                }
+                return rows;
+            }
             for (int t = 0; t <= Math.Min(affordable, useful); t++)
             {
                 int tokens = t;

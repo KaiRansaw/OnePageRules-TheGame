@@ -658,8 +658,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
                         option.Name + ": " + option.BookText + "\n\nIn this game: " + option.GameText
                         + (option.Flag == FDG.EAdvancedRules.CriticalHitsByWeaponType ? "\n\n" + FDG.CriticalHits.AllTablesText(system) : ""), locked, v =>
                         {
-                            FDG.EAdvancedRules now = Vm.AdvancedRules;
-                            Vm.SetAdvancedRules(v ? now | option.Flag : now & ~option.Flag);
+                            // 2D6 Casting and Magic Pools can't both be on: ticking one clears the other.
+                            Vm.SetAdvancedRules(FDG.AdvancedCasting.Tick(Vm.AdvancedRules, option.Flag, v));
                         }, 24);
                 // Command Points: which playstyle - the book's roll, or one picked (bits in AdvancedRules).
                 if (chapter == FDG.AdvancedRules.CommandPointsChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.CommandPoints) != 0)
