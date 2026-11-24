@@ -162,6 +162,9 @@ public static class ModePanel
             rows.Add(owned.Destroyed
                 ? new($"{Seat(owned.Slot)}'s marker: destroyed in round {owned.DestroyedInRound}", EStyle.Warn)
                 : new($"{Seat(owned.Slot)}'s marker: intact", EStyle.Line));
+        if (state.Twists is { } twists)
+            foreach ((string text, string hover) in FDG.Missions.TwistsGambits.PanelLines(table, twists))
+                rows.Add(new(text, text.StartsWith("Twist") ? EStyle.Good : EStyle.Line, hover == "" ? null : hover));
         if (state.Mission == FDG.Missions.EExtraMission.MoshPit)
             rows.Add(new(state.FirstSeizer >= 0 ? $"First to seize: {Seat(state.FirstSeizer)}" : "Nobody has seized the marker yet", EStyle.Dim));
         return rows;
@@ -173,6 +176,7 @@ public static class ModePanel
         FDG.Missions.EExtraMission.Sabotage => "Win by destroying the enemy's marker while keeping yours.",
         FDG.Missions.EExtraMission.KingOfTheHill => "Whoever controls the marker after the last round wins.",
         FDG.Missions.EExtraMission.Demolition => "Each round: X VP if your marker stands, X VP when you destroy theirs (X = the round).",
+        FDG.Missions.EExtraMission.TwistsAndGambits => "Each round: 1 VP per enemy unit destroyed, per objective held, and for holding more. Most VP after round 4 wins.",
         FDG.Missions.EExtraMission.MoshPit => "Each round: X VP for holding the marker, X more if you seized it first (X = the round).",
         _ => info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
     };
