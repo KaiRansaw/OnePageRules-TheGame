@@ -25,6 +25,16 @@ public interface IPadTargets
     bool PadOverTarget(Vector2 at);
 }
 
+/// <summary>A screen played by several people at one computer (a two-player battle): each controller plays one seat.</summary>
+public interface IPadSeats
+{
+    /// <summary>How many seats are played at this computer (0 or 1 = no split).</summary>
+    int PadSeatCount { get; }
+    /// <summary>The seat whose decision is open now (0-based), or null when no one's is (bots acting, between turns).</summary>
+    int? PadSeat { get; }
+    string PadSeatName(int seat);
+}
+
 /// <summary>A screen that wants the controller pointer from the start rather than the menu highlight.</summary>
 public interface IPadPointerScreen { }
 
@@ -140,6 +150,49 @@ public partial class PadDriver : Node
         if (GInput.MouseMode is GInput.MouseModeEnum.Visible or GInput.MouseModeEnum.Hidden && GInput.MouseMode != want) GInput.MouseMode = want;
     }
 
+    // ================================================================== one controller per player
+
+    /// <summary>The connected pads in seat order: first connected plays seat 1 (Settings can swap the first two).</summary>
+    /// <summary>Test driver only: pretend these pads are connected (the cloud has none).</summary>
+    public static List<int>? TestPads { get; set; }
+
+    private static List<int> PadsInSeatOrder()
+    {
+        var pads = (TestPads ?? GInput.GetConnectedJoypads().ToList()).OrderBy(d => d).ToList();
+        if (Pad.Prefs.SwapPlayers && pads.Count >= 2) (pads[0], pads[1]) = (pads[1], pads[0]);
+        return pads;
+    }
+
+    /// <summary>Which pad may play now: in a two-player battle with a pad per seat, the pad of the seat whose turn it
+    /// is; otherwise any (null).</summary>
+    public int? TurnDevice()
+    {
+        if (App.I.TopScreen is not IPadSeats seats || seats.PadSeatCount < 2) return null;
+        var pads = PadsInSeatOrder();
+        if (pads.Count < seats.PadSeatCount) return null; // not a pad each: share
+        return seats.PadSeat is { } seat ? pads[seat] : null;
+    }
+
+    /// <summary>Whose turn it is, for the hint strip ("Kai's turn"), when the pads are split by player.</summary>
+    public string? TurnName()
+    {
+        if (TurnDevice() == null || App.I.TopScreen is not IPadSeats seats || seats.PadSeat is not { } seat) return null;
+        return seats.PadSeatName(seat);
+    }
+
+    private double _wrongPadToastIn;
+    private Control? _seatsAnnounced;
+
+    /// <summary>The first time a split two-player battle shows, say which controller is whose.</summary>
+    private void AnnounceSeats(Control? top)
+    {
+        if (top == _seatsAnnounced || top is not IPadSeats seats || seats.PadSeatCount < 2) return;
+        if (PadsInSeatOrder().Count < seats.PadSeatCount) return;
+        _seatsAnnounced = top;
+        _overlay.Toast(string.Join("   ", Enumerable.Range(0, seats.PadSeatCount).Select(i => $"Controller {i + 1}: {seats.PadSeatName(i)}"))
+                       + "   (Settings -> Controls -> Swap players)");
+    }
+
     private static bool DefaultPointer(Control? top) => top is Battle.BattleScreen or IPadPointerScreen
         or Maps.MapEditorScreen or Lab.AssetLabScreen or Lab.TerrainWorkshopScreen or Campaign.MapCampaignScreen
         or Maps.MatchTerrainScreen or Lab.FacingReviewScreen;
@@ -166,6 +219,20 @@ public partial class PadDriver : Node
             return;
         }
         Hud.UiJuice.NoteInput(e);
+
+        // Two players at one computer: only the controller of the player whose turn it is plays. Start (the pause
+        // menu) works for both.
+        if (TurnDevice() is { } turnPad && e.Device != turnPad
+            && !(e is InputEventJoypadButton { ButtonIndex: JoyButton.Start }))
+        {
+            if (e is InputEventJoypadButton { Pressed: true } && _wrongPadToastIn <= 0 && TurnName() is { } who)
+            {
+                _overlay.Toast($"It's {who}'s turn - their controller plays.");
+                _wrongPadToastIn = 2.5;
+            }
+            GetViewport().SetInputAsHandled();
+            return;
+        }
 
         if (e is InputEventJoypadMotion jm)
         {
@@ -297,6 +364,8 @@ public partial class PadDriver : Node
         }
         if (!Pad.Prefs.Enabled) return;
         UpdateCursor();
+        if (_wrongPadToastIn > 0) _wrongPadToastIn -= delta;
+        AnnounceSeats(top);
 
         Vector2 left = Stick(JoyAxis.LeftX, JoyAxis.LeftY), right = Stick(JoyAxis.RightX, JoyAxis.RightY);
         if (left != Vector2.Zero || right != Vector2.Zero) SetActive(true);
@@ -350,10 +419,12 @@ public partial class PadDriver : Node
 
     /// <summary>Both sticks of every connected pad added up (couch play: whoever has a pad can drive), with the deadzone
     /// taken off and the rest rescaled so a light push is slow and a full push is fast.</summary>
-    private static Vector2 Stick(JoyAxis x, JoyAxis y)
+    private Vector2 Stick(JoyAxis x, JoyAxis y)
     {
         Vector2 v = Vector2.Zero;
-        foreach (int d in GInput.GetConnectedJoypads()) v += new Vector2(GInput.GetJoyAxis(d, x), GInput.GetJoyAxis(d, y));
+        int? only = TurnDevice();
+        foreach (int d in GInput.GetConnectedJoypads())
+            if (only == null || d == only) v += new Vector2(GInput.GetJoyAxis(d, x), GInput.GetJoyAxis(d, y));
         float mag = Math.Min(v.Length(), 1f), dz = Math.Clamp(Pad.Prefs.Deadzone, 0.05f, 0.5f);
         if (mag <= dz) return Vector2.Zero;
         float scaled = (mag - dz) / (1 - dz);
@@ -723,7 +794,7 @@ public partial class PadDriver : Node
 
     /// <summary>ScriptedRun "pad:A" / "pad:A+" (hold) / "pad:A-" (let go): sent as a real pad event, so the test goes
     /// through exactly the path a controller does.</summary>
-    public void TestButton(PadButton b, bool? hold)
+    public void TestButton(PadButton b, bool? hold, int device = 0)
     {
         void Send(bool pressed)
         {
@@ -733,12 +804,12 @@ public partial class PadDriver : Node
                 PadButton.RT => new InputEventJoypadMotion { Axis = JoyAxis.TriggerRight, AxisValue = pressed ? 1 : 0 },
                 _ => new InputEventJoypadButton { ButtonIndex = ToJoy(b), Pressed = pressed, Pressure = pressed ? 1 : 0 },
             };
-            e.Device = 0;
+            e.Device = device;
             GInput.ParseInputEvent(e);
         }
         if (hold != false) Send(true);
         if (hold != true) Send(false);
-        GetTree().CreateTimer(0.15).Timeout += () => GD.Print($"Pad test {b}: focus = {GetViewport().GuiGetFocusOwner()?.Name ?? "none"}, pointer mode = {PointerMode}");
+        GetTree().CreateTimer(0.15).Timeout += () => GD.Print($"Pad test {b}@{device}: focus = {GetViewport().GuiGetFocusOwner()?.Name ?? "none"}, pointer mode = {PointerMode}, turn pad = {TurnDevice()?.ToString() ?? "any"} ({TurnName() ?? "-"})");
     }
 
     private static JoyButton ToJoy(PadButton b) => b switch

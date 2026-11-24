@@ -37,6 +37,10 @@ public enum BookAction { Hold, Advance, Rush, Charge }
 /// </summary>
 public abstract class Decision
 {
+    /// <summary>The player this decision is for (the engine request's target) - in a two-player game at one computer
+    /// it decides which controller may answer it.</summary>
+    public PlayerID? Player { get; set; }
+
     public abstract string Prompt { get; }
     public virtual string Hint => "";
     public virtual IReadOnlyList<ActionSlot>? Actions => null;

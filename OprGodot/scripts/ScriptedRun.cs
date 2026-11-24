@@ -127,9 +127,13 @@ public partial class ScriptedRun : Node
             // the pad pointer there; "padmode:pointer|menus" swaps modes.
             if (name.StartsWith("pad:") && Pads.PadDriver.I is { } padDrv)
             {
-                string pb = name[4..].TrimEnd('+', '-');
-                bool? hold = name.EndsWith('+') ? true : name.EndsWith('-') ? false : null;
-                if (Enum.TryParse(pb, true, out Pads.PadButton padButton)) padDrv.TestButton(padButton, hold);
+                // "pad:A@1" = the same from pad 1 (two-player tests with "pads:0;1").
+                string spec = name[4..];
+                int dev = 0;
+                if (spec.Split('@') is [var bpart, var dpart] && int.TryParse(dpart, out int dv)) { spec = bpart; dev = dv; }
+                string pb = spec.TrimEnd('+', '-');
+                bool? hold = spec.EndsWith('+') ? true : spec.EndsWith('-') ? false : null;
+                if (Enum.TryParse(pb, true, out Pads.PadButton padButton)) padDrv.TestButton(padButton, hold, dev);
                 _wait = 12;
                 return;
             }
@@ -140,6 +144,7 @@ public partial class ScriptedRun : Node
                 _wait = 12;
                 return;
             }
+            if (name.StartsWith("pads:")) { Pads.PadDriver.TestPads = name[5..].Split(';').Select(int.Parse).ToList(); return; }
             if (name.StartsWith("padmode:") && Pads.PadDriver.I is { } padDrv3) { padDrv3.SetPointerMode(name[8..] == "pointer"); _wait = 12; return; }
             if (name.StartsWith("key:") && Enum.TryParse(name[4..], out Key key))
             {

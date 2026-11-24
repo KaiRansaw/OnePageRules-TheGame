@@ -251,6 +251,8 @@ public partial class SettingsScreen : Control
             pad.Deadzone, 0.05, 0.5, v => pad.Deadzone = v, ""));
         rows.AddChild(Check("Invert camera tilt", "Swap which way pushing the right stick up and down tilts the battle camera.",
             pad.InvertCameraTilt, on => pad.InvertCameraTilt = on));
+        rows.AddChild(Check("Swap players", "Two players at one computer, a controller each: the first controller plugged in plays seat 1 and the second plays seat 2. Tick this to swap them. Only the player whose turn it is can play; the other controller waits.",
+            pad.SwapPlayers, on => pad.SwapPlayers = on));
         rows.AddChild(Check("Button hints", "Show a strip along the bottom of the screen with what the main buttons do, while you are using the controller.",
             pad.ShowHints, on => pad.ShowHints = on));
         var connected = Input.GetConnectedJoypads();

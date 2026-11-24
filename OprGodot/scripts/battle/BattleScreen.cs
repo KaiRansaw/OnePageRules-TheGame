@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets, Pads.IPadSeats
 {
     public GameSession Session { get; set; } = null!;
 
@@ -457,6 +457,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (pan != Vector2.Zero)
             Pan(pan * (float)dt * _distance / Horizon.DistanceScale * 0.8f * Mathf.Clamp(Pads.Pad.Prefs.CameraSpeed, 0.25f, 3f));
     }
+
+    // ================================================================== controller seats (Kai, 2026-11-24)
+
+    // Two players at one computer: each controller plays its own seat.
+    public int PadSeatCount => Session.HotSeat ? Session.Game.LocalPlayerIDs.Count : 0;
+    public int? PadSeat => PadSeatCount > 0 && Decisions.Current?.Player is { } p && Session.Game.LocalPlayerIDs.ToList().IndexOf(p) is var i and >= 0 ? i : null;
+    public string PadSeatName(int seat) => seat >= 0 && seat < PadSeatCount
+        ? Session.SeatOf(Session.Game.LocalPlayerIDs.ToList()[seat])?.Name ?? $"Player {seat + 1}" : $"Player {seat + 1}";
 
     // ================================================================== controller targets (Kai, 2026-11-24: XCOM-style)
 

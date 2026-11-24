@@ -268,6 +268,10 @@ public sealed class ControllerPreferences
     /// <summary>Swap which way the right stick tilts the camera.</summary>
     public bool InvertCameraTilt { get; set; }
 
+    /// <summary>Two players at one computer: swap which controller plays which seat (normally the first controller
+    /// connected plays seat 1).</summary>
+    public bool SwapPlayers { get; set; }
+
     /// <summary>Show the strip of button hints along the bottom of the screen while a controller is in use.</summary>
     public bool ShowHints { get; set; } = true;
 

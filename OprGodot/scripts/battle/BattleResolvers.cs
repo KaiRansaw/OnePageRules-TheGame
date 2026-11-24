@@ -123,6 +123,7 @@ public static class BattleResolvers
         public Task<TReply> Resolve(TRequest request)
         {
             Decision<TReply> d = _make(request);
+            d.Player = request.TargetPlayerID;
             Inbox.Offer(d);
             return d.Task;
         }

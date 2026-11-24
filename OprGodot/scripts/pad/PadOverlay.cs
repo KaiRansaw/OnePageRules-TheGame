@@ -108,6 +108,7 @@ public partial class PadOverlay : Control
         }
         else if (_pad.InBattle)
         {
+            if (_pad.TurnName() is { } who) hints.Add((Array.Empty<PadButton>(), $"{who}'s turn"));
             hints.Add((new[] { B("ptr.click") }, "Click"));
             hints.Add((new[] { B("ptr.right") }, "Step back"));
             hints.Add((new[] { B("bat.confirm") }, "Confirm"));
