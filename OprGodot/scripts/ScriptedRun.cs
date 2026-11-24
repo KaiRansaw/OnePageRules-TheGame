@@ -123,6 +123,24 @@ public partial class ScriptedRun : Node
                 Input.ParseInputEvent(new InputEventKey { Keycode = withCtrl, PhysicalKeycode = withCtrl, Pressed = false, CtrlPressed = true });
                 return;
             }
+            // Controller (2026-11-24): "pad:A" presses a pad button, "pad:A+" holds it, "pad:A-" lets go; "padptr:x;y" puts
+            // the pad pointer there; "padmode:pointer|menus" swaps modes.
+            if (name.StartsWith("pad:") && Pads.PadDriver.I is { } padDrv)
+            {
+                string pb = name[4..].TrimEnd('+', '-');
+                bool? hold = name.EndsWith('+') ? true : name.EndsWith('-') ? false : null;
+                if (Enum.TryParse(pb, true, out Pads.PadButton padButton)) padDrv.TestButton(padButton, hold);
+                _wait = 12;
+                return;
+            }
+            if (name.StartsWith("padptr:") && Pads.PadDriver.I is { } padDrv2 && name[7..].Split(';') is [var px, var py]
+                && float.TryParse(px, System.Globalization.CultureInfo.InvariantCulture, out float pxv) && float.TryParse(py, System.Globalization.CultureInfo.InvariantCulture, out float pyv))
+            {
+                padDrv2.TestPointer(new Vector2(pxv, pyv));
+                _wait = 12;
+                return;
+            }
+            if (name.StartsWith("padmode:") && Pads.PadDriver.I is { } padDrv3) { padDrv3.SetPointerMode(name[8..] == "pointer"); _wait = 12; return; }
             if (name.StartsWith("key:") && Enum.TryParse(name[4..], out Key key))
             {
                 Input.ParseInputEvent(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true });

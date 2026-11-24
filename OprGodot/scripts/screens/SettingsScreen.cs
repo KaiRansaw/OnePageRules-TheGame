@@ -222,9 +222,74 @@ public partial class SettingsScreen : Control
 
     // ── Controls ─────────────────────────────────────────────────────────────────────────────────
 
-    private static void BuildControls(VBoxContainer rows) =>
-        rows.AddChild(Ui.Label("The key list arrives with the table (port step 3): the camera, measuring and the table hotkeys " +
-                               "are being rebuilt for Godot, and this tab will list exactly the keys that build uses.", "DimLabel", wrap: true));
+    private static void BuildControls(VBoxContainer rows)
+    {
+        // Controller (Kai, 2026-11-24: couch play, Xbox and PlayStation pads). The exact mapping is Kai's to settle later;
+        // the list below is read from Pads.Pad.All, so it always shows what the buttons really do.
+        ControllerPreferences pad = Config.Controller;
+        rows.AddChild(Section("Controller"));
+        rows.AddChild(Check("Use a controller", "Play with an Xbox or PlayStation controller. Off: the game ignores every controller.",
+            pad.Enabled, on => pad.Enabled = on));
+        var glyphs = new List<Control>();
+        var style = new OptionButton { Name = "PadPrompts" };
+        style.AddItem("Auto - match the controller");
+        style.AddItem("Xbox (A B X Y)");
+        style.AddItem("PlayStation (Cross Circle Square Triangle)");
+        style.Selected = pad.Prompts switch { "xbox" => 1, "playstation" => 2, _ => 0 };
+        style.ItemSelected += i =>
+        {
+            pad.Prompts = i switch { 1 => "xbox", 2 => "playstation", _ => "auto" };
+            UserConfig.Save();
+            foreach (Control g in glyphs) g.QueueRedraw();
+        };
+        rows.AddChild(Row("Button pictures", "Which button pictures the hints and this list show. Auto works it out from the controller plugged in.", style));
+        rows.AddChild(Slider("Pointer speed", "How fast the left stick moves the on-screen pointer (the battle, map editor and Asset Lab use the pointer). 1.00x is normal.",
+            pad.PointerSpeed, 0.25, 3, v => pad.PointerSpeed = v, "x"));
+        rows.AddChild(Slider("Camera stick speed", "How fast the right stick turns and tilts the battle camera, and how fast the pointer pans it at the screen edge. 1.00x is normal.",
+            pad.CameraSpeed, 0.25, 3, v => pad.CameraSpeed = v, "x"));
+        rows.AddChild(Slider("Stick deadzone", "How far a stick has to move before the game reacts. Raise it if the pointer or camera drifts by itself.",
+            pad.Deadzone, 0.05, 0.5, v => pad.Deadzone = v, ""));
+        rows.AddChild(Check("Invert camera tilt", "Swap which way pushing the right stick up and down tilts the battle camera.",
+            pad.InvertCameraTilt, on => pad.InvertCameraTilt = on));
+        rows.AddChild(Check("Button hints", "Show a strip along the bottom of the screen with what the main buttons do, while you are using the controller.",
+            pad.ShowHints, on => pad.ShowHints = on));
+        var connected = Input.GetConnectedJoypads();
+        rows.AddChild(Row("Connected", "The controllers this computer can see right now. Plug one in (or pair it over Bluetooth) and reopen this tab.",
+            Ui.Label(connected.Count == 0 ? "No controller found." : string.Join(", ", connected.Select(d => Input.GetJoyName(d))),
+                connected.Count == 0 ? "DimLabel" : null)));
+
+        foreach (var (where, title, tip) in new[]
+        {
+            (Pads.PadContext.Menus, "In menus", "Menus: a highlight moves between buttons."),
+            (Pads.PadContext.Pointer, "With the pointer", "The battle, map editor, Asset Lab and campaign map use an on-screen pointer that works like the mouse. The left stick click swaps between the pointer and the menu highlight on any screen."),
+            (Pads.PadContext.Battle, "In battle (on top of the pointer)", "Extra buttons during a battle. The right stick turns and tilts the camera; push the pointer against a screen edge to pan."),
+        })
+        {
+            rows.AddChild(Section(title, tip));
+            foreach (Pads.PadBinding b in Pads.Pad.All.Where(x => x.Where == where))
+            {
+                var line = new HBoxContainer { TooltipText = b.Does };
+                line.AddThemeConstantOverride("separation", 14);
+                var g = new Pads.PadGlyphView { Button = b.Button, CustomMinimumSize = new Vector2(34, 30) };
+                glyphs.Add(g);
+                line.AddChild(g);
+                var name = Ui.Label(Pads.Pad.Name(b.Button));
+                name.CustomMinimumSize = new Vector2(220, 0);
+                line.AddChild(name);
+                line.AddChild(Ui.Label(b.Does));
+                rows.AddChild(line);
+            }
+        }
+        rows.AddChild(Ui.Label("Text boxes (names, search) still need the keyboard - or Steam's on-screen keyboard on a Steam Deck.", "DimLabel", wrap: true));
+    }
+
+    private static Control Section(string title, string tooltip = "")
+    {
+        Label l = Hud.HudKit.Text(title, 20, Hud.HudKit.Lime, Hud.HudKit.Semi);
+        l.TooltipText = tooltip;
+        l.MouseFilter = tooltip.Length > 0 ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        return l;
+    }
 
     // ── Row builders ─────────────────────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera
 {
     public GameSession Session { get; set; } = null!;
 
@@ -441,6 +441,21 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) dir.X += 1;
         if (dir != Vector2.Zero && GetViewport().GuiGetFocusOwner() is not LineEdit)
             Pan(dir * (float)delta * _distance / Horizon.DistanceScale * 0.8f * CameraKeySpeed);
+    }
+
+    /// <summary>The controller's right stick turns (x) and tilts (y) the camera; the pointer at a screen edge pans it
+    /// (Kai, 2026-11-24, couch play). Same limits as the mouse drag.</summary>
+    public void PadCamera(Vector2 look, Vector2 pan, double dt)
+    {
+        if (!IsVisibleInTree()) return;
+        if (look != Vector2.Zero)
+        {
+            _yaw -= look.X * 150f * (float)dt;
+            if (!_topView) _pitch = Mathf.Clamp(_pitch + look.Y * 80f * (float)dt * TiltDirection, 15f, 88f);
+            ApplyCamera();
+        }
+        if (pan != Vector2.Zero)
+            Pan(pan * (float)dt * _distance / Horizon.DistanceScale * 0.8f * Mathf.Clamp(Pads.Pad.Prefs.CameraSpeed, 0.25f, 3f));
     }
 
     /// <summary>Settings -> Camera -> "Camera key speed": how fast the keyboard moves and turns the camera. The slider

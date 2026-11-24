@@ -62,6 +62,9 @@ public sealed class UserConfig
     /// save as you make them"). Loaded into <c>ViewSettings</c> when the window opens.</summary>
     public ViewPreferences View { get; set; } = new();
 
+    /// <summary>Godot build: Xbox / PlayStation controller support (Kai, 2026-11-24 - couch play). Settings -> Controls.</summary>
+    public ControllerPreferences Controller { get; set; } = new();
+
     /// <summary>
     /// The main menu's "Turn off auto update detection" switch (Kai, 2026-11-14). On: the game never contacts GitHub -
     /// no check when it opens and the Update button is off - and the menu says it is disconnected. Off (the default):
@@ -239,6 +242,38 @@ public sealed class ViewPreferences
 
     /// <summary>How bright the room behind the table is drawn (0.2 - 1.5).</summary>
     public float RoomBrightness { get; set; } = 0.7f;
+}
+
+/// <summary>
+/// Controller settings for the Godot build (Kai, 2026-11-24: "I'm planning on playing on the couch" - Xbox and
+/// PlayStation pads). The Raylib build ignores them.
+/// </summary>
+public sealed class ControllerPreferences
+{
+    /// <summary>Off: the game ignores every controller.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Which button pictures the game shows: "auto" (from the controller's name), "xbox" or "playstation".</summary>
+    public string Prompts { get; set; } = "auto";
+
+    /// <summary>How fast the on-screen pointer moves with the left stick (0.25 - 3, 1 = normal).</summary>
+    public float PointerSpeed { get; set; } = 1f;
+
+    /// <summary>How fast the right stick turns and tilts the battle camera (0.25 - 3, 1 = normal).</summary>
+    public float CameraSpeed { get; set; } = 1f;
+
+    /// <summary>How far a stick must move before the game reacts (0.05 - 0.5), so a worn stick doesn't drift.</summary>
+    public float Deadzone { get; set; } = 0.2f;
+
+    /// <summary>Swap which way the right stick tilts the camera.</summary>
+    public bool InvertCameraTilt { get; set; }
+
+    /// <summary>Show the strip of button hints along the bottom of the screen while a controller is in use.</summary>
+    public bool ShowHints { get; set; } = true;
+
+    /// <summary>Button overrides: action id -> button name (OprGodot Pads.PadButton). Empty = the built-in layout.
+    /// Kai is choosing the exact mapping later; an action missing here keeps its default.</summary>
+    public Dictionary<string, string> Buttons { get; set; } = new();
 }
 
 /// <summary>
