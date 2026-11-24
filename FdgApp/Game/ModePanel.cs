@@ -33,7 +33,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), PoliticalRows(table, viewers)))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), ArmyTerrainRows(table))))),
             _ => null,
         };
     }
@@ -81,6 +81,19 @@ public static class ModePanel
     }
 
     /// <summary>Command Points: the playstyle, and each player's CP and doctrine.</summary>
+    /// <summary>Army Terrain: each army's piece, its rule on hover.</summary>
+    private static List<Row>? ArmyTerrainRows(ITableState table)
+    {
+        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.ArmyTerrain is not { Pieces.Count: > 0 } at) return null;
+        var rows = new List<Row> { new("Army Terrain", EStyle.Title) };
+        foreach (FDG.ArmyPiece piece in at.Pieces)
+        {
+            string owner = table.Players.Objects.FirstOrDefault(p => p.IsFilled && p.PlayerID.ID.ToString() == piece.Owner)?.Name ?? "?";
+            rows.Add(new($"{owner}: {piece.Name}", EStyle.Line, FDG.ArmyTerrain.TextOf(piece.Name)));
+        }
+        return rows;
+    }
+
     /// <summary>Political Intrigue: each player's directives used this round, and what was done.</summary>
     private static List<Row>? PoliticalRows(ITableState table, IReadOnlyCollection<FDG.PlayerID>? viewers)
     {
