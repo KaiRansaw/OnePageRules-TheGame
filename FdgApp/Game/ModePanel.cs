@@ -33,7 +33,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), PoliticalRows(table)))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), PoliticalRows(table, viewers)))),
             _ => null,
         };
     }
@@ -82,7 +82,7 @@ public static class ModePanel
 
     /// <summary>Command Points: the playstyle, and each player's CP and doctrine.</summary>
     /// <summary>Political Intrigue: each player's directives used this round, and what was done.</summary>
-    private static List<Row>? PoliticalRows(ITableState table)
+    private static List<Row>? PoliticalRows(ITableState table, IReadOnlyCollection<FDG.PlayerID>? viewers)
     {
         if (GameProgressUtilities.TryGetProgress(table.DataStore)?.PoliticalIntrigue is not { } pi) return null;
         string hover = string.Join("\n", FDG.PoliticalIntrigue.Order.Select(d => $"{d}: {FDG.PoliticalIntrigue.DirectiveText[d]}"));
@@ -93,6 +93,12 @@ public static class ModePanel
             var used = pi.Used.GetValueOrDefault(p.PlayerID.ToString()) ?? new List<string>();
             rows.Add(new($"{p.Name}: {used.Count}/{FDG.PoliticalIntrigue.PerRound} this round{(used.Count > 0 ? " (" + string.Join(", ", used) + ")" : "")}",
                 EStyle.Line, hover));
+            var politicians = FDG.PoliticalIntrigue.VisiblePoliticians(pi, p.PlayerID, viewers).ToList();
+            if (politicians.Count > 0)
+                rows.Add(new($"  Politicians: {string.Join(", ", politicians)}", EStyle.Dim,
+                    string.Join("\n", (pi.Politicians.GetValueOrDefault(p.PlayerID.ToString()) ?? new List<string>())
+                        .Where(n => politicians.Any(v => v.StartsWith(n)))
+                        .Select(n => $"{n}: {FDG.PoliticalIntrigue.PoliticianNamed(n).Text}"))));
         }
         foreach (string line in pi.RoundLog) rows.Add(new(line, EStyle.Dim));
         return rows;
