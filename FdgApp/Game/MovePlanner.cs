@@ -359,7 +359,8 @@ public static class MovePlanner
             buildingEntry: true);
         if (!ok) return string.Join(", ", errors.Select(e => e.ToString()).Distinct());
         return MovementUtilities.FastPlayChargeProblem(request, moves, enemies)
-            ?? FDG.Stages.DefinePathStage.BuildingProblem(table, me, moves);
+            ?? FDG.Stages.DefinePathStage.BuildingProblem(table, me, moves)
+            ?? FDG.CommandPoints.RushObjectiveProblem(table, me, moves, entry => request.PlayerBudgetFor(entry.Model.GetValue().ID).rush);
     }
 
     /// <summary>Null when the ConsolidateStage will accept the move; otherwise the reason, in plain words.</summary>
