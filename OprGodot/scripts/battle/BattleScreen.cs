@@ -2011,7 +2011,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // "Ends after round 4." here while the round counter beside it read "/6".
         int lastRound = RoundLimit(progress);
         // Horde and the Quest games have panels of their own (Kai, 2026-11-19 - FdgApp ModePanel decides what is on them).
-        List<ModePanel.Row>? modeRows = ModePanel.For(Session.Table, Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.GameMode, Session.Game.LocalPlayerIDs);
+        List<ModePanel.Row>? modeRows = ModePanel.For(Session.Table, Session.Lobby.Vm.GameSystem, Session.Lobby.Vm.GameMode, Session.Game.LocalPlayerIDs, Session.Lobby.Vm.AdvancedRules);
         Dictionary<PlayerID, int>? vpNow = VictoryPoints();
         string sig = $"{lastRound}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
             + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"

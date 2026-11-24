@@ -26,14 +26,15 @@ public static class ModePanel
     /// <summary>The panel's rows for this game, or null when the game is not one of these modes.</summary>
     /// <param name="viewers">The players at this screen; a side's secret side-missions are named only to them (none =
     /// watching the bots: everything shows).</param>
-    public static List<Row>? For(ITableState table, EGameSystem system, EGameMode mode, IReadOnlyCollection<FDG.PlayerID>? viewers = null)
+    public static List<Row>? For(ITableState table, EGameSystem system, EGameMode mode, IReadOnlyCollection<FDG.PlayerID>? viewers = null,
+        FDG.EAdvancedRules advanced = FDG.EAdvancedRules.None)
     {
         return mode switch
         {
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), ArmyTerrainRows(table))))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), CastingRows(table, system, advanced)))))),
             _ => null,
         };
     }
@@ -91,6 +92,19 @@ public static class ModePanel
             string owner = table.Players.Objects.FirstOrDefault(p => p.IsFilled && p.PlayerID.ID.ToString() == piece.Owner)?.Name ?? "?";
             rows.Add(new($"{owner}: {piece.Name}", EStyle.Line, FDG.ArmyTerrain.TextOf(piece.Name)));
         }
+        return rows;
+    }
+
+    /// <summary>Advanced Casting: the systems on, each spell book, backlashes this round, Drained casters.</summary>
+    private static List<Row>? CastingRows(ITableState table, EGameSystem system, FDG.EAdvancedRules advanced)
+    {
+        if (advanced == FDG.EAdvancedRules.None) return null;
+        var settings = new FDG.GameSettings { GameSystem = system, AdvancedRules = advanced };
+        int round = GameProgressUtilities.TryGetProgress(table.DataStore)?.RoundCount ?? 0;
+        var lines = FDG.AdvancedCasting.PanelLines(table.DataStore, settings, round);
+        if (lines.Count == 0) return null;
+        var rows = new List<Row> { new(lines[0].Text, EStyle.Title, lines[0].Hover) };
+        rows.AddRange(lines.Skip(1).Select(l => new Row(l.Text, l.Warn ? EStyle.Warn : EStyle.Line, l.Hover)));
         return rows;
     }
 

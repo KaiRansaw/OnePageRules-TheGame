@@ -1791,7 +1791,7 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
     public override string Prompt => _spell < 0 ? $"{Caster.Name} - cast a spell" : $"{Caster.Name} - {_r.Spells[_spell].Label}";
     public override string Hint => _spell < 0
         ? $"{_r.AvailableTokens} spell token{(_r.AvailableTokens == 1 ? "" : "s")}" + (_r.AvailablePower > 0 ? $", {_r.AvailablePower} Power" : "")
-          + $". Casts on {_r.BaseThreshold}+." + (_r.RelaysInRange.Count > 0 ? $" Relays in range: {string.Join(", ", _r.RelaysInRange.Select(x => $"{x.UnitName} +{x.RollBonus}"))}." : "")
+          + $". Casts on {_r.BaseThreshold}+{(_r.Spells.Any(x => x.Needed != null) ? " on 2D6" : "")}." + (_r.RelaysInRange.Count > 0 ? $" Relays in range: {string.Join(", ", _r.RelaysInRange.Select(x => $"{x.UnitName} +{x.RollBonus}"))}." : "")
         : "Spend extra to push the roll - each one is +1."
           + (_r.HinderTokensInRange > 0 ? $" Enemy casters nearby hold {_r.HinderTokensInRange} token(s) to hinder you." : "");
     public override string? RowsTitle => _spell < 0 ? "Spells" : "Push the roll";
@@ -1813,20 +1813,21 @@ public sealed class SpellDecision : Decision<ChooseSpellReply>
                 return _r.Spells.Select((sp, i) => new ChoiceRow(sp.Label, sp.Description, sp.Castable, sp.UnavailableReason,
                     sp.Castable ? () => { _spell = i; Version++; } : null)).ToList();
             var spell = _r.Spells[_spell];
+            int baseNeeded = spell.Needed ?? _r.BaseThreshold;
             int affordable = Math.Max(0, _r.AvailableTokens - spell.Cost);
             int useful = _r.MaxUsefulBoost;
             var rows = new List<ChoiceRow>();
             for (int t = 0; t <= Math.Min(affordable, useful); t++)
             {
                 int tokens = t;
-                rows.Add(new ChoiceRow(t == 0 ? $"Cast - no extra (needs {Needed(_r.BaseThreshold, 0)}+)" : $"+{t} token{(t == 1 ? "" : "s")} (needs {Needed(_r.BaseThreshold, t)}+)",
+                rows.Add(new ChoiceRow(t == 0 ? $"Cast - no extra (needs {Needed(baseNeeded, 0)}+)" : $"+{t} token{(t == 1 ? "" : "s")} (needs {Needed(baseNeeded, t)}+)",
                     t == 0 ? $"Costs {spell.Cost} token{(spell.Cost == 1 ? "" : "s")}." : $"Costs {spell.Cost + t} tokens in all.",
                     true, null, () => Complete(new ChooseSpellReply(_spell, tokens, 0))));
             }
             for (int p = 1; p <= Math.Min(_r.AvailablePower, useful); p++)
             {
                 int power = p;
-                rows.Add(new ChoiceRow($"+{p} Power (needs {Needed(_r.BaseThreshold, p)}+)", "Power is the hero's whole-mission budget.",
+                rows.Add(new ChoiceRow($"+{p} Power (needs {Needed(baseNeeded, p)}+)", "Power is the hero's whole-mission budget.",
                     true, null, () => Complete(new ChooseSpellReply(_spell, 0, power))));
             }
             return rows;
