@@ -30,7 +30,8 @@ public static class TerrainSolids
         || p.Rules.HasFlag(ETerrainType.Climbable);
 
     /// <summary>A piece set to one of the game's hand-built pieces by name.</summary>
-    public static bool IsPiece(MapPiece p) => p.Look.StartsWith(TerrainPieces.LookPrefix, StringComparison.Ordinal);
+    public static bool IsPiece(MapPiece p) => p.Look.StartsWith(TerrainPieces.LookPrefix, StringComparison.Ordinal)
+        || TerrainPieces.IsModelLook(p.Look);
 
     /// <summary>Which pieces play on their model's solid parts: those whose rules stop models or sight.</summary>
     public static bool Applies(MapPiece p) =>

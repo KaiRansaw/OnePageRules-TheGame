@@ -55,6 +55,25 @@ public static class UnitPortraits
         return Path.Combine(root ?? UnitModelPaths.Root, FolderName, book, unit, Path.GetFileNameWithoutExtension(modelFile) + ".png");
     }
 
+    /// <summary>
+    /// A Quest hero's own portrait (Kai, 2026-11-23: "a custom portrait for that character"):
+    /// _Portraits/_Heroes/&lt;faction&gt;__&lt;hero name&gt;.png. Keyed by the hero's name, which is also its unit's name on the
+    /// table, so the battle shows it too.
+    /// </summary>
+    public static string HeroPath(string faction, string heroName, string? root = null)
+    {
+        static string Safe(string s) => string.Concat(s.Trim().Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '_'));
+        return Path.Combine(root ?? UnitModelPaths.Root, FolderName, "_Heroes", Safe(faction) + "__" + Safe(heroName) + ".png");
+    }
+
+    /// <summary>The hero's own portrait file, or null when none was taken.</summary>
+    public static string? FindHero(string faction, string heroName)
+    {
+        if (string.IsNullOrWhiteSpace(heroName)) return null;
+        string p = HeroPath(faction, heroName);
+        return File.Exists(p) ? p : null;
+    }
+
     /// <summary>Build 1.87 made one portrait per unit (_Portraits/&lt;Book&gt;/&lt;Unit&gt;.png); still shown until redone.</summary>
     private static string OldPathFor(string modelFile, string? root = null)
     {

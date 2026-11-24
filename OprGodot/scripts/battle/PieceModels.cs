@@ -80,6 +80,42 @@ public static class PieceModels
         return scene?.Instantiate<Node3D>();
     }
 
+    private static readonly Dictionary<string, (float W, float D, float H, float Cx, float Cz)?> Sizes = new();
+
+    /// <summary>
+    /// A model's footprint and height in inches at the Workshop's scale, and where its middle sits from the file's
+    /// origin (for single models placed on a map). Null when the game doesn't have it.
+    /// </summary>
+    public static (float W, float D, float H, float Cx, float Cz)? Measure(string path)
+    {
+        if (Sizes.TryGetValue(path, out var known)) return known;
+        (float, float, float, float, float)? result = null;
+        if (Instance(path) is { } model)
+        {
+            Aabb? box = null;
+            void Walk(Node n, Transform3D t)
+            {
+                Transform3D here = n is Node3D n3 ? t * n3.Transform : t;
+                if (n is MeshInstance3D mi && mi.Mesh != null)
+                {
+                    Aabb b = here * mi.Mesh.GetAabb();
+                    box = box is { } a ? a.Merge(b) : b;
+                }
+                foreach (Node c in n.GetChildren()) Walk(c, here);
+            }
+            Walk(model, Transform3D.Identity);
+            model.Free();
+            if (box is { } bb)
+            {
+                float k = TerrainPieces.ModelScale;
+                Vector3 centre = bb.GetCenter();
+                result = (bb.Size.X * k, bb.Size.Z * k, bb.Size.Y * k, centre.X * k, centre.Z * k);
+            }
+        }
+        Sizes[path] = result;
+        return result;
+    }
+
     /// <summary>
     /// Stands one item's model in a piece root, the piece built <paramref name="stretchX"/> / <paramref name="stretchZ"/>
     /// times its own footprint. Positions stretch; the model grows by the average of the two, so nothing is squashed.

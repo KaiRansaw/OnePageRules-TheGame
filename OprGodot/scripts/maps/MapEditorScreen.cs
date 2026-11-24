@@ -1,5 +1,6 @@
 using FDG;
 using FDG.SaveLoad;
+using FdgRaylib.Config;
 using FdgRaylib.Terrain;
 using Godot;
 using OprGodot.Battle;
@@ -31,6 +32,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private TerrainBook.PieceKind _kind = TerrainBook.Kinds[1];
     // Kai, 2026-11-14: placing a Warhammer model instead of a book shape (the model is the piece).
     private WarhammerTerrainLibrary.Entry? _model;
+    // Kai, 2026-11-23: one of the game's own terrain models placed on its own (look "model:...").
+    private PieceModels.Model? _single;
     private int _modelSet = -1;
     private string _modelKind = "";
     private int _baseSize = 32;
@@ -159,6 +162,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         var rightPanel = HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(rs, 10, 8, 10, 8));
         rightPanel.SetAnchorsAndOffsetsPreset(LayoutPreset.RightWide);
         rightPanel.OffsetRight = -16; rightPanel.OffsetTop = 92; rightPanel.OffsetBottom = -48; rightPanel.OffsetLeft = -16 - 320;
+        // Kai, 2026-11-23: the panel hung off the screen - a long name in a drop-down made it wider than 320 and it grew
+        // to the right. It grows to the left now, and drop-downs clip their text instead of widening it.
+        rightPanel.GrowHorizontal = GrowDirection.Begin;
         hud.AddChild(rightPanel);
 
         _status = HudKit.Text("", 15, HudKit.Dim, HudKit.Semi);
@@ -320,7 +326,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         }
         Add(ETool.Select, "Select", "Click a piece to pick it, drag to move it. Shift+click adds or removes a piece; drag an empty spot to box-select.");
         Add(ETool.BoxSelect, "Box select", "Drag a box: every piece whose middle is inside gets selected (Shift: add to what's selected).");
-        Add(ETool.Place, "Place", "Place the piece picked on the left - click the table. Right-click stops.", () => { SetTool(ETool.Place); Say(_model != null ? $"Placing {_model.Name} - click the table." : $"Placing {_kind.Name} - click the table. Pick another on the left."); });
+        Add(ETool.Place, "Place", "Place the piece picked on the left - click the table. Right-click stops.", () => { SetTool(ETool.Place); Say(_single != null ? $"Placing {_single.Name} - click the table." : _model != null ? $"Placing {_model.Name} - click the table." : $"Placing {_kind.Name} - click the table. Pick another on the left."); });
         Add(ETool.Objective, "Objective", "Fixed objective markers. With none, the game rolls D3+2 and places them the usual way.");
         Add(ETool.Base, "Size base", "A model base, only to check a unit fits through a gap. The game ignores these.");
         Add(ETool.Measure, "Measure", "Drag on the table to measure in inches (M). Editor only.");
@@ -369,15 +375,16 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         foreach (TerrainBook.PieceKind k in TerrainBook.Kinds)
         {
             var kind = k;
-            bool on = _tool == ETool.Place && _model == null && _kind == k;
+            bool on = _tool == ETool.Place && _model == null && _single == null && _kind == k;
             var b = new Button { Name = "Kind_" + k.Id, Text = k.Name, ToggleMode = true, ButtonPressed = on, FocusMode = FocusModeEnum.None,
                 CustomMinimumSize = new Vector2(126, 34), TooltipText = $"{k.BookLine}\n(Advanced Rulebook 3.6.0)\nClick it, then click the table. Right-click stops placing." };
             b.AddThemeColorOverride("font_color", BattleTable.TerrainColour(k.Rules).Lightened(0.45f));
-            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _model = null; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
+            b.Pressed += () => { _tool = ETool.Place; _kind = kind; _model = null; _single = null; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {kind.Name} - click the table. Right-click to stop."); Rebuild(); };
             grid.AddChild(b);
         }
         _left.AddChild(grid);
         ModelPalette();
+        SinglePalette();
         _left.AddChild(HudKit.Heading("Also", 13));
         var also = new HBoxContainer();
         also.AddThemeConstantOverride("separation", 5);
@@ -433,6 +440,101 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private void KeepPalette()
     {
         if (_palette != null && IsInstanceValid(_palette) && _palette.GetParent() == _left) _left.RemoveChild(_palette);
+        if (_singleBox != null && IsInstanceValid(_singleBox) && _singleBox.GetParent() == _left) _left.RemoveChild(_singleBox);
+    }
+
+    // ------------------------------------------------------------------ single models (Kai, 2026-11-23)
+
+    private VBoxContainer? _singleBox;
+    private ItemList? _singleList;
+    private OptionButton? _singleGroup;
+    private LineEdit? _singleSearch;
+    private string _singleStyle = "";
+    private List<PieceModels.Model> _singleShown = new();
+
+    /// <summary>
+    /// "I want to be able to place the single models as I want in the map": every model the Terrain Workshop offers,
+    /// placed on its own as a piece. Built once and kept across rebuilds (like the Warhammer list), so picking doesn't
+    /// make it jump.
+    /// </summary>
+    private void SinglePalette()
+    {
+        if (_singleBox != null && IsInstanceValid(_singleBox))
+        {
+            _left.AddChild(_singleBox);
+            if (_single == null || _tool != ETool.Place) _singleList?.DeselectAll();
+            return;
+        }
+        if (_singleStyle.Length == 0) _singleStyle = UserConfig.Current.View.TerrainStyle;
+        var box = _singleBox = new VBoxContainer { Name = "SingleModels" };
+        box.AddThemeConstantOverride("separation", 5);
+        box.AddChild(HudKit.Heading("Single models", 13));
+        box.AddChild(ForgeWidgets.Wrapped("The game's own terrain models, one at a time. Pick one, then click the table. It takes the rules of the kind it looks like - change Kind on the right.", 11, HudKit.Dim));
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 5);
+        var style = new OptionButton { Name = "SingleStyle", TooltipText = "Stylised or realistic models." };
+        style.AddItem("Stylised"); style.AddItem("Realistic");
+        style.Selected = _singleStyle == TerrainPieces.Realistic ? 1 : 0;
+        _singleGroup = new OptionButton { Name = "SingleGroup", TooltipText = "Which group of models to list.", ClipText = true, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        row.AddChild(style);
+        row.AddChild(_singleGroup);
+        box.AddChild(row);
+        _singleSearch = new LineEdit { Name = "SingleSearch", PlaceholderText = "Search models..." };
+        box.AddChild(_singleSearch);
+        _singleList = new ItemList { Name = "SingleList", CustomMinimumSize = new Vector2(0, 240), SelectMode = ItemList.SelectModeEnum.Single };
+        box.AddChild(_singleList);
+        void Groups()
+        {
+            _singleGroup!.Clear();
+            _singleGroup.AddItem("All");
+            foreach (string g in PieceModels.GroupsOf(_singleStyle)) _singleGroup.AddItem(g);
+            _singleGroup.Selected = 0;
+        }
+        style.ItemSelected += i => { _singleStyle = i == 1 ? TerrainPieces.Realistic : TerrainPieces.Stylised; Groups(); FillSingles(); };
+        _singleGroup.ItemSelected += _ => FillSingles();
+        _singleSearch.TextChanged += _ => FillSingles();
+        _singleList.ItemSelected += i =>
+        {
+            if (i < 0 || i >= _singleShown.Count) return;
+            _single = _singleShown[(int)i];
+            _model = null;
+            _tool = ETool.Place; _sel = null; _selObjective = -1; _selBase = -1;
+            Say($"Placing {_single.Name} - click the table. Right-click to stop.");
+            Rebuild();
+        };
+        Groups();
+        FillSingles();
+        _left.AddChild(box);
+    }
+
+    private void FillSingles()
+    {
+        if (_singleList == null || _singleGroup == null) return;
+        string group = _singleGroup.Selected <= 0 ? "" : _singleGroup.GetItemText(_singleGroup.Selected);
+        string q = _singleSearch?.Text.Trim() ?? "";
+        _singleShown = PieceModels.Catalogue.Where(m => m.Style == _singleStyle && (group == "" || m.Group == group)
+            && (q.Length == 0 || m.Name.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
+        _singleList.Clear();
+        foreach (var m in _singleShown) _singleList.AddItem(group == "" ? $"{m.Name}  ({m.Group})" : m.Name);
+    }
+
+    /// <summary>A map piece showing one model on its own, its footprint the model's.</summary>
+    private static MapPiece SinglePiece(PieceModels.Model m, float x, float z)
+    {
+        var size = PieceModels.Measure(m.Path) ?? (2f, 2f, 1f, 0f, 0f);
+        float w = Mathf.Max(0.5f, Mathf.Snapped(size.W, 0.25f)), d = Mathf.Max(0.5f, Mathf.Snapped(size.D, 0.25f));
+        float h = Mathf.Max(0.25f, Mathf.Snapped(size.H, 0.25f));
+        // Plants read as woods (a pine or a bush is a forest piece, not rubble); the name decides the rest.
+        string n = m.Name.ToLowerInvariant();
+        bool plant = new[] { "tree", "pine", "sapling", "bush", "fern", "plant", "oak", "birch", "willow", "palm", "shrub", "flower", "grass", "mushroom" }.Any(n.Contains);
+        string kind = plant ? "Forest" : TerrainLooks.GuessKind(null, m.Name, FDG.ETerrainType.None, h, w * d);
+        var k = TerrainBook.Kind(kind);
+        return new MapPiece
+        {
+            Kind = kind, Name = m.Name, Rules = k?.Rules ?? WarhammerTerrainLibrary.RulesFor(kind), Height = h,
+            Look = TerrainPieces.ModelLook(m.Path, size.W, size.D, size.Cx, size.Cz),
+            X = x, Z = z, W = w, D = d, Points = MapPiece.PointsFor(w, d),
+        };
     }
 
     private void ModelPalette()
@@ -517,7 +619,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             sub.MouseFilter = MouseFilterEnum.Ignore;
             tile.AddChild(sub);
             b.AddChild(tile);
-            b.Pressed += () => { _tool = ETool.Place; _model = entry; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
+            b.Pressed += () => { _tool = ETool.Place; _model = entry; _single = null; _sel = null; _selObjective = -1; _selBase = -1; Say($"Placing {entry.Name} - click the table. Right-click to stop."); Rebuild(); };
             _paletteButtons[e.Id] = b;
             list.AddChild(b);
         }
@@ -806,7 +908,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 Draft.Remember();
                 var k = kinds[(int)i];
                 // A Warhammer model piece keeps its model and its height; only its rules change with the kind.
-                bool model = WarhammerTerrainLibrary.IdOf(p.Look) != null;
+                bool model = WarhammerTerrainLibrary.IdOf(p.Look) != null || TerrainPieces.IsModelLook(p.Look);
                 p.Kind = k.Id; p.Rules = k.Rules;
                 if (!model) { p.Height = k.Height; p.Look = ""; }
                 if (p.Name.Length == 0 || TerrainBook.Kinds.Any(o => o.Name == p.Name)) p.Name = k.Name;
@@ -818,7 +920,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 _right.AddChild(ForgeWidgets.Wrapped($"Warhammer model: {shownModel.Name} ({shownModel.SetName}). Width and depth stretch it.", 12, HudKit.Lime));
             else if (WarhammerTerrainLibrary.IdOf(p.Look) != null)
                 _right.AddChild(ForgeWidgets.Wrapped("A Warhammer model this computer doesn't have - shown as the plain piece.", 12, HudKit.Dim));
-            bool modelPiece = WarhammerTerrainLibrary.IdOf(p.Look) != null;
+            if (TerrainPieces.ModelPiece(p.Look) is { } single)
+                _right.AddChild(ForgeWidgets.Wrapped($"Single model: {single.Name}. Width and depth stretch it; the kind sets its rules.", 12, HudKit.Lime));
+            bool modelPiece = WarhammerTerrainLibrary.IdOf(p.Look) != null || TerrainPieces.IsModelLook(p.Look);
             // The game's own hand-built pieces of this kind (Asset Lab -> Terrain Workshop), for this game. Auto = each
             // player sees a fitting piece in their own terrain style; a named piece is the same for everyone, and a
             // piece that stops models or sight then plays only on its solid parts.
@@ -1028,6 +1132,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         r.AddThemeConstantOverride("separation", 8);
         r.AddChild(HudKit.Text(label, 14, HudKit.Dim, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(64, 0)));
         c.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        if (c is OptionButton ob) { ob.ClipText = true; ob.CustomMinimumSize = new Vector2(120, ob.CustomMinimumSize.Y); }
         r.AddChild(c);
         return r;
     }
@@ -1320,7 +1425,13 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         _ghost.Visible = show;
         if (!show || TableAt(screen) is not { } at) return;
         float h = Mathf.Max(0.15f, _kind.Height);
-        if (_model != null)
+        if (_single != null)
+        {
+            MapPiece m = SinglePiece(_single, 0, 0);
+            h = Mathf.Max(0.15f, m.Height);
+            _ghost.Mesh = new BoxMesh { Size = new Vector3(m.W, h, m.D) };
+        }
+        else if (_model != null)
         {
             MapPiece m = WarhammerTerrainLibrary.PieceFor(_model, 0, 0);
             h = Mathf.Max(0.15f, m.Height);
@@ -1467,7 +1578,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         {
             case ETool.Place:
                 Draft.Remember();
-                var p = _model != null ? WarhammerTerrainLibrary.PieceFor(_model, x, z) : MapPiece.FromKind(_kind, x, z);
+                var p = _single != null ? SinglePiece(_single, x, z)
+                    : _model != null ? WarhammerTerrainLibrary.PieceFor(_model, x, z) : MapPiece.FromKind(_kind, x, z);
                 Draft.Pieces.Add(p);
                 _sel = p;
                 Rebuild();
@@ -1717,6 +1829,17 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 var (x, z) = XZ(a[1]);
                 Draft.Remember();
                 var placed = MapPiece.FromKind(k, x, z);
+                Draft.Pieces.Add(placed);
+                _sel = placed;
+                break;
+            }
+            // "single:<name>@x;z" - one of the game's own terrain models on its own (first whose name contains it).
+            case "single" when arg.Split('@') is { Length: 2 } sm
+                && PieceModels.Catalogue.FirstOrDefault(m => m.Name.Contains(sm[0], StringComparison.OrdinalIgnoreCase)) is { } one:
+            {
+                var (x, z) = XZ(sm[1]);
+                Draft.Remember();
+                var placed = SinglePiece(one, x, z);
                 Draft.Pieces.Add(placed);
                 _sel = placed;
                 break;

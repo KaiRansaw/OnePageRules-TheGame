@@ -72,6 +72,38 @@ public static class TerrainPieces
 
     public const string LookPrefix = "piece:";
 
+    /// <summary>
+    /// A single model placed on its own (Kai, 2026-11-23: "place the single models as I want in the map"): look
+    /// "model:&lt;path&gt;|&lt;w&gt;|&lt;d&gt;|&lt;cx&gt;|&lt;cz&gt;" - the model's file (under the game's terrain folder), its own
+    /// footprint in inches at the Workshop's scale, and where its middle sits from the file's origin. Played and drawn
+    /// as a one-item piece, so it is the same for every player.
+    /// </summary>
+    public const string ModelPrefix = "model:";
+
+    /// <summary>The Workshop's default model scale (model units -> inches).</summary>
+    public const float ModelScale = 0.7f;
+
+    public static string ModelLook(string path, float w, float d, float cx, float cz) =>
+        FormattableString.Invariant($"{ModelPrefix}{path}|{w:0.###}|{d:0.###}|{cx:0.###}|{cz:0.###}");
+
+    public static bool IsModelLook(string? look) => look != null && look.StartsWith(ModelPrefix, StringComparison.Ordinal);
+
+    /// <summary>The single-model piece a "model:" look describes, or null when it isn't one.</summary>
+    public static Piece? ModelPiece(string? look)
+    {
+        if (!IsModelLook(look)) return null;
+        string[] parts = look![ModelPrefix.Length..].Split('|');
+        if (parts.Length < 3) return null;
+        float F(int i) => i < parts.Length && float.TryParse(parts[i], System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float v) ? v : 0f;
+        string path = parts[0];
+        return new Piece
+        {
+            Id = look, Name = Path.GetFileNameWithoutExtension(path).Replace('_', ' '), W = MathF.Max(0.25f, F(1)), D = MathF.Max(0.25f, F(2)),
+            Items = new List<Item> { new() { Model = path, X = -F(3), Z = -F(4), Scale = ModelScale } },
+        };
+    }
+
     private static List<Piece>? _all;
     private static readonly object Gate = new();
 
@@ -86,6 +118,7 @@ public static class TerrainPieces
     public static Piece? ById(string? lookOrId)
     {
         if (string.IsNullOrEmpty(lookOrId)) return null;
+        if (ModelPiece(lookOrId) is { } single) return single;
         string id = lookOrId.StartsWith(LookPrefix, StringComparison.Ordinal) ? lookOrId[LookPrefix.Length..] : lookOrId;
         return All.FirstOrDefault(p => p.Id == id);
     }

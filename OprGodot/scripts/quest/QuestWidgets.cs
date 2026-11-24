@@ -1,3 +1,4 @@
+using FdgRaylib.Models3D;
 using FDG;
 using FDG.Quest;
 using FdgRaylib.Quest;
@@ -17,7 +18,8 @@ internal static class QuestWidgets
     public static string LookOf(QuestHero h) => h.Look ?? QuestArmy.QuestHeroLook(h);
 
     public static Control Portrait(QuestHero h, float size) =>
-        HudKit.Portrait(h.Faction, h.BaseHeroName, "person", size, HudKit.Friendly, look: LookOf(h));
+        UnitPortraits.FindHero(h.Faction, h.Name) != null ? HudKit.HeroPortrait(h, size)
+            : HudKit.Portrait(h.Faction, h.BaseHeroName, "person", size, HudKit.Friendly, look: LookOf(h));
 
     /// <summary>A hero card to pick for a party: portrait, name, level and class, base hero, and a note line.</summary>
     public static Button PickCard(QuestHero h, string note, Color noteColour, bool picked, bool dimmed, Action click)
@@ -150,10 +152,10 @@ public partial class HeroPartyPopup : Control
 
     public override void _Ready()
     {
-        SetAnchorsPreset(LayoutPreset.FullRect);
+        SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Stop;
-        var veil = new ColorRect { Color = new Color(0, 0, 0, 0.6f), MouseFilter = MouseFilterEnum.Ignore };
-        veil.SetAnchorsPreset(LayoutPreset.FullRect);
+        var veil = new ColorRect { Color = new Color(0, 0, 0, 0.82f), MouseFilter = MouseFilterEnum.Ignore };
+        veil.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(veil);
         var col = new VBoxContainer { CustomMinimumSize = new Vector2(900, 560) };
         col.AddThemeConstantOverride("separation", 10);

@@ -202,6 +202,18 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         Rebuild();
     }
 
+    /// <summary>Opens the portrait camera on the hero's model; the picture is saved as this hero's own portrait.</summary>
+    private void TakePortrait(QuestHero hero)
+    {
+        if (hero.Name.Trim().Length == 0) { Say("Give the hero a name first - its portrait is kept under its name.", Palette.HeroGold); return; }
+        string? model = UnitPortraits.Library is { } lib
+            ? UnitPortraits.ModelFor(lib, hero.Faction, hero.BaseHeroName, hero.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(hero)) : null;
+        if (model == null) { Say("No 3D model for this hero on this computer - download its army's models in the Asset Lab first.", Palette.HeroGold); return; }
+        var popup = Lab.PortraitCameraPopup.Open(this, model, $"Portrait of {hero.Name}", hero.Faction, hero.BaseHeroName);
+        popup.SaveTo = UnitPortraits.HeroPath(hero.Faction, hero.Name);
+        popup.Saved += () => { HudKit.ForgetPictures(); Say($"Portrait taken for {hero.Name}.", Palette.Lime); Rebuild(); };
+    }
+
     // ================================================================== hero sheet (left)
 
     private Control Sheet(QuestHero? hero)
@@ -218,7 +230,16 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         }
         var head = new HBoxContainer();
         head.AddThemeConstantOverride("separation", 10);
-        head.AddChild(HudKit.Portrait(hero.Faction, hero.BaseHeroName, "person", 72, HudKit.Friendly, look: hero.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(hero)));
+        var picCol = new VBoxContainer();
+        picCol.AddThemeConstantOverride("separation", 4);
+        picCol.AddChild(HudKit.HeroPortrait(hero, 72));
+        // Kai, 2026-11-23: take a picture of the hero's own model for its portrait.
+        var take = Ui.Button(UnitPortraits.FindHero(hero.Faction, hero.Name) != null ? "Retake" : "Portrait...", () => TakePortrait(hero),
+            "Take this hero's portrait from its 3D model: turn and zoom the camera, then Take portrait. Shown on its cards and in battle.");
+        take.Name = "HeroPortrait";
+        take.AddThemeFontSizeOverride("font_size", 12);
+        picCol.AddChild(take);
+        head.AddChild(picCol);
         var t = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         t.AddThemeConstantOverride("separation", -2);
         t.AddChild(HudKit.Text(hero.Name.Length > 0 ? hero.Name.ToUpperInvariant() : "(NO NAME YET)", 21, HudKit.Fg, HudKit.Bold));
@@ -391,7 +412,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.AddThemeConstantOverride("separation", 2);
         col.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        var pic = HudKit.Portrait(h.Faction, h.BaseHeroName, "person", 80, HudKit.Friendly, look: h.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(h));
+        var pic = HudKit.HeroPortrait(h, 80);
         pic.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         col.AddChild(pic);
         foreach (var (text, size, c) in new[] { (h.Name, 17, selected ? HudKit.Lime : HudKit.Fg), ($"Lv {h.Level} {h.Class}", 14, HudKit.Fg), ($"{h.Faction} - {h.BaseHeroName}", 12, HudKit.Dim) })

@@ -16,6 +16,9 @@ public partial class PortraitCameraPopup : Control
 {
     public event Action? Saved;
 
+    /// <summary>Where the picture is saved instead of the model version's portrait (a Quest hero's own portrait).</summary>
+    public string? SaveTo { get; set; }
+
     private readonly string _model;
     private readonly string _title;
     private readonly string _faction, _unit;
@@ -202,11 +205,11 @@ public partial class PortraitCameraPopup : Control
             Image img = _studio.GetTexture().GetImage();
             img.Convert(Image.Format.Rgba8);
             img.Resize(512, 512, Image.Interpolation.Lanczos);
-            string path = UnitPortraits.PathFor(_model);
+            string path = SaveTo ?? UnitPortraits.PathFor(_model);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             Error err = img.SavePng(path);
             if (err != Error.Ok) { _status.Text = "Could not save it: " + err; return; }
-            UnitPortraits.MarkChosen(_model);
+            if (SaveTo == null) UnitPortraits.MarkChosen(_model);
             HudKit.ForgetPictures();
             _status.Text = "Saved - this is the portrait for this version now.";
             _status.Modulate = HudKit.Lime;

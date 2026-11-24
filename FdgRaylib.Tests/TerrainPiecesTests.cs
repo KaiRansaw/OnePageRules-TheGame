@@ -71,4 +71,18 @@ public sealed class TerrainPiecesTests
         Assert.That(TerrainPieces.Delete(p), Is.Null);
         Assert.That(TerrainPieces.All, Is.Empty);
     }
+
+    [Test]
+    public void ASingleModelLook_IsAOneModelPiece_NamedForEveryone()
+    {
+        string look = TerrainPieces.ModelLook("stylised/nature/models/Pine_1.gltf", 2.5f, 3f, 0.25f, -0.5f);
+        Assert.That(TerrainPieces.IsModelLook(look), Is.True);
+        TerrainPieces.Piece? p = TerrainPieces.ById(look);
+        Assert.That(p, Is.Not.Null);
+        Assert.That((p!.W, p.D, p.Name), Is.EqualTo((2.5f, 3f, "Pine 1")));
+        Assert.That(p.Items, Has.Count.EqualTo(1));
+        Assert.That((p.Items[0].Model, p.Items[0].X, p.Items[0].Z), Is.EqualTo(("stylised/nature/models/Pine_1.gltf", -0.25f, 0.5f)));
+        Assert.That(TerrainSolids.IsPiece(new MapPiece { Look = look }), Is.True, "plays on its solid parts like a named piece");
+        Assert.That(TerrainPieces.ModelPiece("piece:abc"), Is.Null);
+    }
 }

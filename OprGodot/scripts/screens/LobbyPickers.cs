@@ -86,12 +86,12 @@ public partial class LobbyScreen : IBackGuard
     public bool AllowBack()
     {
         if (PickerOpen) { ClosePicker(); return false; }
-        foreach (Node child in GetChildren())
-            if (child is Quest.HeroPartyPopup { Visible: true } party && !party.IsQueuedForDeletion())
-            {
-                party.QueueFree();
-                return false;
-            }
+        if (_partyPopup is { } party && IsInstanceValid(party) && !party.IsQueuedForDeletion())
+        {
+            party.QueueFree();
+            _partyPopup = null;
+            return false;
+        }
         return true;
     }
 

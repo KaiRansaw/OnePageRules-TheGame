@@ -918,8 +918,16 @@ public partial class LobbyScreen : Control, Hud.ILooked
             if (Session.SetParty(info.PlayerID, picks) is { } why) App.I.Message("Party", why);
             Refresh(force: true);
         };
-        AddChild(popup);
+        // Kai, 2026-11-23: added straight into the lobby it was laid out by the lobby's own layout - a small box in the
+        // top-left corner with the hero cards cut off. It opens over the whole screen on its own layer now.
+        var layer = new CanvasLayer { Layer = 40 };
+        AddChild(layer);
+        layer.AddChild(popup);
+        popup.TreeExiting += () => { if (IsInstanceValid(layer)) layer.QueueFree(); };
+        _partyPopup = popup;
     }
+
+    private Quest.HeroPartyPopup? _partyPopup;
 
     private const int ChooseColourId = -2;
 

@@ -218,11 +218,23 @@ public static class HudKit
     public static FdgRaylib.Models3D.PictureFraming.Frame FramingFor(string faction, string unit, FDG.PlayerID? owner = null)
         => SharedLooks.Framing(owner, unit) ?? FdgRaylib.Models3D.PictureFraming.For(faction, unit);
 
+    /// <summary>A Quest hero's picture: its own portrait when one was taken, else its base hero's.</summary>
+    public static Control HeroPortrait(FDG.Quest.QuestHero h, float size) =>
+        Portrait(FdgRaylib.Models3D.UnitPortraits.FindHero(h.Faction, h.Name) != null ? UnitPicture(h.Faction, h.Name)
+            : UnitPicture(h.Faction, h.BaseHeroName, h.Look ?? FDG.Quest.QuestArmy.QuestHeroLook(h)), "person", size, Friendly);
+
     public static Texture2D? UnitPicture(string faction, string unit, string? look = null)
     {
         string key = faction + "/" + unit + "|" + look;
         if (Pictures.TryGetValue(key, out var t)) return t;
         t = null;
+        // A Quest hero's own portrait (Hero Builder -> Take portrait) - the battle names its unit after the hero.
+        if (FdgRaylib.Models3D.UnitPortraits.FindHero(faction, unit) is { } own && Image.LoadFromFile(own) is { } oi)
+        {
+            t = ImageTexture.CreateFromImage(oi);
+            ModelMade.Add(t);
+            return Pictures[key] = t;
+        }
         // A portrait made on purpose for this exact version (Army Forge -> Choose looks -> Make portrait) comes first
         // (Kai, 2026-11-14); then the official picture; then any older model-made one.
         if (FdgRaylib.Models3D.UnitPortraits.FindChosen(faction, unit, look) is { } chosen && Image.LoadFromFile(chosen) is { } ci)
