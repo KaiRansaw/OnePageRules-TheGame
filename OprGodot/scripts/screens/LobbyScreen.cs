@@ -341,7 +341,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
     private static CheckBox Check(VBoxContainer rows, string label, bool on, string tooltip, bool locked, Action<bool> set, int indent = 0)
     {
-        var c = new CheckBox { Text = label, ButtonPressed = on, TooltipText = tooltip, Disabled = locked };
+        var c = new CheckBox { Text = label, ButtonPressed = on, TooltipText = tooltip, Disabled = locked,
+            Name = "Check_" + string.Concat(label.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_')) };
         c.Toggled += v => set(v);
         if (indent > 0) rows.AddChild(HudKit.Pad(c, indent, 0, 0, 0));
         else rows.AddChild(c);

@@ -1157,3 +1157,133 @@ public sealed class AuraPicksDecision : Decision<List<List<DataBinding<UnitData>
         return HudKit.Panel(HudKit.PanelBox(8), HudKit.Pad(line, 14, 10, 14, 10));
     }
 }
+
+/// <summary>
+/// Fog of War - Escalating Battles: the player splits their army into four detachments (Kai, 2026-11-23: "Let me split
+/// them"). Four columns with each detachment's points; every unit card has 1-4 buttons to move it. Starts on the game's
+/// even split.
+/// </summary>
+public sealed class DetachmentSplitDecision : Decision<List<int>>
+{
+    private readonly SplitDetachmentsRequest _r;
+    private readonly List<int> _at;
+    private BattleScreen? _s;
+    private Control? _screen;
+
+    public DetachmentSplitDecision(SplitDetachmentsRequest r)
+    {
+        _r = r;
+        _at = r.Suggested.ToList();
+    }
+
+    public override string Prompt => _r.Instructions;
+    public override string Hint => "Move units between the four detachments with the 1-4 buttons, then Done.";
+    public override string? CancelLabel => null;
+    public override string? ConfirmText => "Use this split?";
+    public override bool HideConfirmBox => true;
+    public override void Confirm() => Finish();
+    public override void AutoPlay(BattleScreen s) => Complete(_r.Suggested.ToList());
+
+    private void Finish()
+    {
+        if (Enumerable.Range(1, _r.Detachments).Any(d => !_at.Contains(d)))
+        {
+            _s?.Toast("Every detachment needs at least one unit.");
+            return;
+        }
+        Complete(_at.ToList());
+        Close();
+    }
+
+    public override void Shown(BattleScreen s) { _s = s; Build(); }
+    public override void Closed(BattleScreen s) => Close();
+
+    private void Close()
+    {
+        if (_screen != null && GodotObject.IsInstanceValid(_screen)) _screen.QueueFree();
+        _screen = null;
+    }
+
+    private void Build()
+    {
+        if (_s == null) return;
+        Close();
+        var veil = new PanelContainer { Name = "DetachmentSplit", MouseFilter = Control.MouseFilterEnum.Stop };
+        veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.94f) });
+        var col = new VBoxContainer();
+        col.AddThemeConstantOverride("separation", 12);
+        veil.AddChild(HudKit.Pad(col, 48, 36, 48, 28));
+        col.AddChild(HudKit.Text("ESCALATING BATTLES - SPLIT YOUR ARMY", 26, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        col.AddChild(HudKit.Text("Four detachments of about equal points. You deploy one now and bring on another at the start of rounds 2, 3 and 4. "
+            + "This starts on the game's even split.", 15, HudKit.Dim, HudKit.Medium).Also(l => l.AutowrapMode = TextServer.AutowrapMode.WordSmart));
+
+        var columns = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 12);
+        var scroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        columns.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        scroll.AddChild(columns);
+        col.AddChild(scroll);
+        int total = _r.Units.Sum(u => u.Points);
+        for (int d = 1; d <= _r.Detachments; d++)
+        {
+            int det = d;
+            var c = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            c.AddThemeConstantOverride("separation", 6);
+            int pts = Enumerable.Range(0, _r.Units.Count).Where(i => _at[i] == det).Sum(i => _r.Units[i].Points);
+            int fair = total / _r.Detachments;
+            c.AddChild(HudKit.Text($"DETACHMENT {det}", 18, HudKit.Gold, HudKit.Bold));
+            c.AddChild(HudKit.Text($"{pts} pts" + (fair > 0 ? $"  ({(pts - fair >= 0 ? "+" : "")}{pts - fair} from even)" : ""), 14,
+                Math.Abs(pts - fair) <= fair / 5 ? HudKit.Lime : Palette.HeroGold, HudKit.Semi));
+            for (int i = 0; i < _r.Units.Count; i++)
+                if (_at[i] == det) c.AddChild(Card(i));
+            columns.AddChild(HudKit.Panel(HudKit.PanelBox(8), HudKit.Pad(c, 12, 10, 12, 10)).Also(p => p.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill));
+        }
+
+        var foot = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        foot.AddThemeConstantOverride("separation", 12);
+        var even = Ui.Button("Even split", () => { for (int i = 0; i < _at.Count; i++) _at[i] = _r.Suggested[i]; Build(); },
+            "Put every unit back where the game's even split had it.", "BackButton");
+        even.Name = "DetachmentEven";
+        foot.AddChild(even);
+        var done = Ui.Button("DONE", Finish, "Use this split and go on to deployment.", "CommitButton");
+        done.Name = "DetachmentDone";
+        done.CustomMinimumSize = new Vector2(220, 52);
+        foot.AddChild(done);
+        col.AddChild(foot);
+
+        _s.AddChild(veil);
+        _screen = veil;
+        Version++;
+    }
+
+    private Control Card(int i)
+    {
+        var e = _r.Units[i];
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 4);
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 8);
+        UnitData u = e.Unit.GetValue();
+        var pic = HudKit.Portrait(_s?.Session.SeatOf(u.PlayerID)?.Faction ?? "", u.Name, "person", 40, HudKit.Friendly, look: HudKit.LookOf(u), owner: u.PlayerID);
+        top.AddChild(pic);
+        var t = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        t.AddThemeConstantOverride("separation", -2);
+        t.AddChild(HudKit.Text(e.Name, 14, HudKit.Fg, HudKit.Semi).Also(l => l.ClipText = true));
+        t.AddChild(HudKit.Text($"{e.Points} pts", 12, Palette.PointsBlue, HudKit.Semi));
+        top.AddChild(t);
+        box.AddChild(top);
+        var moves = new HBoxContainer();
+        moves.AddThemeConstantOverride("separation", 4);
+        for (int d = 1; d <= _r.Detachments; d++)
+        {
+            int det = d;
+            var b = new Button { Text = det.ToString(), ToggleMode = true, ButtonPressed = _at[i] == det, FocusMode = Control.FocusModeEnum.None,
+                CustomMinimumSize = new Vector2(34, 28), Name = $"Det{det}_{i}", TooltipText = $"Move {e.Name} to detachment {det}." };
+            b.Pressed += () => { _at[i] = det; Build(); };
+            moves.AddChild(b);
+        }
+        box.AddChild(moves);
+        return HudKit.Panel(HudKit.PanelBox(6), HudKit.Pad(box, 8, 6, 8, 6));
+    }
+}

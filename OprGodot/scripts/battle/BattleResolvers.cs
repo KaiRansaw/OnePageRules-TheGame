@@ -76,6 +76,7 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<PickUnitLeadersRequest, CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(r => new LeadersDecision(r)));
         registry.RegisterResolver(new Ask<PickCommandGroupUnitsRequest, CancellableResult<List<DataBinding<UnitData>>>>(r => new CommandGroupDecision(r)));
         registry.RegisterResolver(new Ask<PickAuraUnitsRequest, List<List<DataBinding<UnitData>>>>(r => new AuraPicksDecision(r)));
+        registry.RegisterResolver(new Ask<SplitDetachmentsRequest, List<int>>(r => new DetachmentSplitDecision(r)));
         registry.RegisterResolver(new Ask<PickStringsRequest, List<string>>(r =>
             CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickMany(r, m) : new PickStringsDecision(r)));
         registry.RegisterResolver(new Ask<ChooseDeploymentZoneRequest, DataBinding<RectangularZone>>(r => new ZoneDecision(r)));

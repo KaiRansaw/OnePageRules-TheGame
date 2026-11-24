@@ -45,6 +45,7 @@ public static class ResolverRegistryFactory
             .RegisterResolver(new PickCommandGroupUnitsResolver())
             // 2026-11-13: every aura and Command Group in one request; stdin asks it one carrier at a time.
             .RegisterResolver(new PickAuraUnitsRequest.PerRowAdapter(new PickCommandGroupUnitsResolver()))
+            .RegisterResolver(new SplitDetachmentsRequest.TakeSuggested())   // Escalating Battles: the even split
             .RegisterResolver(new PickUnitLeadersResolver())   // #456
             .RegisterResolver(new PickStringsResolver())       // #462
             .RegisterResolver(new ConcedeCheckResolver())      // #466
@@ -143,6 +144,7 @@ public static class ResolverRegistryFactory
                 CancellableResult<List<FDG.Data.DataBinding<UnitData>>>>(commandGroupPicks)
             // The frozen Raylib build shows the one-screen aura request as its old panel, one carrier at a time.
             .RegisterResolver(new PickAuraUnitsRequest.PerRowAdapter(commandGroupPicks))
+            .RegisterResolver(new SplitDetachmentsRequest.TakeSuggested())   // Escalating Battles: the even split
             // #456: Fast-Play unit leaders - one panel, a drop-down per unit, Confirm.
             .RegisterResolver<PickUnitLeadersRequest,
                 CancellableResult<List<PickUnitLeadersRequest.LeaderPick>>>(unitLeaders)
