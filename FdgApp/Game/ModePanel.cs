@@ -33,7 +33,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), CommandPointRows(table, system))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), PoliticalRows(table)))),
             _ => null,
         };
     }
@@ -81,6 +81,23 @@ public static class ModePanel
     }
 
     /// <summary>Command Points: the playstyle, and each player's CP and doctrine.</summary>
+    /// <summary>Political Intrigue: each player's directives used this round, and what was done.</summary>
+    private static List<Row>? PoliticalRows(ITableState table)
+    {
+        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.PoliticalIntrigue is not { } pi) return null;
+        string hover = string.Join("\n", FDG.PoliticalIntrigue.Order.Select(d => $"{d}: {FDG.PoliticalIntrigue.DirectiveText[d]}"));
+        var rows = new List<Row> { new("Political Intrigue - directives", EStyle.Title,
+            "Twice per round, instead of activating a unit, use a directive not used yet this round.\n" + hover) };
+        foreach (var p in table.Players.Objects.Where(p => p.IsFilled))
+        {
+            var used = pi.Used.GetValueOrDefault(p.PlayerID.ToString()) ?? new List<string>();
+            rows.Add(new($"{p.Name}: {used.Count}/{FDG.PoliticalIntrigue.PerRound} this round{(used.Count > 0 ? " (" + string.Join(", ", used) + ")" : "")}",
+                EStyle.Line, hover));
+        }
+        foreach (string line in pi.RoundLog) rows.Add(new(line, EStyle.Dim));
+        return rows;
+    }
+
     private static List<Row>? CommandPointRows(ITableState table, EGameSystem system)
     {
         var rows = new List<Row>();
