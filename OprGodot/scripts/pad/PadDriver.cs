@@ -114,9 +114,20 @@ public partial class PadDriver : Node
         HoverAt(c.GetGlobalRect().GetCenter());
     }
 
+    /// <summary>Where this node last put the system mouse (canvas coordinates) - the last few, as the OS can report
+    /// them a frame or two late.</summary>
+    private readonly Queue<Vector2> _warpedTo = new();
+
+    private void Warp(Vector2 at)
+    {
+        _warpedTo.Enqueue(at);
+        while (_warpedTo.Count > 12) _warpedTo.Dequeue();
+        GetViewport().WarpMouse(at);
+    }
+
     private void HoverAt(Vector2 at)
     {
-        GetViewport().WarpMouse(at);
+        Warp(at);
         Vector2 w = ToWindow(at);
         GInput.ParseInputEvent(new InputEventMouseMotion { Position = w, GlobalPosition = w, Relative = Vector2.Zero, Device = Synth });
     }
@@ -146,6 +157,9 @@ public partial class PadDriver : Node
         if (!pad)
         {
             // The player went back to the mouse or keyboard: hide the pad's marks and put the menus back as they were.
+            // Moving the system mouse ourselves (WarpMouse) makes the OS report a motion too: that one lands where we
+            // put it and is not the player.
+            if (e is InputEventMouseMotion own && _warpedTo.Any(w => own.Position.DistanceTo(w) < 3)) return;
             if (e.Device != Synth && (e is InputEventKey { Pressed: true } or InputEventMouseButton { Pressed: true }
                                       || (e is InputEventMouseMotion m && m.Relative.LengthSquared() > 9)))
                 SetActive(false);
@@ -414,7 +428,7 @@ public partial class PadDriver : Node
 
     private void SendMotion(Vector2 rel)
     {
-        GetViewport().WarpMouse(_ptr);
+        Warp(_ptr);
         Vector2 w = ToWindow(_ptr);
         GInput.ParseInputEvent(new InputEventMouseMotion { Position = w, GlobalPosition = w, Relative = rel, ButtonMask = _mask, Device = Synth });
     }
