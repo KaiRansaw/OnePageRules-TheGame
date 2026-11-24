@@ -33,7 +33,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table), SideMissionRows(table, system, viewers)), Condition(table, system)),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), CommandPointRows(table, system))),
             _ => null,
         };
     }
@@ -77,6 +77,24 @@ public static class ModePanel
         foreach (FDG.EventMarker m in b.Markers)
             rows.Add(new($"Marker: {FDG.BattlefieldEffects.EventName(m.Code, system)} at ({m.X:0}\", {m.Z:0}\")", EStyle.Warn,
                 FDG.BattlefieldEffects.EventText(m.Code, system)));
+        return rows.Count == 0 ? null : rows;
+    }
+
+    /// <summary>Command Points: the playstyle, and each player's CP and doctrine.</summary>
+    private static List<Row>? CommandPointRows(ITableState table, EGameSystem system)
+    {
+        var rows = new List<Row>();
+        if (GameProgressUtilities.TryGetProgress(table.DataStore)?.CommandPoints is { Playstyle: > 0 } cp)
+        {
+            rows.Add(new($"Command Points - {FDG.CommandPoints.PlaystyleName(cp.Playstyle)}", EStyle.Title,
+                FDG.CommandPoints.PlaystyleText(cp.Playstyle, system)));
+            foreach (var p in table.Players.Objects.Where(p => p.IsFilled))
+            {
+                string key = p.PlayerID.ToString();
+                rows.Add(new($"{p.Name}: {cp.Points.GetValueOrDefault(key)} CP - {FDG.CommandPoints.DoctrineName(cp.Doctrine.GetValueOrDefault(key))}",
+                    EStyle.Warn, "Universal stratagems, plus the four of this doctrine."));
+            }
+        }
         return rows.Count == 0 ? null : rows;
     }
 

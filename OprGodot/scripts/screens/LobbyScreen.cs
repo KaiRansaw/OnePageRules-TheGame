@@ -661,6 +661,17 @@ public partial class LobbyScreen : Control, Hud.ILooked
                             FDG.EAdvancedRules now = Vm.AdvancedRules;
                             Vm.SetAdvancedRules(v ? now | option.Flag : now & ~option.Flag);
                         }, 24);
+                // Command Points: which playstyle - the book's roll, or one picked (bits in AdvancedRules).
+                if (chapter == FDG.AdvancedRules.CommandPointsChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.CommandPoints) != 0)
+                {
+                    var cps = new FDG.GameSettings { GameSystem = system, AdvancedRules = Vm.AdvancedRules };
+                    var styles = Enumerable.Range(0, 7).ToList();
+                    Row(rows, "Playstyle", "How Command Points are earned. Each book counts per " + FDG.CommandPoints.Step(system) + " pts of army.",
+                        Choice(styles, FDG.CommandPoints.Picked(cps),
+                            p => p == 0 ? "Roll for it (book)" : $"{p}. {FDG.CommandPoints.PlaystyleName(p)}",
+                            p => FDG.CommandPoints.PlaystyleText(p, system),
+                            locked, p => Vm.SetAdvancedRules(FDG.CommandPoints.WithPick(Vm.AdvancedRules, p))));
+                }
                 // Battlefield Effects: which Special Condition - the book's roll, or one picked (bits in AdvancedRules).
                 if (chapter == FDG.AdvancedRules.BattlefieldEffectsChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.SpecialConditions) != 0)
                 {
