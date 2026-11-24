@@ -30,6 +30,33 @@ public sealed class BattleDecisions
 
     public BattleDecisions(BattleScreen screen) => _screen = screen;
 
+    /// <summary>
+    /// What the player may do right now, when something is steering the game (How to Play's locked steps - Kai,
+    /// 2026-11-24). Null = everything the decision itself allows. Every table click, unit pick, action button and
+    /// number key goes through it, so a locked step can't be got round.
+    /// </summary>
+    public interface IGate
+    {
+        bool AllowUnit(Decision d, IUnit unit);
+        bool AllowAction(Decision d, string action);
+        bool AllowTablePoint(Decision d, Vector2 table, IUnit? unitThere);
+        bool AllowExtraRows(Decision d);
+        bool AllowDrag(Decision d);
+        /// <summary>A short line for the toast when something is refused.</summary>
+        string Refusal { get; }
+    }
+
+    public IGate? Gate { get; set; }
+
+    /// <summary>Redraws the actions area on the next refresh (the gate changed what is allowed).</summary>
+    public void Refresh() => _shownVersion = -2;
+
+    private bool Refuse()
+    {
+        if (Gate != null) _screen.Toast(Gate.Refusal);
+        return true;
+    }
+
     public Decision? Current => BattleResolvers.Inbox.Current;
 
     /// <summary>Called every HUD refresh: notices a new decision and redraws the actions area when it changes.</summary>
@@ -64,15 +91,25 @@ public sealed class BattleDecisions
         return true;
     }
 
-    public bool TableClick(Vector2 at) => Current?.TableClick(_screen, at) ?? false;
+    public bool TableClick(Vector2 at)
+    {
+        if (Current is not { } d) return false;
+        if (Gate != null && _screen.Table.TableAt(at) is { } spot && !Gate.AllowTablePoint(d, spot, _screen.Table.UnitAt(at))) return Refuse();
+        return d.TableClick(_screen, at);
+    }
     public void TableHover(Vector2 at) => Current?.TableHover(_screen, at);
     public bool TableAim(Vector2 at) => Current?.TableAim(_screen, at) ?? false;
-    public bool TableGrab(Vector2 at) => Current?.TableGrab(_screen, at) ?? false;
+    public bool TableGrab(Vector2 at) => Current is { } d && (Gate == null || Gate.AllowDrag(d)) && d.TableGrab(_screen, at);
     public void TableDrag(Vector2 at) => Current?.TableDrag(_screen, at);
     public void TableDrop(Vector2 at, bool moved) => Current?.TableDrop(_screen, at, moved);
     public bool WantsBox => Current?.WantsBox ?? false;
     public void TableBox(Vector2 from, Vector2 to) => Current?.TableBox(_screen, from, to);
-    public void UnitPicked(IUnit unit) => Current?.UnitPicked(_screen, unit);
+    public void UnitPicked(IUnit unit)
+    {
+        if (Current is not { } d) return;
+        if (Gate != null && !Gate.AllowUnit(d, unit)) { Refuse(); return; }
+        d.UnitPicked(_screen, unit);
+    }
     public UnitMark? ListMark(IUnit unit) => Current?.ListMark(unit);
 
     public bool HotKey(int index)
@@ -84,10 +121,12 @@ public sealed class BattleDecisions
             var buttons = rows.Where(r => r.Pick != null || !r.Enabled).ToList();
             index -= first;
             if (index >= buttons.Count || !buttons[index].Enabled || buttons[index].Pick is not { } pick) return false;
+            if (Gate != null && Current is { } gd && !Gate.AllowExtraRows(gd)) return Refuse();
             pick();
             return true;
         }
         if (Current?.Actions is not { } slots || index >= slots.Count || !slots[index].Enabled) return false;
+        if (Gate != null && !Gate.AllowAction(Current, slots[index].Name)) return Refuse();
         slots[index].Choose();
         return true;
     }
@@ -174,6 +213,9 @@ public sealed class BattleDecisions
         // The grid.
         foreach (Node c in _grid.GetChildren()) c.QueueFree();
         IReadOnlyList<ActionSlot>? slots = d == null ? Idle : d.Actions;
+        if (Gate != null && d != null && slots != null)
+            slots = slots.Select(sl => sl.Enabled && !Gate.AllowAction(d, sl.Name)
+                ? sl with { Enabled = false, Tooltip = Gate.Refusal } : sl).ToList();
         if (slots != null)
         {
             var g = new GridContainer { Columns = 2 };
@@ -193,6 +235,8 @@ public sealed class BattleDecisions
         // The list, docked under the grid.
         foreach (Node c in _rows.GetChildren()) c.QueueFree();
         IReadOnlyList<ChoiceRow>? rows = d?.Rows;
+        if (Gate != null && d != null && rows != null && !Gate.AllowExtraRows(d))
+            rows = rows.Select(r => r.Pick == null ? r : r with { Enabled = false, Reason = Gate.Refusal, Pick = null }).ToList();
         bool any = rows is { Count: > 0 };
         if ((any || d?.CancelLabel != null) && Style != RowStyle.List && d!.ButtonChoices)
         {

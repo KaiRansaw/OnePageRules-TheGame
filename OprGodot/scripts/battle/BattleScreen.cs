@@ -19,6 +19,10 @@ namespace OprGodot.Battle;
 public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware
 {
     public GameSession Session { get; set; } = null!;
+
+    /// <summary>How to Play's practice battle (2026-11-24): set by its start screen, with the lesson to continue from; null otherwise.</summary>
+    public int? HowToPlayFrom { get; set; }
+    private HowTo.HowToPlayCoach? _coach;
     public OprGodot.Hud.Looks.ELook Look => OprGodot.Hud.Looks.For(Session.Lobby.Vm.GameSystem);
 
     private BattleTable _table = null!;
@@ -79,6 +83,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         Decisions = new BattleDecisions(this);
         BuildHud();
         ApplyCamera();
+        if (HowToPlayFrom is { } from && FdgRaylib.Tutorial.HowToPlayLauncher.Playing is { } taught)
+        {
+            _coach = new HowTo.HowToPlayCoach { Screen = this, System = taught, ContinueFrom = from, Name = "HowToPlayCoach" };
+            _hud.AddChild(_coach);
+        }
     }
 
     public override void _ExitTree()
@@ -2215,7 +2224,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         Big("Load game", () => Leave("Load another game?", () => App.I.Later(() => App.I.Open<LoadGameScreen>(Scenes.LoadGame))),
             "Pick a saved game to carry on. This game ends - save it first if you want to come back to it.");
         Big("Settings", () => { CloseMenu(); App.I.Open<SettingsScreen>(Scenes.Settings); }, "Your name, display, camera and sound settings.");
-        if (Session.Campaign != null || Session.ArmyCampaign != null)
+        Big("Rules Guide", () =>
+        {
+            CloseMenu();
+            var sys = Session.Lobby.Vm.GameSystem;
+            App.I.Open<HowTo.RulesGuideScreen>(Scenes.RulesGuide, g => { g.System = FdgRaylib.Tutorial.HowToPlay.Teaches(sys) ? sys : FDG.EGameSystem.GrimdarkFuture; g.FromBattle = true; });
+        }, "The core rules lesson by lesson, with pictures. Back returns to this game.").Name = "MenuRulesGuide";
+        if (_coach != null)
+            Big("Leave the practice battle", () => Leave("Leave the practice battle?", () => { }, toHowToPlay: true),
+                "Back to How to Play. Lessons you finished are saved.");
+        else if (Session.Campaign != null || Session.ArmyCampaign != null)
             Big("Return to campaign", () => Leave("Leave this mission?", () => { }, toCampaign: true),
                 "Leave the mission and go back to the campaign. A mission left unfinished is not recorded - it is played again next time.");
         else
@@ -2242,11 +2260,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     }
 
     /// <summary>Leaving the game: asks first (unsaved progress is lost), then goes to the main menu and does <paramref name="then"/>.</summary>
-    private void Leave(string question, Action then, bool toCampaign = false)
+    private void Leave(string question, Action then, bool toCampaign = false, bool toHowToPlay = false)
     {
         bool saved = _lastSaveRound == Session.Table.Progress.RoundCount && Session.Table.Progress.RoundCount != null;
-        Confirm(question, Session.EndedText != null || saved ? "This game ends." : "This game ends - anything since your last save is lost.",
-            "Leave", () => { if (toCampaign) ToCampaign(); else App.I.ToMainMenu(); then(); }, "Stay");
+        Confirm(question, toHowToPlay ? "The practice battle ends. Lessons you finished are saved." : Session.EndedText != null || saved ? "This game ends." : "This game ends - anything since your last save is lost.",
+            "Leave", () => { if (toHowToPlay) App.I.BackTo<HowTo.HowToPlayScreen>(); else if (toCampaign) ToCampaign(); else App.I.ToMainMenu(); then(); }, "Stay");
     }
 
     private int? _lastSaveRound;

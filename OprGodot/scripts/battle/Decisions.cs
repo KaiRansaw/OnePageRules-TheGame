@@ -141,7 +141,7 @@ public abstract class Decision<T> : Decision
     protected void Complete(T reply) => _tcs.TrySetResult(reply);
 }
 
-internal static class Book
+public static class Book
 {
     public static readonly (BookAction Action, string Icon, string Key)[] Grid =
     {
@@ -161,6 +161,29 @@ internal static class Book
     public static void ConfirmHold(BattleScreen s, IUnit? unit, Action go) =>
         s.Confirm("Hold?", $"{unit?.Name ?? "This unit"} stays where it is and shoots if it can. If it has nothing to shoot at, its activation ends.",
             "Hold", go);
+
+    /// <summary>
+    /// Kai, 2026-11-11: grey out what can't do anything. A Charge needs at least one model within charge distance of
+    /// an enemy (GF Advanced Rules 3.6.0, Charging) - measured base to base from the unit's own charge allowance. Also
+    /// read by How to Play, to know when a lesson's charge can't happen yet.
+    /// </summary>
+    public static (bool InReach, float Distance) ChargeReach(BattleScreen s, IUnit me)
+    {
+        float reach = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveChargeDistance(me,
+            FDG.Rules.Dispatch.ReadOnlyRuleEvaluators.For(s.Session.Table), s.Session.Table.Terrain.Objects.ToList());
+        var mine = me.Models.Where(m => m.GetIsAlive()).ToList();
+        foreach (IUnit u in s.Session.Table.Units.Objects)
+        {
+            if (!s.Session.IsEnemy(me.PlayerID, u.PlayerID) || !u.GetIsOnBattlefield()) continue;
+            foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
+                foreach (IModel m in mine)
+                {
+                    float d = Mathf.Sqrt(Mathf.Pow(e.Position.x - m.Position.x, 2) + Mathf.Pow(e.Position.z - m.Position.z, 2)) - e.BaseRadiusInches - m.BaseRadiusInches;
+                    if (d <= reach + 0.01f) return (true, reach);
+                }
+        }
+        return (false, reach);
+    }
 
     /// <summary>
     /// Why Hold would shoot nothing (no ranged weapon, or no enemy within any weapon's range), else null. Kai,
@@ -198,6 +221,8 @@ public sealed class ActivateDecision : Decision<DataBinding<UnitData>>
     private readonly ChooseUnitToActivateRequest _r;
     private IUnit? _pick;
     public ActivateDecision(ChooseUnitToActivateRequest r) => _r = r;
+    /// <summary>The unit picked so far (How to Play reads it), or null.</summary>
+    public IUnit? Picked => _pick;
     /// <summary>The engine's request (the test driver borrows its unit bindings to stage example screens).</summary>
     public ChooseUnitToActivateRequest Request => _r;
 
@@ -311,6 +336,10 @@ public sealed class ActionDecision : Decision<string>
     private static readonly string[] Handled = { MoveOpt, ShootOpt, ChargeOpt, PassOpt };
 
     private IUnit? Unit => _s?.Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(_r.ActivatingUnitID));
+    /// <summary>The unit choosing its action (How to Play reads it).</summary>
+    public UnitID ActingUnitID => _r.ActivatingUnitID;
+    /// <summary>Whether nothing has been done yet this activation (the four book actions are showing).</summary>
+    public bool IsFresh => Fresh;
 
     private bool Can(string o) => _r.ValidOptions.Contains(o);
     private bool Fresh => Can(MoveOpt);   // nothing done yet this activation
@@ -354,24 +383,8 @@ public sealed class ActionDecision : Decision<string>
     /// Kai, 2026-11-11: grey out what can't do anything. A Charge needs at least one model within charge distance of
     /// the target (GF Advanced Rules 3.6.0, Charging) - measured base to base from the unit's own charge allowance.
     /// </summary>
-    private (bool InReach, float Distance) ChargeReach()
-    {
-        if (_s == null || Unit is not { } me) return (true, 12);
-        float reach = FDG.Rules.Dispatch.MovementRuleQueries.EffectiveChargeDistance(me,
-            FDG.Rules.Dispatch.ReadOnlyRuleEvaluators.For(_s.Session.Table), _s.Session.Table.Terrain.Objects.ToList());
-        var mine = me.Models.Where(m => m.GetIsAlive()).ToList();
-        foreach (IUnit u in _s.Session.Table.Units.Objects)
-        {
-            if (!_s.Session.IsEnemy(me.PlayerID, u.PlayerID) || !u.GetIsOnBattlefield()) continue;
-            foreach (IModel e in u.Models.Where(m => m.GetIsAlive()))
-                foreach (IModel m in mine)
-                {
-                    float d = Mathf.Sqrt(Mathf.Pow(e.Position.x - m.Position.x, 2) + Mathf.Pow(e.Position.z - m.Position.z, 2)) - e.BaseRadiusInches - m.BaseRadiusInches;
-                    if (d <= reach + 0.01f) return (true, reach);
-                }
-        }
-        return (false, reach);
-    }
+    private (bool InReach, float Distance) ChargeReach() =>
+        _s == null || Unit is not { } me ? (true, 12) : Book.ChargeReach(_s, me);
 
     private string NotAllowed(BookAction a) => a switch
     {
@@ -495,6 +508,8 @@ public sealed class ActionDecision : Decision<string>
 public sealed class MoveDecision : Decision<CancellableResult<List<ModelMoveEntry>>>
 {
     private readonly DefineMovementPathRequest _r;
+    /// <summary>The unit being moved (How to Play reads it).</summary>
+    public UnitID MovingUnitID => _r.UnitDataBinding.GetValue().ID;
     private MovePlanner.Plan? _pending;
     private readonly List<(float X, float Z)> _via = new();   // the unit's middle at each turn point
     private bool _final;                                       // the path ends in contact - no more points

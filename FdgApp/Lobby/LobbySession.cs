@@ -369,6 +369,13 @@ public sealed class LobbySession : IDisposable
     }
 
     /// <summary>A hand-picked army for a seat. Never auto-replaced afterwards.</summary>
+    /// <summary>Puts a ready-made army on a seat (How to Play's set armies) - the lobby won't swap it for a starter army.</summary>
+    public void GiveArmy(PlayerID playerID, ArmyListFile army)
+    {
+        _served.Add(playerID.ID);
+        Vm.UpdateArmyListFile(playerID, army);
+    }
+
     public void PickArmy(PlayerID playerID, ArmyCatalogEntry entry)
     {
         if (LoadArmyFile(entry.Path) is not { } army) return;
@@ -542,7 +549,8 @@ public sealed class LobbySession : IDisposable
     /// <summary>Army problems that don't block but are worth a "launch anyway?".</summary>
     public IReadOnlyList<string> Warnings() => Vm.IsResumeMode ? Array.Empty<string>() : Vm.ValidateArmiesForLaunch();
 
-    public bool Launch()
+    /// <param name="remember">False for a game that must not become the next lobby's settings (How to Play's practice battle).</param>
+    public bool Launch(bool remember = true)
     {
         bool resume = Vm.IsResumeMode;
         string? fail;
@@ -554,7 +562,7 @@ public sealed class LobbySession : IDisposable
         if (started)
         {
             LaunchStarted = true;
-            PersistHostSettings();
+            if (remember) PersistHostSettings();
             // Rematch: what this game was set up with, while the lobby still has it. A resumed save keeps
             // the last fresh launch's plan cleared - it has no set-up of its own to repeat.
             LastLaunch = !resume && Vm is LobbyViewModel_Host host

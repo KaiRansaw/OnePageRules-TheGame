@@ -72,6 +72,9 @@ public sealed class UserConfig
     /// <summary>The lobby settings panel, as the last hosted (non-resume) game left it.</summary>
     public HostGameSettings HostSettings { get; set; } = HostGameSettings.FromDefaults();
 
+    /// <summary>How to Play: lessons finished in each game (2026-11-24).</summary>
+    public Tutorial.HowToPlayProgress HowToPlay { get; set; } = new();
+
     // ── Store ──────────────────────────────────────────────────────────────────────────────
 
     private static readonly JsonSerializerOptions Json = new()

@@ -35,6 +35,15 @@ public partial class MainMenuScreen : Control, IOwnBackdrop
 
         // The tools along the bottom.
         var tools = GetNode<HBoxContainer>("%Tools");
+        // How to Play (Kai, 2026-11-24, mockup screen 1): the big button first, the Rules Guide small beside it.
+        var learn = HudKit.ActionButton("HowToPlay", "sword-clash", "How to Play", "", HudKit.Lime, 96, selected: true);
+        learn.CustomMinimumSize = new Vector2(210, 96);
+        learn.TooltipText = "Learn the game in a practice battle: set armies, one lesson at a time.";
+        learn.Pressed += () => App.I.Open<HowTo.HowToPlayScreen>(Scenes.HowToPlay);
+        tools.AddChild(learn);
+        tools.AddChild(Tool("RulesGuide", "scroll-unfurled", "Rules Guide", "The core rules lesson by lesson, with pictures.",
+            () => App.I.Open<HowTo.RulesGuideScreen>(Scenes.RulesGuide)));
+        tools.AddChild(new VSeparator { CustomMinimumSize = new Vector2(18, 0) });
         tools.AddChild(Tool("LoadGame", "open-book", "Load Game", "Resume a game you saved.", () => App.I.Open<LoadGameScreen>(Scenes.LoadGame)));
         tools.AddChild(Tool("JoinGame", "radar-sweep", "Join a Game", "Join a friend's game over Tailscale.", OpenJoin));
         tools.AddChild(Tool("ArmyForge", "rally-the-troops", "Army Forge", "Build an army from the army books, pick each model's look, or import a list from the Army Forge website.",

@@ -267,4 +267,6 @@ public static class Scenes
     public const string MapEditor = "res://scenes/screens/MapEditor.tscn";
     public const string MatchTerrain = "res://scenes/screens/MatchTerrain.tscn";
     public const string TerrainWorkshop = "res://scenes/screens/TerrainWorkshop.tscn";
+    public const string HowToPlay = "res://scenes/screens/HowToPlay.tscn";
+    public const string RulesGuide = "res://scenes/screens/RulesGuide.tscn";
 }
