@@ -1537,7 +1537,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         IUnit? show = _selected ?? (activating != null && (Watching || Session.IsMine(activating.PlayerID)) ? activating : null)
                       ?? (Watching && _watchedActing is { } last ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(last) && Alive(u)) : null)
                       ?? MyUnits().FirstOrDefault(Alive);
-        string sig = show == null ? "" : $"{show.ID.ID}:{LeftOf(show)}:{WoundsLeft(show)}:{show.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{UnitActivation.HasActivated(Session.Table.Progress, show)}";
+        string sig = show == null ? "" : $"{show.ID.ID}:{LeftOf(show)}:{WoundsLeft(show)}:{show.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Shaken)}:{UnitActivation.HasActivated(Session.Table.Progress, show)}"
+            + (show == null ? "" : string.Concat(FDG.RelicWargear.PicksOf(Session.Table.DataStore, show).Select(r => $":{r.Item}{r.Used}")));
         if (sig == _cardSig) return;
         _cardSig = sig;
         foreach (Node c in _unitCard.GetChildren()) c.QueueFree();
@@ -1655,6 +1656,30 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             grid.AddChild(HudKit.Text(g.Key.ArmorPenetration > 0 ? g.Key.ArmorPenetration.ToString() : "-", 15, g.Key.ArmorPenetration > 0 ? Palette.WoundsRed : HudKit.Dim, HudKit.Bold));
         }
         col.AddChild(grid);
+
+        // Relic Wargear (Kai, 2026-11-25, mockup board 3): the Hero's relic in gold, its words, and whether a
+        // once-per-game one is still there - on every unit, yours or the enemy's.
+        foreach (FDG.RelicPick relic in FDG.RelicWargear.PicksOf(Session.Table.DataStore, u))
+        {
+            if (!u.Models.Any(m => m.ID.ToString() == relic.Model && m.GetIsAlive())) continue;
+            FDG.RelicWargear.Def? d = FDG.RelicWargear.Find(Session.Lobby.Vm.GameSystem, relic.Item);
+            bool once = d?.Kind == FDG.RelicWargear.EKind.OncePerGame;
+            var rv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            rv.AddThemeConstantOverride("separation", 0);
+            var rtop = new HBoxContainer();
+            rtop.AddChild(HudKit.Text("RELIC", 11, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
+            rtop.AddChild(HudKit.Grow());
+            rtop.AddChild(HudKit.Text(!once ? "ALWAYS ON" : relic.Used ? "USED" : "READY (ONCE)", 11, once && !relic.Used ? HudKit.Gold : HudKit.Dim, HudKit.Bold));
+            rv.AddChild(rtop);
+            string extra = relic.Weapon != null ? $"  on {relic.Weapon}" : relic.Choice != null ? $"  ({relic.Choice})" : "";
+            rv.AddChild(HudKit.Text(relic.Item + extra, 16, HudKit.Fg, HudKit.Bold));
+            if (u.Models.Count > 1) rv.AddChild(HudKit.Text("carried by " + relic.Hero, 12, HudKit.Gold, HudKit.Semi));
+            if (d != null)
+                rv.AddChild(HudKit.Text(d.Text, 12, HudKit.Dim, HudKit.Medium).Also(l => { l.AutowrapMode = TextServer.AutowrapMode.WordSmart; l.CustomMinimumSize = new Vector2(width - 24, 0); }));
+            var rbox = HudKit.PanelBox(6);
+            rbox.Border = HudKit.Gold with { A = relic.Used ? 0.4f : 1f };
+            col.AddChild(HudKit.Panel(rbox, HudKit.Pad(rv, 8, 5, 8, 6)));
+        }
 
         var rulesFlow = new HFlowContainer();
         rulesFlow.AddThemeConstantOverride("h_separation", 4);

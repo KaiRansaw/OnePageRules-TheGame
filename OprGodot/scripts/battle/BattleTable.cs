@@ -834,6 +834,9 @@ public partial class BattleTable : Node3D
         Func<IUnit, bool> activated = UnitActivation.Checker(Session.Table.Progress); // once per frame, not per unit
         // Heights (2026-11-22): a model stands on the Climbable / Steep piece under it (FDG.Climbing).
         List<ITerrain> ground = Session.Table.Terrain.Objects.ToList();
+        // Relic Wargear (Kai, 2026-11-25): a gold gem beside the name of a unit whose Hero carries a relic - both sides.
+        var relics = FDG.RelicWargear.State(Session.Table.DataStore)?.Picks.Select(p => p.Unit).ToHashSet();
+        Vector3 right = Camera.GlobalBasis.X;
         foreach (IUnit unit in Session.Table.Units.Objects)
         {
             bool mine = Session.IsMine(unit.PlayerID);
@@ -898,6 +901,16 @@ public partial class BattleTable : Node3D
                 Vector3 m0 = labelAt + new Vector3(-0.8f, 1.3f, 0), m1 = labelAt + new Vector3(0.8f, 1.3f, 0);
                 if (marks[0].Position != m0) marks[0].Position = m0;
                 if (marks[1].Position != m1) marks[1].Position = m1;
+                bool relic = show && relics != null && relics.Contains(FDG.AdvancedCasting.Id(unit))
+                    && FDG.RelicWargear.PicksOf(Session.Table.DataStore, unit).Any(p => unit.Models.Any(m => m.ID.ToString() == p.Model && m.GetIsAlive()));
+                if (marks[2].Visible != relic) marks[2].Visible = relic;
+                if (relic)
+                {
+                    float half = label.Font.GetStringSize(label.Text, HorizontalAlignment.Left, -1, label.FontSize).X * label.PixelSize / 2f;
+                    Vector3 m2 = labelAt + right * (half + 0.55f);
+                    if (marks[2].Position != m2) marks[2].Position = m2;
+                    if (marks[2].Modulate.A != tint.A) marks[2].Modulate = HudKit.Gold with { A = tint.A };
+                }
             }
             else if (_labels.TryGetValue(unit.ID, out Label3D? gone))
             {
@@ -965,7 +978,8 @@ public partial class BattleTable : Node3D
             Texture = HudKit.IconTex(icon), PixelSize = 0.0028f, Modulate = c, NoDepthTest = true,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Visible = false,
         };
-        m = new[] { Make("checked-shield", HudKit.Dim), Make("broken-shield", Palette.WoundsRed) };
+        m = new[] { Make("checked-shield", HudKit.Dim), Make("broken-shield", Palette.WoundsRed), Make("relic-gem", HudKit.Gold) };
+        m[2].PixelSize = 0.0018f;
         foreach (Sprite3D s in m) AddChild(s);
         _marks[unit.ID] = m;
         return m;

@@ -672,6 +672,16 @@ public partial class LobbyScreen : Control, Hud.ILooked
                             p => FDG.CommandPoints.PlaystyleText(p, system),
                             locked, p => Vm.SetAdvancedRules(FDG.CommandPoints.WithPick(Vm.AdvancedRules, p))));
                 }
+                // Relic Wargear / Magic Items: the selection method - the book's D3, or one picked (bits in AdvancedRules).
+                if (chapter == FDG.AdvancedRules.AdvancedCastingChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.RelicWargear) != 0)
+                {
+                    var rs = new FDG.GameSettings { GameSystem = system, AdvancedRules = Vm.AdvancedRules };
+                    Row(rows, "Selection", "How each Hero gets its " + (FDG.RelicWargear.OptionName(system) == "Magic Items" ? "magic item" : "relic") + ". The same for every player.",
+                        Choice(Enumerable.Range(0, 4).ToList(), FDG.RelicWargear.Picked(rs),
+                            m => m == 0 ? "Roll for it (book)" : $"{m}. {FDG.RelicWargear.MethodName(m)}",
+                            m => FDG.RelicWargear.MethodText(m),
+                            locked, m => Vm.SetAdvancedRules(FDG.RelicWargear.WithPick(Vm.AdvancedRules, m))));
+                }
                 // Battlefield Effects: which Special Condition - the book's roll, or one picked (bits in AdvancedRules).
                 if (chapter == FDG.AdvancedRules.BattlefieldEffectsChapter && (Vm.AdvancedRules & FDG.EAdvancedRules.SpecialConditions) != 0)
                 {

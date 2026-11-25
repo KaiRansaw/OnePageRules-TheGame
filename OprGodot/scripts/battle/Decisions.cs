@@ -1222,12 +1222,15 @@ public sealed class YesNoDecision : Decision<bool>
     private readonly YesNoRequest _r;
     public YesNoDecision(YesNoRequest r) => _r = r;
     public override string Prompt => _r.QuestionText;
-    public override string? RowsTitle => "Choose";
+    /// <summary>A once-per-game relic item being offered (Relic Wargear mockup, board 3): its own heading and buttons.</summary>
+    private bool Relic => FDG.RelicWargear.Table(FDG.EGameSystem.GrimdarkFuture).Concat(FDG.RelicWargear.Table(FDG.EGameSystem.AgeOfFantasy))
+        .Any(d => d.Name == _r.DisplayName);
+    public override string? RowsTitle => Relic ? "RELIC - ONCE PER GAME" : "Choose";
     public override void AutoPlay(BattleScreen s) => Complete(_r.DefaultAnswer);
     public override IReadOnlyList<ChoiceRow> Rows => new[]
     {
-        new ChoiceRow("Yes", null, true, null, () => Complete(true), Icon: "checked-shield"),
-        new ChoiceRow("No", null, true, null, () => Complete(false), Icon: "stop-sign"),
+        new ChoiceRow(Relic ? $"Use the {_r.DisplayName}" : "Yes", null, true, null, () => Complete(true), Icon: "checked-shield"),
+        new ChoiceRow(Relic ? "Save it" : "No", null, true, null, () => Complete(false), Icon: "stop-sign"),
     };
 }
 
