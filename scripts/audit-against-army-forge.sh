@@ -69,7 +69,8 @@ if [ "$dirty" -eq 0 ]; then
   echo "Our data matches the official Army Forge in every system."
 else
   echo "Differences found. Reports: $WORK/report-*.md"
-  echo "To adopt them, copy the affected books from $WORK/fresh over the bundled ones and re-run."
-  echo "A saved army embeds its own book snapshot, so replacing a bundled book does not disturb"
-  echo "armies already saved (BuiltArmyFile.Book)."
+  echo "To adopt them: python3 scripts/adopt-army-forge-changes.py $WORK --all-differing"
+  echo "Do NOT copy whole books from $WORK/fresh: the rebuild comes from the rule supplements and"
+  echo "would undo the fixes made in the bundled books since (OPR wording, rule bands, round bases)."
+  echo "A saved army embeds its own book snapshot, so adopting does not disturb armies already saved."
 fi
