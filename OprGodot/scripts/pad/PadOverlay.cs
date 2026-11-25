@@ -78,6 +78,13 @@ public partial class PadOverlay : Control
         // A list or table shows the highlight on its picked row - no glow round the whole box (Kai, 2026-11-24).
         else if (GetViewport().GuiGetFocusOwner() is { } f && f.IsVisibleInTree() && f is not (Tree or ItemList))
         {
+            // Kai, 2026-11-25: in a battle the panel the highlight is in glows, so LB / RB show where you are.
+            if (_pad.ActivePanelRect() is { } panel)
+            {
+                Rect2 p = panel.Grow(2);
+                for (int i = 1; i <= 6; i++) DrawRect(p.Grow(i * 2), HudKit.Lime with { A = 0.16f / i }, false, 2f);
+                DrawRect(p, HudKit.Lime with { A = 0.85f }, false, 2f);
+            }
             Rect2 r = f.GetGlobalRect().Grow(3);
             DrawRect(r, HudKit.Lime with { A = 0.10f });
             DrawRect(r, HudKit.Lime, false, 2.5f);
@@ -110,6 +117,7 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("menu.back") }, "Step back"));
             hints.Add((new[] { B("bat.confirm") }, "Confirm"));
             hints.Add((new[] { B("bat.next") }, "Next unit"));
+            hints.Add((new[] { B("menu.tabl"), B("menu.tabr") }, "Panels"));
             hints.Add((new[] { B("ptr.esc") }, "Menu"));
             hints.Add((new[] { B("menu.pointer") }, "Pointer"));
         }

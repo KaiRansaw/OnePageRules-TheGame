@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets, Pads.IPadSeats, Pads.IPadKeys
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets, Pads.IPadSeats, Pads.IPadKeys, Pads.IPadPanels
 {
     public GameSession Session { get; set; } = null!;
 
@@ -77,7 +77,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Kai, 2026-11-18 (camera "4"): on the battlefield the camera starts a little lower, looking across the field.
         if (Horizon.On) { _pitch = 42f; _savedPitch = 42f; }
 
-        _hud = new Control { MouseFilter = MouseFilterEnum.Ignore };
+        _hud = new Control { MouseFilter = MouseFilterEnum.Ignore, Name = "Hud" };
         _hud.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(_hud);
         Decisions = new BattleDecisions(this);
@@ -282,7 +282,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         {
             if (_menu != null && IsInstanceValid(_menu)) CloseMenu();
             else if (_pinned.Count > 0) CloseNewestPin();
-            else if (!Decisions.Cancel()) OpenMenu();
+            // Kai, 2026-11-25: B only steps back - pressed again with nothing left to step back from it no longer opens the
+            // menu (Start does), so pressing it repeatedly doesn't flip between the table and the menu.
+            else Decisions.Cancel();
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -521,19 +523,26 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         _cardsSig = sig;
         foreach (Node n in _cards.GetChildren()) { _cards.RemoveChild(n); n.QueueFree(); }
         EGameSystem system = Session.Table.Progress.GameSystem;
-        var col = new VBoxContainer { CustomMinimumSize = new Vector2(760, 0) };
+        // Kai, 2026-11-25: the cards were too big. Four to a row now, and the drawer is as tall as they need.
+        const float cardW = 186, cardH = 140, gap = 8;
+        const int perRow = 4;
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(cardW * perRow + gap * (perRow - 1), 0) };
         col.AddThemeConstantOverride("separation", 8);
         var head = new HBoxContainer();
         head.AddChild(HudKit.Text("MISSION CARDS  -  " + FDG.Missions.MissionCardCatalog.Name(state.Game).ToUpperInvariant(), 18, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
         head.AddChild(HudKit.Grow());
         head.AddChild(HudKit.Text("Hover a card to read it.", 13, HudKit.Dim, HudKit.Semi));
         col.AddChild(head);
-        var look = new MissionCardView.Look(230, 150);
+        var look = new MissionCardView.Look(cardW, cardH);
+        float need = 34;
         void Pile(string title, IEnumerable<int> cards, Func<int, bool> faceDown, bool mine)
         {
             var list = cards.ToList();
             col.AddChild(HudKit.Text(title + (list.Count == 0 ? "  -  none" : ""), 12, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
+            need += 24;
             if (list.Count == 0) return;
+            int rows = (list.Count + perRow - 1) / perRow;
+            need += rows * cardH + (rows - 1) * gap + 8;
             var row = new HFlowContainer();
             row.AddThemeConstantOverride("h_separation", 8);
             row.AddThemeConstantOverride("v_separation", 8);
@@ -555,13 +564,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             Pile($"{who} TABLE  -  {side.Vp} VP", side.Table, n => side.Hidden.Contains(n), mine);
             if (mine && side.Hand.Count > 0) Pile("YOUR HAND", side.Hand, _ => false, true);
         }
-        // As tall as the cards need, up to the room under the round box; past that it scrolls.
-        float room = Mathf.Min(640, GetViewportRect().Size.Y - rb.End.Y - 60);
+        // As tall as the cards need (counted from the rows: measuring the flow boxes before they are laid out came out
+        // a sliver), up to the room under the round box; past that it scrolls.
+        float room = Mathf.Min(820, GetViewportRect().Size.Y - rb.End.Y - 70);
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _cards.AddChild(scroll);
         scroll.AddChild(col);
-        // Measured once it's on screen (the text has its font there).
-        scroll.CustomMinimumSize = new Vector2(780, Mathf.Clamp(col.GetCombinedMinimumSize().Y + 4, 180, room));
+        scroll.CustomMinimumSize = new Vector2(cardW * perRow + gap * (perRow - 1) + 16, Mathf.Clamp(need, 180, room));
         _cards.Size = Vector2.Zero;
     }
 
@@ -1052,6 +1061,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         menu.AddChild(_results);
         menu.MoveChild(_results, 0);
         ScreenFrame.Place(this, "TopButtons", menu, LayoutPreset.TopRight, new Vector2(-Pad, Pad), _hud);
+        _topButtons = menu;
 
         // Bottom-left: the selected unit, and beside it the four actions - two panels, so the actions keep their own
         // size when the card is tall (Kai, 2026-11-14: the menu next to the card "needs to be a set size").
@@ -1085,11 +1095,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         rh.AddChild(HudKit.Heading("Battle report", 12));
         rh.AddChild(HudKit.Grow());
         rh.AddChild(HudKit.Text("R - open", 12, HudKit.Dim, HudKit.Semi));
+        // A click (or A on a controller) on the heading opens the whole report.
+        rh.MouseFilter = MouseFilterEnum.Stop;
+        rh.TooltipText = "Open the whole battle report (R).";
+        rh.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) OpenFullReport(); };
         rep.AddChild(rh);
         _reportRows = new VBoxContainer();
         _reportRows.AddThemeConstantOverride("separation", 1);
         rep.AddChild(_reportRows);
-        stack.AddChild(HudKit.Panel(Tight(10).With(x => x.Fill = x.Fill with { A = 0.8f }), rep));
+        _reportBox = HudKit.Panel(Tight(10).With(x => x.Fill = x.Fill with { A = 0.8f }), rep);
+        stack.AddChild(_reportBox);
         ScreenFrame.Place(this, "MissionAndReport", stack, LayoutPreset.BottomRight, new Vector2(-Pad, -Pad), _hud);
 
         // Left: the army list, between the round box and the unit block.
@@ -1119,6 +1134,23 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         _armyScroll = scroll;
         _armyBox = listBox;
         _roundBox = roundBox;
+    }
+
+    private Control _topButtons = null!, _reportBox = null!;
+
+    /// <summary>Kai, 2026-11-25: LB / RB in button mode step through these, round the screen from the bottom left.</summary>
+    public IReadOnlyList<(string Name, Control Panel)> PadPanels
+    {
+        get
+        {
+            var list = new List<(string, Control)> { ("Actions", _actionBlock), ("Unit card", _unitBlock), ("Army list", _armyBox), ("Round and objectives", _roundBox) };
+            if (_stratagems.Visible) list.Add(("Stratagems", _stratagems));
+            if (_cards.Visible) list.Add(("Mission cards", _cards));
+            list.Add(("Options", _topButtons));
+            list.Add(("Mission", _mission));
+            list.Add(("Battle report", _reportBox));
+            return list;
+        }
     }
 
     private ScrollContainer _armyScroll = null!;

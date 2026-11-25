@@ -42,6 +42,13 @@ public interface IPadSeats
     string PadSeatName(int seat);
 }
 
+/// <summary>A screen made of separate panels the menu highlight jumps between with LB / RB (the battle, Kai 2026-11-25).
+/// In order; ones hidden or with nothing to highlight are skipped.</summary>
+public interface IPadPanels
+{
+    IReadOnlyList<(string Name, Control Panel)> PadPanels { get; }
+}
+
 /// <summary>A screen that wants the controller pointer from the start rather than the menu highlight.</summary>
 public interface IPadPointerScreen { }
 
@@ -305,6 +312,24 @@ public partial class PadDriver : Node
                 Do(battleBind, pressed);
                 return true;
             }
+            // A on something that only shows hover text or takes a click (a unit card rule, an army list row, a report
+            // line): click it, as the mouse would.
+            if (b == PadButton.A && GetViewport().GuiGetFocusOwner() is { } tip && tip.HasMeta(PadTip) && tip.IsVisibleInTree())
+            {
+                if (pressed)
+                {
+                    _ptr = tip.GetGlobalRect().GetCenter();
+                    _ptrPlaced = true;
+                    Warp(_ptr);
+                    Mouse(MouseButton.Left, true);
+                    Mouse(MouseButton.Left, false);
+                }
+                return true;
+            }
+            // LB / RB in a battle: jump between its panels (Kai, 2026-11-25) - Actions, the unit card, the army list...
+            // A popup in front (the Esc menu, a big decision) keeps LB / RB for its own tabs.
+            if (b is PadButton.LB or PadButton.RB && InBattle && App.I.TopScreen is IPadPanels panels && CyclePanel(panels, b == PadButton.RB ? 1 : -1, pressed))
+                return true;
             if (Pad.Find(b, false, false) is not { } bind) return false; // Godot's own: move, press, back
             Do(bind, pressed);
             return true;
@@ -612,7 +637,9 @@ public partial class PadDriver : Node
     {
         const float edge = 18f;
         Vector2 size = ViewSize, d = Vector2.Zero;
-        if (_ptr.X < edge) d.X = -1; else if (_ptr.X > size.X - 1 - edge) d.X = 1;
+        // Kai, 2026-11-25: the right edge no longer pans - the unit card and the panels live there, and the d-pad moves
+        // the camera anyway.
+        if (_ptr.X < edge) d.X = -1;
         if (_ptr.Y < edge) d.Y = -1; else if (_ptr.Y > size.Y - 1 - edge) d.Y = 1;
         return d;
     }
@@ -703,7 +730,10 @@ public partial class PadDriver : Node
 
     private static bool CanFocus(Control c) =>
         c.IsVisibleInTree() && c is not ScrollBar && (c.FocusMode != Control.FocusModeEnum.None) && c is not BaseButton { Disabled: true }
-        && c is BaseButton or Slider or SpinBox or LineEdit or TextEdit or ItemList or Tree or TabBar;
+        && (c is BaseButton or Slider or SpinBox or LineEdit or TextEdit or ItemList or Tree or TabBar || c.HasMeta(PadTip));
+
+    /// <summary>Marks a control opened to the highlight only for its hover text / click (it is not a button).</summary>
+    private const string PadTip = "pad_tip";
 
     private static bool HasFocusable(Node n)
     {
@@ -887,6 +917,15 @@ public partial class PadDriver : Node
                     _unlocked.Add((WeakRef(c)!, c.FocusMode));
                     c.FocusMode = Control.FocusModeEnum.All;
                 }
+                // In a battle, anything with hover text the mouse can reach (unit card rules and weapons, army list rows,
+                // report lines with dice) can take the highlight too, so the highlight shows its hover text.
+                else if (InBattle && c.FocusMode == Control.FocusModeEnum.None && c.MouseFilter != Control.MouseFilterEnum.Ignore
+                         && !string.IsNullOrEmpty(c.TooltipText) && c is not BaseButton and not ScrollBar)
+                {
+                    _unlocked.Add((WeakRef(c)!, c.FocusMode));
+                    c.FocusMode = Control.FocusModeEnum.All;
+                    c.SetMeta(PadTip, true);
+                }
                 if (c is ScrollContainer sc) sc.FollowFocus = true;
             }
             foreach (Node child in n.GetChildren()) Walk(child);
@@ -904,6 +943,69 @@ public partial class PadDriver : Node
             }
         _unlocked.Clear();
     }
+
+    /// <summary>LB / RB in the battle: the highlight goes to the next / previous panel that has something to highlight.
+    /// False when a popup in front has the highlight (LB / RB change its tabs instead).</summary>
+    private bool CyclePanel(IPadPanels screen, int dir, bool pressed)
+    {
+        foreach (Node n in GetTree().Root.GetChildren())
+            if (n is Window { Visible: true } w && HasFocusable(w)) return false;
+        var list = screen.PadPanels.Where(p => IsInstanceValid(p.Panel)).ToList();
+        if (list.Count == 0) return false;
+        Control? owner = GetViewport().GuiGetFocusOwner();
+        bool ownerShown = owner != null && owner.IsVisibleInTree();
+        int at = ownerShown ? list.FindIndex(p => p.Panel.IsAncestorOf(owner!)) : -1;
+        // The highlight is on something that isn't one of the panels (the Esc menu, a decision laid over the table).
+        if (ownerShown && at < 0 && InPopup(owner!)) return false;
+        if (!pressed) return true;
+        int start = at < 0 ? (dir > 0 ? -1 : 0) : at;
+        for (int i = 1; i <= list.Count; i++)
+        {
+            var (name, panel) = list[((start + dir * i) % list.Count + list.Count) % list.Count];
+            if (!panel.IsVisibleInTree()) continue;
+            Unlock(panel);
+            if (!Focusables(panel).Any()) continue;
+            if (_panelFocus.TryGetValue(panel, out WeakRef? was) && was.GetRef().AsGodotObject() is Control last
+                && IsInstanceValid(last) && last.IsVisibleInTree() && CanFocus(last) && panel.IsAncestorOf(last))
+            {
+                last.GrabFocus();
+                EnsureVisible(last);
+            }
+            else FocusDefault(within: panel);
+            if (owner != null && at >= 0 && IsInstanceValid(owner)) _panelFocus[list[at].Panel] = WeakRef(owner)!;
+            Hud.UiSound.Click();
+            _overlay.Toast(name);
+            return true;
+        }
+        return true;
+    }
+
+    /// <summary>The control sits in a big piece laid over the screen (the Esc menu's veil, a relic or doctrine picker),
+    /// not in the screen's own panels.</summary>
+    private bool InPopup(Control c)
+    {
+        float screenArea = ViewSize.X * ViewSize.Y;
+        for (Node? n = c; n != null && n != App.I.TopScreen; n = n.GetParent())
+            if (n is Control piece && piece.GetParent() is { } parent && (parent == App.I.TopScreen || parent is CanvasLayer))
+            {
+                Vector2 size = piece.GetGlobalRect().Size;
+                return size.X * size.Y >= screenArea * 0.4f && piece.Name != "Hud" && piece.Name != Hud.ScreenFrame.FrameNode;
+            }
+        return false;
+    }
+
+    /// <summary>The battle panel the menu highlight is in (for its glow), or null.</summary>
+    public Rect2? ActivePanelRect()
+    {
+        if (PointerMode || !InBattle || App.I.TopScreen is not IPadPanels screen) return null;
+        if (GetViewport().GuiGetFocusOwner() is not { } owner || !owner.IsVisibleInTree()) return null;
+        foreach (var (_, panel) in screen.PadPanels)
+            if (IsInstanceValid(panel) && panel.IsVisibleInTree() && panel.IsAncestorOf(owner)) return panel.GetGlobalRect();
+        return null;
+    }
+
+    /// <summary>Where the highlight was in each battle panel, so LB / RB come back to the same spot.</summary>
+    private readonly Dictionary<Control, WeakRef> _panelFocus = new();
 
     /// <summary>LB / RB: the tab strip the highlight (or pointer) is in, else the screen's main one.</summary>
     private void SwitchTab(int dir)
