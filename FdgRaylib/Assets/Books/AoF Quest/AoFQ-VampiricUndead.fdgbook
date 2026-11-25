@@ -1,7 +1,7 @@
 {
   "name": "Vampiric Undead",
   "faction": "Vampiric Undead",
-  "version": "OPR v3.6.0",
+  "version": "OPR v3.6.1",
   "source": "OnePageRules - Army Forge (army-forge.onepagerules.com)",
   "license": "CC-BY-SA 4.0",
   "gameSystem": "age-of-fantasy-quest",
@@ -3431,6 +3431,105 @@
       ]
     },
     {
+      "id": "4-B-omI",
+      "name": "Vlasmyir",
+      "quality": 5,
+      "defense": 6,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 145,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Snarling Staff",
+          "quantity": 1,
+          "rangeInches": 9,
+          "attacks": 9,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Assault"
+            },
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        }
+      ],
+      "items": [
+        {
+          "name": "Stitched Minions",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Ravage",
+              "numericValue": 6
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "oTID_8d",
+          "label": "Upgrade with",
+          "variant": "Upgrade",
+          "affects": "One",
+          "targets": [],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "rGmxt516Du",
+              "label": "Endless Horde (Spawn(Stitched Zombie [1]))",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Endless Horde",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "coreText",
+                      "name": "Spawn",
+                      "textValue": "Stitched Zombie [1]"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "EcmqnZb",
       "name": "Stitched Butcher",
       "quality": 4,
@@ -5728,6 +5827,96 @@
                     {
                       "kind": "core",
                       "name": "Mind Control"
+                    }
+                  ]
+                }
+              ],
+              "modelsGained": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEOSRvL",
+      "name": "Duke Razvran",
+      "quality": 4,
+      "defense": 4,
+      "baseModelCount": 1,
+      "minModels": 1,
+      "maxModels": 1,
+      "basePointCost": 205,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "weapons": [
+        {
+          "name": "Ravager Mace",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 9,
+          "armorPenetration": 4,
+          "specialRules": []
+        }
+      ],
+      "rules": [
+        {
+          "kind": "core",
+          "name": "Cursed Undead"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 9
+        },
+        {
+          "kind": "core",
+          "name": "Unique Hero"
+        }
+      ],
+      "items": [
+        {
+          "name": "Tyrant of Svalidraz",
+          "quantity": 1,
+          "rules": [
+            {
+              "kind": "core",
+              "name": "Fearless"
+            }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "id": "hiLcQs3",
+          "label": "Replace Tyrant of Svalidraz",
+          "variant": "Replace",
+          "affects": "One",
+          "targets": [
+            "Tyrant of Svalidraz"
+          ],
+          "maxApplications": 0,
+          "minPicks": 0,
+          "maxPicks": 1,
+          "options": [
+            {
+              "id": "1l3BzcqMnZ",
+              "label": "Tyrant of Svalidraz - Leader (Fearless Aura)",
+              "cost": 40,
+              "costUnpriced": false,
+              "weaponsGained": [],
+              "rulesGained": [],
+              "itemsGained": [
+                {
+                  "name": "Tyrant of Svalidraz - Leader",
+                  "quantity": 1,
+                  "rules": [
+                    {
+                      "kind": "core",
+                      "name": "Fearless Aura"
                     }
                   ]
                 }

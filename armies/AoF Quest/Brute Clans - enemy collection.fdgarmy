@@ -267,12 +267,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -294,7 +294,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18\u0022 in line of sight, which gets -1 to hit rolls when attacking once (next time the effect would apply)."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which gets -1 to hit rolls when attacking once (next time the effect would apply)."
     },
     {
       "name": "Thrust in Melee Aura",
@@ -316,7 +316,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Thrust."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Thrust on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Versatile Defense Aura",
@@ -338,7 +338,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Versatile Defense."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Versatile Defense. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Repel Ambushers",
@@ -455,7 +455,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Brute Courage",
@@ -558,7 +558,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -583,7 +583,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         },
@@ -608,7 +608,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "\u002B1 to defense rolls"
         },
@@ -633,7 +633,7 @@
             "scope": "UntilNextActivation"
           },
           "availableWhen": {
-            "kind": "allModelsHaveThisRule"
+            "kind": "mostModelsHaveThisRule"
           },
           "label": "-1 to enemy hit rolls"
         }
@@ -641,7 +641,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where all models have this rule is deployed or activated, pick one effect until the unit\u0027s next activation: when shot or charged from over 9 inches away, it either gets \u002B1 to defense rolls, or enemies get -1 to hit rolls against it."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     },
     {
       "name": "Versatile Defense (Guard)",
@@ -651,11 +651,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -671,7 +672,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This unit gets \u002B1 to defense rolls when shot or charged from over 9 inches away."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     },
     {
       "name": "Versatile Defense (Evasion)",
@@ -681,11 +682,12 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "attackedFromOverInches",
-              "distanceInches": 9
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             },
             "right": {
-              "kind": "allModelsHaveThisRule"
+              "kind": "mostModelsHaveThisRule"
             }
           },
           "effect": {
@@ -701,7 +703,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Enemies shooting or charging this unit from over 9 inches away get -1 to hit."
+      "description": "When a unit where most models have this rule is shot/charged from over 9\u0022/6\u0022 away, pick one effect: the unit either gets \u002B1 to Defense rolls, or enemy units get -1 to hit rolls against it. Note that you may pick a different effect each time the unit is attacked."
     }
   ],
   "spells": [

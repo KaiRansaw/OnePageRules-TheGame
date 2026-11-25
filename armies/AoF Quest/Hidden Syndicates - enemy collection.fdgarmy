@@ -453,8 +453,8 @@
       "joinsUnitId": null,
       "modelCount": 1,
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 2.952756,
         "widthInches": 1.8110236,
         "heightInches": 2.952756
       },
@@ -510,12 +510,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -535,7 +535,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets Melee Slayer."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets Slayer against once (next time the effect would apply)."
     },
     {
       "name": "Rending when Shooting Aura",
@@ -557,7 +557,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Rending when shooting."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Rending on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Repel Ambushers",
@@ -732,7 +732,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores Cover, and when attacking units with most models within 1 inch of terrain, this weapon gets AP(\u002B1)."
+      "description": "Ignores Cover, and when attacking units with most models within 1\u0022 of terrain, this weapon gets AP(\u002B1)."
     },
     {
       "name": "Brace",
@@ -806,7 +806,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Gloom-Mist",
@@ -819,43 +819,9 @@
               "kind": "mostModelsHaveThisRule"
             },
             "right": {
-              "kind": "and",
-              "left": {
-                "kind": "not",
-                "inner": {
-                  "kind": "isMelee"
-                }
-              },
-              "right": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 9
-              }
-            }
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Hit",
-            "delta": -1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Subject"
-        },
-        {
-          "hookID": "Shooting_OnHitRollModifier",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "mostModelsHaveThisRule"
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "isMelee"
-              },
-              "right": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 6
-              }
+              "kind": "attackedFromBeyond",
+              "shotInches": 9,
+              "chargedInches": 6
             }
           },
           "effect": {
@@ -871,7 +837,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have this rule, enemy units shooting/charging them from over 9/6 inches away get -1 to hit rolls."
+      "description": "If most models in this unit have this rule, enemy units shooting/charging them from over 9\u0022/6\u0022 away get -1 to hit rolls ."
     },
     {
       "name": "Counter in Melee",
@@ -903,7 +869,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     },
     {
       "name": "Enhanced Gloom-Mist",
@@ -927,13 +893,32 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Subject"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "unitHasRule",
+              "ruleName": "Gloom-Mist"
+            },
+            "right": {
+              "kind": "mostModelsHaveThisRule"
+            }
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Gloom-Mist"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If most models in this unit have Gloom-Mist, enemies attacking them always get -1 to hit rolls from Gloom-Mist (instead of only when shooting/charging from over 9 inches/6 inches away)."
+      "description": "If most models in this unit have Gloom-Mist, enemies attacking them always get -1 to hit rolls from Gloom-Mist (instead of only when shooting/charging from over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Grounded Evasion",
@@ -963,7 +948,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If a unit where most models have this rule has most of them within 1 inch of terrain, enemies get -1 to hit rolls when attacking them."
+      "description": "If a unit where most models have this rule has most of them within 1\u0022 of terrain, enemies get -1 to hit rolls when attacking them."
     },
     {
       "name": "Enhanced Gloom-Mist Aura",
@@ -985,7 +970,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Gloom-Mist."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Gloom-Mist. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Melee Slayer",
@@ -995,11 +980,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -1015,7 +1000,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Rending when shooting",
@@ -1063,7 +1048,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting, an unmodified 6 to hit gives the attack AP(\u002B4), and the attack ignores Regeneration."
+      "description": "This model gets Rending on its weapons when shooting."
     }
   ],
   "spells": [

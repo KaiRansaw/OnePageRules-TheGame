@@ -440,9 +440,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Relentless": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.133858,
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
@@ -511,9 +514,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Relentless": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 4.7244096,
         "widthInches": 3.6220472,
         "heightInches": 4.7244096
       },
@@ -582,9 +588,12 @@
       "id": null,
       "joinsUnitId": null,
       "modelCount": 1,
+      "ruleCarriers": {
+        "Relentless": 1
+      },
       "base": {
-        "shape": "Rectangle",
-        "diameterInches": 1.1023622,
+        "shape": "Circle",
+        "diameterInches": 6.2992125,
         "widthInches": 4.8031497,
         "heightInches": 6.2992125
       },
@@ -656,13 +665,12 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "unmodifiedRollEquals",
-            "dieValue": 6
+            "kind": "targetAboveHalfStrength"
           },
           "effect": {
-            "kind": "perHitSaveModifier",
-            "onRollValue": 6,
-            "delta": -4
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
@@ -672,7 +680,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "An unmodified 6 to hit gives the attack AP(\u002B4)."
+      "description": "When attacking units with more than half of their total size or Tough value (for single-model units), those hits get AP(\u002B1)."
     },
     {
       "name": "Melee Slayer",
@@ -682,11 +690,11 @@
           "condition": {
             "kind": "and",
             "left": {
-              "kind": "isCharging"
+              "kind": "isMelee"
             },
             "right": {
               "kind": "targetMajorityHasTough",
-              "minToughValue": 3
+              "minToughValue": 9
             }
           },
           "effect": {
@@ -702,7 +710,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model charges, its weapons get AP(\u002B2) against units where most models have Tough 3\u002B."
+      "description": "This model\u0027s melee weapons get AP(\u002B2) against units where most models have Tough(9) or higher."
     },
     {
       "name": "Swift",
@@ -724,7 +732,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Ignores the movement penalty for Difficult terrain (as Strider)."
+      "description": "This model may ignore the Slow rule."
     },
     {
       "name": "Rending when Shooting Aura",
@@ -746,7 +754,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Rending when shooting."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Rending on its weapons when shooting. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Versatile Reach",
@@ -806,7 +814,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, pick one effect until the end of the activation: it gets either \u002B4 inches range when shooting, or moves \u002B2 inches when charging."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Piercing Spotter",
@@ -815,7 +823,7 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 30,
@@ -851,7 +859,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation: pick one enemy within 30 inches in line of sight and roll one die; on a 4\u002B place a marker on it. Attackers may remove markers from it before it rolls to block, gaining AP(\u002B1) per removed marker."
+      "description": "Only one use per game. Once per activation, before attacking, pick one enemy unit within 30\u0022 and in line of sight of this model and roll one die, on a 4\u002B place a token on it. When attacking, friendly units may remove tokens from their target before rolling to block to get \u002BAP(X) on their weapons, where X is the number of removed tokens."
     },
     {
       "name": "Anti-Cover",
@@ -904,7 +912,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Crossing Strike",
@@ -977,7 +985,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy model within 18 inches in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
+      "description": "Once per activation, before attacking, pick one enemy model within 18\u0022 in line of sight, which must take a Morale Test. If failed, it loses 2 spell tokens."
     },
     {
       "name": "Spell Resistance Aura",
@@ -999,7 +1007,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Spell Resistance."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Spell Resistance. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Counter in Melee Aura",
@@ -1021,7 +1029,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Counter in Melee."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Counter on its weapons in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Enhanced Buccaneer Aura",
@@ -1043,7 +1051,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Buccaneer."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Buccaneer. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Buccaneer",
@@ -1076,7 +1084,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting enemies over 9 inches away, this model gets \u002B1 to hit."
+      "description": "When shooting at enemies over 9\u0022 away, this model gets \u002B1 to hit rolls."
     },
     {
       "name": "Enhanced Buccaneer",
@@ -1094,13 +1102,26 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Buccaneer"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Buccaneer"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Buccaneer, it always gets \u002B1 to hit rolls from Buccaneer (instead of only when shooting over 9 inches away)."
+      "description": "If this model has Buccaneer, it always gets \u002B1 to hit rolls from Buccaneer (instead of only when shooting over 9\u0022 away)."
     },
     {
       "name": "Rending when shooting",
@@ -1148,7 +1169,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When shooting, an unmodified 6 to hit gives the attack AP(\u002B4), and the attack ignores Regeneration."
+      "description": "This model gets Rending on its weapons when shooting."
     },
     {
       "name": "Versatile Reach (Range)",
@@ -1171,7 +1192,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B4 inches range when shooting, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Versatile Reach (Charge)",
@@ -1196,7 +1217,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Moves \u002B2 inches when charging, for this activation."
+      "description": "When this unit is activated, pick one effect: until the end of the activation, all models with this rule in this unit either get \u002B4\u0022 range when shooting or move \u002B2\u0022 when charging."
     },
     {
       "name": "Spell Resistance",
@@ -1242,7 +1263,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When a unit where most models have this rule takes wounds, roll one die for each. A wound from a spell is ignored on a 2\u002B, and any other wound on a 6\u002B."
+      "description": "When a unit where most models have this rule takes wounds, roll one die for each. If the wound was from a spell, then it is ignored on a 2\u002B. If the wound was not from a spell, then it is ignored on a 6\u002B instead."
     },
     {
       "name": "Counter in Melee",
@@ -1274,7 +1295,7 @@
       "scope": "Weapon",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When charged, this unit strikes first and the charger rolls one fewer Impact die per living model."
+      "description": "This model gets Counter on its weapons in melee."
     }
   ],
   "spells": [

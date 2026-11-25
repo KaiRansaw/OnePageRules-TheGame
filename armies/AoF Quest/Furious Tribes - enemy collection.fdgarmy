@@ -532,12 +532,12 @@
         {
           "triggerHook": "Activation_OnBeforeAttackAction",
           "cost": {
-            "kind": "oncePerActivation"
+            "kind": "oncePerGame"
           },
           "targetSelector": {
             "rangeInches": 18,
             "minCount": 1,
-            "maxCount": 1,
+            "maxCount": 3,
             "targetAffinity": "Foe",
             "requireLineOfSight": true,
             "requiredToken": null,
@@ -557,7 +557,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per activation, before attacking, pick one enemy unit within 18 inches in line of sight. The first friendly attack against it this activation gets AP(\u002B1) when shooting."
+      "description": "Only one use per game. Once per activation, before attacking, pick up to 3 enemy units within 18\u0022 in line of sight, which friendly units gets AP(\u002B1) on their weapons when shooting against once (next time the effect would apply)."
     },
     {
       "name": "Precision Fighter Aura",
@@ -579,7 +579,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Precision Fighter."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get \u002B1 to hit rolls in melee. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Piercing Fighter",
@@ -602,7 +602,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "AP(\u002B1) in melee."
+      "description": "This model gets AP(\u002B1) on its weapons in melee."
     },
     {
       "name": "Bounding",
@@ -628,7 +628,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this unit is activated, it may place all its models anywhere fully within D3\u002B1 inches of their position."
+      "description": "When this unit is activated, you may move all models with this rule in it by up to D3\u002B1\u0022."
     },
     {
       "name": "Speed Feat Aura",
@@ -650,7 +650,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit gain Speed Feat."
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Speed Feat. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Repel Ambushers",
@@ -694,7 +694,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Quick Shot."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Quick Shot. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Takedown Strike",
@@ -814,7 +814,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
+      "description": "When this model is activated, if it is able to shoot/charge an enemy unit, then it must immediately attack the closest valid target and gets \u002B1 to hit rolls for that attack."
     },
     {
       "name": "Anti-Cover",
@@ -951,7 +951,7 @@
       "scope": "Unit",
       "engineArgumentCount": 1,
       "valence": "Positive",
-      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored."
+      "description": "When this unit takes hits in melee, roll X dice per model with this rule in it, up to as many dice as hits taken. For each 6\u002B one hit is ignored (defender picks which)."
     },
     {
       "name": "Savage",
@@ -959,51 +959,9 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
-              }
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 9
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
-          },
-          "effect": {
-            "kind": "addExtraHit",
-            "onRollValue": 6,
-            "count": 1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        },
-        {
-          "hookID": "Shooting_OnHitRollComplete",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "isMelee"
-            },
-            "right": {
-              "kind": "and",
-              "left": {
-                "kind": "distanceGreaterThan",
-                "distanceInches": 6
-              },
-              "right": {
-                "kind": "unmodifiedRollEquals",
-                "dieValue": 6
-              }
-            }
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "addExtraHit",
@@ -1018,7 +976,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "When this model shoots/charges enemies over 9/6 inches away, unmodified results of 6 to hit deal 1 extra hit."
+      "description": "When this model shoots/charges enemies over 9\u0022/6\u0022 away, unmodified result of 6 to hit deal 1 extra hit (only the original hit counts as a 6 for special rules)."
     },
     {
       "name": "Enhanced Savage",
@@ -1043,13 +1001,26 @@
           },
           "lifetime": "ThisAttack",
           "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "unitHasRule",
+            "ruleName": "Savage"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Savage"
+          },
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
         }
       ],
       "activated": [],
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "If this model has Savage, the target always takes hits on unmodified hit results of 6 from Savage (instead of only when shooting/charging enemies over 9 inches/6 inches away)."
+      "description": "If this model has Savage, the target always takes hits on unmodified hit results of 6 from Savage (instead of only when shooting/charging enemies over 9\u0022/6\u0022 away)."
     },
     {
       "name": "Pierce",
@@ -1116,7 +1087,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Enhanced Savage."
+      "description": "This model\u0027s unit and up to 2 nearest friendly units picked before the start of the game get Enhanced Savage. If this model is killed, picked models that are deployed lose the rule."
     },
     {
       "name": "Piercing Shooting",
@@ -1165,7 +1136,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "\u002B1 to hit rolls in melee."
+      "description": "This model gets \u002B1 to hit rolls in melee."
     },
     {
       "name": "Speed Feat",
@@ -1200,7 +1171,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "Once per game, at the start of its activation, this unit may move \u002B2 inches on Advance actions and \u002B4 inches on Rush and Charge actions for that activation."
+      "description": "Once per game, when this unit moves, you may use this rule so that all models with this rule in it move \u002B2\u0022 when using Advance actions and \u002B4\u0022 when using Rush/Charge actions."
     },
     {
       "name": "Quick Shot",
