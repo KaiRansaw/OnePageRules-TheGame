@@ -129,7 +129,9 @@ public partial class RulesGuideScreen : Control, ILooked
         _page = Math.Clamp(page, 0, _lessons.Count - 1);
         Lesson l = _lessons[_page];
 
-        foreach (Node c in _chapters.GetChildren()) c.QueueFree();
+        // Out of the tree first, so the new chapter buttons get their own names (the pad driver finds the highlighted
+        // one again by name after the rebuild).
+        foreach (Node c in _chapters.GetChildren()) { _chapters.RemoveChild(c); c.QueueFree(); }
         _chapters.AddChild(HudKit.Text("CHAPTERS", 12, HudKit.Dim, HudKit.Tracked(HudKit.Bold, 2)));
         foreach (Lesson c in _lessons)
         {

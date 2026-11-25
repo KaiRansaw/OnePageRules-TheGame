@@ -98,7 +98,18 @@ public partial class PadOverlay : Control
     {
         var hints = new List<(PadButton[] Buttons, string Text)>();
         PadButton B(string id) => Pad.All.First(b => b.Id == id).Button;
-        if (!_pad.PointerMode)
+        if (!_pad.PointerMode && _pad.InBattle)
+        {
+            // Battle, menu highlight: the d-pad walks the HUD buttons, the battle's own buttons still work.
+            if (_pad.TurnName() is { } who) hints.Add((Array.Empty<PadButton>(), $"{who}'s turn"));
+            hints.Add((new[] { B("menu.press") }, "Select"));
+            hints.Add((new[] { B("menu.back") }, "Step back"));
+            hints.Add((new[] { B("bat.confirm") }, "Confirm"));
+            hints.Add((new[] { B("bat.next") }, "Next unit"));
+            hints.Add((new[] { B("ptr.esc") }, "Menu"));
+            hints.Add((new[] { B("menu.pointer") }, "Pointer"));
+        }
+        else if (!_pad.PointerMode)
         {
             hints.Add((new[] { B("menu.press") }, "Select"));
             hints.Add((new[] { B("menu.back") }, "Back"));

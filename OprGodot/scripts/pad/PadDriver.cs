@@ -25,6 +25,13 @@ public interface IPadTargets
     bool PadOverTarget(Vector2 at);
 }
 
+/// <summary>A screen that takes the battle keys a controller presses straight from the driver, instead of as key
+/// presses - which a highlighted button would catch first (Space presses a focused button).</summary>
+public interface IPadKeys
+{
+    void PadKey(Key key);
+}
+
 /// <summary>A screen played by several people at one computer (a two-player battle): each controller plays one seat.</summary>
 public interface IPadSeats
 {
@@ -279,6 +286,15 @@ public partial class PadDriver : Node
                 else if (_repeatDir == dir) _repeatDir = null;
                 return true;
             }
+            // A battle in menu-highlight mode keeps the battle's own buttons that don't clash with moving the highlight
+            // (Kai, 2026-11-24: "work on controller mode more ... especially in game"): X confirms, Y picks the next
+            // ready unit, Start is the menu, View the report, the right stick click the top view.
+            if (InBattle && b is PadButton.X or PadButton.Y or PadButton.Start or PadButton.Back or PadButton.RStick
+                && Pad.Find(b, true, true) is { } battleBind)
+            {
+                Do(battleBind, pressed);
+                return true;
+            }
             if (Pad.Find(b, false, false) is not { } bind) return false; // Godot's own: move, press, back
             Do(bind, pressed);
             return true;
@@ -293,7 +309,10 @@ public partial class PadDriver : Node
         {
             case PadDo.Click: Mouse(MouseButton.Left, pressed); break;
             case PadDo.RightClick: Mouse(MouseButton.Right, pressed); break;
-            case PadDo.Key: SendKey(bind.Key, pressed); break;
+            case PadDo.Key:
+                if (!PointerMode && App.I.TopScreen is IPadKeys keys) { if (pressed) keys.PadKey(bind.Key); }
+                else SendKey(bind.Key, pressed);
+                break;
             case PadDo.TogglePointer: if (pressed) SetPointerMode(!PointerMode); break;
             case PadDo.Info:
                 InfoHeld = pressed;
@@ -350,11 +369,13 @@ public partial class PadDriver : Node
         Control? top = App.I?.TopScreen;
         if (!PointerMode && top != null && top == _lastTop && GetViewport().GuiGetFocusOwner() is { } owner && top.IsAncestorOf(owner))
             _lastFocus[top] = WeakRef(owner)!;
+        if (!PointerMode && top != null && top == _lastTop) KeepFocusThroughRebuilds();
         if (top != _lastTop)
         {
             // A new screen: its own default mode, and in menu mode the highlight goes on its first button.
             _lastTop = top;
             _pointerOverride = null;
+            _heldName = null;
             ReleaseMouse();
             if (Active && Pad.Prefs.Enabled)
             {
@@ -400,6 +421,42 @@ public partial class PadDriver : Node
                 if (ActiveRoot() is { } root) Unlock(root);
             }
         }
+    }
+
+    private string? _heldName;
+    private Vector2 _heldAt;
+    private ulong _heldLostMs;
+
+    /// <summary>A screen that rebuilds its rows when one is pressed (the Rules Guide's chapters, a list re-filled)
+    /// destroys the highlighted button with them, and the next press would land on the first row. So: remember the
+    /// highlighted button's name and place, and if it vanishes, put the highlight on its replacement - the button of
+    /// the same name, else the nearest one to where it was - within a moment of it going.</summary>
+    private void KeepFocusThroughRebuilds()
+    {
+        Control? f = GetViewport().GuiGetFocusOwner();
+        if (f != null && IsInstanceValid(f) && f.IsVisibleInTree())
+        {
+            _heldName = f.Name;
+            _heldAt = f.GetGlobalRect().GetCenter();
+            _heldLostMs = 0;
+            return;
+        }
+        if (_heldName == null || !Active) return;
+        ulong now = Time.GetTicksMsec();
+        if (_heldLostMs == 0) _heldLostMs = now;
+        if (now - _heldLostMs > 1500) { _heldName = null; return; } // gone for good: leave it
+        if (ActiveRoot() is not { } root) return;
+        List<Control> all = Focusables(root).ToList();
+        if (all.Count == 0) return; // the new rows aren't in yet: try next frame
+        Unlock(root);
+        // Same name, nearest to where it was (seat cards all have a "SeatArmy" - the one in the same card is the one).
+        Control? same = _heldName.StartsWith('@') ? null : all.Where(c => c.Name == _heldName)
+            .MinBy(c => c.GetGlobalRect().GetCenter().DistanceSquaredTo(_heldAt));
+        Control? pick = same ?? all.Where(c => c.GetGlobalRect().GetCenter().DistanceTo(_heldAt) < 160)
+            .MinBy(c => c.GetGlobalRect().GetCenter().DistanceSquaredTo(_heldAt));
+        if (pick == null) return;
+        pick.GrabFocus();
+        EnsureVisible(pick);
     }
 
     /// <summary>The highlight each open screen last had, so Back lands on the button you left from.</summary>
@@ -639,34 +696,93 @@ public partial class PadDriver : Node
     private void Navigate(Vector2 dir)
     {
         if (NeedsFocus()) { FocusDefault(); return; }
+        // Up / down in a list or table moves through its rows (Kai, 2026-11-24: the army lists table took the highlight
+        // as one block). A picks the row (Godot's own: it activates the selected row). Past the first / last row the
+        // highlight leaves the list as usual.
+        if (dir.Y != 0 && GetViewport().GuiGetFocusOwner() is { } owner && StepRow(owner, (int)dir.Y)) return;
+        // Left / right on a slider moves the slider (one step of about a twentieth of its range), not the highlight.
+        if (dir.X != 0 && GetViewport().GuiGetFocusOwner() is Godot.Range range && range is HSlider { Editable: true } or SpinBox { Editable: true })
+        {
+            double step = Math.Max(range.Step, (range.MaxValue - range.MinValue) / 20.0);
+            range.Value = Math.Clamp(range.Value + step * Math.Sign(dir.X), range.MinValue, range.MaxValue);
+            return;
+        }
         if (ActiveRoot() is not { } root || GetViewport().GuiGetFocusOwner() is not { } from) return;
         Unlock(root);
         Rect2 a = from.GetGlobalRect();
         Vector2 ac = a.GetCenter();
-        Control? best = null;
-        float bestScore = float.MaxValue;
+        // Two passes (Kai, 2026-11-24: right sometimes went up-right, left went down). First, anything straight that
+        // way - overlapping this button across the move, like a beam - the nearest wins. Only when nothing is straight
+        // that way, the nearest inside a cone that way, with going off to the side counted double.
+        Control? beam = null, cone = null;
+        float beamBest = float.MaxValue, coneBest = float.MaxValue;
+        Vector2 across = new(Math.Abs(dir.Y), Math.Abs(dir.X));
         foreach (Control c in Focusables(root))
         {
             if (c == from || c.IsAncestorOf(from) || from.IsAncestorOf(c)) continue;
             Rect2 r = c.GetGlobalRect();
             Vector2 rc = r.GetCenter();
-            // Must lie that way: its centre past this one's centre, and not overlapping back the other way much.
             float along = (rc - ac).Dot(dir);
             if (along <= 4) continue;
             float edgeGap = dir.X != 0
                 ? (dir.X > 0 ? r.Position.X - a.End.X : a.Position.X - r.End.X)
                 : (dir.Y > 0 ? r.Position.Y - a.End.Y : a.Position.Y - r.End.Y);
+            // Overlapping back the other way by more than half: it's beside this one, not past it.
             if (edgeGap < -Math.Min(dir.X != 0 ? a.Size.X : a.Size.Y, dir.X != 0 ? r.Size.X : r.Size.Y) * 0.5f) continue;
-            // Sideways: zero while the two overlap across the move, else the gap between them.
             float side = dir.X != 0
                 ? Math.Max(0, Math.Max(r.Position.Y - a.End.Y, a.Position.Y - r.End.Y))
                 : Math.Max(0, Math.Max(r.Position.X - a.End.X, a.Position.X - r.End.X));
-            float score = Math.Max(edgeGap, 0) + side * 3f + Math.Abs((rc - ac).Dot(new Vector2(dir.Y, dir.X))) * 0.15f;
-            if (score < bestScore) { bestScore = score; best = c; }
+            float offCentre = Math.Abs((rc - ac).Dot(across));
+            if (side <= 0)
+            {
+                float score = Math.Max(edgeGap, 0) + offCentre * 0.05f;
+                if (score < beamBest) { beamBest = score; beam = c; }
+            }
+            else if (offCentre <= along * 1.5f)
+            {
+                float score = Math.Max(edgeGap, 0) + side * 2f + offCentre * 0.25f;
+                if (score < coneBest) { coneBest = score; cone = c; }
+            }
         }
+        Control? best = beam ?? cone;
         if (best == null) return;
         best.GrabFocus();
         EnsureVisible(best);
+    }
+
+    /// <summary>One row up or down in a focused <see cref="Tree"/> or <see cref="ItemList"/>. False when there's no row that
+    /// way (the highlight moves on instead).</summary>
+    private static bool StepRow(Control owner, int step)
+    {
+        if (owner is Tree tree)
+        {
+            TreeItem? at = tree.GetSelected();
+            TreeItem? next = at == null ? FirstRow(tree) : step > 0 ? at.GetNextVisible() : at.GetPrevVisible();
+            while (next != null && !next.IsSelectable(0)) next = step > 0 ? next.GetNextVisible() : next.GetPrevVisible();
+            if (next == null || (step < 0 && next == tree.GetRoot() && tree.HideRoot)) return false;
+            next.Select(0);
+            tree.ScrollToItem(next);
+            return true;
+        }
+        if (owner is ItemList list && list.ItemCount > 0)
+        {
+            int[] sel = list.GetSelectedItems();
+            int i = sel.Length == 0 ? (step > 0 ? 0 : -1) : sel[0] + step;
+            while (i >= 0 && i < list.ItemCount && list.IsItemDisabled(i)) i += step;
+            if (i < 0 || i >= list.ItemCount) return false;
+            list.Select(i);
+            list.EnsureCurrentIsVisible();
+            list.EmitSignal(ItemList.SignalName.ItemSelected, i);
+            return true;
+        }
+        return false;
+    }
+
+    private static TreeItem? FirstRow(Tree tree)
+    {
+        TreeItem? r = tree.GetRoot();
+        if (r == null) return null;
+        return tree.HideRoot ? r.GetFirstChild() : r;
     }
 
     /// <summary>Scrolls every list the control sits in so it can be seen (screens' own scroll boxes don't always follow).</summary>

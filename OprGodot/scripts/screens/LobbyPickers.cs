@@ -346,7 +346,14 @@ public partial class LobbyScreen : IBackGuard
             name.ClipText = true;
             v.AddChild(name);
             b.AddChild(v);
-            b.Pressed += () => Show(path);
+            // Controller, menu highlight (Kai, 2026-11-24): the highlight previews the map, A plays on it - no trip down to
+            // USE THIS MAP.
+            b.FocusEntered += () => { if (Pads.PadDriver.Active) Show(path); };
+            b.Pressed += () =>
+            {
+                Show(path);
+                if (Pads.PadDriver.Active && Pads.PadDriver.I is { PointerMode: false }) use.EmitSignal(BaseButton.SignalName.Pressed);
+            };
             tiles.Add((path, b));
             return b;
         }

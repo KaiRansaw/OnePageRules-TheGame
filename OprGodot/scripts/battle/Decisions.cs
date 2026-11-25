@@ -1493,6 +1493,11 @@ public sealed class PlaceDecision : Decision<CancellableResult<List<PlacedObject
     public override string? CancelLabel => _r.AllowCancel ? "Pick another unit" : null;
     public override void Cancel() { if (_r.AllowCancel) Complete(new Cancelled<List<PlacedObjectEntry<ModelData>>>()); }
 
+    /// <summary>Another of your units not yet on the table, while this one could still be put back.</summary>
+    public bool CanSwitchTo(BattleScreen s, IUnit unit) =>
+        _r.AllowCancel && s.Session.IsMine(unit.PlayerID) && !unit.GetIsOnBattlefield()
+        && !unit.Models.Any(m => _r.ModelsToPlace.Any(p => p.GetValue().ID.Equals(m.ID)));
+
     public override IReadOnlyList<ActionSlot>? Actions => AimedPlacement.IsReposition(_r)
         ? new[] { new ActionSlot("StayPut", "shield", "Stay put", "1", true, "Leave every model where it is.", () => Complete(new Selected<List<PlacedObjectEntry<ModelData>>>(AimedPlacement.StayPut(_r)))) }
         : null;

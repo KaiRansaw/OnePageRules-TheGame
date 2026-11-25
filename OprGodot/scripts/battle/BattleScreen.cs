@@ -16,7 +16,7 @@ namespace OprGodot.Battle;
 /// <para>Decisions the Godot build has a screen for go to the player; the rest are made by the official bot
 /// for the player (autopilot, <see cref="HybridResolverRegistry"/>) and the prompt line says so.</para>
 /// </summary>
-public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets, Pads.IPadSeats
+public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked, Screens.ISettingsAware, Pads.IPadCamera, Pads.IPadTargets, Pads.IPadSeats, Pads.IPadKeys
 {
     public GameSession Session { get; set; } = null!;
 
@@ -276,6 +276,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is InputEventMouse) return;
+        // A controller's B (menu highlight mode) is "ui_cancel", which App reads as Back - that walked out of the battle
+        // into the lobby (Kai, 2026-11-24). In a battle it does what Esc does: close the menu, step back, else open the menu.
+        if (IsVisibleInTree() && e is InputEventJoypadButton && e.IsActionPressed("ui_cancel"))
+        {
+            if (_menu != null && IsInstanceValid(_menu)) CloseMenu();
+            else if (_pinned.Count > 0) CloseNewestPin();
+            else if (!Decisions.Cancel()) OpenMenu();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         // A hidden screen still gets unhandled keys. With Settings open over the battle (Esc menu -> Settings) every
         // key meant for Settings was played on the table underneath: Esc stepped back out of the open decision or
         // opened the Esc menu again (and Settings stayed up), 1-9 pressed action buttons, Space confirmed a move.
@@ -354,6 +364,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
                 break;
         }
     }
+
+    /// <summary>A controller's battle button in menu-highlight mode (X = Space, Start = Esc...), as if the key was pressed.</summary>
+    public void PadKey(Key key) => TableKeys(new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = true });
 
     private void TableKeys(InputEvent e)
     {
@@ -491,9 +504,11 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     {
         if (_table.UnitCentre(u) is not { } c) return null;
         Vector2 view = GetViewportRect().Size;
-        Rect2 safe = new Rect2(view * 0.12f, view * 0.76f);
-        if (_table.Camera.IsPositionBehind(c) || !safe.HasPoint(_table.Camera.UnprojectPosition(c))) FocusOn(c);
-        return _table.Camera.UnprojectPosition(c);
+        // The camera stays where the player put it (Kai, 2026-11-24: "it auto locks the screen to the selected unit.
+        // remove it"). A unit off screen is still picked; the pointer just doesn't go to it.
+        if (_table.Camera.IsPositionBehind(c)) return null;
+        Vector2 sp = _table.Camera.UnprojectPosition(c);
+        return new Rect2(Vector2.Zero, view).HasPoint(sp) ? sp : null;
     }
 
     public Vector2? PadCycle(int dir)
@@ -675,8 +690,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
     private void SelectNextReady()
     {
+        // The units the open question can take (deploying: the ones not on the table yet), else the ones yet to act.
         Func<IUnit, bool> activated = UnitActivation.Checker(Session.Table.Progress);
-        var mine = MyUnits().Where(u => !activated(u)).ToList();
+        var pickable = MyUnits().Where(u => Decisions.ListMark(u) is { Pickable: true }).ToList();
+        var mine = pickable.Count > 0 ? pickable
+            : Decisions.Current is PlaceDecision ? MyUnits().Where(u => !u.GetIsOnBattlefield() && Decisions.LastPickable.Contains(u.ID)).ToList()
+            : MyUnits().Where(u => !activated(u)).ToList();
         if (mine.Count == 0) return;
         int i = _selected == null ? -1 : mine.FindIndex(u => u.ID.Equals(_selected.ID));
         SelectUnit(mine[(i + 1) % mine.Count]); Decisions.UnitPicked(mine[(i + 1) % mine.Count]);

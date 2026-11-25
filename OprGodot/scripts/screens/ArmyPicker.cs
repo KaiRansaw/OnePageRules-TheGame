@@ -183,7 +183,9 @@ public partial class ArmyPicker : PanelContainer
             b.GetNode<Control>("%Badge").AddChild(badge);
             if (c == 0) b.Modulate = new Color(0.55f, 0.55f, 0.55f);
         }
-        b.Pressed += () => Select(army);
+        // A controller has no double click: A on a faction opens its lists straight away (Kai, 2026-11-24), in either
+        // controller mode. The mouse still picks with one click and opens with two.
+        b.Pressed += () => { Select(army); if (Pads.PadDriver.Active && !_commit.Disabled) Commit(); };
         b.GuiInput += e => { if (e is InputEventMouseButton { DoubleClick: true, ButtonIndex: MouseButton.Left }) { Select(army); Commit(); } };
         return b;
     }

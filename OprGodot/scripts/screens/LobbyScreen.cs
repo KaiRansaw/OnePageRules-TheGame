@@ -882,7 +882,20 @@ public partial class LobbyScreen : Control, Hud.ILooked
         side.AddChild(team);
         side.AddChild(ColourChoice(seat, info, colours));
         col.AddChild(side);
+        PadSelectsSeat(card, seat);
         return card;
+    }
+
+    /// <summary>With a controller there is no clicking a card: the highlight moving onto anything in a seat's card shows
+    /// that seat's army under the map (Kai, 2026-11-24). The cards rebuild, and the highlight is put back in the same
+    /// spot by the pad driver.</summary>
+    private void PadSelectsSeat(Node card, int seat)
+    {
+        foreach (Node n in card.GetChildren())
+        {
+            if (n is Control c) c.FocusEntered += () => { if (Pads.PadDriver.Active && seat != _selectedSeat) CallDeferred(MethodName.SelectSeat, seat); };
+            PadSelectsSeat(n, seat);
+        }
     }
 
     /// <summary>
@@ -996,6 +1009,52 @@ public partial class LobbyScreen : Control, Hud.ILooked
             ColorModesVisible = false, SlidersVisible = false, HexVisible = true, Color = SeatColour(colours[seat]),
         };
         col.AddChild(picker);
+
+        // The wheel only answers mouse drags, so a controller sets the colour here instead (Kai, 2026-11-24): three
+        // sliders (left / right moves them) and a row of ready-made colours. They and the wheel follow each other.
+        var sliders = new GridContainer { Columns = 2 };
+        sliders.AddThemeConstantOverride("h_separation", 10);
+        HSlider MakeSlider(string label, string name, float value)
+        {
+            sliders.AddChild(HudKit.Text(label, 14, HudKit.Dim, HudKit.Semi));
+            var sl = new HSlider { Name = name, MinValue = 0, MaxValue = 1, Step = 0.04, Value = value, CustomMinimumSize = new Vector2(260, 24), FocusMode = FocusModeEnum.All };
+            sliders.AddChild(sl);
+            return sl;
+        }
+        HSlider hue = MakeSlider("Hue", "ColourHue", picker.Color.H), sat = MakeSlider("Colour", "ColourSaturation", picker.Color.S),
+            val = MakeSlider("Brightness", "ColourBrightness", picker.Color.V);
+        col.AddChild(sliders);
+        bool syncing = false;
+        void FromSliders(double _)
+        {
+            if (syncing) return;
+            syncing = true;
+            picker.Color = Color.FromHsv((float)hue.Value, (float)sat.Value, (float)val.Value);
+            picker.EmitSignal(ColorPicker.SignalName.ColorChanged, picker.Color);
+            syncing = false;
+        }
+        hue.ValueChanged += FromSliders; sat.ValueChanged += FromSliders; val.ValueChanged += FromSliders;
+        picker.ColorChanged += c =>
+        {
+            if (syncing) return;
+            syncing = true;
+            hue.Value = c.H; sat.Value = c.S; val.Value = c.V;
+            syncing = false;
+        };
+        var swatches = new HFlowContainer();
+        swatches.AddThemeConstantOverride("h_separation", 4);
+        swatches.AddThemeConstantOverride("v_separation", 4);
+        for (int i = 0; i < PlayerColorCodes.Count; i++)
+        {
+            Color sw = SeatColour(i);
+            var img = Image.CreateEmpty(22, 22, false, Image.Format.Rgba8);
+            img.Fill(sw);
+            var b = new Button { Icon = ImageTexture.CreateFromImage(img), Name = $"Swatch{i}", TooltipText = PlayerColorCodes.Options[i].Name, CustomMinimumSize = new Vector2(36, 32), FocusMode = FocusModeEnum.All };
+            b.Pressed += () => { picker.Color = sw; picker.EmitSignal(ColorPicker.SignalName.ColorChanged, sw); };
+            swatches.AddChild(b);
+        }
+        col.AddChild(swatches);
+
         var others = new HBoxContainer();
         others.AddThemeConstantOverride("separation", 8);
         others.AddChild(HudKit.Text("Taken:", 14, HudKit.Dim, HudKit.Semi));
@@ -1032,6 +1091,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
         Check();
         AddChild(popup);
         popup.PopupCentered();
+        if (Pads.PadDriver.Active) hue.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     private Control EmptySeat(int seat)

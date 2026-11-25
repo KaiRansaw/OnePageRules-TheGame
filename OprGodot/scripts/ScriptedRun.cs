@@ -145,6 +145,40 @@ public partial class ScriptedRun : Node
                 return;
             }
             if (name.StartsWith("pads:")) { Pads.PadDriver.TestPads = name[5..].Split(';').Select(int.Parse).ToList(); return; }
+            // "say" prints what the battle is asking now (the open decision and its prompt) and which screen is on top.
+            if (name == "say")
+            {
+                var sb = Find<Battle.BattleScreen>(GetTree().Root);
+                GD.Print($"ScriptedRun: say - top {App.I.TopScreen?.GetType().Name}, decision {sb?.Decisions.Current?.GetType().Name ?? "none"}: {sb?.Decisions.Current?.Prompt ?? ""} (pickable {sb?.Decisions.LastPickable.Count})");
+                return;
+            }
+            // "waitnode:Name" waits (up to ~3000 frames) until a visible control with that name is on screen.
+            if (name.StartsWith("waitnode:"))
+            {
+                bool seen = false;
+                void Look(Node n) { foreach (Node c in n.GetChildren()) { if (seen) return; if (c is Control k && k.Name == name[9..] && k.IsVisibleInTree()) seen = true; else Look(c); } }
+                Look(GetTree().Root);
+                if (!seen && ++_waitedFor < 3000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} {(seen ? "there" : "timed out")}");
+                _wait = 10;
+                return;
+            }
+            // "focus:Name" puts the controller highlight on that control (the first visible one with the name).
+            if (name.StartsWith("focus:"))
+            {
+                Control? f = null;
+                string want = name[6..];
+                int nthF = 1;
+                if (want.LastIndexOf('#') is int hf and > 0 && int.TryParse(want[(hf + 1)..], out int kf)) { nthF = kf; want = want[..hf]; }
+                int seenF = 0;
+                void Seek(Node n) { foreach (Node c in n.GetChildren()) { if (f != null) return; if (c is Control k && k.Name == want && k.IsVisibleInTree() && ++seenF == nthF) f = k; else Seek(c); } }
+                Seek(GetTree().Root);
+                if (f != null) { f.FocusMode = Control.FocusModeEnum.All; f.GrabFocus(); }
+                GD.Print($"ScriptedRun: focus {name[6..]} -> {(f == null ? "not found" : "ok")}");
+                _wait = 8;
+                return;
+            }
             if (name.StartsWith("padmode:") && Pads.PadDriver.I is { } padDrv3) { padDrv3.SetPointerMode(name[8..] == "pointer"); _wait = 12; return; }
             if (name.StartsWith("key:") && Enum.TryParse(name[4..], out Key key))
             {
@@ -426,6 +460,18 @@ public partial class ScriptedRun : Node
             }
             // "waitfor:ShootDecision" holds until the battle is waiting on that kind of decision (max ~3000 frames);
             // "waitfor:Any" until it is waiting on any decision at all (which one comes first depends on the roll-offs).
+            // "until:Kind" answers every other decision the test driver's way until one of that kind is open.
+            if (name.StartsWith("until:") && Find<Battle.BattleScreen>(GetTree().Root) is { } ub)
+            {
+                ub.Decisions.Prompt();
+                var cur = ub.Decisions.Current;
+                if (cur != null && cur.GetType().Name == name[6..]) { _waitedFor = 0; GD.Print($"ScriptedRun: {name} reached"); return; }
+                if (cur != null && !cur.Done && _waitedFor % 30 == 0) cur.AutoPlay(ub);
+                if (++_waitedFor < 3000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} timed out");
+                return;
+            }
             if (name.StartsWith("waitfor:"))
             {
                 string? waitingOn = Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current?.GetType().Name;

@@ -137,116 +137,116 @@ public static class HowToPlay
     /// </summary>
     public static IReadOnlyList<Lesson> Lessons(EGameSystem system) => new List<Lesson>
     {
-        new(1, "Dice and Quality tests", "Reading a roll: a 6 always works, a 1 always fails.",
+        new(1, "Dice and Quality tests", "How a roll works: a 6 always works, a 1 always fails.",
             new[] { "quality-tests", "modifiers", "most-important-rule" },
             new Step[]
             {
-                new("Everything in this game is settled with six-sided dice. Most rolls are Quality tests: one die per attack, and each die that scores the unit's Quality or higher is a success. Your {shooters} are Quality {shootersQ}+: any die showing {shootersQ} or more is a success."),
-                new("A 6 always succeeds and a 1 always fails, whatever adds to or takes from the roll. Every roll in this battle is shown in the dice popup and the battle report, so you can see exactly what happened."),
+                new("Every roll in this game uses six-sided dice. Most of them are Quality tests: roll one die per attack, and every die that hits the unit's Quality or higher is a success. Your {shooters} are Quality {shootersQ}+, so a {shootersQ} or better is a success."),
+                new("Two rules beat everything else: a 6 is always a success, and a 1 is always a failure - no matter what bonuses or penalties are on the roll. You'll see every die you roll in the dice popup and the battle report."),
             },
             "dice", "Every roll pops up on the table and goes into the battle report. Hover a report line to see each die."),
 
-        new(2, "The table and objectives", "Where you fight and what you're fighting for.",
+        new(2, "The table and objectives", "Where you fight, and what wins the game.",
             new[] { "battlefield", "mission" },
             new Step[]
             {
-                new("This practice table is 4' x 4' - smaller than the book's 6' x 4'. The book allows that, as long as the armies deploy at least 24\" apart, and here they do."),
-                new("The three gold markers are objectives. In a normal game the players roll off and take turns placing them; in this practice battle they're already placed so you can get straight to fighting."),
-                new("At the end of every round, a unit within 3\" of a marker with no enemy within 3\" seizes it. After round 4, whoever holds the most markers wins - even with fewer units left on the table."),
+                new("You're playing on a 4' x 4' table today. The book's table is 6' x 4', but a smaller one is fine as long as the two armies start at least 24\" apart."),
+                new("See the three gold markers? Those are objectives - they're how you win. Normally both players take turns placing them; here they're already set up so you can get straight into it."),
+                new("At the end of every round, if one of your units is within 3\" of a marker and no enemy is, you take it. After round 4, whoever holds the most markers wins - even if they've lost more units."),
             },
-            "objectives", "Markers show who holds them in that player's colour. The Mission panel (bottom right) counts them."),
+            "objectives", "Markers turn the colour of whoever holds them. The Mission panel (bottom right) keeps count."),
 
-        new(3, "Deployment", "Setting up your army, one unit at a time.",
+        new(3, "Deployment", "Putting your army on the table, one unit at a time.",
             new[] { "deployment" },
             new Step[]
             {
-                new("You won the deployment roll-off, so you pick your table edge. Pick the near edge - the zone closest to you.", Ask.PickEdge),
-                new("Now you and the enemy take turns placing units within 12\" of your own edge, you first. Place your {shooters} inside the green ring, behind the forest.", Ask.Deploy, Role.MyShooters, Zone: new(14, 10, 2f)),
-                new("Your {melee} come next, with your {hero} leading them - a Hero can deploy as part of one unit. Place them inside the green ring.", Ask.Deploy, Role.MyMelee, Zone: new(30, 8, 3f)),
+                new("You won the roll-off, so you choose which side of the table is yours. Take the near edge - the zone closest to you.", Ask.PickEdge),
+                new("Now both sides take turns placing one unit at a time, within 12\" of their own edge. You go first: put your {shooters} in the green ring, behind the forest.", Ask.Deploy, Role.MyShooters, Zone: new(14, 10, 2f)),
+                new("Next, your {melee}. Your {hero} is joining them - a Hero can deploy as part of a unit and fight alongside it. Put them in the green ring.", Ask.Deploy, Role.MyMelee, Zone: new(30, 8, 3f)),
             },
-            "deployment", "Click inside the outlined zone and the unit is set up there in formation. Drag single models to adjust, then Space."),
+            "deployment", "Click inside your zone and the unit sets up there in formation. Drag single models to adjust, then press Space."),
 
-        new(4, "Taking turns and actions", "Activate a unit, pick Hold, Advance, Rush or Charge.",
+        new(4, "Taking turns and actions", "Pick a unit, then pick what it does.",
             new[] { "playing-the-game", "activation" },
             new Step[]
             {
-                new("The battle runs in rounds. Each round you and the enemy take turns activating one unit each until every unit has gone. You won the roll-off, so you go first."),
-                new("A unit that activates must take one action: Hold (stay and shoot), Advance (move 6\" and then shoot), Rush (move 12\", no shooting) or Charge (move 12\" into melee). Pick your {melee} and Rush them into the green ring.", Ask.Rush, Role.MyMelee, Zone: new(28, 19, 3f)),
+                new("The battle is played in rounds. In each round, you and the enemy take turns activating one unit at a time, until every unit has had a go. You won the roll-off, so you start."),
+                new("When a unit activates, it picks one action: Hold (stay put and shoot), Advance (move 6\", then shoot), Rush (move 12\", no shooting) or Charge (move 12\" into a fight). Pick your {melee} and Rush them into the green ring.", Ask.Rush, Role.MyMelee, Zone: new(28, 19, 3f)),
             },
-            "actions", "Pick a unit in your army list or on the table, then press an action (keys 1-4). Click where it should go, then Space."),
+            "actions", "Pick a unit from your army list or on the table, then an action (keys 1-4, or the d-pad). Point where it goes, then Space."),
 
-        new(5, "Moving and cover", "Staying together, and why forests matter.",
+        new(5, "Moving and cover", "Keeping units together, and why the forest matters.",
             new[] { "movement", "cover", "difficult" },
             new Step[]
             {
-                new("Units move as a group: each model stays within 1\" of another and within 9\" of all of them. The game keeps your formation for you."),
-                new("Now your {shooters}: Advance them into the forest (the green ring). Advance lets a unit shoot after moving; if nothing is in range yet, End after the move.", Ask.Advance, Role.MyShooters, Zone: new(14, 15.5f, 2.5f)),
-                new("The forest is Cover: with most of the unit inside it, your {shooters} get +1 to Defense rolls against shooting. It's also Difficult terrain: moving through it caps a move at 6\" - that's why the game shows a shorter reach there."),
+                new("A unit moves as a group: every model has to stay within 1\" of another one, and within 9\" of all of them. The game keeps the formation together for you."),
+                new("Your {shooters}' turn. Advance them into the forest (the green ring). If there's nothing to shoot yet, just End after the move.", Ask.Advance, Role.MyShooters, Zone: new(14, 15.5f, 2.5f)),
+                new("Good spot. The forest is Cover: with most of the unit inside, your {shooters} get +1 to their Defense rolls when they're shot. It's also Difficult ground, so a move through it can't go further than 6\" - that's why the reach looks shorter there."),
             },
-            "cover", "Terrain shows its rules when you hover it. Rings on the table show how far the unit can go."),
+            "cover", "Hover any terrain to see its rules. The rings on the table show how far a unit can move."),
 
-        new(6, "Shooting", "Rolling to hit, then the enemy rolls to block.",
+        new(6, "Shooting", "You roll to hit, they roll to block.",
             new[] { "shooting", "ap" },
             new Step[]
             {
-                new("Round 2. Your {shooters} are in the forest with the enemy closing in. Choose Hold - they stay in cover and shoot - then click an enemy unit, the {foeShooters} if you can see them.", Ask.Shoot, Role.MyShooters, Role.FoeShooters,
+                new("Round 2, and the enemy is getting close. Pick your {shooters}, choose Hold so they stay in cover, then shoot the {foeShooters} if you can see them.", Ask.Shoot, Role.MyShooters, Role.FoeShooters,
                     Luck: Luck.Shooting, OrElse: new[] { Ask.Advance }, OrElseCoach: "Nothing is in range from here. Advance your {shooters} up to 6\" toward the enemy, then shoot."),
-                new("That's a full shot: one Quality test per attack makes the hits, the enemy rolls one die per hit to block on its Defense, and every hit not blocked is a wound - one model removed. AP makes blocking harder: AP(1) is -1 to their Defense rolls."),
+                new("Here's what just happened. You rolled one die per attack to see what hit. The enemy rolled one die per hit to block it, needing their Defense value. Every hit they didn't block was a wound, and each wound took out a model. AP makes blocking harder: AP(1) means -1 to their block rolls."),
             },
-            "shooting", "Pick a unit, Hold (or Advance), then click an enemy. Hover an enemy first to see your odds."),
+            "shooting", "Pick a unit, choose Hold (or Advance), then pick an enemy. Hover an enemy first to see your odds."),
 
-        new(7, "Charging and melee", "Into combat: strike, strike back, see who won.",
+        new(7, "Charging and melee", "Into the fight: strike, strike back, see who won.",
             new[] { "melee" },
             new Step[]
             {
-                new("Your {melee} charge! Choose Charge and click the {foeMelee}. Charging models move into base contact, then both sides strike with their melee weapons.", Ask.Charge, Role.MyMelee, Role.FoeMelee,
-                    Luck: Luck.Melee, OrElse: new[] { Ask.Rush, Ask.Advance }, OrElseCoach: "No enemy is within 12\" of your {melee} yet. Rush them closer - they can charge next time."),
-                new("Melee works like shooting: one Quality test per attack, the defender rolls to block. Then the defender may strike back. The side that took more wounds lost the melee."),
+                new("Time to charge! Pick your {melee}, choose Charge, and pick the {foeMelee}. Your models run into contact and both sides fight with their melee weapons.", Ask.Charge, Role.MyMelee, Role.FoeMelee,
+                    Luck: Luck.Melee, OrElse: new[] { Ask.Rush, Ask.Advance }, OrElseCoach: "Your {melee} can't reach an enemy from here (it has to be within 12\"). Rush them closer - they can charge next turn."),
+                new("Melee works just like shooting: roll to hit, they roll to block. Then the unit you charged may strike back. Whoever took more wounds lost the fight."),
             },
-            "melee", "Charge, then click the enemy unit: the move ends in contact. Wounds and who won show in the battle report."),
+            "melee", "Choose Charge, then pick the enemy: your unit moves into contact. The battle report shows the wounds and who won."),
 
-        new(8, "Fatigue", "After fighting, units hit only on 6s for the rest of the round.",
+        new(8, "Fatigue", "After a fight, units only hit on 6s for the rest of the round.",
             new[] { "fatigue" },
             new Step[]
             {
-                new("Both units that fought are now Fatigued until the end of this round: in another melee this round they only hit on a 6, and those 6s don't trigger special rules. That's why a second charge in the same round is a gamble."),
+                new("Both units in that fight are now Fatigued until the round ends. If either fights again this round, it only hits on a 6 - and those 6s don't trigger special rules. So a second fight in the same round is a gamble."),
             },
-            "fatigue", "A Fatigued unit shows the Fatigued mark in the army list until the round ends."),
+            "fatigue", "Fatigued units show a Fatigued mark in the army list until the round ends."),
 
-        new(9, "Morale and Shaken", "Losing a fight, half strength, and staying idle.",
+        new(9, "Morale and Shaken", "Losing a fight, running low, and having to sit still.",
             new[] { "morale-tests", "melee-results", "shaken" },
             new Step[]
             {
-                new("The {foeMelee} lost the melee, so they took a Morale Test - a Quality test - and failed it. A unit that fails is Shaken; one that fails while down to half strength or less Routs instead and is removed. The battle report says which. Units also test at the end of an activation where wounds leave them at half strength or less."),
-                new("A Shaken unit must stay idle: it can't move, shoot or seize objectives, and it fights back only as if Fatigued. It stops being Shaken by spending one whole activation idle."),
+                new("The {foeMelee} lost that fight, so they had to take a Morale Test (a Quality test) - and they failed. A unit that fails becomes Shaken. If it's already at half strength or less, it Routs instead and is removed. Units also test at the end of any activation where wounds leave them at half strength or less."),
+                new("A Shaken unit has to sit still: it can't move, shoot or take objectives, and if it's attacked it only fights back as if Fatigued. To recover, it spends one whole activation doing nothing."),
             },
             "morale", "Shaken units get a red frame and mark in the army list. Hover the mark for the rule."),
 
-        new(10, "Heroes and Tough", "Leaders inside units, and models that take several wounds.",
+        new(10, "Heroes and Tough", "Leaders inside units, and models that take more than one wound.",
             new[] { "hero", "tough" },
             new Step[]
             {
-                new("Your {hero} is a Hero: it joined the {melee} at deployment and uses their Defense until the rest of the unit is gone. Its unit may use the Hero's Quality for Morale Tests."),
-                new("Your {hero} is also Tough(3): it takes 3 wounds before it's killed, and wounds go on it last. The wound pips on its card show how many it has left."),
+                new("Your {hero} is a Hero. It joined the {melee} when you deployed, and it uses their Defense until the rest of the unit is gone. The unit can also use the Hero's Quality for Morale Tests."),
+                new("Your {hero} is Tough(3), so it takes 3 wounds to kill, and wounds go on it last. The pips on its card show how many wounds it has left."),
             },
-            "hero", "Joined Heroes show inside their unit's card. Wound pips show what each Tough model has left."),
+            "hero", "A joined Hero shows inside its unit's card. Pips show how many wounds each Tough model has left."),
 
-        new(11, "Seizing objectives and winning", "End of round: who holds what.",
+        new(11, "Taking objectives and winning", "What you hold at the end of the round counts.",
             new[] { "mission" },
             new Step[]
             {
-                new("The game is won on objectives, not kills. Move one of your units onto the nearest marker - inside the green ring. If no enemy is within 3\" of it at the end of the round, it's yours.", Ask.ToObjective,
-                    OrElse: new[] { Ask.Hold, Ask.Advance, Ask.Rush, Ask.Charge }, OrElseCoach: "That unit can't reach a marker this time - use it as you like, then try with another."),
-                new("A seized marker stays yours even after you leave it - until an enemy unit is within 3\" of it with none of yours, or both sides are, which makes it neutral again."),
+                new("Remember, you win on objectives, not kills. Move one of your units onto the nearest marker (the green ring). If no enemy is within 3\" of it when the round ends, it's yours.", Ask.ToObjective,
+                    OrElse: new[] { Ask.Hold, Ask.Advance, Ask.Rush, Ask.Charge }, OrElseCoach: "This unit can't reach a marker this turn - do whatever you like with it, then try with another one."),
+                new("Once you take a marker, it stays yours even after you walk away. You only lose it when an enemy unit is near it and none of yours are. If both sides are near it, nobody holds it."),
             },
-            "seize", "The Mission panel counts the markers each side holds. They're checked at the end of every round."),
+            "seize", "The Mission panel shows how many markers each side holds. They're checked at the end of every round."),
 
-        new(12, "Special rules", "The extra rules on your units' cards.",
+        new(12, "Special rules", "The extra rules printed on your units.",
             new[] { "special-rules" },
             new Step[]
             {
-                new("Units and weapons carry special rules - the words in brackets on their cards. Your army's are below in the book's own words. Hover any rule on a card in a real game to read it."),
-                new("That's everything in the core rules. Play the battle out however you like - every action is open now. It ends after round 4, and the side with the most markers wins.", Ask.FreePlay),
+                new("Units and weapons also have special rules - the words in brackets on their cards. Your army's rules are below, in the book's own words. In any game, hover a rule on a card to read it."),
+                new("That's all the core rules - you're ready. Play the rest of the battle however you like; every action is open now. It ends after round 4, and whoever holds the most markers wins.", Ask.FreePlay),
             },
             "rules", "Hover a rule on a unit card or a weapon to read it. The Rules Guide has every lesson in this list."),
     };

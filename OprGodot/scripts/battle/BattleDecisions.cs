@@ -69,6 +69,12 @@ public sealed class BattleDecisions
             _shown = d;
             _shownVersion = -1;
             d?.Shown(_screen);
+            if (d != null && d is not PlaceDecision)
+            {
+                var pickable = _screen.Session.Table.Units.Objects.Where(u => d.ListMark(u) is { Pickable: true }).Select(u => u.ID).ToHashSet();
+                if (pickable.Count > 0) _lastPickable = pickable;
+            }
+            SwitchIfAsked(d);
             d = Current;   // Shown may have answered it on the spot (an action pressed on the activation grid)
         }
         if (d == null || d.Version != _shownVersion)
@@ -108,7 +114,31 @@ public sealed class BattleDecisions
     {
         if (Current is not { } d) return;
         if (Gate != null && !Gate.AllowUnit(d, unit)) { Refuse(); return; }
+        // Placing one unit and another is picked (Y on a controller, or its row in the list): put this one back and
+        // take that one instead (Kai, 2026-11-24: cycling with Y kept deploying the first unit).
+        if (d is PlaceDecision place && place.CanSwitchTo(_screen, unit))
+        {
+            _switchTo = unit.ID;
+            place.Cancel();
+            return;
+        }
         d.UnitPicked(_screen, unit);
+    }
+
+    /// <summary>The units the last "which unit" question could take - while one of them is being placed, Y cycles
+    /// through the rest (and not through units the question wouldn't accept, like another detachment's).</summary>
+    public IReadOnlyCollection<UnitID> LastPickable => _lastPickable;
+    private HashSet<UnitID> _lastPickable = new();
+
+    /// <summary>A unit picked while another was being placed: answered as soon as the "which unit" question returns.</summary>
+    private UnitID? _switchTo;
+
+    private void SwitchIfAsked(Decision? d)
+    {
+        if (_switchTo is not { } id || d == null || d is PlaceDecision) return;
+        _switchTo = null;
+        if (_screen.Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(id)) is { } unit && d.ListMark(unit) is { Pickable: true })
+            d.UnitPicked(_screen, unit);
     }
     public UnitMark? ListMark(IUnit unit) => Current?.ListMark(unit);
 

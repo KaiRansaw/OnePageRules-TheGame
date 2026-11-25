@@ -33,7 +33,12 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
 
     private Label _head = null!, _text = null!, _stepsLine = null!;
     private VBoxContainer _rules = null!;
-    private Button _next = null!, _book = null!, _hide = null!;
+    private Button _next = null!, _prev = null!, _book = null!, _hide = null!;
+    /// <summary>Reading back an earlier step with Previous (lesson, step), or null for the step being played. Reading
+    /// back changes nothing in the battle.</summary>
+    private (int Lesson, int Step)? _review;
+    /// <summary>When Next / Previous last went off (ms) - one press moves one step, however the press arrives.</summary>
+    private ulong _lastTurnMs;
     private Control _body = null!;
     private PanelContainer _panel = null!;
 
@@ -100,6 +105,9 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
         guide.Name = "CoachGuide";
         row.AddChild(guide);
         row.AddChild(HudKit.Grow());
+        _prev = Ui.Button("Previous", Back, "Read the step before again (the battle isn't changed).");
+        _prev.Name = "CoachPrev";
+        row.AddChild(_prev);
         _next = Ui.Button("Next  (Enter)", Advance, "On to the next step.", "CommitButton");
         _next.Name = "CoachNext";
         row.AddChild(_next);
@@ -137,11 +145,15 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
 
     private void ShowStep()
     {
-        Lesson l = NowLesson;
+        (int li, int si) = _review ?? (_lesson, _step);
+        Lesson l = _lessons[li];
+        Step step = l.Steps[si];
         _head.Text = $"LESSON {l.Number} OF {_lessons.Count}  -  {l.Title.ToUpperInvariant()}";
-        _stepsLine.Text = $"step {_step + 1} of {l.Steps.Count}";
-        _text.Text = Fill(UsingOrElse && Now.OrElseCoach is { } other ? other : Now.Coach, System);
-        _next.Visible = Now.IsInfo;
+        _stepsLine.Text = _review != null ? $"reading back - step {si + 1} of {l.Steps.Count}" : $"step {si + 1} of {l.Steps.Count}";
+        _text.Text = Fill(_review == null && UsingOrElse && step.OrElseCoach is { } other ? other : step.Coach, System);
+        _next.Visible = _review != null || Now.IsInfo;
+        _next.Text = _review != null ? "Next" : "Next  (Enter)";
+        _prev.Visible = (li, si) != (0, 0);
         foreach (Node c in _rules.GetChildren()) c.QueueFree();
         foreach (RuleText.Section s in RuleText.ForLesson(System, l))
             _rules.AddChild(BookBlock(s.Title, s.Text));
@@ -202,10 +214,46 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
         GetViewport().GetTexture().GetImage().SavePng(global::System.IO.Path.Combine(ShotsTo!, file));
     }
 
+    /// <summary>A second "go" within this many ms of the last is the same press arriving twice (the button and the
+    /// Enter / A check both see it), so it's ignored.</summary>
+    private const ulong PressGapMs = 300;
+
+    private bool TooSoon()
+    {
+        ulong now = Time.GetTicksMsec();
+        if (now - _lastTurnMs < PressGapMs) return true;
+        _lastTurnMs = now;
+        return false;
+    }
+
     private void Advance()
     {
+        if (TooSoon()) return;
+        if (_review is { } r)
+        {
+            // Reading back: step forward through what you've already seen, then back to the live step.
+            (int li, int si) = r.Step + 1 < _lessons[r.Lesson].Steps.Count ? (r.Lesson, r.Step + 1) : (r.Lesson + 1, 0);
+            _review = (li, si) == (_lesson, _step) || li > _lesson || (li == _lesson && si > _step) ? null : (li, si);
+            ShowStep();
+            Screen.Decisions.Refresh();
+            return;
+        }
         if (!Now.IsInfo) return;
         if (MoveOn()) StartStep();
+    }
+
+    /// <summary>Previous: show the step before this one again. Only the coach's words go back - what you did in the
+    /// battle stays done, and Next comes forward again to the step you're on.</summary>
+    private void Back()
+    {
+        if (TooSoon()) return;
+        (int li, int si) = _review ?? (_lesson, _step);
+        if (si > 0) si--;
+        else if (li > 0) { li--; si = _lessons[li].Steps.Count - 1; }
+        else return;
+        _review = (li, si);
+        ShowStep();
+        Screen.Decisions.Refresh();
     }
 
     /// <summary>Goes to the next step; false when the lessons are over.</summary>
@@ -238,13 +286,14 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
             Visible = false;
             return;
         }
-        if (Input.IsActionJustPressed("ui_accept") && Now.IsInfo && _body.Visible) Advance();
+        if (Input.IsActionJustPressed("ui_accept") && (Now.IsInfo || _review != null) && _body.Visible
+            && GetViewport().GuiGetFocusOwner() is not BaseButton) Advance();
 
         // Finished steps move on first, so nothing is answered under the step before.
-        if (!Now.IsInfo && !_over && StepDone()) { if (MoveOn()) StartStep(); return; }
+        if (!Now.IsInfo && !_over && StepDone()) { _review = null; if (MoveOn()) StartStep(); return; }
         UpdateRing();
         bool orElse = UsingOrElse;
-        if (orElse != _shownOrElse) { _shownOrElse = orElse; ShowStep(); Screen.Decisions.Refresh(); }
+        if (orElse != _shownOrElse) { _shownOrElse = orElse; if (_review == null) ShowStep(); Screen.Decisions.Refresh(); }
         if (Auto) Drive(delta);
     }
 
@@ -476,7 +525,7 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
     {
         _driveWait -= delta;
         if (_driveWait > 0) return;
-        _driveWait = 0.25;
+        _driveWait = 0.35; // longer than PressGapMs, so each Next counts
         foreach (Node n in Screen.FindChildren("*", nameof(ConfirmationDialog), true, false))
             if (n is ConfirmationDialog { Visible: true } cd) { cd.EmitSignal(AcceptDialog.SignalName.Confirmed); return; }
         if (Now.IsInfo) { Advance(); return; }
