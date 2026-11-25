@@ -230,7 +230,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
         string seatSig = string.Join("|", players.Select(p =>
             $"{p.PlayerID.ID}:{p.PlayerName}:{p.PlayerType}:{p.TeamNumber}:{p.ColorIndex}:{p.ArmyListSummary.ArmyName}:{p.ArmyListSummary.FactionName}:{p.ArmyListSummary.PointCost}:{p.ArmyListSummary.IsAssigned}"))
-            + $"#{_selectedSeat}#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#{Vm.ExtraMission}#{Vm.AttackerTeam}#"
+            + $"#{Vm.ArmyPoints}#{Vm.GameSystem}#{Vm.GameMode}#{LobbySession.ArmyCatalogReady}#{Vm.ExtraMission}#{Vm.AttackerTeam}#"
             + string.Join(",", players.Select(p => Session.PartyOf(p.PlayerID).Count));
         string settingsJson = JsonSerializer.Serialize(HostGameSettings.CaptureFrom(Vm));
         // Settings that add, remove or lock other rows (Mission cards lock the Mission; Attack & Defend locks
@@ -744,12 +744,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
         Color colour = SeatColour(colours[seat]);
         var card = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, Name = $"Seat{seat + 1}",
             TooltipText = "Click the card (not a button) to show this seat's army under the map." };
-        card.AddThemeStyleboxOverride("panel", new ChamferBox
-        {
-            Fill = selected ? new Color(0.07f, 0.11f, 0.11f, 0.92f) : HudKit.Glass, Border = selected ? HudKit.Lime : HudKit.Edge,
-            Glow = selected ? HudKit.Lime with { A = 0.35f } : Colors.Transparent, Cut = 14, Accent = colour, AccentLength = 90, AccentThickness = 4,
-            ContentMarginLeft = 14, ContentMarginRight = 14, ContentMarginTop = 12, ContentMarginBottom = 12,
-        });
+        card.AddThemeStyleboxOverride("panel", SeatCardBox(selected, colour));
+        card.SetMeta("seat_colour", colour);
         card.GuiInput += e => { if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }) SelectSeat(seat); };
 
         var col = new VBoxContainer();
@@ -1116,12 +1112,24 @@ public partial class LobbyScreen : Control, Hud.ILooked
         return card;
     }
 
+    private static ChamferBox SeatCardBox(bool selected, Color colour) => new()
+    {
+        Fill = selected ? new Color(0.07f, 0.11f, 0.11f, 0.92f) : HudKit.Glass, Border = selected ? HudKit.Lime : HudKit.Edge,
+        Glow = selected ? HudKit.Lime with { A = 0.35f } : Colors.Transparent, Cut = 14, Accent = colour, AccentLength = 90, AccentThickness = 4,
+        ContentMarginLeft = 14, ContentMarginRight = 14, ContentMarginTop = 12, ContentMarginBottom = 12,
+    };
+
+    /// <summary>Shows another seat's army under the map. The cards are only re-framed, not rebuilt: rebuilding them threw
+    /// the controller's highlight off the card it had just moved onto (Kai, 2026-11-24: "now i cant go to the right").</summary>
     private void SelectSeat(int seat)
     {
         if (seat == _selectedSeat) return;
         _selectedSeat = seat;
-        _seatSig = "";   // rebuild on the next poll
-        Refresh(force: false);
+        foreach (Node n in _seatGrid.GetChildren())
+            if (n is PanelContainer card && card.HasMeta("seat_colour") && card.Name.ToString().StartsWith("Seat")
+                && int.TryParse(card.Name.ToString()[4..], out int number))
+                card.AddThemeStyleboxOverride("panel", SeatCardBox(number - 1 == seat, card.GetMeta("seat_colour").AsColor()));
+        BuildSeatArmy();
     }
 
     private const string OfficialAiTip = "The enemy side, playing OnePageRules' official Solo & Co-Op rules: it takes and holds objectives, shoots the closest target it can see, and favours enemies that haven't moved yet.";

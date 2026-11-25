@@ -75,7 +75,8 @@ public partial class PadOverlay : Control
     {
         if (!PadDriver.Active || !Pad.Prefs.Enabled) return;
         if (_pad.PointerMode) DrawPointer(_pad.Pointer);
-        else if (GetViewport().GuiGetFocusOwner() is { } f && f.IsVisibleInTree())
+        // A list or table shows the highlight on its picked row - no glow round the whole box (Kai, 2026-11-24).
+        else if (GetViewport().GuiGetFocusOwner() is { } f && f.IsVisibleInTree() && f is not (Tree or ItemList))
         {
             Rect2 r = f.GetGlobalRect().Grow(3);
             DrawRect(r, HudKit.Lime with { A = 0.10f });

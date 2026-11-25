@@ -143,6 +143,7 @@ public partial class LobbyScreen : IBackGuard
         left.AddChild(Note($"From armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}. Grey = over the {limit} pts limit (you can still pick it)."));
 
         var table = new Tree { Name = "ArmyTable", Columns = 4, ColumnTitlesVisible = true, HideRoot = true, SizeFlagsVertical = SizeFlags.ExpandFill, SelectMode = Tree.SelectModeEnum.Row };
+        table.AddThemeStyleboxOverride("focus", new StyleBoxEmpty()); // no glow round the table; the picked row shows
         string[] titles = { "Army", "Faction", "Units", "Points" };
         for (int i = 0; i < 4; i++) { table.SetColumnTitle(i, titles[i]); table.SetColumnExpand(i, i < 2); }
         table.SetColumnCustomMinimumWidth(2, 80);

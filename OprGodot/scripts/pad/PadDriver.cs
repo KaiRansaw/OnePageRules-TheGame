@@ -925,7 +925,7 @@ public partial class PadDriver : Node
         }
         if (hold != false) Send(true);
         if (hold != true) Send(false);
-        GetTree().CreateTimer(0.15).Timeout += () => GD.Print($"Pad test {b}@{device}: focus = {GetViewport().GuiGetFocusOwner()?.Name ?? "none"}, pointer mode = {PointerMode}, turn pad = {TurnDevice()?.ToString() ?? "any"} ({TurnName() ?? "-"})");
+        GetTree().CreateTimer(0.15).Timeout += () => GD.Print($"Pad test {b}@{device}: focus = {GetViewport().GuiGetFocusOwner()?.Name ?? "none"} at {GetViewport().GuiGetFocusOwner()?.GetGlobalRect().Position.ToString() ?? "-"}, root = {ActiveRoot()?.Name}, held = {_heldName}, pointer mode = {PointerMode}, turn pad = {TurnDevice()?.ToString() ?? "any"} ({TurnName() ?? "-"})");
     }
 
     private static JoyButton ToJoy(PadButton b) => b switch
