@@ -25,6 +25,7 @@ public partial class BattleTable : Node3D
     private readonly Dictionary<UnitID, Label3D> _labels = new();
     private readonly Dictionary<UnitID, Sprite3D[]> _marks = new();
     private readonly List<(IObjective Objective, MeshInstance3D Disc, MeshInstance3D Ring, StandardMaterial3D Mat)> _objectives = new();
+    private readonly Dictionary<IObjective, Label3D> _objectiveNumbers = new();
     private readonly Dictionary<ITerrain, List<Node>> _terrainBuilt = new();
     private bool _rulesView;
 
@@ -786,11 +787,36 @@ public partial class BattleTable : Node3D
             ring.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
             _objectives.Add((o, disc, ring, mat));
         }
+        var all = Session.Table.Objectives.Objects.ToList();
         foreach (var (o, _, _, mat) in _objectives)
         {
             Color c = o.OwnerID is { } owner ? SeatColour(owner) : new Color(0.88f, 0.9f, 0.92f);
             mat.AlbedoColor = c;
             mat.Emission = c;
+            // Its number (Kai, 2026-11-24, for the mission cards' "Seize 2"): the order the cards count them in -
+            // Horde's own numbering in Horde games.
+            int index = all.FindIndex(x => ReferenceEquals(x, o));
+            if (index < 0) continue;
+            int number = o.HordeNumber ?? index + 1;
+            if (!_objectiveNumbers.TryGetValue(o, out Label3D? label))
+            {
+                label = new Label3D
+                {
+                    Font = HudKit.Bold, FontSize = 72, PixelSize = 0.03f, OutlineSize = 18, NoDepthTest = true,
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, OutlineModulate = new Color(0, 0, 0, 0.9f),
+                    Position = World(o.Position.x, o.Position.z, 1.6f),
+                };
+                AddChild(label);
+                _objectiveNumbers[o] = label;
+            }
+            label.Text = number.ToString();
+            label.Modulate = c.Lerp(Colors.White, 0.35f);
+            label.Position = World(o.Position.x, o.Position.z, 1.6f);
+        }
+        foreach (IObjective gone in _objectiveNumbers.Keys.Where(k => !all.Any(x => ReferenceEquals(x, k))).ToList())
+        {
+            _objectiveNumbers[gone].QueueFree();
+            _objectiveNumbers.Remove(gone);
         }
     }
 

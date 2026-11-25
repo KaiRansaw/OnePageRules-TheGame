@@ -124,7 +124,7 @@ public partial class HowToPlayCoach : Control, BattleDecisions.IGate
         // Centred under the prompt line, whatever its width.
         var strip = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
         strip.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-        strip.OffsetTop = 64;
+        strip.OffsetTop = 110; // under the two-line prompt banner (3.44)
         strip.AddChild(_panel);
         AddChild(strip);
     }

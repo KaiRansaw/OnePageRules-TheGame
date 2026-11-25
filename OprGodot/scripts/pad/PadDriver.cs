@@ -85,6 +85,9 @@ public partial class PadDriver : Node
     private double _wheelAcc, _unlockTimer;
     private readonly List<(WeakRef Ref, Control.FocusModeEnum Was)> _unlocked = new();
 
+    /// <summary>D-pad directions held in the battle: the camera slides that way.</summary>
+    private readonly HashSet<Vector2> _camHeld = new();
+
     /// <summary>Y is held in menu mode: show the highlighted thing's hover text.</summary>
     public bool InfoHeld { get; private set; }
 
@@ -153,7 +156,8 @@ public partial class PadDriver : Node
     /// button), and shows otherwise.</summary>
     private void UpdateCursor()
     {
-        var want = Active && !PointerMode ? GInput.MouseModeEnum.Hidden : GInput.MouseModeEnum.Visible;
+        // Kai, 2026-11-24: no system arrow while the controller is in use, in either mode - the game draws its own cursor.
+        var want = Active ? GInput.MouseModeEnum.Hidden : GInput.MouseModeEnum.Visible;
         if (GInput.MouseMode is GInput.MouseModeEnum.Visible or GInput.MouseModeEnum.Hidden && GInput.MouseMode != want) GInput.MouseMode = want;
     }
 
@@ -200,7 +204,13 @@ public partial class PadDriver : Node
                        + "   (Settings -> Controls -> Swap players)");
     }
 
-    private static bool DefaultPointer(Control? top) => top is Battle.BattleScreen or IPadPointerScreen
+    /// <summary>Kai, 2026-11-24: "we're going to focus on cursor mode ... it feels like Destiny's menus". Every
+    /// screen starts with the cursor; the left stick click still swaps to the menu highlight.</summary>
+    private static bool DefaultPointer(Control? top) => true;
+
+    /// <summary>Screens where B stays a right click (the battle, the editors - right click does something there).
+    /// Everywhere else B goes back a page, like Esc.</summary>
+    private static bool RightClickScreen(Control? top) => top is Battle.BattleScreen or IPadPointerScreen
         or Maps.MapEditorScreen or Lab.AssetLabScreen or Lab.TerrainWorkshopScreen or Campaign.MapCampaignScreen
         or Maps.MatchTerrainScreen or Lab.FacingReviewScreen;
 
@@ -299,6 +309,13 @@ public partial class PadDriver : Node
             Do(bind, pressed);
             return true;
         }
+        // B on a menu screen: back a page (Esc), as in Destiny's menus (Kai, 2026-11-24, Table Setup first).
+        if (b == PadButton.B && !RightClickScreen(App.I.TopScreen))
+        {
+            // The on-screen Back: each screen's own guard still runs first (an open picker closes before the page goes).
+            if (pressed) { ReleaseMouse(); BackOnePage(); }
+            return true;
+        }
         if (Pad.Find(b, true, InBattle) is { } pb) Do(pb, pressed);
         return true; // in pointer mode nothing reaches the menus' highlight
     }
@@ -324,6 +341,9 @@ public partial class PadDriver : Node
             case PadDo.PrevTarget: if (pressed && App.I.TopScreen is IPadTargets pt) GlideTo(pt.PadCycle(-1)); break;
             case PadDo.NextTarget: if (pressed && App.I.TopScreen is IPadTargets nt) GlideTo(nt.PadCycle(+1)); break;
             case PadDo.NextUnit: if (pressed && App.I.TopScreen is IPadTargets nu) GlideTo(nu.PadNextUnit()); break;
+            case PadDo.CameraMove:
+                if (Dir(bind.Button) is { } d) { if (pressed) _camHeld.Add(d); else _camHeld.Remove(d); }
+                break;
             case PadDo.ScrollUp: _scrollHeld = pressed ? -1 : (_scrollHeld == -1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
             case PadDo.ScrollDown: _scrollHeld = pressed ? 1 : (_scrollHeld == 1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
         }
@@ -375,6 +395,7 @@ public partial class PadDriver : Node
             // A new screen: its own default mode, and in menu mode the highlight goes on its first button.
             _lastTop = top;
             _pointerOverride = null;
+            _camHeld.Clear();
             _heldName = null;
             ReleaseMouse();
             if (Active && Pad.Prefs.Enabled)
@@ -395,10 +416,15 @@ public partial class PadDriver : Node
         if (PointerMode)
         {
             MovePointer(left, delta);
-            if (InBattle && top is IPadCamera cam)
+            // Over something that scrolls (a list, the battle report, a card's text), the right stick scrolls it - and in
+            // a battle the camera holds still meanwhile (Kai, 2026-11-24).
+            bool overScroll = OverScrollable();
+            if (InBattle && top is IPadCamera cam && !overScroll)
             {
                 Vector2 look = new(right.X, right.Y * (Pad.Prefs.InvertCameraTilt ? -1 : 1));
-                cam.PadCamera(look * Pad.Prefs.CameraSpeed, EdgePan(), delta);
+                Vector2 move = EdgePan();
+                foreach (Vector2 d in _camHeld) move += d;
+                cam.PadCamera(look * Pad.Prefs.CameraSpeed, move.LimitLength(1f), delta);
                 Wheel(_scrollHeld, delta);
             }
             else Wheel(_scrollHeld + right.Y, delta);
@@ -540,6 +566,45 @@ public partial class PadDriver : Node
         Vector2 rel = next - _ptr;
         _ptr = next;
         if (rel != Vector2.Zero) SendMotion(rel);
+    }
+
+    /// <summary>B on a menu screen: close what's open on top first (a popup window, the army picture grid), else go
+    /// back a page.</summary>
+    private void BackOnePage()
+    {
+        foreach (Node n in Enumerable.Reverse(GetTree().Root.GetChildren()))
+            if (n is Window { Visible: true } w)
+            {
+                if (w is AcceptDialog dialog) dialog.EmitSignal(AcceptDialog.SignalName.Canceled);
+                w.Hide();
+                return;
+            }
+        if (App.I.TopScreen is { } top && Descendants<ArmyPicker>(top).LastOrDefault(p => p.IsVisibleInTree()) is { } picker)
+        {
+            picker.Close();
+            return;
+        }
+        App.I.Back();
+    }
+
+    /// <summary>The pointer is over something that can scroll right now: a scroll box with more in it than shows, or a
+    /// list, table or text box with a scroll bar in use.</summary>
+    private bool OverScrollable()
+    {
+        for (Node? n = GetViewport().GuiGetHoveredControl(); n is Control c; n = n.GetParent())
+        {
+            if (c is Battle.BattleScreen) return false; // the table itself
+            switch (c)
+            {
+                case ScrollContainer sc when sc.GetVScrollBar().MaxValue - sc.GetVScrollBar().Page > 1:
+                case ItemList il when il.GetVScrollBar().Visible:
+                case Tree:
+                case TextEdit te when te.GetVScrollBar().Visible:
+                case RichTextLabel rt when rt.GetVScrollBar().Visible:
+                    return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>The pointer pressed against a screen edge pans the battle camera that way.</summary>

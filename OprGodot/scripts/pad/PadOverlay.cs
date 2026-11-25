@@ -85,12 +85,15 @@ public partial class PadOverlay : Control
         if (Pad.Prefs.ShowHints) DrawHints();
     }
 
-    /// <summary>A ring round the pointer, big enough to follow from a couch.</summary>
+    /// <summary>The controller cursor (Kai, 2026-11-24, from his Destiny picture): a soft, pale blue-grey disc with a
+    /// lighter rim, see-through enough to read what's under it, with a faint shadow so it shows on light backgrounds.</summary>
     private void DrawPointer(Vector2 p)
     {
-        DrawArc(p, 15, 0, Mathf.Tau, 32, new Color(0, 0, 0, 0.6f), 5f, true);
-        DrawArc(p, 15, 0, Mathf.Tau, 32, HudKit.Lime, 2.5f, true);
-        DrawCircle(p, 3, HudKit.Lime);
+        const float r = 13f;
+        DrawCircle(p + new Vector2(1, 2), r + 2, new Color(0, 0, 0, 0.22f));             // shadow
+        DrawCircle(p, r, new Color(0.72f, 0.80f, 0.84f, 0.62f));                         // the disc
+        DrawCircle(p, r * 0.55f, new Color(0.86f, 0.92f, 0.95f, 0.35f));                 // brighter middle
+        DrawArc(p, r, 0, Mathf.Tau, 48, new Color(0.93f, 0.97f, 1f, 0.95f), 2f, true);  // rim
     }
 
     // ---------------------------------------------------------------- hints
@@ -126,14 +129,13 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("bat.confirm") }, "Confirm"));
             hints.Add((new[] { B("bat.next") }, "Next unit"));
             hints.Add((new[] { B("bat.tprev"), B("bat.tnext") }, "Targets"));
-            hints.Add((new[] { PadButton.DUp }, "Actions"));
+            hints.Add((new[] { PadButton.DUp }, "Move camera"));
             hints.Add((new[] { B("ptr.esc") }, "Menu"));
         }
         else
         {
-            hints.Add((new[] { B("ptr.click") }, "Click"));
-            hints.Add((new[] { B("ptr.right") }, "Right click"));
-            hints.Add((new[] { B("ptr.esc") }, "Back"));
+            hints.Add((new[] { B("ptr.click") }, "Select"));
+            hints.Add((new[] { B("ptr.right") }, "Back"));
             hints.Add((new[] { B("ptr.menus") }, "Highlight"));
         }
 

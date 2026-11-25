@@ -735,6 +735,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     };
 
     private const float Pad = 12;
+    /// <summary>The top banner's width: fits between the round box and the buttons on a 1920-wide screen.</summary>
+    private const float PromptWidth = 560;
     // The card's banner (2026-11-14) is added on top of the old 236: the stats, weapons and rules keep the room they had.
     private const float CardHeight = 236 + HudKit.PictureSize.UnitCard - 46;
     /// <summary>The actions / choices beside the card keep the card's old height whatever the picture size.</summary>
@@ -827,10 +829,20 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         ScreenFrame.Place(this, "RoundBox", roundBox, LayoutPreset.TopLeft, new Vector2(Pad, Pad), _hud);
 
         // Top-centre: what the game wants right now.
-        var promptRow = new HBoxContainer();
-        promptRow.AddThemeConstantOverride("separation", 12);
-        _prompt = HudKit.Text("", 20, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2));
-        _promptHint = HudKit.Text("", 14, HudKit.Dim, HudKit.Semi);
+        // Kai, 2026-11-24: the one long line ran under the buttons on either side. Now two short lines in a fixed
+        // width: what to do, then the hint (two lines at most; hover for all of it).
+        var promptRow = new VBoxContainer { CustomMinimumSize = new Vector2(PromptWidth, 0) };
+        promptRow.AddThemeConstantOverride("separation", 0);
+        _prompt = HudKit.Text("", 19, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2), HorizontalAlignment.Center);
+        _prompt.ClipText = true;
+        _prompt.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _prompt.CustomMinimumSize = new Vector2(PromptWidth, 0);
+        _promptHint = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
+        _promptHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _promptHint.MaxLinesVisible = 2;
+        _promptHint.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        _promptHint.CustomMinimumSize = new Vector2(PromptWidth, 0);
+        _promptHint.MouseFilter = MouseFilterEnum.Stop;
         promptRow.AddChild(_prompt);
         promptRow.AddChild(_promptHint);
         var promptBox = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.9f }; x.Border = HudKit.Lime with { A = 0.55f }; x.ContentMarginLeft = 16; x.ContentMarginRight = 16; }), promptRow);
@@ -1015,7 +1027,10 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             else { prompt = "SETTING UP"; hint = "The table is being laid out."; }
         }
         _prompt.Text = prompt.ToUpperInvariant();
+        _prompt.TooltipText = _prompt.Text;
         _promptHint.Text = hint;
+        _promptHint.TooltipText = hint;
+        _promptHint.Visible = hint.Length > 0;
 
         // The report notes who activates (Kai, 2026-11-10: "which units activated").
         if (activating != null && !activating.ID.Equals(_lastActivating?.ID)) Session.Report.NoteActivation();

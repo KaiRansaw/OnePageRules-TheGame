@@ -22,6 +22,8 @@ public enum PadDo
     Click, RightClick, Key, TogglePointer, Info, PrevTab, NextTab, ScrollUp, ScrollDown,
     /// <summary>Battle: jump the pointer to the previous / next pickable unit, or select the next ready unit.</summary>
     PrevTarget, NextTarget, NextUnit,
+    /// <summary>Battle: slide the camera over the table while held (which way = the button's d-pad direction).</summary>
+    CameraMove,
 }
 
 /// <summary>One line of the controller layout: which button, where, and what it does in plain words.</summary>
@@ -59,7 +61,7 @@ public static class Pad
 
         // Pointer: the left stick moves a pointer that clicks like the mouse.
         new("ptr.click",   PadButton.A,      PadContext.Pointer, "Click (hold and move to drag)", PadDo.Click),
-        new("ptr.right",   PadButton.B,      PadContext.Pointer, "Right click - step back / let go", PadDo.RightClick),
+        new("ptr.right",   PadButton.B,      PadContext.Pointer, "Back a page in menus; in the battle and editors, right click - step back / let go", PadDo.RightClick),
         new("ptr.esc",     PadButton.Start,  PadContext.Pointer, "Menu / cancel (Esc)", PadDo.Key, Key.Escape),
         new("ptr.menus",   PadButton.LStick, PadContext.Pointer, "Switch to the menu highlight", PadDo.TogglePointer),
         new("ptr.scrollu", PadButton.LT,     PadContext.Pointer, "Scroll up / zoom (right stick too)", PadDo.ScrollUp),
@@ -73,10 +75,11 @@ public static class Pad
         new("bat.tnext",   PadButton.RB,     PadContext.Battle, "Next target - shooting: enemies in range; activating: your ready units", PadDo.NextTarget),
         new("bat.zoomout", PadButton.LT,     PadContext.Battle, "Zoom out", PadDo.ScrollDown),
         new("bat.zoomin",  PadButton.RT,     PadContext.Battle, "Zoom in", PadDo.ScrollUp),
-        new("bat.act1",    PadButton.DUp,    PadContext.Battle, "Action 1 - Hold (1)", PadDo.Key, Key.Key1),
-        new("bat.act2",    PadButton.DRight, PadContext.Battle, "Action 2 - Advance (2)", PadDo.Key, Key.Key2),
-        new("bat.act3",    PadButton.DLeft,  PadContext.Battle, "Action 3 - Rush (3)", PadDo.Key, Key.Key3),
-        new("bat.act4",    PadButton.DDown,  PadContext.Battle, "Action 4 - Charge (4)", PadDo.Key, Key.Key4),
+        // Kai, 2026-11-24: the d-pad moves the camera over the table (the right stick still turns and tilts it).
+        new("bat.camu",    PadButton.DUp,    PadContext.Battle, "Move the camera forward", PadDo.CameraMove),
+        new("bat.camd",    PadButton.DDown,  PadContext.Battle, "Move the camera back", PadDo.CameraMove),
+        new("bat.caml",    PadButton.DLeft,  PadContext.Battle, "Move the camera left", PadDo.CameraMove),
+        new("bat.camr",    PadButton.DRight, PadContext.Battle, "Move the camera right", PadDo.CameraMove),
         new("bat.report",  PadButton.Back,   PadContext.Battle, "Battle report (R)", PadDo.Key, Key.R),
         new("bat.top",     PadButton.RStick, PadContext.Battle, "Top view (T)", PadDo.Key, Key.T),
     };
