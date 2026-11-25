@@ -394,6 +394,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             case InputEventKey { Pressed: true, Echo: false, Keycode: >= Key.Key1 and <= Key.Key9 } k:
                 if (Decisions.HotKey((int)(k.Keycode - Key.Key1))) GetViewport().SetInputAsHandled();
                 break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.C, CtrlPressed: false } when _cpButton.Visible:
+                ToggleStratagems();
+                GetViewport().SetInputAsHandled();
+                break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.K } when _cardsButton.Visible:
+                ToggleCards();
+                GetViewport().SetInputAsHandled();
+                break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.M }:
                 _mission.Collapsed = !_mission.Collapsed; break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.S, CtrlPressed: true }:
@@ -410,6 +418,151 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
                 GetViewport().SetInputAsHandled();
                 break;
         }
+    }
+
+    // ================================================================== Command Points drawer (mockup 2B)
+
+    private Button _cpButton = null!;
+    private PanelContainer _stratagems = null!;
+    private string _stratSig = "";
+
+    private void ToggleStratagems()
+    {
+        _stratagems.Visible = !_stratagems.Visible;
+        if (_stratagems.Visible) _cards.Visible = false;
+        _stratSig = "";
+        RefreshStratagems();
+    }
+
+    /// <summary>Whose stratagems: the seat whose decision is open (two players at one computer), else yours.</summary>
+    private FDG.PlayerID? StratagemPlayer => Decisions.Current?.Player ?? Session.LocalPlayer;
+
+    private void RefreshStratagems()
+    {
+        var info = StratagemPlayer is { } me ? StratagemBook.For(Session.Table, me) : null;
+        _cpButton.Visible = info != null;
+        if (info is not { } i) { _stratagems.Visible = false; return; }
+        _cpButton.Text = $"{i.Cp} CP  -  {(i.Doctrine > 0 ? StratagemBook.Short(i.Doctrine) : "no doctrine yet")}";
+        if (!_stratagems.Visible) return;
+        Rect2 rb = _roundBox.GetGlobalRect();
+        _stratagems.GlobalPosition = new Vector2(rb.Position.X, rb.End.Y + 6);
+        string sig = $"{i.Cp}|{i.Doctrine}|" + string.Join(",", i.Lines.Select(l => $"{l.Affordable}{l.UsedNow}"));
+        if (sig == _stratSig) return;
+        _stratSig = sig;
+        foreach (Node n in _stratagems.GetChildren()) { _stratagems.RemoveChild(n); n.QueueFree(); }
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(620, 0) };
+        col.AddThemeConstantOverride("separation", 6);
+        var head = new HBoxContainer();
+        head.AddChild(HudKit.Text("YOUR STRATAGEMS", 18, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        head.AddChild(HudKit.Grow());
+        head.AddChild(HudKit.Text("Each one pops up by itself when its moment comes.", 13, HudKit.Dim, HudKit.Semi));
+        col.AddChild(head);
+        var columns = new HBoxContainer();
+        columns.AddThemeConstantOverride("separation", 18);
+        VBoxContainer Column(string title, IEnumerable<StratagemBook.Line> lines)
+        {
+            var c = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            c.AddThemeConstantOverride("separation", 4);
+            c.AddChild(HudKit.Text(title, 12, HudKit.Teal, HudKit.Tracked(HudKit.Bold, 2)));
+            foreach (StratagemBook.Line l in lines)
+            {
+                bool usable = l.Affordable && !l.UsedNow;
+                var row = new VBoxContainer { MouseFilter = MouseFilterEnum.Stop, Modulate = usable ? Colors.White : new Color(1, 1, 1, 0.45f),
+                    TooltipText = $"{l.Stratagem.Name} ({l.Stratagem.Cost} CP) - when: {l.Stratagem.When}\n{l.Stratagem.Text}"
+                        + (l.UsedNow ? "\nUsed this activation." : !l.Affordable ? "\nNot enough CP." : "") };
+                row.AddThemeConstantOverride("separation", 0);
+                var top = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+                top.AddChild(HudKit.Text(l.Stratagem.Name, 16, HudKit.Fg, HudKit.Bold));
+                top.AddChild(HudKit.Grow());
+                top.AddChild(HudKit.Text($"{l.Stratagem.Cost} CP", 14, l.Affordable ? HudKit.Lime : Palette.WoundsRed, HudKit.Bold));
+                row.AddChild(top);
+                row.AddChild(HudKit.Text(l.Stratagem.When + (l.UsedNow ? "  -  used this activation" : ""), 12, HudKit.Dim, HudKit.Semi));
+                c.AddChild(row);
+            }
+            return c;
+        }
+        if (i.Doctrine > 0) columns.AddChild(Column(CommandPoints.DoctrineName(i.Doctrine).ToUpperInvariant(), i.Lines.Where(l => l.Stratagem.Doctrine == i.Doctrine)));
+        columns.AddChild(Column("UNIVERSAL", i.Lines.Where(l => l.Stratagem.Doctrine == 0)));
+        col.AddChild(columns);
+        _stratagems.AddChild(col);
+        _stratagems.Size = Vector2.Zero;
+    }
+
+    // ================================================================== mission cards drawer
+
+    private Button _cardsButton = null!;
+    private PanelContainer _cards = null!;
+    private string _cardsSig = "";
+
+    private void ToggleCards()
+    {
+        _cards.Visible = !_cards.Visible;
+        if (_cards.Visible) _stratagems.Visible = false;
+        _cardsSig = "";
+        RefreshCards();
+    }
+
+    private void RefreshCards()
+    {
+        FDG.Missions.MissionCardState? state = null;
+        try { state = GameProgressUtilities.MissionCards(Session.Table.DataStore); } catch (Exception) { }
+        bool on = state is { Game: not FDG.Missions.EMissionCardGame.Off };
+        _cardsButton.Visible = on;
+        if (!on) { _cards.Visible = false; return; }
+        if (!_cards.Visible) return;
+        Rect2 rb = _roundBox.GetGlobalRect();
+        _cards.GlobalPosition = new Vector2(rb.Position.X, rb.End.Y + 6);
+        PlayerID? me = StratagemPlayer;
+        var players = Session.Table.Players.Objects.Where(p => p.IsFilled).ToList();
+        int mySlot = players.FirstOrDefault(p => me is { } m && p.PlayerID.Equals(m))?.SlotID ?? -1;
+        string sig = mySlot + "|" + string.Join(";", state!.Sides.OrderBy(k => k.Key).Select(k => $"{k.Key}:{string.Join(",", k.Value.Table)}/{string.Join(",", k.Value.Hand)}/{string.Join(",", k.Value.Hidden)}/{k.Value.Vp}"))
+            + "|" + string.Join(",", state.SharedTable);
+        if (sig == _cardsSig) return;
+        _cardsSig = sig;
+        foreach (Node n in _cards.GetChildren()) { _cards.RemoveChild(n); n.QueueFree(); }
+        EGameSystem system = Session.Table.Progress.GameSystem;
+        var col = new VBoxContainer { CustomMinimumSize = new Vector2(760, 0) };
+        col.AddThemeConstantOverride("separation", 8);
+        var head = new HBoxContainer();
+        head.AddChild(HudKit.Text("MISSION CARDS  -  " + FDG.Missions.MissionCardCatalog.Name(state.Game).ToUpperInvariant(), 18, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 2)));
+        head.AddChild(HudKit.Grow());
+        head.AddChild(HudKit.Text("Hover a card to read it.", 13, HudKit.Dim, HudKit.Semi));
+        col.AddChild(head);
+        var look = new MissionCardView.Look(230, 150);
+        void Pile(string title, IEnumerable<int> cards, Func<int, bool> faceDown, bool mine)
+        {
+            var list = cards.ToList();
+            col.AddChild(HudKit.Text(title + (list.Count == 0 ? "  -  none" : ""), 12, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
+            if (list.Count == 0) return;
+            var row = new HFlowContainer();
+            row.AddThemeConstantOverride("h_separation", 8);
+            row.AddThemeConstantOverride("v_separation", 8);
+            foreach (int n in list)
+            {
+                bool down = faceDown(n);
+                if (down && !mine) { row.AddChild(MissionCardView.FaceDown("FACE DOWN", look, null)); continue; }
+                FDG.Missions.MissionCardDef def = FDG.Missions.MissionCardCatalog.Card(system, n);
+                row.AddChild(MissionCardView.Card(def, down ? look with { Stamp = "FACE DOWN", StampColour = MissionCardView.StampDim } : look, null));
+            }
+            col.AddChild(row);
+        }
+        if (state.Game == FDG.Missions.EMissionCardGame.TotalDomination) Pile("SHARED TABLE", state.SharedTable, _ => false, true);
+        foreach (var p in players.OrderBy(p => p.SlotID == mySlot ? 0 : 1).ThenBy(p => p.SlotID))
+        {
+            if (!state.Sides.TryGetValue(p.SlotID, out FDG.Missions.MissionCardSide? side)) continue;
+            bool mine = p.SlotID == mySlot;
+            string who = mine ? "YOUR" : p.Name.ToUpperInvariant() + "'S";
+            Pile($"{who} TABLE  -  {side.Vp} VP", side.Table, n => side.Hidden.Contains(n), mine);
+            if (mine && side.Hand.Count > 0) Pile("YOUR HAND", side.Hand, _ => false, true);
+        }
+        // As tall as the cards need, up to the room under the round box; past that it scrolls.
+        float room = Mathf.Min(640, GetViewportRect().Size.Y - rb.End.Y - 60);
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _cards.AddChild(scroll);
+        scroll.AddChild(col);
+        // Measured once it's on screen (the text has its font there).
+        scroll.CustomMinimumSize = new Vector2(780, Mathf.Clamp(col.GetCombinedMinimumSize().Y + 4, 180, room));
+        _cards.Size = Vector2.Zero;
     }
 
     private Vector2 _rightDown;
@@ -825,8 +978,24 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         t.AddChild(_turn);
         t.AddChild(_turnLine);
         roundRow.AddChild(t);
+        // Command Points (Kai, 2026-11-25, mockup 2B): the CP button opens the stratagem drawer under the round box.
+        _cpButton = new Button { Name = "Stratagems", Visible = false, TooltipText = "Your stratagems (C). Each one is offered by itself when its moment comes." };
+        _cpButton.Pressed += ToggleStratagems;
+        roundRow.AddChild(_cpButton);
+        // Mission cards (Kai, 2026-11-25: "theres also no way to see what mission cards you got in game").
+        _cardsButton = new Button { Name = "MissionCardsButton", Text = "Cards", Visible = false, TooltipText = "Your mission cards and the other players' (K)." };
+        _cardsButton.Pressed += ToggleCards;
+        roundRow.AddChild(_cardsButton);
         var roundBox = HudKit.Panel(Tight(10).With(x => { x.Accent = HudKit.Lime; x.AccentLength = 40; x.ContentMarginLeft = 12; x.ContentMarginRight = 12; }), roundRow);
         ScreenFrame.Place(this, "RoundBox", roundBox, LayoutPreset.TopLeft, new Vector2(Pad, Pad), _hud);
+        _stratagems = new PanelContainer { Name = "StratagemDrawer", Visible = false, MouseFilter = MouseFilterEnum.Stop };
+        _stratagems.AddThemeStyleboxOverride("panel", Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.96f }; x.Border = HudKit.Lime with { A = 0.55f };
+            x.ContentMarginLeft = 16; x.ContentMarginRight = 16; x.ContentMarginTop = 12; x.ContentMarginBottom = 12; }));
+        AddChild(_stratagems);
+        _cards = new PanelContainer { Name = "MissionCardsDrawer", Visible = false, MouseFilter = MouseFilterEnum.Stop };
+        _cards.AddThemeStyleboxOverride("panel", Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.96f }; x.Border = HudKit.Gold with { A = 0.55f };
+            x.ContentMarginLeft = 16; x.ContentMarginRight = 16; x.ContentMarginTop = 12; x.ContentMarginBottom = 12; }));
+        AddChild(_cards);
 
         // Top-centre: what the game wants right now.
         // Kai, 2026-11-24: the one long line ran under the buttons on either side. Now two short lines in a fixed
@@ -1050,6 +1219,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         RefreshCard(activating); PerfProbe.Stop("hud.card", tp); tp = PerfProbe.Start();
         RefreshReport(); PerfProbe.Stop("hud.report", tp); tp = PerfProbe.Start();
         RefreshMission(progress); PerfProbe.Stop("hud.mission", tp); tp = PerfProbe.Start();
+        RefreshStratagems();
+        RefreshCards();
 
         if (ScreenFrame.Framed(this)) LayoutFromFrame();
         else LayoutByCode();

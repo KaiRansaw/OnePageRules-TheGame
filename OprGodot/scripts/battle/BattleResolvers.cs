@@ -58,7 +58,8 @@ public static class BattleResolvers
         registry.RegisterResolver(new Ask<SelectionRequest<ModelData>, DataBinding<ModelData>>(r => new ModelPickDecision(r)));
         registry.RegisterResolver(new Ask<ChooseActionRequest, string>(r => new ActionDecision(r)));
         registry.RegisterResolver(new MeleeWeaponsOrAsk(new Ask<StringSelectionRequest, string>(r =>
-            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickOne(r, m) : new StringListDecision(r))));
+            CardMoments.Of(r.DisplayName) is { } m ? new MissionCardPickOne(r, m)
+            : DoctrinePickDecision.Fits(r) ? new DoctrinePickDecision(r) : new StringListDecision(r))));
         registry.RegisterResolver(new Ask<YesNoRequest, bool>(r => new YesNoDecision(r)));
         registry.RegisterResolver(new Ask<DefineMovementPathRequest, CancellableResult<List<ModelMoveEntry>>>(r => new MoveDecision(r)));
         registry.RegisterResolver<ChooseMeleeDefenderRequest, CancellableResult<DataBinding<UnitData>>>(

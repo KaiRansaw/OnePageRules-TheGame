@@ -836,6 +836,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
             armyRow.AddChild(army);
             var roll = Ui.Button("Roll", () => Session.RollArmy(info.PlayerID),
                 "Roll another army from the armies folder, closest to the points limit first. Skips armies other players are using and never repeats one until this seat has seen them all. With no saved army of this game, makes a legal one up from a random army book.");
+            roll.Name = "SeatRoll";
             roll.Disabled = !canModify || !LobbySession.ArmyCatalogReady;
             armyRow.AddChild(roll);
             col.AddChild(armyRow);
