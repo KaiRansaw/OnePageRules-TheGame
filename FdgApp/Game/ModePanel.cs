@@ -34,7 +34,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), CastingRows(table, system, advanced)))))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), Combine(CastingRows(table, system, advanced), LivingSpellRows(table, system, advanced))))))),
             _ => null,
         };
     }
@@ -102,6 +102,17 @@ public static class ModePanel
         var settings = new FDG.GameSettings { GameSystem = system, AdvancedRules = advanced };
         int round = GameProgressUtilities.TryGetProgress(table.DataStore)?.RoundCount ?? 0;
         var lines = FDG.AdvancedCasting.PanelLines(table.DataStore, settings, round);
+        if (lines.Count == 0) return null;
+        var rows = new List<Row> { new(lines[0].Text, EStyle.Title, lines[0].Hover) };
+        rows.AddRange(lines.Skip(1).Select(l => new Row(l.Text, l.Warn ? EStyle.Warn : EStyle.Line, l.Hover)));
+        return rows;
+    }
+
+    /// <summary>Advanced Casting - Living Spells: each army's spells and what is on the table.</summary>
+    private static List<Row>? LivingSpellRows(ITableState table, EGameSystem system, FDG.EAdvancedRules advanced)
+    {
+        if (!advanced.HasFlag(FDG.EAdvancedRules.LivingSpells)) return null;
+        var lines = FDG.LivingSpells.PanelLines(table.DataStore, new FDG.GameSettings { GameSystem = system, AdvancedRules = advanced });
         if (lines.Count == 0) return null;
         var rows = new List<Row> { new(lines[0].Text, EStyle.Title, lines[0].Hover) };
         rows.AddRange(lines.Skip(1).Select(l => new Row(l.Text, l.Warn ? EStyle.Warn : EStyle.Line, l.Hover)));
