@@ -131,6 +131,7 @@ public partial class SettingsScreen : Control
                 pick.SetItemDisabled(pick.ItemCount - 1, disabled);
                 ids.Add(id);
             }
+            Add(TableRooms.Tabletop, "Tabletop - a real table standing in the map's land");
             Add(TableRooms.Battlefield, "Battlefield - the land goes on past the table");
             Add(TableRooms.Auto, "Auto - grimdark for GF games, fantasy for AoF");
             Add(TableRooms.None, "None - the plain dark background");
@@ -144,7 +145,7 @@ public partial class SettingsScreen : Control
         Fill();
         pick.ItemSelected += i => { View.Room = ids[(int)i]; UserConfig.Save(); };
         rows.AddChild(Row("Around the table",
-            "Battlefield: no table edge - the ground runs on to the map's horizon (its sky, hills and haze). Or a 360-degree photo of a room around the table. Auto picks a downloaded room that suits the game. Takes effect when you leave Settings.", pick));
+            "Tabletop: a wooden table with a rim and legs, standing in the map's land. Battlefield: no table edge - the ground runs on to the map's horizon (its sky, hills and haze). Or a 360-degree photo of a room around the table. Auto picks a downloaded room that suits the game. Takes effect when you leave Settings.", pick));
         rows.AddChild(Slider("Room brightness", "How bright the room behind the table is. The table itself is lit the same either way.",
             View.RoomBrightness, 0.2, 1.5, v => View.RoomBrightness = v, "x"));
 

@@ -571,6 +571,14 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name[9..]} scrolled to {sat.ScrollVertical}");
                 return;
             }
+            // "batcam:30|200|20" puts the battle camera at 30 degrees, 200" back, turned 20 degrees.
+            if (name.StartsWith("batcam:") && name[7..].Split('|') is [var bcp, var bcd, var bcy] && Find<Battle.BattleScreen>(GetTree().Root) is { } batScr)
+            {
+                var ci = System.Globalization.CultureInfo.InvariantCulture;
+                batScr.SetView(float.Parse(bcp, ci), float.Parse(bcd, ci), float.Parse(bcy, ci));
+                _wait = 30;
+                return;
+            }
             // "mapcam:12|120" tilts the Map Maker's camera to 12 degrees, 120" back (horizon checks).
             if (name.StartsWith("mapcam:") && name[7..].Split('|') is [var mp, var md] && Find<Maps.MapEditorScreen>(GetTree().Root) is { } mapEd)
             {

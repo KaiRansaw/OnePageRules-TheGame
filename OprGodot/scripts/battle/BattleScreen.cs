@@ -207,6 +207,9 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         ApplyCamera();
     }
 
+    /// <summary>Test driver: put the camera at a pitch, distance and turn (screenshot checks).</summary>
+    public void SetView(float pitch, float distance, float yaw) { _pitch = pitch; _distance = distance; _yaw = yaw; ApplyCamera(); }
+
     private void ApplyCamera()
     {
         float pitch = _topView ? 89.5f : _pitch;

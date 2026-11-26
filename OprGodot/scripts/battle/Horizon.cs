@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using FDG;
 using Godot;
 
@@ -31,7 +33,13 @@ public static class Horizon
     };
 
     /// <summary>True when Settings has the battlefield (not a room, not the plain background).</summary>
-    public static bool On => FdgRaylib.Config.UserConfig.Current.View.Room == FdgRaylib.Terrain.TableRooms.Battlefield;
+    public static bool On => FdgRaylib.Config.UserConfig.Current.View.Room is FdgRaylib.Terrain.TableRooms.Battlefield or FdgRaylib.Terrain.TableRooms.Tabletop;
+
+    /// <summary>The table look (Kai, 2026-11-25): the land sits <see cref="TableHeight"/> below the mat and a wooden table
+    /// with a rim and legs holds the play area.</summary>
+    public static bool Tabletop => FdgRaylib.Config.UserConfig.Current.View.Room == FdgRaylib.Terrain.TableRooms.Tabletop;
+
+    public const float TableHeight = 30f;
 
     /// <summary>Points <paramref name="env"/> at the theme's sky and haze. Call after <see cref="TableLook.AddLighting"/>.</summary>
     public static void SkyAndHaze(Godot.Environment env, TerrainBook.ETheme theme, float tableW, float tableD, string? sky = null)
@@ -106,15 +114,19 @@ public static class Horizon
         var noise = new FastNoiseLite { Seed = 1793 + (int)theme, Frequency = 0.0022f, FractalOctaves = 4, NoiseType = FastNoiseLite.NoiseTypeEnum.SimplexSmooth };
         var ridges = new FastNoiseLite { Seed = 31 + (int)theme, Frequency = 0.0011f, FractalType = FastNoiseLite.FractalTypeEnum.Ridged, FractalOctaves = 3 };
         float hw = tableW / 2, hd = tableD / 2;
+        bool table = Tabletop;
+        float drop = table ? TableHeight : 0.03f, margin = table ? 60f : FlatMargin;
         float Height(float x, float z)
         {
             // Distance from the table's edge (0 on the mat), so the flat ground hugs any table shape.
             float dx = Mathf.Max(Mathf.Abs(x) - hw, 0), dz = Mathf.Max(Mathf.Abs(z) - hd, 0);
-            float d = Mathf.Sqrt(dx * dx + dz * dz) - FlatMargin;
-            if (d <= 0) return -0.03f;
+            float d = Mathf.Sqrt(dx * dx + dz * dz) - margin;
+            // Under a table the ground rolls a little, so it doesn't read as a floor.
+            float ripple = table ? 2.5f * noise.GetNoise2D(x * 3f, z * 3f) : 0f;
+            if (d <= 0) return -drop + ripple;
             float hills = Mathf.SmoothStep(0, 260, d) * th.Hills * (0.5f + 0.5f * noise.GetNoise2D(x, z));
             float mountains = Mathf.SmoothStep(450, 1100, d) * th.Mountains * Mathf.Max(0, ridges.GetNoise2D(x, z) + 0.15f);
-            return -0.03f + hills + mountains;
+            return -drop + ripple + hills + mountains;
         }
 
         // One square grid out to Reach; finer near the table so the first slopes are smooth.
@@ -144,9 +156,113 @@ public static class Horizon
         st.GenerateTangents();
         TableLook.Mesh(root, st.Commit(), Ground(theme, ground), Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
-        // The playable edge: a thin light line round the mat.
-        Border(root, tableW, tableD);
+        // The playable edge: a thin light line round the mat - or, on a table, the table's own rim.
+        if (table) { AddTable(root, tableW, tableD); AddSurroundings(root, tableW, tableD, theme, Height); }
+        else Border(root, tableW, tableD);
     }
+
+    /// <summary>
+    /// Trees, bushes and rocks on the land round the table, at real size (1 metre = 39.37"), the way a real table stands
+    /// in a garden or a wood. Picked by the map's theme; seeded by the table so a map always looks the same. A clear ring
+    /// is kept round the table so nothing stands between the usual camera and the mat.
+    /// </summary>
+    private static void AddSurroundings(Node3D root, float w, float d, TerrainBook.ETheme theme, Func<float, float, float> height)
+    {
+        const string N = "stylised/nature/models/";
+        static string[] Many(string name, int n) => Enumerable.Range(1, n).Select(i => $"{N}{name}_{i}.gltf").ToArray();
+        string[] trees = theme switch
+        {
+            TerrainBook.ETheme.Death => Many("DeadTree", 5).Concat(Many("TwistedTree", 5)).ToArray(),
+            TerrainBook.ETheme.Wasteland => Many("DeadTree", 5),
+            TerrainBook.ETheme.Hospitable => Many("CommonTree", 5).Concat(Many("Pine", 5)).ToArray(),
+            _ => Many("CommonTree", 5).Concat(Many("Pine", 5)).Concat(Many("TwistedTree", 2)).ToArray(),
+        };
+        string[] small = theme switch
+        {
+            TerrainBook.ETheme.Death or TerrainBook.ETheme.Wasteland => Many("Rock_Medium", 3),
+            _ => Many("Rock_Medium", 3).Concat(new[] { $"{N}Bush_Common.gltf", $"{N}Bush_Common_Flowers.gltf", $"{N}Plant_7_Big.gltf", $"{N}Plant_1_Big.gltf" }).ToArray(),
+        };
+        var rng = new Random(7919 + (int)theme * 31 + (int)w * 7 + (int)d);
+        var holder = new Node3D { Name = "Surroundings" };
+        root.AddChild(holder);
+        // Sized by height in inches (the packs' own units vary): trees two to four times the table's height above the
+        // ground, bushes and rocks about table height - like a table in a clearing.
+        void Place(string[] pool, int count, float near, float far, float minH, float maxH)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float a = (float)(rng.NextDouble() * Math.Tau);
+                float r = near + (far - near) * (float)Math.Sqrt(rng.NextDouble());
+                float x = Mathf.Cos(a) * r * (w >= d ? 1.3f : 1f), z = Mathf.Sin(a) * r * (w >= d ? 1f : 1.3f);
+                if (PieceModels.Instance(pool[rng.Next(pool.Length)]) is not { } m) continue;
+                float tall = ModelHeight(m);
+                if (tall <= 0.001f) { m.QueueFree(); continue; }
+                float k = (minH + (maxH - minH) * (float)rng.NextDouble()) / tall;
+                m.Scale = new Vector3(k, k, k);
+                m.Position = new Vector3(x, height(x, z) - 0.5f, z);
+                m.RotationDegrees = new Vector3(0, (float)(rng.NextDouble() * 360), 0);
+                holder.AddChild(m);
+            }
+        }
+        float clear = Mathf.Max(w, d) * 0.5f + 120f;
+        Place(trees, 70, clear, clear + 450f, 90f, 170f);
+        Place(small, 50, clear - 30f, clear + 300f, 12f, 30f);
+    }
+
+    /// <summary>
+    /// The wooden table (Kai, 2026-11-25, from Niemandsland's look): a dark frame round the mat with a lip standing
+    /// <see cref="RimHeight"/> above it (outside the play area, so it never touches a model), a deep apron under the
+    /// top and four legs down to the ground.
+    /// </summary>
+    public static void AddTable(Node3D root, float w, float d)
+    {
+        const float Rim = 1.6f, Top = 3f, Apron = 5f, Leg = 3.5f;
+        var wood = new StandardMaterial3D { AlbedoColor = new Color(0.10f, 0.085f, 0.08f), Roughness = 0.55f, Metallic = 0.05f };
+        var edge = new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.13f, 0.11f), Roughness = 0.45f };
+        var table = new Node3D { Name = "Table" };
+        root.AddChild(table);
+        void Box(Vector3 size, Vector3 at, Material m)
+        {
+            var mi = TableLook.Mesh(table, new BoxMesh { Size = size }, m, at);
+            mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+        }
+        float ow = w + 2 * Rim, od = d + 2 * Rim;
+        // The lip: four rails, their tops RimHeight above the mat.
+        Box(new Vector3(ow, RimHeight + Top, Rim), new Vector3(0, (RimHeight - Top) / 2, -(d / 2 + Rim / 2)), edge);
+        Box(new Vector3(ow, RimHeight + Top, Rim), new Vector3(0, (RimHeight - Top) / 2, d / 2 + Rim / 2), edge);
+        Box(new Vector3(Rim, RimHeight + Top, d), new Vector3(-(w / 2 + Rim / 2), (RimHeight - Top) / 2, 0), edge);
+        Box(new Vector3(Rim, RimHeight + Top, d), new Vector3(w / 2 + Rim / 2, (RimHeight - Top) / 2, 0), edge);
+        // The top under the mat, and the apron below it (set in a little).
+        Box(new Vector3(w, Top, d), new Vector3(0, -Top / 2 - 0.02f, 0), wood);
+        Box(new Vector3(ow - 3, Apron, od - 3), new Vector3(0, -Top - Apron / 2, 0), wood);
+        // Legs, inset from the corners, down past the ground (it rolls a little).
+        float legH = TableHeight + 4f - Top - Apron;
+        float lx = ow / 2 - 4f, lz = od / 2 - 4f;
+        foreach ((float sx, float sz) in new[] { (-1f, -1f), (1f, -1f), (-1f, 1f), (1f, 1f) })
+            Box(new Vector3(Leg, legH, Leg), new Vector3(sx * lx, -Top - Apron - legH / 2, sz * lz), wood);
+    }
+
+    /// <summary>A model's height in its own units (the tallest point of its meshes).</summary>
+    private static float ModelHeight(Node3D model)
+    {
+        float top = 0f, bottom = float.MaxValue;
+        void Walk(Node n, Transform3D t)
+        {
+            Transform3D here = n is Node3D n3 ? t * n3.Transform : t;
+            if (n is MeshInstance3D mi && mi.Mesh != null)
+            {
+                Aabb b = here * mi.Mesh.GetAabb();
+                top = Mathf.Max(top, b.End.Y);
+                bottom = Mathf.Min(bottom, b.Position.Y);
+            }
+            foreach (Node c in n.GetChildren()) Walk(c, here);
+        }
+        Walk(model, Transform3D.Identity);
+        return bottom == float.MaxValue ? 0f : top - Mathf.Min(bottom, 0f);
+    }
+
+    /// <summary>How far the table's lip stands above the mat.</summary>
+    public const float RimHeight = 1.2f;
 
     /// <summary>UV size of the land mesh (only the plain fallback colour uses UVs; the ground shader works in world inches).</summary>
     public const float Tile = 60f;

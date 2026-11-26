@@ -84,6 +84,13 @@ public partial class App : Node
             UserConfig.Current.View.Room = FdgRaylib.Terrain.TableRooms.Battlefield;
             UserConfig.Save();
         }
+        if (!UserConfig.Current.View.TabletopOffered)
+        {
+            // Kai, 2026-11-25: "look like an actual tabletop" - the table in the land is the new look, switched on once.
+            UserConfig.Current.View.TabletopOffered = true;
+            UserConfig.Current.View.Room = FdgRaylib.Terrain.TableRooms.Tabletop;
+            UserConfig.Save();
+        }
         if (UserConfig.Current.View.UiSkinOffered != newest)
         {
             UserConfig.Current.View.UiSkin = newest;
