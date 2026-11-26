@@ -26,7 +26,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     public MapDraft Draft { get; set; } = MapDraft.New(72, 48);
 
     // Map Maker option A (Kai, 2026-11-17): Box select and Measure join the tools, on a rail beside the table.
-    private enum ETool { Select, BoxSelect, Place, Objective, Base, Measure }
+    private enum ETool { Select, BoxSelect, Place, Objective, Base, Measure, Scenery }
 
     private ETool _tool = ETool.Select;
     private TerrainBook.PieceKind _kind = TerrainBook.Kinds[1];
@@ -226,6 +226,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     {
         TopBar();
         ToolRail();
+        // The table tools have nothing to do while the scenery is being edited.
+        if (_rail.GetParent()?.GetParent() is Control railPanel) railPanel.Visible = _tool != ETool.Scenery;
         LeftPanel();
         RightPanel();
         Sync3D();
@@ -368,6 +370,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         KeepPalette();
         Clear(_left);
         if (_leftScroll is { } outer) RestoreScroll(outer, leftY);
+        if (_tool == ETool.Scenery) { SceneryPanel(); return; }
         _left.AddChild(HudKit.Heading("Pieces (the book's)", 13));
         var grid = new GridContainer { Columns = 2 };
         grid.AddThemeConstantOverride("h_separation", 5);
@@ -817,6 +820,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         }
         col.AddChild(grid);
 
+        SceneryRows(col, Reopen);
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddChild(Ui.Button("Done", () => { veil.QueueFree(); Rebuild(); }, "Close.").Also(b => b.Name = "CloseBattlefield"));
         col.AddChild(buttons);
@@ -849,6 +853,8 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         Atmosphere();
         Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
         Weather.Overcast(_world, Draft.Weather);
+        // Building the world resets the haze to its table-side start; put it back where the camera is.
+        Horizon.FollowCamera(_world, Haze);
     }
 
     /// <summary>Horizon or ground changed: the sky and the land (and the table's ground) are made again.</summary>
@@ -858,6 +864,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         BuildBoard();
         Horizon.ApplyLight(_world, MapAtmosphere.Light.Parse(Draft.Light));
         Weather.Overcast(_world, Draft.Weather);
+        Horizon.FollowCamera(_world, Haze);
     }
 
     /// <summary>Loads the picker's pictures a few a frame, so it opens at once (the first time makes the small copies).</summary>
@@ -885,6 +892,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private void RightPanel()
     {
         Clear(_right);
+        if (_tool == ETool.Scenery) { SceneryRight(); return; }
         if (_picked.Count > 1)
         {
             GroupPanel();
@@ -1242,7 +1250,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     private void BuildBoard()
     {
         foreach (Node n in _board.GetChildren()) { _board.RemoveChild(n); n.QueueFree(); }
-        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId, battlefield: Horizon.On, ground: Draft.Ground);
+        TableLook.AddBoard(_board, W, D, Draft.Mat, floor: TableLook.RoomFor(_checkFor) == null, horizon: HorizonId, battlefield: Horizon.On, ground: Draft.Ground, scenery: Draft.Scenery);
         Weather.Add(_board, W, D, Draft.Weather);
     }
 
@@ -1454,8 +1462,11 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         Vector3 offset = new Vector3(0, 0, _distance).Rotated(Vector3.Right, -Mathf.DegToRad(pitch)).Rotated(Vector3.Up, Mathf.DegToRad(_yaw));
         _camera.Position = _focus + offset;
         _camera.LookAt(_focus, _topView ? Vector3.Forward.Rotated(Vector3.Up, Mathf.DegToRad(_yaw)) : Vector3.Up);
-        Horizon.FollowCamera(_world, _distance);
+        Horizon.FollowCamera(_world, Haze);
     }
+
+    /// <summary>Where the haze starts: at the table normally, past the scenery while it is being edited.</summary>
+    private float Haze => _tool == ETool.Scenery ? _distance + 320f * Horizon.DistanceScale : _distance;
 
     private void ToggleTopView()
     {
@@ -1513,21 +1524,27 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp, Pressed: true }:
                 _distance = Mathf.Max(8f * Horizon.DistanceScale, _distance * 0.9f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.WheelDown, Pressed: true }:
-                _distance = Mathf.Min(260f * Horizon.DistanceScale, _distance * 1.1f); ApplyCamera(); break;
+                _distance = Mathf.Min((_tool == ETool.Scenery ? 900f : 260f) * Horizon.DistanceScale, _distance * 1.1f); ApplyCamera(); break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Right } mb:
                 if (mb.Pressed) { _dragRotate = mb.Position; _rightDown = mb.Position; }
                 else
                 {
                     _dragRotate = null;
-                    if (mb.Position.DistanceTo(_rightDown) < 4 && _tool != ETool.Select) { _tool = ETool.Select; Say(""); Rebuild(); }
+                    if (mb.Position.DistanceTo(_rightDown) < 4 && _tool == ETool.Scenery) { _sceneryModel = null; Rebuild(); }
+                    else if (mb.Position.DistanceTo(_rightDown) < 4 && _tool != ETool.Select) { _tool = ETool.Select; Say(""); Rebuild(); }
                 }
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Middle } mb:
                 _dragPan = mb.Pressed ? mb.Position : null; break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
-                if (mb.Pressed) LeftDown(mb.Position, mb.ShiftPressed);
+                if (mb.Pressed && _tool == ETool.Scenery) SceneryDown(mb.Position);
+                else if (mb.Pressed) LeftDown(mb.Position, mb.ShiftPressed);
+                else if (_sceneryDragging) SceneryUp();
                 else if (_boxFrom != null) FinishBox(mb.Position);
                 else { bool was = _dragging; _dragging = false; _resizeCorner = -1; if (was || _selObjective >= 0 || _selBase >= 0 || _picked.Count > 0) Rebuild(); }
+                break;
+            case InputEventMouseMotion mm when _sceneryDragging:
+                SceneryDrag(mm.Position);
                 break;
             case InputEventMouseMotion mm when _boxFrom != null:
                 UpdateBox(mm.Position);
@@ -1760,6 +1777,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
     {
         if (!IsVisibleInTree()) return;   // keys are for the screen that is showing
         if (e is not InputEventKey { Pressed: true } k || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit or SpinBox) return;
+        if (_tool == ETool.Scenery && !k.CtrlPressed && SceneryKey(k)) { GetViewport().SetInputAsHandled(); return; }
         bool handled = true;
         switch (k.Keycode)
         {
@@ -1833,6 +1851,44 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
                 _sel = placed;
                 break;
             }
+            // Scenery tool (test driver): "sceneryadd:Pine_1@-150;60" (world inches), "scenerysel:3", "scenerymove:-150;90".
+            case "sceneryadd" when arg.Split('@') is { Length: 2 } sa:
+            {
+                var (x, z) = XZ(sa[1]);
+                var sc = MapScenery.Parse(Draft.Scenery);
+                sc.Pieces ??= sc.Resolve(MapAtmosphere.HorizonFor(HorizonId).ToString(), W, D);
+                Draft.Remember();
+                sc.Pieces.Add(new MapScenery.Piece(sa[0], x, z, 0f, MapScenery.DefaultHeight(sa[0])));
+                _scenerySel = sc.Pieces.Count - 1;
+                Draft.Scenery = sc.ToText();
+                RebuildWorld();
+                SyncSceneryRing();
+                Clear(_right);
+                SceneryRight();
+                break;
+            }
+            case "scenerysel" when int.TryParse(arg, out int si):
+                _scenerySel = si;
+                SyncSceneryRing();
+                Clear(_right);
+                SceneryRight();
+                break;
+            case "scenerymove":
+            {
+                var (x, z) = XZ(arg);
+                var sc = MapScenery.Parse(Draft.Scenery);
+                if (sc.Pieces != null && _scenerySel >= 0 && _scenerySel < sc.Pieces.Count)
+                {
+                    sc.Pieces[_scenerySel] = sc.Pieces[_scenerySel] with { X = x, Z = z };
+                    Draft.Scenery = sc.ToText();
+                    RebuildWorld();
+                    SyncSceneryRing();
+                }
+                break;
+            }
+            case "sceneryedit":
+                StartScenery();
+                break;
             // "single:<name>@x;z" - one of the game's own terrain models on its own (first whose name contains it).
             case "single" when arg.Split('@') is { Length: 2 } sm
                 && PieceModels.Catalogue.FirstOrDefault(m => m.Name.Contains(sm[0], StringComparison.OrdinalIgnoreCase)) is { } one:

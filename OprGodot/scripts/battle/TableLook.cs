@@ -91,11 +91,11 @@ public static class TableLook
     /// <paramref name="mat"/> is the map's battle mat (<c>wh-mat:&lt;id&gt;</c>): its picture replaces the felt, with the
     /// same grid drawn over it; a computer without the picture gets the felt.
     /// </summary>
-    public static void AddBoard(Node parent, float w, float d, string? mat = null, bool floor = true, string? horizon = null, bool battlefield = false, string? ground = null)
+    public static void AddBoard(Node parent, float w, float d, string? mat = null, bool floor = true, string? horizon = null, bool battlefield = false, string? ground = null, string? scenery = null)
     {
         // The battlefield (Settings -> Around the table; battles and the Map Maker only): no table edge or floor - the land
         // runs on to the horizon.
-        if (battlefield && parent is Node3D p3) Battle.Horizon.AddLand(p3, w, d, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), ground);
+        if (battlefield && parent is Node3D p3) Battle.Horizon.AddLand(p3, w, d, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), ground, scenery);
         // The dark floor under the table; left out in a room, whose own floor shows instead.
         if (floor && !battlefield) Mesh(parent, new PlaneMesh { Size = new Vector2(800, 800) }, Mat(new Color(0.03f, 0.04f, 0.045f)), new Vector3(0, -3, 0));
         if (!battlefield) Mesh(parent, new BoxMesh { Size = new Vector3(w + 2, 3, d + 2) }, Mat(new Color(0.09f, 0.075f, 0.06f), 0.6f), new Vector3(0, -1.55f, 0));

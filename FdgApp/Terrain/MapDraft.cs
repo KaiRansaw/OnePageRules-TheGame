@@ -78,6 +78,10 @@ public sealed class MapDraft
     public string Ground = "";
     /// <summary>The sky picture id ("" = the style's first) and the light settings ("" = default) - TerrainLayoutFile.Sky / .Light.</summary>
     public string Sky = "", Light = "";
+
+    /// <summary>The scenery round the table (FdgApp <see cref="MapScenery"/> text; "" = generated from the horizon) -
+    /// TerrainLayoutFile.Scenery.</summary>
+    public string Scenery = "";
     public float TableW = GameWideConstants.STANDARD_TABLE_WIDTH_INCHES, TableH = GameWideConstants.STANDARD_TABLE_HEIGHT_INCHES;
     public List<MapPiece> Pieces { get; } = new();
     public List<(float X, float Z)> Objectives { get; } = new();
@@ -121,6 +125,7 @@ public sealed class MapDraft
         Ground = f.Ground ?? "";
         Sky = f.Sky ?? "";
         Light = f.Light ?? "";
+        Scenery = f.Scenery ?? "";
         Pieces.Clear();
         foreach (TerrainPieceEntry e in f.Pieces.Where(e => e.Shape != null)) Pieces.Add(FromEntry(e));
         Objectives.Clear();
@@ -176,6 +181,7 @@ public sealed class MapDraft
         Ground = Ground,
         Sky = Sky,
         Light = Light,
+        Scenery = Scenery,
         TableWidthInches = TableW,
         TableHeightInches = TableH,
         Pieces = Pieces.Select(p => new TerrainPieceEntry

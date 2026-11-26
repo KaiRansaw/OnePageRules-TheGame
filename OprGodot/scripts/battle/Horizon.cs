@@ -105,7 +105,7 @@ public static class Horizon
     }
 
     /// <summary>The land round a <paramref name="tableW"/> x <paramref name="tableD"/> table centred on the origin.</summary>
-    public static void AddLand(Node3D parent, float tableW, float tableD, TerrainBook.ETheme theme, string? ground = null)
+    public static void AddLand(Node3D parent, float tableW, float tableD, TerrainBook.ETheme theme, string? ground = null, string? scenery = null)
     {
         Theme th = Of(theme);
         var root = new Node3D { Name = "Horizon" };
@@ -157,56 +157,41 @@ public static class Horizon
         TableLook.Mesh(root, st.Commit(), Ground(theme, ground), Vector3.Zero).CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
         // The playable edge: a thin light line round the mat - or, on a table, the table's own rim.
-        if (table) { AddTable(root, tableW, tableD); AddSurroundings(root, tableW, tableD, theme, Height); }
+        if (table) { AddTable(root, tableW, tableD); AddSurroundings(root, tableW, tableD, theme, Height, scenery); }
         else Border(root, tableW, tableD);
+        LandHeight = Height;
     }
 
+    /// <summary>The land's height at a world point (the last land built) - the Map Maker's scenery tool stands pieces on it.</summary>
+    public static Func<float, float, float> LandHeight { get; private set; } = (_, _) => 0f;
+
+    public const string SceneryNode = "Surroundings";
+
     /// <summary>
-    /// Trees, bushes and rocks on the land round the table, at real size (1 metre = 39.37"), the way a real table stands
-    /// in a garden or a wood. Picked by the map's theme; seeded by the table so a map always looks the same. A clear ring
-    /// is kept round the table so nothing stands between the usual camera and the mat.
+    /// The scenery round the table: the map's own (FdgApp <see cref="FdgRaylib.Terrain.MapScenery"/>: placed by hand in the
+    /// Map Maker, or generated from its set, density and seed). Each piece is sized to its height in inches (the packs'
+    /// units vary) and stood on the land. Piece i is a child named "Scenery_i" (the Map Maker picks pieces by it).
     /// </summary>
-    private static void AddSurroundings(Node3D root, float w, float d, TerrainBook.ETheme theme, Func<float, float, float> height)
+    private static void AddSurroundings(Node3D root, float w, float d, TerrainBook.ETheme theme, Func<float, float, float> height, string? scenery)
     {
-        const string N = "stylised/nature/models/";
-        static string[] Many(string name, int n) => Enumerable.Range(1, n).Select(i => $"{N}{name}_{i}.gltf").ToArray();
-        string[] trees = theme switch
-        {
-            TerrainBook.ETheme.Death => Many("DeadTree", 5).Concat(Many("TwistedTree", 5)).ToArray(),
-            TerrainBook.ETheme.Wasteland => Many("DeadTree", 5),
-            TerrainBook.ETheme.Hospitable => Many("CommonTree", 5).Concat(Many("Pine", 5)).ToArray(),
-            _ => Many("CommonTree", 5).Concat(Many("Pine", 5)).Concat(Many("TwistedTree", 2)).ToArray(),
-        };
-        string[] small = theme switch
-        {
-            TerrainBook.ETheme.Death or TerrainBook.ETheme.Wasteland => Many("Rock_Medium", 3),
-            _ => Many("Rock_Medium", 3).Concat(new[] { $"{N}Bush_Common.gltf", $"{N}Bush_Common_Flowers.gltf", $"{N}Plant_7_Big.gltf", $"{N}Plant_1_Big.gltf" }).ToArray(),
-        };
-        var rng = new Random(7919 + (int)theme * 31 + (int)w * 7 + (int)d);
-        var holder = new Node3D { Name = "Surroundings" };
+        var holder = new Node3D { Name = SceneryNode };
         root.AddChild(holder);
-        // Sized by height in inches (the packs' own units vary): trees two to four times the table's height above the
-        // ground, bushes and rocks about table height - like a table in a clearing.
-        void Place(string[] pool, int count, float near, float far, float minH, float maxH)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                float a = (float)(rng.NextDouble() * Math.Tau);
-                float r = near + (far - near) * (float)Math.Sqrt(rng.NextDouble());
-                float x = Mathf.Cos(a) * r * (w >= d ? 1.3f : 1f), z = Mathf.Sin(a) * r * (w >= d ? 1f : 1.3f);
-                if (PieceModels.Instance(pool[rng.Next(pool.Length)]) is not { } m) continue;
-                float tall = ModelHeight(m);
-                if (tall <= 0.001f) { m.QueueFree(); continue; }
-                float k = (minH + (maxH - minH) * (float)rng.NextDouble()) / tall;
-                m.Scale = new Vector3(k, k, k);
-                m.Position = new Vector3(x, height(x, z) - 0.5f, z);
-                m.RotationDegrees = new Vector3(0, (float)(rng.NextDouble() * 360), 0);
-                holder.AddChild(m);
-            }
-        }
-        float clear = Mathf.Max(w, d) * 0.5f + 120f;
-        Place(trees, 70, clear, clear + 450f, 90f, 170f);
-        Place(small, 50, clear - 30f, clear + 300f, 12f, 30f);
+        var pieces = FdgRaylib.Terrain.MapScenery.Parse(scenery).Resolve(theme.ToString(), w, d);
+        for (int i = 0; i < pieces.Count; i++)
+            if (ScenePiece(pieces[i], height) is { } m) { m.Name = $"Scenery_{i}"; holder.AddChild(m); }
+    }
+
+    /// <summary>One scenery piece, built and placed (null when its model can't load).</summary>
+    public static Node3D? ScenePiece(FdgRaylib.Terrain.MapScenery.Piece p, Func<float, float, float> height)
+    {
+        if (PieceModels.Instance($"stylised/nature/models/{p.Model}.gltf") is not { } m) return null;
+        float tall = ModelHeight(m);
+        if (tall <= 0.001f) { m.QueueFree(); return null; }
+        float k = p.Height / tall;
+        m.Scale = new Vector3(k, k, k);
+        m.Position = new Vector3(p.X, height(p.X, p.Z) - 0.5f, p.Z);
+        m.RotationDegrees = new Vector3(0, p.Yaw, 0);
+        return m;
     }
 
     /// <summary>
@@ -289,7 +274,7 @@ public static class Horizon
         ResourceLoader.Exists(TableDir + file) ? ResourceLoader.Load<Texture2D>(TableDir + file) : null;
 
     /// <summary>A model's height in its own units (the tallest point of its meshes).</summary>
-    private static float ModelHeight(Node3D model)
+    public static float ModelHeight(Node3D model)
     {
         float top = 0f, bottom = float.MaxValue;
         void Walk(Node n, Transform3D t)
