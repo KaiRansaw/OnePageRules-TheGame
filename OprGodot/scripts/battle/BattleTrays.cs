@@ -9,7 +9,7 @@ namespace OprGodot.Battle;
 /// The side trays (Kai, 2026-11-26, mockup A of "Side Tables Mockups"): a tray at each short end of the table - your
 /// side's on the left, the other side's on the right - in four bays, Ambush / Scout / Reserves / Destroyed, holding the
 /// units off the table as their own models. Which unit goes where: FdgApp <see cref="OffTable"/>. Models on a tray can be
-/// hovered and clicked like any other (their card shows). Destroyed models lie on their side.
+/// hovered and clicked like any other (their card shows). Every model stands up, casualties too (Kai, 2026-11-26).
 /// </summary>
 public partial class BattleTable
 {
@@ -148,10 +148,8 @@ public partial class BattleTable
                             }
                             view.Root.Position = new Vector3(mx, 0, mz);
                             view.Root.Scale = Vector3.One * scale;
-                            // Casualties lie on their side; the rest face the table.
-                            view.Root.Rotation = bay == OffTable.Bay.Destroyed
-                                ? new Vector3(0, side > 0 ? Mathf.Pi / 2 : -Mathf.Pi / 2, Mathf.Pi / 2.2f)
-                                : new Vector3(0, side < 0 ? Mathf.Pi / 2 : -Mathf.Pi / 2, 0);
+                            // Every model stands up facing the table (Kai, 2026-11-26: casualties too).
+                            view.Root.Rotation = new Vector3(0, side < 0 ? Mathf.Pi / 2 : -Mathf.Pi / 2, 0);
                         }
                         var name = new Label3D
                         {
