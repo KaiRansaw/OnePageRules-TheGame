@@ -899,6 +899,28 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     private const float Pad = 12;
     /// <summary>The top banner's width: fits between the round box and the buttons on a 1920-wide screen.</summary>
     private const float PromptWidth = 560;
+
+    /// <summary>
+    /// The title line holds about 40 characters. Kai, 2026-11-25: questions (Command Points above all) were cut off, so
+    /// what they were for was lost. A long question with no hint of its own is split: the part before the first ": "
+    /// (or the first sentence) is the title, the rest goes on the line underneath, in full (up to three lines).
+    /// </summary>
+    internal static (string Title, string Hint) SplitPrompt(string prompt, string hint)
+    {
+        const int fits = 40;
+        if (prompt.Length <= fits || hint.Length > 0) return (prompt, hint);
+        foreach (string sep in new[] { ": ", "? ", ". ", " - " })
+        {
+            int at = prompt.IndexOf(sep, StringComparison.Ordinal);
+            if (at > 0 && at + (sep == ": " ? 0 : 1) <= fits + 8)
+            {
+                string head = prompt[..(at + (sep == ": " || sep == " - " ? 0 : 1))].Trim();
+                return (head, prompt[(at + sep.Length)..].Trim());
+            }
+        }
+        int cut = prompt.LastIndexOf(' ', fits);
+        return (prompt[..(cut > 10 ? cut : fits)] + "...", prompt);
+    }
     // The card's banner (2026-11-14) is added on top of the old 236: the stats, weapons and rules keep the room they had.
     private const float CardHeight = 236 + HudKit.PictureSize.UnitCard - 46;
     /// <summary>The actions / choices beside the card keep the card's old height whatever the picture size.</summary>
@@ -1017,7 +1039,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         _prompt.CustomMinimumSize = new Vector2(PromptWidth, 0);
         _promptHint = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
         _promptHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _promptHint.MaxLinesVisible = 2;
+        _promptHint.MaxLinesVisible = 3;
         _promptHint.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _promptHint.CustomMinimumSize = new Vector2(PromptWidth, 0);
         _promptHint.MouseFilter = MouseFilterEnum.Stop;
@@ -1227,6 +1249,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             else if (progress.RoundCount is int r2) { prompt = $"ROUND {r2}"; hint = "Between activations - the game is working out what happens next."; }
             else { prompt = "SETTING UP"; hint = "The table is being laid out."; }
         }
+        (prompt, hint) = SplitPrompt(prompt, hint);
         _prompt.Text = prompt.ToUpperInvariant();
         _prompt.TooltipText = _prompt.Text;
         _promptHint.Text = hint;
