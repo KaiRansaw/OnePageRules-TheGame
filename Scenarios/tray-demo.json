@@ -1,0 +1,129 @@
+{
+ "name": "Side trays demo",
+ "round": 2,
+ "activePlayer": 0,
+ "settings": {
+  "randomness": "Probabilistic"
+ },
+ "players": [
+  {
+   "army": "armies/TrayDemo.fdgarmy",
+   "units": [
+    {
+     "unit": "Marksmen",
+     "models": [
+      [
+       10,
+       12
+      ],
+      [
+       12,
+       12
+      ],
+      [
+       14,
+       12
+      ],
+      [
+       16,
+       12
+      ],
+      [
+       18,
+       12
+      ]
+     ],
+     "woundsDealt": [
+      1,
+      1,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "unit": "Rending Squad",
+     "models": [
+      [
+       30,
+       16
+      ],
+      [
+       32,
+       16
+      ],
+      [
+       34,
+       16
+      ],
+      [
+       36,
+       16
+      ],
+      [
+       38,
+       16
+      ]
+     ]
+    },
+    {
+     "unit": "Raiders",
+     "tokens": [
+      {
+       "type": "InReserve",
+       "count": 1,
+       "clearTrigger": "ManualOnly"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "army": "armies/Dummies.fdgarmy",
+   "units": [
+    {
+     "unit": "Dummies",
+     "models": [
+      [
+       30,
+       34
+      ],
+      [
+       32,
+       34
+      ],
+      [
+       34,
+       34
+      ],
+      [
+       36,
+       34
+      ],
+      [
+       38,
+       34
+      ]
+     ],
+     "woundsDealt": [
+      1,
+      1,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "unit": "Tough Dummy",
+     "tokens": [
+      {
+       "type": "InReserve",
+       "count": 1,
+       "clearTrigger": "ManualOnly"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

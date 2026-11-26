@@ -231,6 +231,7 @@ public partial class BattleTable : Node3D
             long t0 = PerfProbe.Start(); SyncTerrain(); PerfProbe.Stop("terrain", t0);
             t0 = PerfProbe.Start(); SyncObjectives(); PerfProbe.Stop("objectives", t0);
             t0 = PerfProbe.Start(); SyncModels((float)delta); PerfProbe.Stop("models", t0);
+            SyncTrays();
         }
         catch (InvalidOperationException) { }
         long t1 = PerfProbe.Start();
@@ -1001,7 +1002,7 @@ public partial class BattleTable : Node3D
             float d = s.DistanceTo(screen);
             if (d < r && d < bestD) { bestD = d; best = v.Unit; }
         }
-        return best;
+        return best ?? TrayUnitAt(screen);
     }
 
     /// <summary>The table point (inches) under the screen point, or null off the table.</summary>

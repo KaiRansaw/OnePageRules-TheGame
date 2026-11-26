@@ -472,6 +472,18 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name} timed out");
                 return;
             }
+            // "untilround:2" answers every decision the test driver's way until that round has started.
+            if (name.StartsWith("untilround:") && Find<Battle.BattleScreen>(GetTree().Root) is { } urb)
+            {
+                urb.Decisions.Prompt();
+                if ((urb.Session.Table.Progress.RoundCount ?? 0) >= int.Parse(name[11..])) { _waitedFor = 0; GD.Print($"ScriptedRun: {name} reached"); return; }
+                var cur = urb.Decisions.Current;
+                if (cur != null && !cur.Done && _waitedFor % 30 == 0) cur.AutoPlay(urb);
+                if (++_waitedFor < 60000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                _waitedFor = 0;
+                GD.Print($"ScriptedRun: {name} timed out");
+                return;
+            }
             if (name.StartsWith("waitfor:"))
             {
                 string? waitingOn = Find<Battle.BattleScreen>(GetTree().Root)?.Decisions.Current?.GetType().Name;

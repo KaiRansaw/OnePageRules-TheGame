@@ -73,7 +73,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         _table = new BattleTable { Session = Session };
         AddChild(_table);
         _focus = Vector3.Zero;
-        _distance = (Mathf.Max(_table.W, _table.D) * 0.95f + 10f) * Horizon.DistanceScale;
+        // The side trays (2026-11-26) are part of the view: frame the table with a tray at each end.
+        float span = _table.W + 2 * (BattleTable.TrayW + BattleTable.TrayGap + 3f);
+        _distance = (Mathf.Max(span, _table.D) * 0.95f + 10f) * Horizon.DistanceScale;
+        // The army list and unit card cover the left of the screen: start looking a little left of the middle, so the
+        // whole of your tray shows beside them.
+        _focus = new Vector3(-span * 0.06f, 0, 0);
         // Kai, 2026-11-18 (camera "4"): on the battlefield the camera starts a little lower, looking across the field.
         if (Horizon.On) { _pitch = 42f; _savedPitch = 42f; }
 
@@ -241,7 +246,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     public void ToggleTopView()
     {
         _topView = !_topView;
-        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max(_table.W * 0.75f, _table.D * 1.2f) * Horizon.DistanceScale); }
+        if (_topView) { _savedPitch = _pitch; _distance = Mathf.Max(_distance, Mathf.Max((_table.W + 2 * (BattleTable.TrayW + BattleTable.TrayGap + 3f)) * 0.62f, _table.D * 1.2f) * Horizon.DistanceScale); }
         else _pitch = _savedPitch;
         ApplyCamera();
     }
