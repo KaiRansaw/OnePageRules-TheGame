@@ -218,7 +218,6 @@ public static class Horizon
     {
         const float Rim = 1.6f, Top = 3f, Apron = 5f, Leg = 3.5f;
         var wood = new StandardMaterial3D { AlbedoColor = new Color(0.10f, 0.085f, 0.08f), Roughness = 0.55f, Metallic = 0.05f };
-        var edge = new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.13f, 0.11f), Roughness = 0.45f };
         var table = new Node3D { Name = "Table" };
         root.AddChild(table);
         void Box(Vector3 size, Vector3 at, Material m)
@@ -227,20 +226,67 @@ public static class Horizon
             mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
         }
         float ow = w + 2 * Rim, od = d + 2 * Rim;
-        // The lip: four rails, their tops RimHeight above the mat.
+        // The lip: four rails, their tops RimHeight above the mat, in the table's planks.
+        Material edge = Planks();
         Box(new Vector3(ow, RimHeight + Top, Rim), new Vector3(0, (RimHeight - Top) / 2, -(d / 2 + Rim / 2)), edge);
         Box(new Vector3(ow, RimHeight + Top, Rim), new Vector3(0, (RimHeight - Top) / 2, d / 2 + Rim / 2), edge);
         Box(new Vector3(Rim, RimHeight + Top, d), new Vector3(-(w / 2 + Rim / 2), (RimHeight - Top) / 2, 0), edge);
         Box(new Vector3(Rim, RimHeight + Top, d), new Vector3(w / 2 + Rim / 2, (RimHeight - Top) / 2, 0), edge);
-        // The top under the mat, and the apron below it (set in a little).
+        // The table itself: Kai's medieval table (2026-11-26), stretched to fit; the plain boxes if it can't load.
+        if (TableModel(table, ow + 3f, od + 3f, -0.04f)) return;
         Box(new Vector3(w, Top, d), new Vector3(0, -Top / 2 - 0.02f, 0), wood);
         Box(new Vector3(ow - 3, Apron, od - 3), new Vector3(0, -Top - Apron / 2, 0), wood);
-        // Legs, inset from the corners, down past the ground (it rolls a little).
         float legH = TableHeight + 4f - Top - Apron;
         float lx = ow / 2 - 4f, lz = od / 2 - 4f;
         foreach ((float sx, float sz) in new[] { (-1f, -1f), (1f, -1f), (-1f, 1f), (1f, 1f) })
             Box(new Vector3(Leg, legH, Leg), new Vector3(sx * lx, -Top - Apron - legH / 2, sz * lz), wood);
     }
+
+    // "Medieval table" by zeein4004 on CGTrader (Royalty Free, free for commercial use): 204 x 112 cm, 84 cm tall, its
+    // top at the model's highest point. Kai downloaded it, 2026-11-26. Credits page lists it.
+    private const string TableDir = "res://terrain/table/";
+    private const float ModelW = 204.02f, ModelD = 111.93f, ModelH = 83.9f;
+    private static Mesh? _tableMesh;
+    private static StandardMaterial3D? _tableMat, _planks;
+
+    /// <summary>The table model stretched to <paramref name="w"/> x <paramref name="d"/>, its top at
+    /// <paramref name="topY"/> and its feet <see cref="TableHeight"/> below. False when the model isn't there.</summary>
+    public static bool TableModel(Node3D parent, float w, float d, float topY)
+    {
+        _tableMesh ??= ResourceLoader.Exists(TableDir + "medieval_table.obj") ? ResourceLoader.Load<Mesh>(TableDir + "medieval_table.obj") : null;
+        if (_tableMesh == null) return false;
+        _tableMat ??= new StandardMaterial3D
+        {
+            AlbedoTexture = Tex("medieval_table_base.jpg"),
+            NormalEnabled = true, NormalTexture = Tex("medieval_table_normal.png"),
+            AOEnabled = true, AOTexture = Tex("medieval_table_orm.jpg"), AOTextureChannel = BaseMaterial3D.TextureChannel.Red,
+            RoughnessTexture = Tex("medieval_table_orm.jpg"), RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Green, Roughness = 1f,
+            MetallicTexture = Tex("medieval_table_orm.jpg"), MetallicTextureChannel = BaseMaterial3D.TextureChannel.Blue, Metallic = 1f,
+        };
+        var mi = new MeshInstance3D
+        {
+            Name = "TableModel", Mesh = _tableMesh, MaterialOverride = _tableMat,
+            Scale = new Vector3(w / ModelW, TableHeight / ModelH, d / ModelD),
+            Position = new Vector3(0, topY - TableHeight, 0),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.On,
+        };
+        parent.AddChild(mi);
+        return true;
+    }
+
+    /// <summary>The table's planks, for the rim and the trays' edges.</summary>
+    public static Material Planks()
+    {
+        if (_planks != null) return _planks;
+        Texture2D? t = Tex("medieval_table_planks.jpg");
+        _planks = t == null
+            ? new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.13f, 0.11f), Roughness = 0.45f }
+            : new StandardMaterial3D { AlbedoTexture = t, Uv1Triplanar = true, Uv1Scale = new Vector3(0.05f, 0.1f, 0.05f), Roughness = 0.7f };
+        return _planks;
+    }
+
+    private static Texture2D? Tex(string file) =>
+        ResourceLoader.Exists(TableDir + file) ? ResourceLoader.Load<Texture2D>(TableDir + file) : null;
 
     /// <summary>A model's height in its own units (the tallest point of its meshes).</summary>
     private static float ModelHeight(Node3D model)

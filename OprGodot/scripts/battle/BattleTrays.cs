@@ -29,7 +29,7 @@ public partial class BattleTable
         _trayRoot = new Node3D { Name = "Trays" };
         AddChild(_trayRoot);
         var wood = new StandardMaterial3D { AlbedoColor = new Color(0.10f, 0.085f, 0.08f), Roughness = 0.55f };
-        var edge = new StandardMaterial3D { AlbedoColor = new Color(0.16f, 0.13f, 0.11f), Roughness = 0.45f };
+        Material edge = Horizon.Planks();
         var felt = new StandardMaterial3D { AlbedoColor = new Color(0.10f, 0.12f, 0.13f), Roughness = 0.9f };
         var divider = new StandardMaterial3D { AlbedoColor = new Color(0.22f, 0.19f, 0.16f), Roughness = 0.5f };
         const float Rim = 1.2f, RimH = 1f, Top = 2.5f;
@@ -51,11 +51,16 @@ public partial class BattleTable
                 Box(new Vector3(TrayW, RimH * 0.6f, 0.5f), new Vector3(cx, RimH * 0.3f, -D / 2 + D * i / OffTable.Bays.Count), divider);
             if (Horizon.Tabletop)
             {
-                // On the tabletop look the trays are small side tables of their own.
-                Box(new Vector3(TrayW - 2, 4f, D - 4), new Vector3(cx, -Top - 2f, 0), wood);
-                float legH = Horizon.TableHeight + 4f - Top - 4f;
-                foreach (float sz in new[] { -1f, 1f })
-                    Box(new Vector3(2.5f, legH, 2.5f), new Vector3(cx + side * (TrayW / 2 - 3f), -Top - 4f - legH / 2, sz * (D / 2 - 4f)), wood);
+                // On the tabletop look the trays are small side tables of their own - the same table, made narrow.
+                var stand = new Node3D { Position = new Vector3(cx, 0, 0) };
+                _trayRoot.AddChild(stand);
+                if (!Horizon.TableModel(stand, TrayW + 2 * Rim + 1f, D + 2 * Rim + 1f, -Top - 0.05f))
+                {
+                    Box(new Vector3(TrayW - 2, 4f, D - 4), new Vector3(cx, -Top - 2f, 0), wood);
+                    float legH = Horizon.TableHeight + 4f - Top - 4f;
+                    foreach (float sz in new[] { -1f, 1f })
+                        Box(new Vector3(2.5f, legH, 2.5f), new Vector3(cx + side * (TrayW / 2 - 3f), -Top - 4f - legH / 2, sz * (D / 2 - 4f)), wood);
+                }
             }
             // The bays' names, flat on the felt at the end of each bay nearest the camera's usual side.
             for (int i = 0; i < OffTable.Bays.Count; i++)

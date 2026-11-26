@@ -63,6 +63,7 @@ public static class CreditsText
             new Entry("LowPoly Apocalyptic Buildings (terrain)", "Majadroid (Maik Hoffmann); textures from cc0textures.com", "CC0 1.0 (public domain)", "https://opengameart.org/content/3d-apocalyptic-building-city-cc0"),
             new Entry("Realistic terrain models (rocks, trees, plants, props, fort)", "Poly Haven", "CC0 1.0 (public domain)", "https://polyhaven.com"),
             new Entry("Medieval Village MegaKit", "Quaternius", "CC0 1.0 (public domain)", "https://quaternius.com"),
+            new Entry("Medieval table (the tabletop and side tables)", "zeein4004", "CGTrader Royalty Free License - free for personal and commercial use", "https://www.cgtrader.com/free-3d-models/interior/other/medieval-table-d831b362-cf46-44a6-a213-9569976e38c3"),
         }, "Free to use without credit - credited anyway. The Nature Kit's colours are toned down in the game."),
         new Section("3D models (downloaded by you, never shipped)", new[]
         {
