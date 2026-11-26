@@ -96,6 +96,10 @@ public static partial class TerrainDresser
                 Base(root, poly, pal.Ground);
                 Wreck(root, f, pal, rng);
                 break;
+            case "Marker":
+                // Tactical Phase forward position markers: a plain flat disc in olive (no rules of their own).
+                Base(root, poly, new Color("#aabe5a"));
+                break;
             default:
                 Base(root, poly, pal.Ground);
                 Rocks(root, poly, 0.2f, 0.25f, 0.6f, pal.Rock, rng);

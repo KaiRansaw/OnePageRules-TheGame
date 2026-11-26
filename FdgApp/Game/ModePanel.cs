@@ -34,7 +34,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), Combine(CastingRows(table, system, advanced), Combine(LivingSpellRows(table, system, advanced), RelicRows(table, system, advanced)))))))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), Combine(CastingRows(table, system, advanced), Combine(LivingSpellRows(table, system, advanced), Combine(RelicRows(table, system, advanced), TacticalRows(table, system, advanced, viewers))))))))),
             _ => null,
         };
     }
@@ -127,6 +127,23 @@ public static class ModePanel
         if (lines.Count == 0) return null;
         var rows = new List<Row> { new(lines[0].Text, EStyle.Title, lines[0].Hover) };
         rows.AddRange(lines.Skip(1).Select(l => new Row(l.Text, l.Warn ? EStyle.Warn : EStyle.Line, l.Hover)));
+        return rows;
+    }
+
+    /// <summary>Tactical Phase: the preparation picks, fortified pieces, your own traps / sabotage, pathfinders.</summary>
+    private static List<Row>? TacticalRows(ITableState table, EGameSystem system, FDG.EAdvancedRules advanced, IReadOnlyCollection<FDG.PlayerID>? viewers)
+    {
+        if ((advanced & (FDG.EAdvancedRules.ForwardPositions | FDG.EAdvancedRules.BattlePreparations)) == 0) return null;
+        var seats = table.Players.Objects.Where(p => p.IsFilled).ToDictionary(p => p.SlotID, p => p.Name);
+        IReadOnlyCollection<int>? slots = viewers == null ? null
+            : table.Players.Objects.Where(p => p.IsFilled && viewers.Contains(p.PlayerID)).Select(p => p.SlotID).ToList();
+        var lines = FDG.TacticalPhase.PanelLines(table.DataStore, new FDG.GameSettings { GameSystem = system, AdvancedRules = advanced }, slots,
+            slot => seats.TryGetValue(slot, out string? n) ? n : "A player",
+            id => table.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == id)?.Name);
+        if (lines.Count == 0) return null;
+        string hover = FDG.TacticalPhase.BookText(FDG.TacticalPhase.BattlePreparationsName);
+        var rows = new List<Row> { new(lines[0], EStyle.Title, hover) };
+        rows.AddRange(lines.Skip(1).Select(l => new Row(l, l.Contains("secret") ? EStyle.Warn : EStyle.Line, hover)));
         return rows;
     }
 

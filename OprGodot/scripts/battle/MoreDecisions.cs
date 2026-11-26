@@ -745,12 +745,26 @@ public sealed class ObjectiveDecision : Decision<Position>
 
     public ObjectiveDecision(PlaceObjectiveRequest r) => _r = r;
 
-    public override string Prompt => $"Place objective {_r.MarkerIndex} of {_r.TotalMarkers}";
+    private bool Forward => _r.TaskName.StartsWith("Forward Positions", StringComparison.Ordinal);
+    public override string Prompt => Forward ? _r.TaskName : $"Place objective {_r.MarkerIndex} of {_r.TotalMarkers}";
     public override string Hint => _pending != null ? "Space to confirm - right-click to clear." : _note.Length > 0 ? _note
-        : $"Inside the outlined area, at least {_r.MinSeparationInches:0}\" from other objectives.";
+        : Forward ? "Inside the outlined area." : $"Inside the outlined area, at least {_r.MinSeparationInches:0}\" from other objectives.";
+
+    /// <summary>Forward position markers: a click near the edge strip is pulled onto it (the strip is under 1" wide).</summary>
+    private Position Snap(Position p)
+    {
+        if (!Forward || _r.Reach != null) return p;
+        ZoneBounds b = _r.LegalBand.Bounds;
+        bool wide = b.Right - b.Left >= b.Top - b.Bottom;
+        float x = Math.Clamp(p.x, b.Left, b.Right), z = Math.Clamp(p.z, b.Bottom, b.Top);
+        if (wide && Math.Abs(p.z - (b.Bottom + b.Top) / 2) > 4f) return p;
+        if (!wide && Math.Abs(p.x - (b.Left + b.Right) / 2) > 4f) return p;
+        return new Position(x, z);
+    }
 
     private string? Problem(BattleScreen s, Position p)
     {
+        if (Forward) return _r.IsInLegalArea(p) ? null : "outside the outlined area";
         if (!_r.IsInLegalArea(p)) return "outside the area objectives may go in";
         var impassable = s.Session.Table.Terrain.Objects.Where(t => t.TerrainType.HasFlag(ETerrainType.Impassible));
         return ObjectivePlacementValidator.Check(p, _r.LegalBand, _r.MinSeparationInches, s.Session.Table.Objectives.Objects, impassable) switch
@@ -766,13 +780,23 @@ public sealed class ObjectiveDecision : Decision<Position>
     public override void AutoPlay(BattleScreen s)
     {
         ZoneBounds b = _r.LegalBand.Bounds;
+        if (Forward)
+        {
+            // Along the strip, the first spot clear of the markers already down.
+            var down = s.Session.Table.Terrain.Objects.Where(TacticalPhase.IsMarker)
+                .Select(t => t.Shape is CircularZone c ? c.Center : new Float2(-99, -99)).ToList();
+            float mx = (b.Left + b.Right) / 2, mz = (b.Bottom + b.Top) / 2;
+            for (float d = 0; d < 48; d += 2)
+                foreach (Position q in new[] { new Position(mx + d, mz), new Position(mx - d, mz), new Position(mx, mz + d), new Position(mx, mz - d) })
+                    if (_r.IsInLegalArea(q) && down.All(c => Math.Abs(c.X - q.x) + Math.Abs(c.Y - q.z) > 3f)) { Complete(q); return; }
+        }
         for (float z = b.Bottom + 1; z < b.Top; z += 2)
             for (float x = b.Left + 1; x < b.Right; x += 2)
                 if (Problem(s, new Position(x, z)) == null) { Complete(new Position(x, z)); return; }
         Complete(new Position((b.Left + b.Right) / 2, (b.Bottom + b.Top) / 2));
     }
 
-    public override string? ConfirmText => _pending != null ? $"Place objective {_r.MarkerIndex} here?" : null;
+    public override string? ConfirmText => _pending != null ? (Forward ? "Put the marker here?" : $"Place objective {_r.MarkerIndex} here?") : null;
     public override void Confirm() { if (_pending is { } p) { _s?.Table.ClearGhosts("zone"); Complete(p); } }
     public override void ClearPending() { _pending = null; Draw(null, false); Version++; }
 
@@ -790,8 +814,10 @@ public sealed class ObjectiveDecision : Decision<Position>
             new(new Vector2(b.Right, b.Top), new Vector2(b.Left, b.Top), HudKit.Gold, 0.16f),
             new(new Vector2(b.Left, b.Top), new Vector2(b.Left, b.Bottom), HudKit.Gold, 0.16f),
         };
-        var ghosts = _s.Session.Table.Objectives.Objects
+        var ghosts = Forward ? new List<BattleTable.Ghost>() : _s.Session.Table.Objectives.Objects
             .Select(o => new BattleTable.Ghost(o.Position.x, o.Position.z, _r.MinSeparationInches, HudKit.Dim, Ring: true)).ToList();
+        if (Forward && _r.Reach is CircularZone reach)
+            ghosts.Add(new BattleTable.Ghost(reach.Center.X, reach.Center.Y, reach.Radius, HudKit.Gold, Ring: true));
         if ((_pending ?? at) is { } p)
             ghosts.Add(new BattleTable.Ghost(p.x, p.z, 1.5f, _pending != null ? HudKit.Lime.Lightened(0.25f) : ok ? HudKit.Lime : Palette.WoundsRed));
         _s.Table.SetGhosts("zone", ghosts, lines);
@@ -800,7 +826,7 @@ public sealed class ObjectiveDecision : Decision<Position>
     public override void TableHover(BattleScreen s, Vector2 at)
     {
         if (_pending != null || s.Table.TableAt(at) is not { } v) return;
-        var p = new Position(v.X, v.Y);
+        var p = Snap(new Position(v.X, v.Y));
         string? problem = Problem(s, p);
         Draw(p, problem == null);
         string note = problem == null ? "Click to place it here." : $"Can't go here: {problem}.";
@@ -810,7 +836,7 @@ public sealed class ObjectiveDecision : Decision<Position>
     public override bool TableClick(BattleScreen s, Vector2 at)
     {
         if (s.Table.TableAt(at) is not { } v) return false;
-        var p = new Position(v.X, v.Y);
+        var p = Snap(new Position(v.X, v.Y));
         if (Problem(s, p) is { } problem) { s.Toast($"Can't place it here: {problem}."); return true; }
         _pending = p;
         Draw(p, true);
