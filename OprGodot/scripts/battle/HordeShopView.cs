@@ -20,8 +20,10 @@ public sealed class HordeShopDecision : Decision<HordeShopReply>
 
     public HordeShopDecision(HordeShopRequest r) => Request = r;
 
-    public override string Prompt => $"Horde Shop - wave {Request.Wave} complete";
-    public override string Hint => "Spend your points, or press Done - buy nothing to keep them.";
+    public override string Prompt => Request.RecruitOnly ? $"Recruit - round {Request.Wave}" : $"Horde Shop - wave {Request.Wave} complete";
+    public override string Hint => Request.RecruitOnly
+        ? "Buy units to deploy in your zone, or press Done - buy nothing to keep your points."
+        : "Spend your points, or press Done - buy nothing to keep them.";
     public override bool HideConfirmBox => true;
 
     public override void Shown(BattleScreen s)
@@ -177,11 +179,20 @@ public partial class HordeShopView : Control
         bar.AddThemeConstantOverride("separation", 22);
         var t = new VBoxContainer();
         t.AddThemeConstantOverride("separation", -6);
-        t.AddChild(HudKit.Text("HORDE SHOP", 30, HudKit.Fg, HudKit.Exo(800)));
-        t.AddChild(HudKit.Text($"Wave {_d.Request.Wave} complete", 14, HudKit.Dim, HudKit.Semi));
+        t.AddChild(HudKit.Text(_d.Request.Title ?? "HORDE SHOP", 30, HudKit.Fg, HudKit.Exo(800)));
+        t.AddChild(HudKit.Text(_d.Request.Subtitle ?? $"Wave {_d.Request.Wave} complete", 14, HudKit.Dim, HudKit.Semi));
         bar.AddChild(t);
         var s = _s;
-        if (s != null)
+        if (s != null && _d.Request.RecruitOnly)
+        {
+            // Meat Grinder recruitment (Kai, 2026-11-25: reuse the Horde Shop): the purse, the round's cap, the cart.
+            bar.AddChild(Purse("EARNED LAST ROUND", _d.Request.PointsEarned.ToString(), HudKit.Fg));
+            bar.AddChild(Purse("BANKED", _d.Request.PointsBanked.ToString(), HudKit.Fg));
+            bar.AddChild(Purse("THIS ROUND", _d.Request.PointsAvailable.ToString(), HudKit.Fg));
+            bar.AddChild(Purse("IN CART", HordeShopSession.Signed(s.Total), HudKit.Fg));
+            bar.AddChild(Purse("LEFT", s.Left.ToString(), s.Left < 0 ? Palette.WoundsRed : Palette.Lime));
+        }
+        else if (s != null)
         {
             var earned = new HBoxContainer();
             earned.AddThemeConstantOverride("separation", 6);
@@ -254,6 +265,15 @@ public partial class HordeShopView : Control
     private Control MapPanel()
     {
         var s = _s!;
+        if (_d.Request.RecruitOnly)
+        {
+            var note = new VBoxContainer();
+            note.AddThemeConstantOverride("separation", 8);
+            note.AddChild(HudKit.Heading("Deploying", 15));
+            note.AddChild(ForgeWidgets.Wrapped(_d.Request.DeployNote ?? "Recruits deploy in your deployment zone.", 14, HudKit.Fg));
+            note.AddChild(ForgeWidgets.Wrapped($"After you buy, you place each recruit in your zone. You may spend up to {_d.Request.PointsAvailable} pts this round; what you don't spend stays banked.", 13, HudKit.Dim));
+            return note;
+        }
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 8);
         col.AddChild(HudKit.Heading("The table", 15));
@@ -342,9 +362,10 @@ public partial class HordeShopView : Control
         tabs.AddThemeConstantOverride("separation", 4);
         var req = _d.Request;
         tabs.AddChild(TabButton(Tab.Recruit, "Recruit"));
-        tabs.AddChild(TabButton(Tab.Upgrade, $"Upgrade ({req.Upgradable.Count(u => u.NotEligibleReason == null)})"));
-        tabs.AddChild(TabButton(Tab.Reinforce, $"Reinforce ({req.Upgradable.Count(u => u.NotReinforceableReason == null)})"));
+        if (!req.RecruitOnly) tabs.AddChild(TabButton(Tab.Upgrade, $"Upgrade ({req.Upgradable.Count(u => u.NotEligibleReason == null)})"));
+        if (!req.RecruitOnly) tabs.AddChild(TabButton(Tab.Reinforce, $"Reinforce ({req.Upgradable.Count(u => u.NotReinforceableReason == null)})"));
         col.AddChild(tabs);
+        if (req.RecruitOnly) _tab = Tab.Recruit;
         Control content = _tab switch
         {
             Tab.Upgrade => UpgradeTab(),
@@ -466,11 +487,11 @@ public partial class HordeShopView : Control
         buttons.AddChild(HudKit.Text(taken == 0 ? "No upgrades taken" : $"{taken} upgrade{(taken == 1 ? "" : "s")} taken", 13, HudKit.Dim, HudKit.Semi).Also(l => l.SizeFlagsVertical = SizeFlags.ShrinkCenter));
         inner.AddChild(buttons);
 
-        inner.AddChild(HudKit.Heading("Deploy at", 14));
         var objs = new HFlowContainer();
+        if (!_d.Request.RecruitOnly) inner.AddChild(HudKit.Heading("Deploy at", 14));
         objs.AddThemeConstantOverride("h_separation", 8);
         int chosen = inCart ? s.CartObjectives[cur.Row] : _draftObjective;
-        foreach (HordeShopObjective o in _d.Request.SeizedObjectives)
+        foreach (HordeShopObjective o in _d.Request.RecruitOnly ? new List<HordeShopObjective>() : _d.Request.SeizedObjectives)
         {
             int n = o.Number, row = cur.Row;
             var b = new Button { Name = $"DeployAt{n}", Text = HordeShopSession.ObjectiveLabel(o), ToggleMode = true, ButtonPressed = n == chosen, FocusMode = FocusModeEnum.None,
@@ -503,7 +524,7 @@ public partial class HordeShopView : Control
         if (_s == null || _draft == null || _draft.List.Units.Count == 0) return;
         string name = _draft.Detail(0).Unit.Name;
         _s.AddRecruit(_draft.List.Units[0], _draftObjective);
-        Say($"{name} is in the cart - deploys at objective {_draftObjective}.", Palette.Lime);
+        Say(_d.Request.RecruitOnly ? $"{name} is in the cart - deploys in your zone." : $"{name} is in the cart - deploys at objective {_draftObjective}.", Palette.Lime);
         _draft = _s.Draft(_draft.List.Units[0].RosterUnitId); // ready for another copy, fresh
         Rebuild();
     }
@@ -680,7 +701,7 @@ public partial class HordeShopView : Control
         for (int i = 0; i < rows.Count && i < s.CartObjectives.Count; i++)
         {
             int row = i;
-            lines.AddChild(CartLine($"Recruit {rows[i].Name}", $"{rows[i].ModelCount} model{(rows[i].ModelCount == 1 ? "" : "s")} - at objective {s.CartObjectives[i]}", rows[i].PointCost.ToString(),
+            lines.AddChild(CartLine($"Recruit {rows[i].Name}", $"{rows[i].ModelCount} model{(rows[i].ModelCount == 1 ? "" : "s")} - " + (_d.Request.RecruitOnly ? "in your zone" : $"at objective {s.CartObjectives[i]}"), rows[i].PointCost.ToString(),
                 () => { s.RemoveRecruit(row); if (_cartRow >= row) _cartRow = -1; Rebuild(); },
                 () => { _tab = Tab.Recruit; _cartRow = row; _draft = null; Rebuild(); }, "CartRecruit" + i));
         }

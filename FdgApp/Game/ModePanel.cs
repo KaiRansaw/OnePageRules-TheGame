@@ -221,6 +221,14 @@ public static class ModePanel
         var rows = new List<Row> { new(info.Name, EStyle.Title, info.BookText) };
         if (info.AttackDefend) return AttackDefendRows(table, state, info, rows);
         rows.Add(new(GoalLine(state.Mission, info), EStyle.Dim, info.BookText));
+        if (FDG.Missions.MeatGrinder.IsMeatGrinder(state.Mission))
+        {
+            foreach (string line in FDG.Missions.MeatGrinder.PanelLines(state, Seat, seats.Keys.OrderBy(k => k),
+                         id => table.Units.Objects.FirstOrDefault(u => u.ID.ID.ToString() == id)?.Name))
+                rows.Add(new(line, line.StartsWith("Underdog") ? EStyle.Good : EStyle.Line,
+                    line.StartsWith("In reserves") ? "Each unit's tokens in brackets: at the start of each round it comes back on a roll higher than its tokens, else loses one." : null));
+            return rows;
+        }
         if (info.Progressive)
             foreach ((int slot, string name) in seats.OrderBy(s => s.Key))
                 rows.Add(new($"{name}: {state.Vp.GetValueOrDefault(slot)} VP", EStyle.Line));
@@ -250,6 +258,9 @@ public static class ModePanel
         FDG.Missions.EExtraMission.Demolition => "Each round: X VP if your marker stands, X VP when you destroy theirs (X = the round).",
         FDG.Missions.EExtraMission.TwistsAndGambits => "Each round: 1 VP per enemy unit destroyed, per objective held, and for holding more; 4 VP per gambit scored. Most VP after round 4 wins.",
         FDG.Missions.EExtraMission.MoshPit => "Each round: X VP for holding the marker, X more if you seized it first (X = the round).",
+        FDG.Missions.EExtraMission.MeatGrinderRespawning => "VP: an enemy unit's points when you destroy it; after round 6, 20% of your army's points per objective and half the points of each enemy unit at half strength. Destroyed units come back from reserves.",
+        FDG.Missions.EExtraMission.MeatGrinderRecruitment => "Each round: X VP per objective (X = the round), and points to recruit with. Most VP after round 6 wins.",
+        FDG.Missions.EExtraMission.MeatGrinderRecruitmentUnderdog => "Each round: X VP per objective (X = the round), and points to recruit with - from round 3 only the side behind gets the 15%. Most VP after round 6 wins.",
         _ => info.Progressive ? "Scores X VP each round (X = the round number)." : "Won on the markers held after the last round.",
     };
 

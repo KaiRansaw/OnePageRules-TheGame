@@ -527,6 +527,17 @@ public partial class LobbyScreen : Control, Hud.ILooked
                     locked, t => Vm.SetAttackerTeam(t)));
         }
 
+        // Meat Grinder recruitment: the starting lists are bought out of half the game size (Kai, 2026-11-25).
+        if (mode == EGameMode.Standard && FDG.Missions.MeatGrinder.IsRecruitment(Vm.ExtraMission))
+        {
+            int start = FDG.Missions.MeatGrinder.StartingPoints(Vm.ArmyPoints);
+            var note = HudKit.Text($"Meat Grinder recruitment: each list may be up to {start} pts (half the game size). Unspent points are banked; "
+                + $"each round you earn more and may spend up to {FDG.Missions.MeatGrinder.MaxSpend(Vm.ArmyPoints)} pts on new units.", 13, HudKit.Dim, HudKit.Semi);
+            note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            note.CustomMinimumSize = new Vector2(420, 0);
+            rows.AddChild(note);
+        }
+
         // Side-Missions (Advanced Rulebooks 3.6.0): extra objectives worth VP; scoring becomes victory points.
         if (mode == EGameMode.Standard && FDG.Missions.SideMissionCatalog.Available(system))
         {
