@@ -298,7 +298,8 @@ public static class TableMarkers
         _ => "",
     };
 
-    /// <summary>What changed since the last draw (positions rounded to a tenth of an inch).</summary>
+    /// <summary>What changed since the last draw (positions rounded to a tenth of an inch; the text too, so a hover
+    /// never shows last round's "2 rounds left").</summary>
     public static string Signature(IReadOnlyList<Marker> markers) =>
-        string.Join(";", markers.Select(m => $"{m.Kind}|{m.Name}|{m.OwnerId}|{m.Number}|{m.X:0.0}|{m.Z:0.0}|{m.X2:0.0}|{m.Z2:0.0}"));
+        string.Join(";", markers.Select(m => $"{m.Kind}|{m.Name}|{m.OwnerId}|{m.Number}|{m.X:0.0}|{m.Z:0.0}|{m.X2:0.0}|{m.Z2:0.0}|{m.Text}"));
 }

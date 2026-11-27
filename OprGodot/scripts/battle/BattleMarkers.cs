@@ -28,8 +28,12 @@ public partial class BattleTable
     /// <summary>The markers on the table now (for hovers).</summary>
     public IReadOnlyList<Marker> Markers => _markerList;
 
+    private int _markerTick;
+
     private void SyncMarkers()
     {
+        // Markers move at most once an activation: a look every few frames is plenty (and keeps the per-frame cost off).
+        if (_markerTick++ % 8 != 0) return;
         var list = TableMarkers.For(Session.Table, Session.Lobby.Vm.GameSystem);
         string sig = TableMarkers.Signature(list) + "|" + _rulesView;
         if (sig == _markerSig) return;
