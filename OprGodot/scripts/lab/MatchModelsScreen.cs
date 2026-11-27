@@ -118,7 +118,8 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
         foreach (var (f, list) in _factions) _faction.AddItem($"{f}   ({list.Count})");
         _faction.ItemSelected += _ => FillModels();
         left.AddChild(_faction);
-        _search = new LineEdit { Name = "Search", PlaceholderText = "Search this faction (e.g. Hormagaunt)", ClearButtonEnabled = true };
+        _search = new LineEdit { Name = "Search", PlaceholderText = "Search this faction (e.g. Hormagaunt)", ClearButtonEnabled = true,
+            TooltipText = "Show only the models whose name contains this." };
         _search.TextChanged += _ => FillModels();
         left.AddChild(_search);
         _showUsed = new CheckBox { Name = "ShowUsed", Text = "Show models already used", FocusMode = FocusModeEnum.None, TooltipText = "List the models some unit already has too, to give one to another unit as well." };
