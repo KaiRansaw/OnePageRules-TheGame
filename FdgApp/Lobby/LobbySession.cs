@@ -455,6 +455,9 @@ public sealed class LobbySession : IDisposable
         Vm.SetPickDangerousTerrain(launch.TerrainMode == ETerrainPlacementMode.LoadFromFile && RolledOnGenericTable(launch.MapPath));
         Vm.SetDeploymentStyle(launch.Deployment);
         Vm.SetMissionCardGame(launch.MissionCards);
+        // Homebrew relic quests (house rule B28): a quest mission is the Advanced Rulebook's Relic Hunt. Always set, so
+        // a campaign mission never inherits the last lobby's extra mission.
+        Vm.SetExtraMission(launch.ExtraMission);
         // Always set (None included), so a campaign mission never inherits what the last ordinary lobby had ticked.
         Vm.SetChallengeBonuses(launch.ChallengeBonuses);
 

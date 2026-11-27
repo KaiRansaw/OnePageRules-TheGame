@@ -161,6 +161,9 @@ public sealed class ArmyCampaignSession
         CampaignTables.FastLearner => ("pick a trait", "Fast Learner: pick any other trait."),
         CampaignTables.LuckyBreak => ("pick an injury", "Lucky Break: pick any other injury."),
         CampaignTables.LearnedLesson => ("pick a talent", "Learned Lesson: pick any other talent."),
+        _ when pending.StartsWith(CampaignRelicQuest.PickRelic) => ("pick a relic", "Relic quest won: pick the relic this Hero keeps for the campaign."),
+        _ when pending.StartsWith(CampaignRelicQuest.PickWeapon) => ("pick a weapon", "Which weapon does the relic go on?"),
+        _ when pending.StartsWith(CampaignRelicQuest.PickRanger) => ("pick a rule", "Ranger's Standard: Scout or Ambush?"),
         _ => ("pick a skill set", "Pick a skill set (its first skill is rolled straight away)."),
     };
 
@@ -265,7 +268,30 @@ public sealed class ArmyCampaignSession
         return $"{Plural(sheet.Games, "mission")} ({sheet.MissionsSurvived} unhurt), {kills}{recovered}";
     }
 
-    /// <summary>Buys a salvaged unit. Returns (ok, message).</summary>
+    // ------------------------------------------------------------------ homebrew add-ons (house rules B28, B29)
+
+    /// <summary>Sends a Hero on a relic quest next mission (null = call it off). Returns the message.</summary>
+    public static string SetQuest(Entry e, UnitFileEntry? hero)
+    {
+        string line = CampaignRelicQuest.SetQuest(e.Army, hero);
+        Save(e.Path, e.Army);
+        return line;
+    }
+
+    /// <summary>The Heroes that could go on a quest now, with why not for the rest.</summary>
+    public static List<(UnitFileEntry Hero, string? Why)> QuestCandidates(Entry e) =>
+        e.Army.Units.Where(u => CampaignRules.Sheet(u) is { IsHero: true })
+            .Select(u => (u, CampaignRelicQuest.CannotQuest(e.Army, u))).ToList();
+
+    /// <summary>The Wanted board: posters on this army's units, and on the enemy's.</summary>
+    public (List<string> Hunting, List<string> Hunted) WantedBoard(Entry e)
+    {
+        List<string> Lines(ArmyListFile army) =>
+            CampaignWanted.Posters(army).Select(p => CampaignWanted.Poster(p.Title, p.Sheet, Numbers)).ToList();
+        return (EnemyOf(e.Info) is { } enemy ? Lines(enemy.Army) : new List<string>(), Lines(e.Army));
+    }
+
+        /// <summary>Buys a salvaged unit. Returns (ok, message).</summary>
     public (bool Ok, string Message) ClaimSalvage(Entry e, SalvageOffer offer)
     {
         CampaignPurchase result = CampaignSalvage.Claim(e.Army, offer);

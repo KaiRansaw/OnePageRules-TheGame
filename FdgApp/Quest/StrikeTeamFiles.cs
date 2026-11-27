@@ -181,7 +181,14 @@ public static class StrikeTeamFiles
         }
         var lines = new List<string>();
         var groups = table.Units.Objects.OfType<UnitData>()
-            .Select(u => (Unit: u, Sheet: StrikeUnit.FromJson(u.StrikeUnitJson)))
+            .Select(u => (Unit: u, Sheet: StrikeUnit.FromJson(u.StrikeUnitJson), Alive: u.GetIsAlive(), Name: u.Name))
+            // A Hero that joined a unit keeps its own sheet on the attachment (its unit was discarded at the join):
+            // it is a result of its own, alive while its model is.
+            .Concat(table.Units.Objects.OfType<UnitData>()
+                .Where(u => u.HeroAttachment?.StrikeUnitJson != null)
+                .Select(u => (Unit: u, Sheet: StrikeUnit.FromJson(u.HeroAttachment!.StrikeUnitJson),
+                    Alive: u.Models.FirstOrDefault(m => m.ID.Equals(u.HeroAttachment!.HeroModelId))?.GetIsAlive() ?? false,
+                    Name: u.HeroAttachment!.Name ?? u.Name)))
             .Where(x => x.Sheet?.TeamFile != null)
             .GroupBy(x => x.Sheet!.TeamFile!)
             .ToList();
@@ -194,13 +201,14 @@ public static class StrikeTeamFiles
         // and paid out after it - a winner's offers come from the OTHER armies, which may be written later.
         var fallen = new List<(string Key, ArmyListFile Army, List<UnitFileEntry> Dead, EGameSystem System)>();
         var winners = new List<string>();
+        var bounties = new List<(string Claimer, string Title, int Kills, CampaignNumbers N)>();
 
         foreach (var group in groups)
         {
             if (Load(group.Key) is not { StrikeTeam: not null } team) continue;
             bool won = result.Outcome == EGameOutcome.Win && group.Any(x => result.WinnerPlayers.Contains(x.Unit.PlayerID));
-            var results = group.Select(x => new CampaignUnitResult(x.Sheet!.Id, !x.Unit.GetIsAlive(), x.Sheet.Kills,
-                x.Sheet.HeroKills, x.Sheet.FellTo)).ToList();
+            var results = group.Select(x => new CampaignUnitResult(x.Sheet!.Id, !x.Alive, x.Sheet.Kills,
+                x.Sheet.HeroKills, x.Sheet.FellTo, Live: x.Sheet)).ToList();
             var rng = new Random();
             // #426: the army's own system's price list, not Firefight's for everyone. Paying a Grimdark
             // Future campaign Firefight's +80/+160 was the real reason the campaign screen only ever
@@ -210,6 +218,28 @@ public static class StrikeTeamFiles
             var dead = new List<UnitFileEntry>();
             List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7), dead);
             fallen.Add((group.Key, team, dead, system));
+            int missionNo = team.StrikeTeam.Matches;
+            void Record(IEnumerable<string> more)
+            {
+                foreach (string line in more)
+                {
+                    log.Add(line);
+                    team.StrikeTeam.History.Add(line);
+                    CampaignJournal.AddToRecord(team.StrikeTeam, missionNo, line);
+                }
+            }
+            // Homebrew wanted posters (house rule B29): bounties this army's units collected, paid after the loop.
+            foreach (var x in groups.Where(g => g.Key != group.Key).SelectMany(g => g))
+                if (string.Equals(x.Sheet!.BountyClaimedBy, group.Key, StringComparison.OrdinalIgnoreCase) && x.Sheet.BountyKills > 0)
+                    bounties.Add((group.Key, CampaignVeterans.Title(x.Name, x.Sheet.Nickname), x.Sheet.BountyKills, n));
+            // Homebrew relic quests (house rule B28): the quest Hero's mission, settled before the field is searched.
+            string? questId = team.StrikeTeam.QuestHeroId is { Length: > 0 } q ? q : null;
+            bool questHeroAlive = questId != null && results.Any(r => r.Id == questId && !r.Casualty);
+            Record(CampaignRelicQuest.Resolve(team, won, questHeroAlive, n, system, () => rng.Next(1, 7)));
+            // Homebrew exploration (house rule B28): 1 roll, +1 for the winner, +1 per Hero still standing.
+            int heroes = group.Count(x => x.Alive && x.Sheet!.IsHero);
+            var searchers = team.Units.Where(u => results.Any(r => !r.Casualty && r.Id == CampaignRules.Sheet(u)?.Id)).ToList();
+            Record(CampaignExploration.Explore(team, CampaignExploration.Rolls(won, heroes), searchers, n, system, () => rng.Next(1, 7)));
 
             // #450 - who this mission was against, at the top of its journal record. Only campaign
             // armies are named: a one-off opponent the lobby rolled has no campaign file to name it by.
@@ -270,7 +300,32 @@ public static class StrikeTeamFiles
                 + (pending > 0 ? $", {pending} choice(s) to make" : "") + " - see Campaign.");
         }
         lines.AddRange(OfferSalvage(winners, fallen));
+        lines.AddRange(PayBounties(bounties));
         return lines.Count > 0 ? string.Join("\n", lines) : null;
+    }
+
+    /// <summary>
+    /// Homebrew wanted posters (house rule B29): every bounty collected this mission is paid into the collecting army's
+    /// treasury - the book's special-objective bonus for each unit the wanted unit had destroyed. Returns the game-over lines.
+    /// </summary>
+    private static IEnumerable<string> PayBounties(List<(string Claimer, string Title, int Kills, CampaignNumbers N)> bounties)
+    {
+        foreach (var byArmy in bounties.GroupBy(b => b.Claimer))
+        {
+            if (Load(byArmy.Key) is not { StrikeTeam: not null } army) continue;
+            var paid = new List<string>();
+            foreach (var b in byArmy)
+            {
+                int pts = CampaignWanted.Price(b.Kills, b.N);
+                army.StrikeTeam.BankedPoints += pts;
+                string line = $"Bounty collected on {b.Title}: +{pts} pts.";
+                army.StrikeTeam.History.Add(line);
+                CampaignJournal.AddToRecord(army.StrikeTeam, army.StrikeTeam.Matches, line);
+                paid.Add(line);
+            }
+            if (Save(byArmy.Key, army))
+                foreach (string line in paid) yield return $"Campaign army {army.StrikeTeam.Name}: {line}";
+        }
     }
 
     /// <summary>

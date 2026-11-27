@@ -957,6 +957,14 @@ public partial class BattleTable : Node3D
                 if (label.Position != labelAt) label.Position = labelAt;
                 if (label.Visible != show) label.Visible = show;
                 if (label.Modulate != tint) label.Modulate = tint;
+                // Homebrew wanted posters (house rule B29): a WANTED unit's name reads so, outlined red.
+                bool wanted = IsWanted(unit);
+                string want = wanted ? "WANTED  " + unit.Name.ToUpperInvariant() : unit.Name.ToUpperInvariant();
+                if (label.Text != want)
+                {
+                    label.Text = want;
+                    label.OutlineModulate = wanted ? new Color(0.75f, 0.05f, 0.05f, 0.95f) : new Color(0, 0, 0, 0.85f);
+                }
                 Sprite3D[] marks = Marks(unit);
                 bool fatigued = unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Fatigued);
                 if (marks[0].Visible != done) marks[0].Visible = done;
@@ -1029,6 +1037,18 @@ public partial class BattleTable : Node3D
 
     /// <summary>The smallest a unit's name / its status marks / an objective's number may get on screen (pixels).</summary>
     public const float UnitNamePixels = 20f, UnitMarkPixels = 22f, ObjectiveNumberPixels = 28f;
+
+    private readonly Dictionary<UnitID, (string? Json, bool Wanted)> _wanted = new();
+
+    /// <summary>Whether a campaign unit is WANTED (house rule B29). Its sheet is re-read only when it changes.</summary>
+    private bool IsWanted(IUnit unit)
+    {
+        if (unit is not FDG.UnitData data || data.StrikeUnitJson is not { } json) return false;
+        if (_wanted.TryGetValue(unit.ID, out var c) && ReferenceEquals(c.Json, json)) return c.Wanted;
+        bool w = FDG.Campaign.StrikeUnit.FromJson(json) is { WantedKills: > 0 };
+        _wanted[unit.ID] = (json, w);
+        return w;
+    }
 
     private Label3D Label(IUnit unit, bool mine)
     {

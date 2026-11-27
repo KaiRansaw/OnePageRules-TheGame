@@ -137,7 +137,10 @@ public partial class MissionSetupScreen : Control
             col.AddChild(PickRow("Deployment", "Deploy", styles.Select(AdvancedDeployment.Name).ToList(), styles.IndexOf(plan.DeploymentStyle),
                 i => { _s.SetDeployment(styles[i]); Rebuild(); }, () => { _s.RerollDeployment(); Rebuild(); }));
         }
-        if (_s.MissionTypeAvailable)
+        // Homebrew relic quests (house rule B28): a quest mission is always a Relic Hunt.
+        if (_s.QuestLine is { } quest)
+            col.AddChild(ForgeWidgets.Wrapped(quest, 14, Palette.HeroGold).Also(x => x.Name = "QuestLine"));
+        else if (_s.MissionTypeAvailable)
         {
             var games = Enum.GetValues<FDG.Missions.EMissionCardGame>().ToList();
             col.AddChild(PickRow("Mission", "MissionType", games.Select(MissionSetupSession.MissionTypeName).ToList(), games.IndexOf(plan.MissionCards),
@@ -289,6 +292,7 @@ public partial class MissionSetupScreen : Control
             var u = unit; var sh = sheet;
             var card = ForgeWidgets.Card(army.Faction, $"{prefix}{i++}", unit.Name, unit.PointCost, tag, coming, () => click(u, sh), null, FdgRaylib.Models3D.UnitPortraits.LookOf(unit.ModelLooks));
             card.TooltipText = resting ? CampaignRules.CannotBringToMission(unit)! : coming ? "Coming. Click to leave it at home." : "Staying home. Click to bring it.";
+            if (info.QuestHeroId.Length > 0 && info.QuestHeroId == sheet.Id) card.TooltipText = "On a relic quest - it has to come.";
             if (!coming) card.Modulate = new Color(1, 1, 1, 0.5f);
             flow.AddChild(card);
         }

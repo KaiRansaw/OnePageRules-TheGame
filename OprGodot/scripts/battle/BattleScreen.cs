@@ -1836,6 +1836,20 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             col.AddChild(HudKit.Panel(rbox, HudKit.Pad(rv, 8, 5, 8, 6)));
         }
 
+        // Homebrew wanted posters (house rule B29): the price on a campaign unit's head - yours or the enemy's.
+        if (u is FDG.UnitData wd && FDG.Campaign.StrikeUnit.FromJson(wd.StrikeUnitJson) is { WantedKills: > 0 } ws)
+        {
+            var wv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            wv.AddThemeConstantOverride("separation", 0);
+            int price = FDG.Campaign.CampaignWanted.Price(ws.WantedKills, FDG.Campaign.CampaignNumbers.For(Session.Lobby.Vm.GameSystem));
+            wv.AddChild(HudKit.Text($"WANTED - {price} PTS", 11, Palette.WoundsRed, HudKit.Tracked(HudKit.Bold, 2)));
+            wv.AddChild(HudKit.Text("Destroyed " + string.Join(", ", ws.WantedVictims), 12, HudKit.Fg, HudKit.Semi)
+                .Also(l => { l.AutowrapMode = TextServer.AutowrapMode.WordSmart; l.CustomMinimumSize = new Vector2(width - 24, 0); }));
+            var wbox = HudKit.PanelBox(6);
+            wbox.Border = Palette.WoundsRed;
+            col.AddChild(HudKit.Panel(wbox, HudKit.Pad(wv, 8, 5, 8, 6)));
+        }
+
         var rulesFlow = new HFlowContainer();
         rulesFlow.AddThemeConstantOverride("h_separation", 4);
         rulesFlow.AddThemeConstantOverride("v_separation", 4);
@@ -2474,6 +2488,26 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     }
 
     private string _missionSig = "";
+    private string? _questLine;
+
+    /// <summary>The Mission panel's campaign lines: the relic quest (house rule B28) and every live poster (B29).</summary>
+    private List<string> CampaignLines()
+    {
+        var lines = new List<string>();
+        if (Session.Lobby.ArmyCampaign is { ExtraMission: FDG.Missions.EExtraMission.RelicHunt } launch)
+        {
+            _questLine ??= FdgRaylib.Quest.StrikeTeamFiles.Load(launch.CampaignPath) is { } army
+                && FDG.Campaign.CampaignRelicQuest.QuestHero(army) is { } hero
+                    ? $"QUEST - {hero.Name} seeks a relic: win the mission and keep {hero.Name} alive."
+                    : "";
+            if (_questLine.Length > 0) lines.Add(_questLine);
+        }
+        var n = FDG.Campaign.CampaignNumbers.For(Session.Lobby.Vm.GameSystem);
+        foreach (FDG.UnitData u in Session.Table.Units.Objects.OfType<FDG.UnitData>())
+            if (u.GetIsAlive() && FDG.Campaign.StrikeUnit.FromJson(u.StrikeUnitJson) is { WantedKills: > 0 } sh)
+                lines.Add(FDG.Campaign.CampaignWanted.Poster(FDG.Campaign.CampaignVeterans.Title(u.Name, sh.Nickname), sh, n));
+        return lines;
+    }
 
     private void RefreshMission(IGameProgress progress)
     {
@@ -2489,7 +2523,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         string sig = $"{lastRound}|{progress.RoundCount}|{Session.Lobby.Vm.MissionCardGame}|"
             + string.Join(",", progress.Scores.Select(x => x.ObjectiveCount)) + "|"
             + string.Join(",", concedeSeats.Select(c => $"{c.Conceded}{c.Pending}")) + "|"
-            + (vpNow == null ? "" : string.Join(",", vpNow.Values)) + "|" + ModePanel.Signature(modeRows);
+            + (vpNow == null ? "" : string.Join(",", vpNow.Values)) + "|" + ModePanel.Signature(modeRows)
+            + "|" + string.Join(",", CampaignLines());
         if (sig == _missionSig) return;
         _missionSig = sig;
         // Removed now, not at the end of the frame: a new button can't take the name of one still waiting to go.
@@ -2545,6 +2580,14 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             string line = vp != null ? $"{s.Name}: {vp.GetValueOrDefault(s.Id)} VP  ({n} objective{(n == 1 ? "" : "s")} held)"
                 : $"{s.Name}: {n} objective{(n == 1 ? "" : "s")}";
             _missionBody.AddChild(HudKit.Text(line, 15, _table.SeatColour(s.Id), HudKit.Semi));
+        }
+        // Homebrew campaign add-ons (house rules B28, B29): the relic quest and the live wanted posters.
+        foreach (string line in CampaignLines())
+        {
+            var l = HudKit.Text(line, 13, line.StartsWith("QUEST") ? HudKit.Gold : Palette.WoundsRed, HudKit.Semi);
+            l.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            l.CustomMinimumSize = new Vector2(10, 0);
+            _missionBody.AddChild(l);
         }
         AddConcede(concedeSeats, progress.RoundCount);
         _mission.SetSummary(summary);

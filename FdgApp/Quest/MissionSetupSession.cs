@@ -24,7 +24,8 @@ public sealed record ArmyCampaignLaunch(
     string? MapPath,
     EDeploymentStyle Deployment,
     FDG.Missions.EMissionCardGame MissionCards,
-    EChallengeBonuses ChallengeBonuses);
+    EChallengeBonuses ChallengeBonuses,
+    FDG.Missions.EExtraMission ExtraMission = FDG.Missions.EExtraMission.None);
 
 /// <summary>
 /// Mission Setup (#435, #465) without the drawing: the plan card, both forces, difficulty, the map, and START MISSION.
@@ -114,7 +115,8 @@ public sealed class MissionSetupSession
             .Where(x => x.Sheet != null).Select(x => (x.Unit, x.Sheet!)).ToList();
 
     /// <summary>Whether a unit is ticked. An empty Bringing list still means "all of it" (#427).</summary>
-    public static bool IsComing(StrikeTeamInfo info, StrikeUnit sheet) => info.Bringing.Count == 0 || info.Bringing.Contains(sheet.Id);
+    public static bool IsComing(StrikeTeamInfo info, StrikeUnit sheet) =>
+        info.Bringing.Count == 0 || info.Bringing.Contains(sheet.Id) || (info.QuestHeroId.Length > 0 && info.QuestHeroId == sheet.Id);
 
     public static int PointsComing(ArmyListFile army, StrikeTeamInfo info) => Fieldable(army).Where(x => IsComing(info, x.Sheet)).Sum(x => x.Unit.PointCost);
     public static int UnitsComing(ArmyListFile army, StrikeTeamInfo info) => Fieldable(army).Count(x => IsComing(info, x.Sheet));
@@ -122,6 +124,7 @@ public sealed class MissionSetupSession
     /// <summary>A force card's tag: "coming", "stays home", or "recovering (n)".</summary>
     public static string ForceTag(StrikeTeamInfo info, UnitFileEntry unit, StrikeUnit sheet) =>
         CampaignRules.CannotBringToMission(unit) != null ? $"recovering ({sheet.MissionsOut})"
+        : info.QuestHeroId.Length > 0 && info.QuestHeroId == sheet.Id ? "QUEST"
         : IsComing(info, sheet) ? "coming" : "stays home";
 
     /// <summary>Flips one unit between coming and staying home. The first change writes the whole fieldable list out.</summary>
@@ -135,6 +138,8 @@ public sealed class MissionSetupSession
     public void ToggleYours(UnitFileEntry unit, StrikeUnit sheet)
     {
         if (Army == null || Info == null || CampaignRules.CannotBringToMission(unit) != null) return;
+        // Homebrew relic quests (house rule B28): the questing Hero must come.
+        if (IsQuestHero(sheet)) return;
         ToggleComing(Army, Info, sheet);
         SaveArmy();
         FillEnemyForce(randomize: false);
@@ -144,11 +149,24 @@ public sealed class MissionSetupSession
     public void ToggleTheirs(UnitFileEntry unit, StrikeUnit sheet)
     {
         if (Enemy == null || Foe == null || CampaignRules.CannotBringToMission(unit) != null) return;
+        if (IsQuestHero(sheet)) return;
         ToggleComing(Enemy, Foe, sheet);
         SaveEnemy();
     }
 
-    public int YoursComing => Army != null && Info != null ? PointsComing(Army, Info) : 0;
+    /// <summary>Homebrew relic quests (house rule B28): the Hero on a quest this mission, or null.</summary>
+    public UnitFileEntry? QuestHero =>
+        (Army != null ? CampaignRelicQuest.QuestHero(Army) : null) ?? (Enemy != null ? CampaignRelicQuest.QuestHero(Enemy) : null);
+
+    public bool IsQuestHero(StrikeUnit sheet) =>
+        (Info is { QuestHeroId.Length: > 0 } i && i.QuestHeroId == sheet.Id) || (Foe is { QuestHeroId.Length: > 0 } f && f.QuestHeroId == sheet.Id);
+
+    /// <summary>The quest line for the plan card, or null when there is no quest.</summary>
+    public string? QuestLine => QuestHero is { } h
+        ? $"RELIC QUEST - {h.Name} seeks a relic: the mission is a Relic Hunt. Win it with {h.Name} alive to claim a relic."
+        : null;
+
+        public int YoursComing => Army != null && Info != null ? PointsComing(Army, Info) : 0;
     public int YourUnitsComing => Army != null && Info != null ? UnitsComing(Army, Info) : 0;
     public int TheirsComing => Enemy != null && Foe != null ? PointsComing(Enemy, Foe) : 0;
     public int TheirUnitsComing => Enemy != null && Foe != null ? UnitsComing(Enemy, Foe) : 0;
@@ -348,6 +366,12 @@ public sealed class MissionSetupSession
     {
         error = Blocker();
         if (error != null || Army == null || Info is not { } info) return null;
+        // Homebrew relic quests (house rule B28): the questing Hero is always ticked.
+        if (QuestHero is { } quester && CampaignRules.Sheet(quester) is { } qs && info.Bringing.Count > 0 && !info.Bringing.Contains(qs.Id))
+        {
+            info.Bringing.Add(qs.Id);
+            SaveArmy();
+        }
         if (WriteMissionFile(Path, Army, info) is not { } mine) { error = "Couldn't write your mission army file."; return null; }
 
         string? theirs = null;
@@ -361,9 +385,13 @@ public sealed class MissionSetupSession
 
         CampaignMissionPlan plan = Plan ?? new CampaignMissionPlan { Mission = info.Matches + 1 };
         string title = $"{info.Name} - Mission {info.Matches + 1}" + (plan.Title.Length > 0 ? $": {plan.Title}" : "");
-        string line = $"{MissionDifficulty.Name(info.Difficulty)} - {MissionTypeName(plan.MissionCards)}";
+        bool quest = QuestHero != null;
+        string line = $"{MissionDifficulty.Name(info.Difficulty)} - "
+            + (quest ? $"Relic Hunt (relic quest: {QuestHero!.Name})" : MissionTypeName(plan.MissionCards));
         var launch = new ArmyCampaignLaunch(System, Path, info.Name, title, line, mine, theirs, TerrainMode, MapPath,
-            plan.DeploymentStyle, plan.MissionCards, Foe != null ? info.ChallengeBonuses : EChallengeBonuses.None);
+            plan.DeploymentStyle, quest ? FDG.Missions.EMissionCardGame.Off : plan.MissionCards,
+            Foe != null ? info.ChallengeBonuses : EChallengeBonuses.None,
+            quest ? FDG.Missions.EExtraMission.RelicHunt : FDG.Missions.EExtraMission.None);
         Pending = launch;
         return launch;
     }

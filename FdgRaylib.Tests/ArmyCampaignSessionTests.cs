@@ -5,6 +5,7 @@ using System.Linq;
 using FDG;
 using FDG.ArmyBuilding;
 using FDG.Campaign;
+using FDG.SaveLoad;
 using FdgRaylib.Forge;
 using FdgRaylib.Quest;
 using FdgRaylib.SaveLoad;
@@ -169,5 +170,33 @@ public class ArmyCampaignSessionTests
         Assert.That(after.Army.Units.Count, Is.EqualTo(units + 1));
         Assert.That(after.Info.BankedPoints, Is.EqualTo(bank - price));
         Assert.That(cart.Ids, Is.Empty);
+    }
+
+    /// <summary>Homebrew relic quests (house rule B28): the quest Hero must come, and the mission is a Relic Hunt.</summary>
+    [Test]
+    public void AQuestMission_IsARelicHunt_AndTheQuestHeroCantStayHome()
+    {
+        var (s, path) = NewCampaign();
+        var you = s.Find(path)!;
+        UnitFileEntry hero = you.Army.Units[0];
+        StrikeUnit sheet = CampaignRules.Sheet(hero)!;
+        sheet.IsHero = true;   // stands in for a Hero bought with the starting treasury
+        CampaignRules.Save(hero, sheet);
+        you.Info.RelicMaps = 1;
+        Assert.That(ArmyCampaignSession.SetQuest(you, hero), Does.Contain("Relic Hunt"));
+
+        var setup = new MissionSetupSession(path, s.OthersThan(s.Find(path)!), new Random(5));
+        var card = MissionSetupSession.Cards(setup.Army!).First(c => c.Sheet.Id == sheet.Id);
+        int before = setup.YourUnitsComing;
+        setup.ToggleYours(card.Unit, card.Sheet);
+        Assert.That(setup.YourUnitsComing, Is.EqualTo(before), "the quest Hero can't be left at home");
+        Assert.That(MissionSetupSession.ForceTag(setup.Info!, card.Unit, card.Sheet), Is.EqualTo("QUEST"));
+        Assert.That(setup.QuestLine, Does.Contain("Relic Hunt"));
+
+        ArmyCampaignLaunch? launch = setup.Start(out string? error);
+        Assert.That(error, Is.Null);
+        Assert.That(launch!.ExtraMission, Is.EqualTo(FDG.Missions.EExtraMission.RelicHunt));
+        Assert.That(launch.MissionCards, Is.EqualTo(FDG.Missions.EMissionCardGame.Off));
+        Assert.That(launch.Line, Does.Contain("Relic Hunt"));
     }
 }

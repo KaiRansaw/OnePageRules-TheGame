@@ -928,6 +928,12 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         if (sheet.SkillSets.Count > 0) Fact(col, "Skill sets", string.Join(", ", sheet.SkillSets));
         if (sheet.Skills.Count > 0) Fact(col, "Skills", string.Join(", ", sheet.Skills));
         Fact(col, "Service", ArmyCampaignSession.ServiceRecord(sheet));
+        if (sheet.Relic.Length > 0)
+            Fact(col, "Relic", sheet.Relic + (sheet.RelicWeapon.Length > 0 ? $" (on its {sheet.RelicWeapon})" : "")
+                + (sheet.RelicChoice.Length > 0 ? $" ({sheet.RelicChoice})" : "") + " - kept for the campaign");
+        if (sheet.WantedKills > 0)
+            Fact(col, "WANTED", CampaignWanted.Poster(CampaignVeterans.Title(unit.Name, sheet.Nickname), sheet, _s.Numbers));
+        if (side.Info.QuestHeroId == sheet.Id) Fact(col, "Quest", "Goes on a relic quest next mission (a Relic Hunt).");
         if (sheet.MissionsOut > 0) Fact(col, "Recovering", $"sits out {ArmyCampaignSession.Plural(sheet.MissionsOut, "more mission")}");
 
         foreach (string pending in sheet.Pending.ToList())
@@ -1009,6 +1015,9 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         }
 
         if (c.Info.Salvage.Count > 0) SalvageSection(col, c);
+        QuestSection(col, c, false);
+        if (_s.EnemyOf(c.Info) is { } rival) QuestSection(col, rival, true);
+        WantedSection(col, c);
 
         if (_s.EnemyOf(c.Info) is { } foe)
         {
@@ -1051,7 +1060,52 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         }
     }
 
-    /// <summary>#467 - the campaign map screen for a map campaign.</summary>
+    /// <summary>
+    /// Homebrew relic quests (house rule B28): the army's Relic Maps and who goes questing with one. The rival's too - you
+    /// run its campaign (house rule B17).
+    /// </summary>
+    private void QuestSection(VBoxContainer col, ArmyCampaignSession.Entry c, bool rival)
+    {
+        if (c.Info.RelicMaps <= 0 && c.Info.QuestHeroId.Length == 0) return;
+        string whose = rival ? $"{c.Info.Name}'s " : "";
+        col.AddChild(HudKit.Heading($"{whose}Relic Maps ({c.Info.RelicMaps})", 13));
+        if (CampaignRelicQuest.QuestHero(c.Army) is { } quester)
+        {
+            col.AddChild(ForgeWidgets.Wrapped($"{quester.Name} goes on the quest next mission: it is a Relic Hunt. Win it with {quester.Name} alive to claim a relic.", 14, Palette.HeroGold));
+            col.AddChild(Ui.Button("Call it off", () => { Say(ArmyCampaignSession.SetQuest(c, null)); Rebuild(); }, "No quest next mission. The map is kept.").Also(x => x.Name = rival ? "QuestOffRival" : "QuestOff"));
+            return;
+        }
+        col.AddChild(ForgeWidgets.Wrapped("Send a Hero on a quest: the next mission becomes a Relic Hunt, and winning it with that Hero alive gives the Hero a relic for the rest of the campaign.", 13, HudKit.Dim));
+        int i = 0;
+        foreach (var (hero, why) in ArmyCampaignSession.QuestCandidates(c))
+        {
+            var h = hero;
+            col.AddChild(Ui.Button($"Go on a quest: {hero.Name}", () => { Say(ArmyCampaignSession.SetQuest(c, h), Palette.Lime); Rebuild(); },
+                why ?? $"{hero.Name} goes questing next mission.").Also(x => { x.Name = (rival ? "QuestRival" : "Quest") + i; x.Disabled = why != null; }));
+            i++;
+        }
+        if (i == 0) col.AddChild(HudKit.Text("No Hero to send.", 14, HudKit.Dim, HudKit.Semi));
+    }
+
+    /// <summary>Homebrew wanted posters (house rule B29): who you're hunting and who's hunting you.</summary>
+    private void WantedSection(VBoxContainer col, ArmyCampaignSession.Entry c)
+    {
+        var (hunting, hunted) = _s.WantedBoard(c);
+        if (hunting.Count == 0 && hunted.Count == 0) return;
+        col.AddChild(HudKit.Heading("Wanted board", 13));
+        if (hunting.Count > 0)
+        {
+            col.AddChild(HudKit.Text("Their units you're hunting", 13, HudKit.Dim, HudKit.Semi));
+            foreach (string line in hunting) col.AddChild(ForgeWidgets.Wrapped(line, 14, Palette.WoundsRed));
+        }
+        if (hunted.Count > 0)
+        {
+            col.AddChild(HudKit.Text("Yours they're hunting", 13, HudKit.Dim, HudKit.Semi));
+            foreach (string line in hunted) col.AddChild(ForgeWidgets.Wrapped(line, 14, HudKit.Fg));
+        }
+    }
+
+        /// <summary>#467 - the campaign map screen for a map campaign.</summary>
     private void OpenMap(string path) => App.I.Open<MapCampaignScreen>(Scenes.MapCampaign, m => { m.CampaignPath = path; m.System = System; });
 
     private void OpenMissionSetup(ArmyCampaignSession.Entry c)
@@ -1345,6 +1399,18 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
             case "claim" when Current is { } cc && n < cc.Info.Salvage.Count: Say(_s.ClaimSalvage(cc, cc.Info.Salvage[n]).Message); Reload(); break;
             case "nickname" when Side is { } sn && _unit < sn.Army.Units.Count: Say(ArmyCampaignSession.SetNickname(sn, sn.Army.Units[_unit], arg)); break;
             case "play" when Current is { } cp: OpenMissionSetup(cp); return;
+            // Screenshot seed for the campaign add-ons: a Relic Map and a poster on each side's first unit.
+            case "addons" when Current is { } ca:
+                ca.Info.RelicMaps = 1;
+                foreach (var side in new[] { ca, _s.EnemyOf(ca.Info) })
+                    if (side != null && side.Army.Units.Count > 0 && CampaignRules.Sheet(side.Army.Units[0]) is { } ws)
+                    {
+                        ws.WantedKills = 2;
+                        ws.WantedVictims = new List<string> { "Scouts", "Assault Squad" };
+                        CampaignRules.Save(side.Army.Units[0], ws);
+                        ArmyCampaignSession.Save(side.Path, side.Army);
+                    }
+                break;
         }
         Rebuild();
     }
