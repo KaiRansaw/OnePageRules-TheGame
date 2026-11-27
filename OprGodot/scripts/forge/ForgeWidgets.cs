@@ -40,6 +40,8 @@ internal static class ForgeWidgets
     {
         // No name tooltip (Kai, 2026-11-17): hovering shows the whole unit in the Forge's left panel instead.
         var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(100, 0), FocusMode = FocusModeEnum.None, ToggleMode = false };
+        // Hovering a card opens the unit panel beside the list - that is its hover (2.53), not a tooltip.
+        b.SetMeta("no_hover_needed", true);
         if (hover != null) b.MouseEntered += hover;
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
         if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
@@ -216,11 +218,11 @@ internal static class ForgeWidgets
 
         if (view.Control == ForgeRules.EControl.Stepper)
         {
-            var minus = new Button { Text = "-", Disabled = o.Count <= 0, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None };
+            var minus = new Button { Text = "-", Disabled = o.Count <= 0, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None, TooltipText = "Take one fewer." };
             minus.Pressed += () => { s.Choose(row, view.Section, o.Option.Id, o.Count - 1); changed(); };
             line.AddChild(minus);
             line.AddChild(HudKit.Text(o.Count.ToString(), 17, o.Count > 0 ? Palette.Lime : HudKit.Fg, HudKit.Bold).Also(l => { l.CustomMinimumSize = new Vector2(26, 0); l.HorizontalAlignment = HorizontalAlignment.Center; }));
-            var plus = new Button { Name = name, Text = "+", Disabled = o.Count >= o.Max, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None };
+            var plus = new Button { Name = name, Text = "+", Disabled = o.Count >= o.Max, CustomMinimumSize = new Vector2(32, 30), FocusMode = FocusModeEnum.None, TooltipText = $"Take one more (up to {o.Max})." };
             plus.Pressed += () => { s.Choose(row, view.Section, o.Option.Id, o.Count + 1); changed(); };
             line.AddChild(plus);
             line.AddChild(OptionText.For(s, o.Option, tip, o.Enabled ? HudKit.Fg : HudKit.Dim with { A = 0.6f }));

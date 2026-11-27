@@ -166,6 +166,7 @@ public partial class LabHome : PanelContainer
         bool on = key == _section;
         var b = new Button { Name = "Nav_" + key, Text = label.ToUpperInvariant(), Alignment = HorizontalAlignment.Left, CustomMinimumSize = new Vector2(0, 50), FocusMode = FocusModeEnum.All };
         HudKit.RowStyle(b, on);
+        b.TooltipText = Sections.FirstOrDefault(s => s.Key == key)?.Blurb ?? "The Asset Lab's home page: every section at a glance.";
         b.AddThemeFontOverride("font", HudKit.Tracked(HudKit.Bold, 2));
         b.AddThemeFontSizeOverride("font_size", 20);
         b.AddThemeColorOverride("font_color", on ? HudKit.Fg : HudKit.Dim);

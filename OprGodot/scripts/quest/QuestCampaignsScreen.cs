@@ -457,7 +457,7 @@ public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
         var nameRow = new HBoxContainer();
         nameRow.AddThemeConstantOverride("separation", 10);
         nameRow.AddChild(HudKit.Text("Name", 17, HudKit.Dim, HudKit.Semi).Also(l => l.SizeFlagsVertical = SizeFlags.ShrinkCenter));
-        var name = new LineEdit { Name = "CampaignName", Text = _newName, PlaceholderText = "Name your campaign", CustomMinimumSize = new Vector2(420, 40), MaxLength = 40 };
+        var name = new LineEdit { Name = "CampaignName", Text = _newName, PlaceholderText = "Name your campaign", TooltipText = "The campaign's name, as the campaign list shows it.", CustomMinimumSize = new Vector2(420, 40), MaxLength = 40 };
         name.TextChanged += t => { _newName = t; RefreshTopOnly(); };
         nameRow.AddChild(name);
         col.AddChild(nameRow);
@@ -536,6 +536,7 @@ public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
         col.AddChild(HudKit.Text(title, 17, on ? HudKit.Lime : HudKit.Fg, HudKit.Bold).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
         col.AddChild(ForgeWidgets.Wrapped(text, 13, HudKit.Dim).Also(l => l.MouseFilter = MouseFilterEnum.Ignore));
         b.AddChild(col);
+        b.TooltipText = text;
         b.Pressed += () => { _build = what; if (what != QuestCampaignSession.EBuild.Saved) _planPick = -1; _draft = null; Rebuild(); };
         return b;
     }

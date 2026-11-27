@@ -152,7 +152,8 @@ public partial class MapEditorScreen
         _left.AddChild(box);
 
         // Search, kept with its text and focus.
-        _libSearch = new LineEdit { Name = "LibrarySearch", PlaceholderText = "Search pieces...", Text = q, ClearButtonEnabled = true };
+        _libSearch = new LineEdit { Name = "LibrarySearch", PlaceholderText = "Search pieces...", Text = q, ClearButtonEnabled = true,
+            TooltipText = "Show only the pieces whose name contains this. The tabs count what matches in each." };
         _libSearch.TextChanged += _ => Rebuild();
         box.AddChild(_libSearch);
         if (searchHadFocus) Callable.From(() => { if (IsInstanceValid(_libSearch)) { _libSearch.GrabFocus(); _libSearch.CaretColumn = caret; } }).CallDeferred();
@@ -189,7 +190,7 @@ public partial class MapEditorScreen
         var sortRow = new HBoxContainer();
         sortRow.AddThemeConstantOverride("separation", 5);
         sortRow.AddChild(HudKit.Text("Sort", 12, HudKit.Dim, HudKit.Semi));
-        var sort = new OptionButton { Name = "LibrarySort", FocusMode = FocusModeEnum.None };
+        var sort = new OptionButton { Name = "LibrarySort", FocusMode = FocusModeEnum.None, TooltipText = "The order the pieces are listed in." };
         string[] sorts = { "Name", "Size", "Kind" };
         foreach (string s in sorts) sort.AddItem(s);
         sort.Selected = Array.IndexOf(sorts, _libSort);

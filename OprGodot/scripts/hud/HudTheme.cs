@@ -97,6 +97,12 @@ public static class HudTheme
             t.SetIcon("checked", type, ticked);
             t.SetIcon("unchecked_disabled", type, CheckIcon(false, true));
             t.SetIcon("checked_disabled", type, CheckIcon(true, true));
+            // Pick-one rows (a ButtonGroup) draw Godot's radio icons instead - left as the default dark discs they were
+            // all but invisible on the dark panels (lane 3, 2026-11-27: the Forge's "pick one" upgrades).
+            t.SetIcon("radio_unchecked", type, CheckIcon(false, false, round: true));
+            t.SetIcon("radio_checked", type, CheckIcon(true, false, round: true));
+            t.SetIcon("radio_unchecked_disabled", type, CheckIcon(false, true, round: true));
+            t.SetIcon("radio_checked_disabled", type, CheckIcon(true, true, round: true));
         }
         if (Skin.On && Skin.Tex("check_on") is { } on && Skin.Tex("check_off") is { } off)
         {
@@ -141,13 +147,26 @@ public static class HudTheme
         return t;
     }
 
-    private static ImageTexture CheckIcon(bool on, bool disabled)
+    private static ImageTexture CheckIcon(bool on, bool disabled, bool round = false)
     {
         const int n = 22;
         var img = Image.CreateEmpty(n, n, false, Image.Format.Rgba8);
         img.Fill(Colors.Transparent);
         Color edge = disabled ? HudKit.Edge with { A = 0.4f } : on ? HudKit.Lime : HudKit.EdgeHot with { A = 0.85f };
         Color fill = on ? (disabled ? HudKit.Lime with { A = 0.35f } : HudKit.Lime) : new Color(0, 0, 0, 0.45f);
+        if (round)
+        {
+            // A ring, with a dot in the middle when picked.
+            float c = (n - 1) / 2f;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c));
+                    if (d > c) continue;
+                    img.SetPixel(x, y, d > c - 2.5f ? edge : on && d < c - 5.5f ? fill : new Color(0, 0, 0, 0.45f));
+                }
+            return ImageTexture.CreateFromImage(img);
+        }
         for (int y = 1; y < n - 1; y++)
             for (int x = 1; x < n - 1; x++)
             {

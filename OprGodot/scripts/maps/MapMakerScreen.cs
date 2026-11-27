@@ -84,7 +84,8 @@ public partial class MapMakerScreen : Control
             {
                 var path = m.Path;
                 var b = new Button { Name = ForgeWidgets.SafeName("Map_" + m.Name), ToggleMode = true, ButtonPressed = m.Path == _selected, Alignment = HorizontalAlignment.Left,
-                    Text = $"{m.Name}   -   {m.Pieces} terrain, {m.Objectives} objectives", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(0, 36) };
+                    Text = $"{m.Name}   -   {m.Pieces} terrain, {m.Objectives} objectives", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(0, 36),
+                    TooltipText = "Show this map's picture and details on the right." };
                 b.Pressed += () => { _selected = path; Refresh(); };
                 _list.AddChild(b);
             }

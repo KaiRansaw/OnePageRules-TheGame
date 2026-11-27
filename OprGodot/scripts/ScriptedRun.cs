@@ -936,6 +936,7 @@ public partial class ScriptedRun : Node
         string file = System.IO.Path.Combine(dir, kind + ".png");
         GetViewport().GetTexture().GetImage().SavePng(file);
         GD.Print($"ScriptedRun: snapped {kind} - {file}");
+        AuditNow(kind, hover: true);
         Battle.BattleScreen.Hold.Remove(kind);
         foreach (var dialog in AllOf<ConfirmationDialog>(GetTree().Root).ToList()) dialog.QueueFree();
         battle.TestHover = null;
@@ -1102,6 +1103,18 @@ public partial class ScriptedRun : Node
         if (b is { ToggleMode: true } && b.IsInsideTree() && b is not OptionButton && b.IsVisibleInTree())
         { b.ButtonPressed = !b.ButtonPressed; b.EmitSignal(BaseButton.SignalName.Pressed); }
         _wait = 10;
+    }
+
+    /// <summary>The "audit:" step's work, also run on every battle decision "snapall" photographs.</summary>
+    private void AuditNow(string tag, bool hover)
+    {
+        var vp = GetViewport().GetVisibleRect();
+        var found = LayoutAudit.Run(GetTree().Root, vp);
+        if (hover) found.AddRange(LayoutAudit.NoHover(GetTree().Root, vp));
+        var lines = found.Select(f => $"{tag}\t{f.Kind}\t{f.Path}\t{f.Text}\t{f.Detail}").ToList();
+        lines.Insert(0, $"{tag}\t#\t{found.Count} finding(s), top screen {App.I.TopScreen?.Name}, window {vp.Size.X}x{vp.Size.Y}");
+        if (_audit != null) System.IO.File.AppendAllLines(_audit, lines);
+        foreach (string l in lines) GD.Print("audit " + l);
     }
 
     private static string Clean(string s) => string.Concat(s.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));

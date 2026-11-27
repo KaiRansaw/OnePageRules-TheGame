@@ -85,7 +85,7 @@ public static class LayoutAudit
         {
             if (n is CanvasItem { Visible: false } || n is Window { Visible: false } || n.HasMeta("no_hover_needed")) return;
             if (n is Control c && c.IsVisibleInTree() && c.Size.X > 0 && c.GetGlobalRect().Intersects(viewport)
-                && c is BaseButton or Godot.Range or LineEdit && c is not ScrollBar && c.MouseFilter != Control.MouseFilterEnum.Ignore)
+                && c is BaseButton or Godot.Range or LineEdit && c is not ScrollBar and not ProgressBar && c.MouseFilter != Control.MouseFilterEnum.Ignore)
             {
                 bool has = false;
                 int up = 0;

@@ -486,7 +486,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         var nameRow = new HBoxContainer();
         nameRow.AddThemeConstantOverride("separation", 10);
         nameRow.AddChild(HudKit.Text("Name", 16, HudKit.Fg, HudKit.Bold).Also(l => l.SizeFlagsVertical = SizeFlags.ShrinkCenter));
-        var name = new LineEdit { Name = "HeroName", PlaceholderText = "type a name", Text = _e.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, MaxLength = 40 };
+        var name = new LineEdit { Name = "HeroName", PlaceholderText = "type a name", TooltipText = "Your hero's name - on its card, in the party and in the game.", Text = _e.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, MaxLength = 40 };
         name.TextChanged += t => { _e.Name = t; RefreshLeftAndTop(); };
         nameRow.AddChild(name);
         col.AddChild(nameRow);
@@ -527,7 +527,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         facTile.Pressed += OpenFactionGrid;
         facCol.AddChild(facTile);
         facCol.AddChild(Ui.Button("Choose faction...", OpenFactionGrid, "The army picture grid, in Army Forge's groups and order.").Also(x => x.Name = "ChooseFaction"));
-        var search = new LineEdit { Name = "HeroSearch", PlaceholderText = "Search heroes...", Text = _filter };
+        var search = new LineEdit { Name = "HeroSearch", PlaceholderText = "Search heroes...", TooltipText = "Show only the heroes whose name contains this.", Text = _filter };
         search.TextChanged += t => { _filter = t; Callable.From(RebuildKeepSearch).CallDeferred(); };
         facCol.AddChild(search);
         body.AddChild(facCol);

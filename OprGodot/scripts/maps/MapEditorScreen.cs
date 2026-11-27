@@ -179,6 +179,10 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         keys.OffsetLeft = 330; keys.OffsetRight = -350; keys.OffsetTop = -18; keys.OffsetBottom = -2;
         keys.HorizontalAlignment = HorizontalAlignment.Center;
         keys.MouseFilter = MouseFilterEnum.Ignore;
+        // Dim text straight on the grass couldn't be read (lane 3, 2026-11-27): a dark strip behind it, brighter text.
+        keys.AddThemeColorOverride("font_color", HudKit.Fg with { A = 0.85f });
+        keys.AddThemeStyleboxOverride("normal", new StyleBoxFlat { BgColor = Palette.Ink with { A = 0.78f }, ContentMarginLeft = 8, ContentMarginRight = 8 });
+        keys.OffsetTop = -20;
         hud.AddChild(keys);
 
         BuildBoard();
