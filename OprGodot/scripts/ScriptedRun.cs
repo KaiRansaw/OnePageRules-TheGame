@@ -18,6 +18,8 @@ public partial class ScriptedRun : Node
     private Vector2 _mouse;
     private Queue<string> _presses = new();
     private string? _shot;
+    /// <summary>Where "audit:" steps append their findings (--audit=file); the console only when not given.</summary>
+    private string? _audit;
     private int _wait = 20;
 
     /// <summary>True when the command line asks for a scripted run (no node made).</summary>
@@ -32,6 +34,7 @@ public partial class ScriptedRun : Node
                 foreach (string name in arg["--press=".Length..].Split(',', StringSplitOptions.RemoveEmptyEntries))
                     run._presses.Enqueue(name);
             else if (arg.StartsWith("--shot=")) run._shot = arg["--shot=".Length..];
+            else if (arg.StartsWith("--audit=")) run._audit = arg["--audit=".Length..];
             else if (arg.StartsWith("--size=") && arg["--size=".Length..].Split('x') is [var w, var h]
                      && int.TryParse(w, out int width) && int.TryParse(h, out int height))
                 DisplayServer.WindowSetSize(new Vector2I(width, height));
@@ -91,6 +94,56 @@ public partial class ScriptedRun : Node
 
         if (_presses.TryDequeue(out string? name))
         {
+            // "audit:<tag>" checks every piece of text on screen for not fitting (LayoutAudit) and writes what it finds,
+            // each line headed by the tag; "auditsnap:<tag>" also saves a picture (<shot dir>/<tag>.png).
+            if (name.StartsWith("audit:") || name.StartsWith("auditsnap:"))
+            {
+                string tag = name[(name.IndexOf(':') + 1)..];
+                var vp = GetViewport().GetVisibleRect();
+                var found = LayoutAudit.Run(GetTree().Root, vp);
+                var lines = found.Select(f => $"{tag}\t{f.Kind}\t{f.Path}\t{f.Text}\t{f.Detail}").ToList();
+                lines.Insert(0, $"{tag}\t#\t{found.Count} finding(s), top screen {App.I.TopScreen?.Name}, window {vp.Size.X}x{vp.Size.Y}");
+                if (_audit != null) System.IO.File.AppendAllLines(_audit, lines);
+                foreach (string l in lines) GD.Print("audit " + l);
+                if (name.StartsWith("auditsnap:"))
+                    GetViewport().GetTexture().GetImage().SavePng(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_shot ?? "/tmp/x.png") ?? "/tmp", tag + ".png"));
+                return;
+            }
+            // "eachtab:<tag>" audits (and photographs) every tab of every TabContainer on screen, one after another
+            // ("tabat:<n>|<i>" opens tab i of the nth visible TabContainer).
+            if (name.StartsWith("eachtab:"))
+            {
+                var steps = new List<string>();
+                var all = AllOf<TabContainer>(GetTree().Root).Where(t => t.IsVisibleInTree()).ToList();
+                for (int n = 0; n < all.Count; n++)
+                    for (int i = 0; i < all[n].GetTabCount(); i++)
+                        steps.AddRange(new[] { $"tabat:{n}|{i}", $"auditsnap:{name[8..]}-{n}-{Clean(all[n].GetTabTitle(i))}" });
+                _presses = new Queue<string>(steps.Concat(_presses));
+                return;
+            }
+            if (name.StartsWith("tabat:") && name[6..].Split('|') is [var tn, var ti])
+            {
+                var all = AllOf<TabContainer>(GetTree().Root).Where(t => t.IsVisibleInTree()).ToList();
+                if (int.Parse(tn) < all.Count) all[int.Parse(tn)].CurrentTab = int.Parse(ti);
+                _wait = 20;
+                return;
+            }
+            // "skin:<id>" picks a UI theme ("classic", "hologram", "minimal") for this run, as Settings does.
+            if (name.StartsWith("skin:")) { Hud.Skin.Set(name[5..]); _wait = 10; return; }
+            // "open:<Scenes field>" opens a screen that needs nothing set first (Settings, Credits, LoadGame...).
+            if (name.StartsWith("open:") && typeof(Scenes).GetField(name[5..])?.GetValue(null) is string scenePath)
+            { App.I.Open<Control>(scenePath); _wait = 30; return; }
+            // "back" is the screen's Back (Esc).
+            if (name == "back") { App.I.Back(); _wait = 20; return; }
+            // "sizes:CheckBox" prints every visible control of that class: size, smallest size, text (layout debugging).
+            if (name.StartsWith("sizes:"))
+            {
+                foreach (var ctl in AllOf<Control>(GetTree().Root).Where(x => x.GetClass() == name[6..] && x.IsVisibleInTree()).Take(12))
+                    GD.Print($"ScriptedRun: size {ctl.Name} {ctl.Size} min {ctl.GetCombinedMinimumSize()} '{(ctl as Button)?.Text}' clip {(ctl as Button)?.ClipText} overrun {(ctl as Button)?.TextOverrunBehavior}");
+                return;
+            }
+            // "home" closes every screen down to the main menu.
+            if (name == "home") { App.I.ToMainMenu(); _wait = 20; return; }
             // "wait:N" waits N more frames (a lobby filling its seats, a scan finishing).
             if (name.StartsWith("wait:") && int.TryParse(name[5..], out int frames)) { _wait = frames; return; }
             // "portraits:<model folder>|<out folder>" photographs every model there at every portrait angle, then quits.
@@ -931,6 +984,8 @@ public partial class ScriptedRun : Node
         m.Invoke(vm, values);
         GD.Print($"ScriptedRun: {call}");
     }
+
+    private static string Clean(string s) => string.Concat(s.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));
 
     private static T? Find<T>(Node node) where T : Node
     {
