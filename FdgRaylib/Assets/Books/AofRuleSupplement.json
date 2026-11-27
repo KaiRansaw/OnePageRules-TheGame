@@ -1451,7 +1451,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Vinci Tech"
+          }
         },
         "label": "AP(+1)"
       },
@@ -1476,7 +1480,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Vinci Tech"
+          }
         },
         "label": "+1 to hit"
       }

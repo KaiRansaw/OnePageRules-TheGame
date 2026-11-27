@@ -4415,7 +4415,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Watchborn"
+          }
         },
         "label": "AP(+1)"
       },
@@ -4440,7 +4444,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Watchborn"
+          }
         },
         "label": "+1 to hit"
       }
@@ -11548,7 +11556,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Exotic Gear"
+          }
         },
         "label": "AP(+1)"
       },
@@ -11573,7 +11585,11 @@
           "scope": "ThisActivation"
         },
         "availableWhen": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "unitHasRuleOrGrant",
+            "ruleName": "Enhanced Exotic Gear"
+          }
         },
         "label": "+1 to hit"
       }
@@ -11609,7 +11625,7 @@
         },
         "availableWhen": {
           "kind": "unitHasRuleOrGrant",
-          "ruleName": "Versatile Attack"
+          "ruleName": "Watchborn"
         },
         "label": "AP(+1)"
       },
@@ -11635,7 +11651,7 @@
         },
         "availableWhen": {
           "kind": "unitHasRuleOrGrant",
-          "ruleName": "Versatile Attack"
+          "ruleName": "Watchborn"
         },
         "label": "+1 to hit"
       }
@@ -11671,7 +11687,7 @@
         },
         "availableWhen": {
           "kind": "unitHasRuleOrGrant",
-          "ruleName": "Versatile Attack"
+          "ruleName": "Vinci Tech"
         },
         "label": "AP(+1)"
       },
@@ -11697,7 +11713,7 @@
         },
         "availableWhen": {
           "kind": "unitHasRuleOrGrant",
-          "ruleName": "Versatile Attack"
+          "ruleName": "Vinci Tech"
         },
         "label": "+1 to hit"
       }

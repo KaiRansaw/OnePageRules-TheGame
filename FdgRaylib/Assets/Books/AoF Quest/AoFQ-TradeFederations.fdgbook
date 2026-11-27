@@ -4786,7 +4786,11 @@
             "scope": "ThisActivation"
           },
           "availableWhen": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "unitHasRuleOrGrant",
+              "ruleName": "Enhanced Exotic Gear"
+            }
           },
           "label": "AP(\u002B1)"
         },
@@ -4811,7 +4815,11 @@
             "scope": "ThisActivation"
           },
           "availableWhen": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "unitHasRuleOrGrant",
+              "ruleName": "Enhanced Exotic Gear"
+            }
           },
           "label": "\u002B1 to hit"
         }

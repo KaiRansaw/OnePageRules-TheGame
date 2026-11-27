@@ -4830,7 +4830,7 @@
           },
           "availableWhen": {
             "kind": "unitHasRuleOrGrant",
-            "ruleName": "Versatile Attack"
+            "ruleName": "Vinci Tech"
           },
           "label": "AP(\u002B1)"
         },
@@ -4856,7 +4856,7 @@
           },
           "availableWhen": {
             "kind": "unitHasRuleOrGrant",
-            "ruleName": "Versatile Attack"
+            "ruleName": "Vinci Tech"
           },
           "label": "\u002B1 to hit"
         }
@@ -4958,7 +4958,11 @@
             "scope": "ThisActivation"
           },
           "availableWhen": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "unitHasRuleOrGrant",
+              "ruleName": "Enhanced Vinci Tech"
+            }
           },
           "label": "AP(\u002B1)"
         },
@@ -4983,7 +4987,11 @@
             "scope": "ThisActivation"
           },
           "availableWhen": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "unitHasRuleOrGrant",
+              "ruleName": "Enhanced Vinci Tech"
+            }
           },
           "label": "\u002B1 to hit"
         }
