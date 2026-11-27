@@ -287,6 +287,26 @@ public partial class PadDriver : Node
     /// <summary>One button going down or up. True = handled here (Godot's menus don't see it).</summary>
     private bool Button(PadButton b, bool pressed)
     {
+        // Chords in a battle (Pad.cs "bat.mission" etc.): View held + a face button. View alone, tapped, is the report -
+        // sent when it comes back up with no chord made, so holding it never opens the report as well.
+        if (InBattle && b == PadButton.Back)
+        {
+            if (pressed) { Pad.Holding = PadButton.Back; _chordMade = false; }
+            else
+            {
+                bool tap = Pad.Holding == PadButton.Back && !_chordMade;
+                Pad.Holding = null;
+                if (tap && Pad.Find(PadButton.Back, true, true) is { } report) { Do(report, true); Do(report, false); }
+            }
+            return true;
+        }
+        if (InBattle && Pad.Holding != null && Pad.Chord(b, true) is { } chord)
+        {
+            if (pressed) _chordMade = true;
+            Do(chord, pressed);
+            return true;
+        }
+        if (!InBattle) Pad.Holding = null;
         if (!PointerMode)
         {
             // The first press with nothing highlighted only puts the highlight on the screen.
@@ -310,6 +330,12 @@ public partial class PadDriver : Node
                 && Pad.Find(b, true, true) is { } battleBind)
             {
                 Do(battleBind, pressed);
+                return true;
+            }
+            // A on a text box: the on-screen keyboard (lane 3, 2026-11-27) - a pad has no keys to type with.
+            if (b == PadButton.A && GetViewport().GuiGetFocusOwner() is LineEdit box && box.Editable && box.IsVisibleInTree())
+            {
+                if (pressed) OnScreenKeyboard.For(box);
                 return true;
             }
             // A on something that only shows hover text or takes a click (a unit card rule, an army list row, a report
@@ -345,11 +371,25 @@ public partial class PadDriver : Node
         return true; // in pointer mode nothing reaches the menus' highlight
     }
 
+    private void KeyboardUnderPointer()
+    {
+        Control? under = GetViewport().GuiGetHoveredControl();
+        LineEdit? box = under as LineEdit ?? (under as SpinBox)?.GetLineEdit();
+        if (box != null && box.Editable && GetViewport().GuiGetFocusOwner() == box) OnScreenKeyboard.For(box);
+    }
+
+    /// <summary>A chord was made while View was held, so letting go of View doesn't open the report.</summary>
+    private bool _chordMade;
+
     private void Do(PadBinding bind, bool pressed)
     {
         switch (bind.Act)
         {
-            case PadDo.Click: Mouse(MouseButton.Left, pressed); break;
+            case PadDo.Click:
+                Mouse(MouseButton.Left, pressed);
+                // A click into a text box with the pointer opens the on-screen keyboard for it.
+                if (!pressed) Callable.From(KeyboardUnderPointer).CallDeferred();
+                break;
             case PadDo.RightClick: Mouse(MouseButton.Right, pressed); break;
             case PadDo.Key:
                 if (!PointerMode && App.I.TopScreen is IPadKeys keys) { if (pressed) keys.PadKey(bind.Key); }
@@ -369,6 +409,7 @@ public partial class PadDriver : Node
             case PadDo.CameraMove:
                 if (Dir(bind.Button) is { } d) { if (pressed) _camHeld.Add(d); else _camHeld.Remove(d); }
                 break;
+            case PadDo.BoxSelect: Mouse(MouseButton.Left, pressed, shift: true); break;
             case PadDo.ScrollUp: _scrollHeld = pressed ? -1 : (_scrollHeld == -1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
             case PadDo.ScrollDown: _scrollHeld = pressed ? 1 : (_scrollHeld == 1 ? 0 : _scrollHeld); if (pressed) _wheelAcc = 1; break;
         }
@@ -653,13 +694,13 @@ public partial class PadDriver : Node
         GInput.ParseInputEvent(new InputEventMouseMotion { Position = w, GlobalPosition = w, Relative = rel, ButtonMask = _mask, Device = Synth });
     }
 
-    private void Mouse(MouseButton button, bool pressed)
+    private void Mouse(MouseButton button, bool pressed, bool shift = false)
     {
         MouseButtonMask bit = button == MouseButton.Left ? MouseButtonMask.Left : button == MouseButton.Right ? MouseButtonMask.Right : 0;
         if (pressed == ((_mask & bit) != 0)) return;
         _mask = pressed ? _mask | bit : _mask & ~bit;
         Vector2 w = ToWindow(_ptr);
-        GInput.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = pressed, Position = w, GlobalPosition = w, ButtonMask = _mask, Device = Synth });
+        GInput.ParseInputEvent(new InputEventMouseButton { ButtonIndex = button, Pressed = pressed, Position = w, GlobalPosition = w, ButtonMask = _mask, Device = Synth, ShiftPressed = shift });
     }
 
     /// <summary>Lets go of a held pointer button (screen changed, mode swapped, back on the mouse) so nothing sticks down.</summary>

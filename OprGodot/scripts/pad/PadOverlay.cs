@@ -119,6 +119,7 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("bat.next") }, "Next unit"));
             hints.Add((new[] { B("menu.tabl"), B("menu.tabr") }, "Panels"));
             hints.Add((new[] { B("ptr.esc") }, "Menu"));
+            hints.Add((new[] { PadButton.Back }, "Hold: views"));
             hints.Add((new[] { B("menu.pointer") }, "Pointer"));
         }
         else if (!_pad.PointerMode)
@@ -139,6 +140,7 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("bat.tprev"), B("bat.tnext") }, "Targets"));
             hints.Add((new[] { PadButton.DUp }, "Move camera"));
             hints.Add((new[] { B("ptr.esc") }, "Menu"));
+            hints.Add((new[] { PadButton.Back }, "Hold: views"));
         }
         else
         {
@@ -147,6 +149,13 @@ public partial class PadOverlay : Control
             hints.Add((new[] { B("ptr.menus") }, "Highlight"));
         }
 
+        // View held in a battle: the strip lists what each face button does with it (Pad.cs chords).
+        if (_pad.InBattle && Pad.Holding is { } held)
+        {
+            hints.Clear();
+            foreach (PadBinding c in Pad.All.Where(x => x.With == held))
+                hints.Add((new[] { c.Button }, c.Does[(c.Does.IndexOf(':') + 1)..].Trim().Split(" (")[0].Split(" - ")[0]));
+        }
         Font font = GetThemeDefaultFont();
         const int size = 14;
         const float r = 11, gap = 18;

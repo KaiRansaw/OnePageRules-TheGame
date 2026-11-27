@@ -45,7 +45,7 @@ public partial class SettingsScreen : Control
 
     private static void BuildPlayer(VBoxContainer rows)
     {
-        var name = new LineEdit { Text = Config.PlayerName, CustomMinimumSize = new Vector2(360, 0) };
+        var name = new LineEdit { Name = "PlayerName", Text = Config.PlayerName, CustomMinimumSize = new Vector2(360, 0) };
         name.TextChanged += text =>
         {
             Config.PlayerName = text.Trim().Length > 0 ? text.Trim() : UserConfig.DefaultPlayerName;
@@ -280,14 +280,14 @@ public partial class SettingsScreen : Control
                 var g = new Pads.PadGlyphView { Button = b.Button, CustomMinimumSize = new Vector2(34, 30) };
                 glyphs.Add(g);
                 line.AddChild(g);
-                var name = Ui.Label(Pads.Pad.Name(b.Button));
+                var name = Ui.Label(b.ButtonName);
                 name.CustomMinimumSize = new Vector2(220, 0);
                 line.AddChild(name);
                 line.AddChild(Ui.Label(b.Does));
                 rows.AddChild(line);
             }
         }
-        rows.AddChild(Ui.Label("Text boxes (names, search) still need the keyboard - or Steam's on-screen keyboard on a Steam Deck.", "DimLabel", wrap: true));
+        rows.AddChild(Ui.Label("Text boxes (names, search): press A on one and an on-screen keyboard opens.", "DimLabel", wrap: true));
     }
 
     private static Control Section(string title, string tooltip = "")

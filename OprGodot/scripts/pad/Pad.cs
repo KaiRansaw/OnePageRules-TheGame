@@ -24,11 +24,20 @@ public enum PadDo
     PrevTarget, NextTarget, NextUnit,
     /// <summary>Battle: slide the camera over the table while held (which way = the button's d-pad direction).</summary>
     CameraMove,
+    /// <summary>Battle: a left click with Shift held - hold and move the pointer to draw a box round several models.</summary>
+    BoxSelect,
 }
 
 /// <summary>One line of the controller layout: which button, where, and what it does in plain words.</summary>
-public sealed record PadBinding(string Id, PadButton Default, PadContext Where, string Does, PadDo Act, Key Key = Key.None)
+public sealed record PadBinding(string Id, PadButton Default, PadContext Where, string Does, PadDo Act, Key Key = Key.None,
+    PadButton? With = null)
 {
+    /// <summary>A chord: this binding's button pressed while <see cref="With"/> is held (View + X...). Null = on its own.</summary>
+    public bool IsChord => With != null;
+
+    /// <summary>How the Controls tab names it: "View + X" for a chord, else the button's own name.</summary>
+    public string ButtonName => With is { } w ? $"{Pad.Name(w)} + {Pad.Name(Button)}" : Pad.Name(Button);
+
     /// <summary>The button it is on now - Kai's override from Settings when there is one, else the default.</summary>
     public PadButton Button => Pad.Override(Id) ?? Default;
 }
@@ -80,7 +89,14 @@ public static class Pad
         new("bat.camd",    PadButton.DDown,  PadContext.Battle, "Move the camera back", PadDo.CameraMove),
         new("bat.caml",    PadButton.DLeft,  PadContext.Battle, "Move the camera left", PadDo.CameraMove),
         new("bat.camr",    PadButton.DRight, PadContext.Battle, "Move the camera right", PadDo.CameraMove),
-        new("bat.report",  PadButton.Back,   PadContext.Battle, "Battle report (R)", PadDo.Key, Key.R),
+        new("bat.report",  PadButton.Back,   PadContext.Battle, "Battle report (R) - a tap; hold it for the five below", PadDo.Key, Key.R),
+        // Lane 3, 2026-11-27 (offered to Kai on 2026-11-24): the battle's other views on the pad. Every face button is
+        // taken in a battle, so they are chords: hold View and press a face button. A tap of View alone is still the report.
+        new("bat.mission", PadButton.X,      PadContext.Battle, "Hold View + X: open / close the Mission panel (M)", PadDo.Key, Key.M, With: PadButton.Back),
+        new("bat.rules",   PadButton.Y,      PadContext.Battle, "Hold View + Y: Rules view - terrain rules on the table (V)", PadDo.Key, Key.V, With: PadButton.Back),
+        new("bat.box",     PadButton.A,      PadContext.Battle, "Hold View + hold A and move: draw a box round several of your models (Shift + drag)", PadDo.BoxSelect, With: PadButton.Back),
+        new("bat.sight",   PadButton.RStick, PadContext.Battle, "Hold View + right stick click: Sight view - what the picked unit can see (F)", PadDo.Key, Key.F, With: PadButton.Back),
+        new("bat.armies",  PadButton.B,      PadContext.Battle, "Hold View + B: both armies' lists (L)", PadDo.Key, Key.L, With: PadButton.Back),
         new("bat.top",     PadButton.RStick, PadContext.Battle, "Top view (T)", PadDo.Key, Key.T),
     };
 
@@ -91,10 +107,18 @@ public static class Pad
     /// <summary>Which binding a button press means here. Battle lines win over Pointer lines on the same button.</summary>
     public static PadBinding? Find(PadButton button, bool pointer, bool battle)
     {
-        if (!pointer) return All.FirstOrDefault(b => b.Where == PadContext.Menus && b.Act != PadDo.Native && b.Button == button);
-        if (battle && All.FirstOrDefault(b => b.Where == PadContext.Battle && b.Button == button) is { } bat) return bat;
-        return All.FirstOrDefault(b => b.Where == PadContext.Pointer && b.Button == button);
+        if (Chord(button, battle) is { } chord) return chord;
+        if (!pointer) return All.FirstOrDefault(b => b.Where == PadContext.Menus && b.Act != PadDo.Native && b.Button == button && !b.IsChord);
+        if (battle && All.FirstOrDefault(b => b.Where == PadContext.Battle && b.Button == button && !b.IsChord) is { } bat) return bat;
+        return All.FirstOrDefault(b => b.Where == PadContext.Pointer && b.Button == button && !b.IsChord);
     }
+
+    /// <summary>The button held for chords right now (set by <see cref="PadDriver"/> while View is down in a battle).</summary>
+    public static PadButton? Holding { get; set; }
+
+    /// <summary>The chord a button makes with the one being held, in a battle.</summary>
+    public static PadBinding? Chord(PadButton button, bool battle) =>
+        battle && Holding is { } h ? All.FirstOrDefault(b => b.With == h && b.Button == button) : null;
 
     /// <summary>Godot's joypad button index -> our button (triggers are axes, read by <see cref="PadDriver"/>).</summary>
     public static PadButton? FromJoy(JoyButton j) => j switch
