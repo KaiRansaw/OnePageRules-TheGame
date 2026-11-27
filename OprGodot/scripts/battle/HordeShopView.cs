@@ -381,6 +381,12 @@ public partial class HordeShopView : Control
     private Button TabButton(Tab tab, string text)
     {
         var b = new Button { Name = "Tab" + tab, Text = text, ToggleMode = true, ButtonPressed = _tab == tab, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(150, 38) };
+        b.TooltipText = tab switch
+        {
+            Tab.Recruit => "Buy new units from your army book.",
+            Tab.Upgrade => "Buy upgrades for units already on the table (only those in reach of a seized objective).",
+            _ => "Bring units back up to strength (only those down to half or less).",
+        };
         b.AddThemeFontSizeOverride("font_size", 17);
         if (_tab == tab) b.AddThemeColorOverride("font_color", Palette.Lime);
         b.Pressed += () => { _tab = tab; Rebuild(); };
@@ -395,7 +401,8 @@ public partial class HordeShopView : Control
         int left = s.Left;
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 8);
-        var search = new LineEdit { Name = "ShopSearch", PlaceholderText = $"Search {s.Book!.Name}...", Text = _filter };
+        var search = new LineEdit { Name = "ShopSearch", PlaceholderText = $"Search {s.Book!.Name}...", Text = _filter,
+            TooltipText = "Show only the units whose name contains this." };
         search.TextChanged += t => { _filter = t; CallDeferred(nameof(RebuildKeepSearch)); };
         col.AddChild(search);
 
