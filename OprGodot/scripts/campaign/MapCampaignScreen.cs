@@ -234,7 +234,7 @@ public partial class MapCampaignScreen : Control, Hud.ILooked
         else
         {
             col.AddChild(HudKit.Text(r.Name + (r.Capital ? " - capital" : ""), 26, HudKit.Fg, HudKit.Exo(800)));
-            col.AddChild(HudKit.Text(CampaignMapRules.TypeName(r.Type, map.Style) + (r.Starred ? " - starred, 1 VP while held" : ""), 15, HudKit.Dim, HudKit.Semi));
+            col.AddChild(HudKit.Text((map.IsHex ? $"Hex {r.Col + 1}-{r.Row + 1} - " : "") + CampaignMapRules.TypeName(r.Type, map.Style) + (r.Starred ? " - starred, 1 VP while held" : ""), 15, HudKit.Dim, HudKit.Semi));
             if (r.Siege != null) col.AddChild(HudKit.Text($"Under siege by {map.Faction(r.Siege)?.Name} - one more win takes it.", 15, ColourOf(map, r.Siege), HudKit.Bold));
             Fact(col, "Held by", r.Owner == null ? "Nobody - a local garrison" : map.Faction(r.Owner)!.Name + (r.Owner == CampaignMap.PlayerId ? " (you)" : ""), r.Owner == null ? HudKit.Dim : ColourOf(map, r.Owner));
             Fact(col, "Perk", CampaignMapRules.PerkText(r.Type, map.Style, _s.Numbers));
@@ -472,8 +472,12 @@ public partial class MapCampaignScreen : Control, Hud.ILooked
 }
 
 /// <summary>
-/// The map itself (mockup screen 2): a star system (planets on lanes) or a realm (regions on roads). Drawn plainly - the
-/// look is rental; what's on it is the design: owner rings, capitals, stars, sieges, what you can act on, your order.
+/// The map itself. Since 2026-11-27 a HEX map (Kai; mockup "Hex Campaign Map" v3): every land hex is a region, filled
+/// with its type's colour and tinted in its holder's, with a thick border round each army's land; void / sea, inland
+/// seas, lakes and mountains (asteroid fields / nebulae) are the dead hexes. Mouse wheel zooms at the pointer, right or
+/// middle drag pans; names show once the hexes are big enough to hold them. Old saves (a star system / realm of regions
+/// on lanes or roads) still draw the old way. Drawn plainly - the look is rental (Godot art comes later); what's on it is
+/// the design: holders, capitals, stars, sieges, what you can act on, your order.
 /// </summary>
 public partial class MapView : Control
 {
@@ -491,6 +495,8 @@ public partial class MapView : Control
         _order = order;
         _canAct = canAct;
         MouseFilter = MouseFilterEnum.Stop;
+        ClipContents = true;
+        TextureRepeat = TextureRepeatEnum.Enabled;
         QueueRedraw();
     }
 
@@ -500,10 +506,236 @@ public partial class MapView : Control
 
     public override void _GuiInput(InputEvent e)
     {
-        if (_map == null || e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mb) return;
+        if (_map == null) return;
+        if (_map.IsHex) { HexInput(e); return; }
+        if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mb) return;
         MapRegion? hit = _map.Regions.OrderBy(r => At(r).DistanceTo(mb.Position)).FirstOrDefault();
         if (hit != null && At(hit).DistanceTo(mb.Position) <= Radius * 1.6f) Clicked?.Invoke(hit.Id);
     }
+
+    // ------------------------------------------------------------------ the hex map
+
+    private float _zoom = 1f;
+    private Vector2 _pan;
+    private bool _dragging;
+    private int _boundSeed = int.MinValue;
+
+    private static readonly float Root3 = Mathf.Sqrt(3f);
+
+    /// <summary>The hex radius (centre to corner) that fits the whole map, before zoom.</summary>
+    private float FitHex => _map == null ? 10f :
+        Mathf.Min(Size.X / (Root3 * (_map.Width + 0.5f)), Size.Y / (1.5f * (_map.Height - 1) + 2f));
+
+    private float HexR => FitHex * _zoom;
+
+    /// <summary>Top-left of the hex grid on screen: centred at zoom 1, then moved by the pan.</summary>
+    private Vector2 Origin
+    {
+        get
+        {
+            float r = HexR;
+            var grid = new Vector2(Root3 * r * (_map!.Width + 0.5f), 1.5f * r * (_map.Height - 1) + 2 * r);
+            return (Size - grid) / 2 + _pan;
+        }
+    }
+
+    private Vector2 HexCentre(int col, int row)
+    {
+        float r = HexR;
+        return Origin + new Vector2(Root3 * r * (col + 0.5f * (row & 1)) + Root3 * r / 2, 1.5f * r * row + r);
+    }
+
+    private Vector2[] HexCorners(Vector2 c, float r)
+    {
+        var pts = new Vector2[6];
+        for (int i = 0; i < 6; i++)
+        {
+            float a = Mathf.DegToRad(60 * i - 30);
+            pts[i] = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+        }
+        return pts;
+    }
+
+    private MapRegion? HexAt(Vector2 p)
+    {
+        float r = HexR;
+        MapRegion? best = null;
+        float bestD = float.MaxValue;
+        foreach (MapRegion reg in _map!.Regions)
+        {
+            float d = HexCentre(reg.Col, reg.Row).DistanceSquaredTo(p);
+            if (d < bestD) { bestD = d; best = reg; }
+        }
+        return best != null && bestD <= r * r ? best : null;
+    }
+
+    private void HexInput(InputEvent e)
+    {
+        switch (e)
+        {
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mb:
+                if (HexAt(mb.Position) is { } hit) Clicked?.Invoke(hit.Id);
+                break;
+            case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel:
+            {
+                float old = _zoom;
+                _zoom = Mathf.Clamp(_zoom * (wheel.ButtonIndex == MouseButton.WheelUp ? 1.15f : 1 / 1.15f), 1f, 8f);
+                // Keep the point under the pointer still while zooming.
+                Vector2 centre = Size / 2 + _pan;
+                _pan += (wheel.Position - centre) * (1 - _zoom / old);
+                if (_zoom <= 1.001f) _pan = Vector2.Zero;
+                AcceptEvent();
+                QueueRedraw();
+                break;
+            }
+            case InputEventMouseButton { ButtonIndex: MouseButton.Right or MouseButton.Middle } drag:
+                _dragging = drag.Pressed;
+                break;
+            case InputEventMouseMotion motion when _dragging && _zoom > 1.001f:
+                _pan += motion.Relative;
+                QueueRedraw();
+                break;
+        }
+    }
+
+    private void DrawHexMap()
+    {
+        CampaignMap map = _map!;
+        if (_boundSeed != map.Seed) { _boundSeed = map.Seed; _zoom = 1; _pan = Vector2.Zero; }
+        bool realm = map.Style == EMapStyle.Realm;
+        Color sea = realm ? new Color("1b3550") : new Color("060910");
+        DrawRect(new Rect2(Vector2.Zero, Size), sea);
+        float r = HexR;
+        Color grid = realm ? new Color("24456a") : new Color("111827");
+        foreach (MapHex d in map.Dead)
+        {
+            Vector2 c = HexCentre(d.Col, d.Row);
+            if (!OnScreen(c, r)) continue;
+            Vector2[] pts = HexCorners(c, r);
+            Color fill = d.Kind switch
+            {
+                EDeadHex.Sea => realm ? new Color("24507a") : new Color("161d3a"),
+                EDeadHex.Lake => realm ? new Color("2e6390") : new Color("1f1a3a"),
+                EDeadHex.Rough => realm ? new Color("55525a") : new Color("2c2832"),
+                _ => sea,
+            };
+            Texture2D? rough = d.Kind == EDeadHex.Rough ? Load(realm ? "res://terrain/realistic/textures/boulder_01_1.jpg" : "res://terrain/realistic/textures/moon_rock_01_1.jpg") : null;
+            if (rough != null) DrawPolygon(pts, Enumerable.Repeat(realm ? new Color(0.85f, 0.85f, 0.85f) : new Color(0.6f, 0.58f, 0.66f), 6).ToArray(), Uvs(pts, r), rough);
+            else DrawColoredPolygon(pts, fill);
+            DrawPolyline(pts.Append(pts[0]).ToArray(), grid, 1);
+            if (d.Kind == EDeadHex.Rough && r >= 9)
+                DrawColoredPolygon(new[] { c + new Vector2(-r * 0.4f, r * 0.3f), c + new Vector2(0, -r * 0.4f), c + new Vector2(r * 0.4f, r * 0.3f) },
+                    realm ? new Color(0.85f, 0.83f, 0.8f, 0.55f) : new Color(0.75f, 0.72f, 0.8f, 0.4f));
+        }
+
+        var at = map.Regions.ToDictionary(x => (x.Col, x.Row));
+        var reach = _canAct ? CampaignMapRules.Reachable(map, CampaignMap.PlayerId).Select(x => x.Id).ToHashSet() : new HashSet<string>();
+        foreach (MapRegion reg in map.Regions)
+        {
+            Vector2 c = HexCentre(reg.Col, reg.Row);
+            if (!OnScreen(c, r)) continue;
+            Vector2[] pts = HexCorners(c, r);
+            Texture2D? tex = Ground(reg.Type);
+            Color tint = MapCampaignScreen.TypeColour(reg.Type);
+            if (tex != null) DrawPolygon(pts, Enumerable.Repeat(tint.Lerp(Colors.White, 0.35f), 6).ToArray(), Uvs(pts, r), tex);
+            else DrawColoredPolygon(pts, tint.Darkened(0.35f));
+            if (reg.Owner != null) DrawColoredPolygon(HexCorners(c, r * 0.92f), MapCampaignScreen.ColourOf(map, reg.Owner) with { A = 0.42f });
+            DrawPolyline(pts.Append(pts[0]).ToArray(), new Color(0, 0, 0, 0.45f), 1);
+        }
+        // Borders round each army's land: an edge is drawn where the hex across it isn't the same army's.
+        foreach (MapRegion reg in map.Regions.Where(x => x.Owner != null))
+        {
+            Vector2 c = HexCentre(reg.Col, reg.Row);
+            if (!OnScreen(c, r)) continue;
+            Vector2[] pts = HexCorners(c, r);
+            Color own = MapCampaignScreen.ColourOf(map, reg.Owner);
+            foreach (var (nc, nr) in CampaignMapGenerator.HexNeighbours(reg.Col, reg.Row, map.Width, map.Height))
+            {
+                if (at.TryGetValue((nc, nr), out MapRegion? other) && other.Owner == reg.Owner) continue;
+                Vector2 dir = HexCentre(nc, nr) - c;
+                int k = ((Mathf.RoundToInt(Mathf.RadToDeg(Mathf.Atan2(dir.Y, dir.X)) / 60f) % 6) + 6) % 6;
+                DrawLine(pts[k], pts[(k + 1) % 6], own, Mathf.Clamp(r * 0.22f, 2f, 5f));
+            }
+        }
+        // Where you can act this turn: a thin gold outline.
+        foreach (MapRegion reg in map.Regions.Where(x => reach.Contains(x.Id)))
+        {
+            Vector2[] pts = HexCorners(HexCentre(reg.Col, reg.Row), r * 0.82f);
+            DrawPolyline(pts.Append(pts[0]).ToArray(), Palette.HeroGold, 1.5f);
+        }
+        Font font = HudKit.Bold;
+        int fontSize = Mathf.Clamp(Mathf.RoundToInt(r * 0.38f), 9, 15);
+        foreach (MapRegion reg in map.Regions)
+        {
+            Vector2 c = HexCentre(reg.Col, reg.Row);
+            if (!OnScreen(c, r)) continue;
+            float s = Mathf.Max(r, 6f);
+            if (reg.Capital)
+                DrawColoredPolygon(new[]
+                {
+                    c + new Vector2(-0.5f, 0.3f) * s, c + new Vector2(-0.5f, -0.3f) * s, c + new Vector2(-0.22f, 0f) * s, c + new Vector2(0, -0.42f) * s,
+                    c + new Vector2(0.22f, 0f) * s, c + new Vector2(0.5f, -0.3f) * s, c + new Vector2(0.5f, 0.3f) * s,
+                }, Palette.HeroGold);
+            else if (reg.Starred) Star(c, s * 0.42f, Palette.HeroGold);
+            if (reg.Siege != null) DashedRing(c, r * 0.75f, MapCampaignScreen.ColourOf(map, reg.Siege), 3);
+            if (_order?.Region == reg.Id)
+            {
+                DrawLine(c + new Vector2(-0.45f, -0.45f) * s, c + new Vector2(0.45f, 0.45f) * s, HudKit.Lime, 3);
+                DrawLine(c + new Vector2(-0.45f, 0.45f) * s, c + new Vector2(0.45f, -0.45f) * s, HudKit.Lime, 3);
+            }
+            if (r >= 30)
+            {
+                Vector2 size = font.GetStringSize(reg.Name, HorizontalAlignment.Center, -1, fontSize);
+                Vector2 p = c + new Vector2(-size.X / 2, r * 0.72f);
+                DrawStringOutline(font, p, reg.Name, HorizontalAlignment.Left, -1, fontSize, 3, new Color(0, 0, 0, 0.9f));
+                DrawString(font, p, reg.Name, HorizontalAlignment.Left, -1, fontSize, HudKit.Fg);
+            }
+        }
+        if (map.Region(_selected) is { } sel)
+        {
+            Vector2[] pts = HexCorners(HexCentre(sel.Col, sel.Row), r);
+            DrawPolyline(pts.Append(pts[0]).ToArray(), HudKit.Lime, 3.5f);
+        }
+        if (_zoom <= 1.001f)
+        {
+            const string hint = "Mouse wheel to zoom, right-drag to move";
+            DrawString(HudKit.Bold, new Vector2(10, Size.Y - 10), hint, HorizontalAlignment.Left, -1, 13, new Color(1, 1, 1, 0.45f));
+        }
+    }
+
+    // Ground pictures for the hexes: the CC0 ground textures the battle horizons already use (Poly Haven / ambientCG,
+    // OprGodot/horizon/*), tinted toward each type's colour so the types still read at a glance. Asteroid fields and
+    // mountains use the CC0 moon-rock / boulder textures from terrain/realistic (Poly Haven).
+    private static readonly Dictionary<string, Texture2D?> Textures = new();
+
+    private static Texture2D? Load(string path)
+    {
+        if (!Textures.TryGetValue(path, out Texture2D? t))
+            Textures[path] = t = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        return t;
+    }
+
+    private static Texture2D? Ground(ERegionType t) => Load(t switch
+    {
+        ERegionType.Hive => "res://horizon/Generic/ground.jpg",
+        ERegionType.Forge => "res://horizon/Wasteland/ground.jpg",
+        ERegionType.Shrine => "res://horizon/Death/ground2.jpg",
+        ERegionType.Fortress => "res://horizon/Wasteland/ground.jpg",
+        ERegionType.Medical => "res://horizon/Hospitable/ground.jpg",
+        ERegionType.Port => "res://horizon/Wasteland/ground2.jpg",
+        _ => "res://horizon/Death/ground.jpg",
+    });
+
+    /// <summary>Texture coordinates from the map's own position, so a texture runs on across neighbouring hexes (one
+    /// picture every ~3 hexes) instead of restarting in each.</summary>
+    private Vector2[] Uvs(Vector2[] pts, float r)
+    {
+        float span = r * 6f;
+        Vector2 o = Origin;
+        return pts.Select(p => (p - o) / span).ToArray();
+    }
+
+    private bool OnScreen(Vector2 c, float r) => c.X > -r && c.Y > -r && c.X < Size.X + r && c.Y < Size.Y + r;
 
     public override void _Notification(int what)
     {
@@ -513,6 +745,7 @@ public partial class MapView : Control
     public override void _Draw()
     {
         if (_map == null) return;
+        if (_map.IsHex) { DrawHexMap(); return; }
         bool realm = _map.Style == EMapStyle.Realm;
         DrawRect(new Rect2(Vector2.Zero, Size), realm ? new Color("1b1a14") : new Color("070c11"));
         var rng = new Random(_map.Seed);

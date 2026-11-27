@@ -56,9 +56,11 @@ public sealed class MapCampaignSession
     /// - the map decides (VP target counting starred regions, or capitals). Returns the session, or null with why.
     /// </summary>
     /// <param name="folder">Where the campaign files go; null = this system's campaign folder (tests pass a temp folder).</param>
+    /// <param name="customWidth">With <see cref="EMapSize.Custom"/>: the map's width in hexes (clamped 8-60).</param>
+    /// <param name="customHeight">With <see cref="EMapSize.Custom"/>: its height in hexes (clamped 8-60).</param>
     public static MapCampaignSession? Start(EGameSystem system, string name, BuiltArmyFile yours,
         IReadOnlyList<(string Name, BuiltArmyFile Army)> rivals, EMapSize size, int vpTarget, bool noPermadeath, int seed,
-        out string? error, string? folder = null)
+        out string? error, string? folder = null, int customWidth = 0, int customHeight = 0)
     {
         error = null;
         if (rivals.Count is < 1 or > MaxRivals) { error = $"A map campaign needs 1 to {MaxRivals} rivals."; return null; }
@@ -87,7 +89,10 @@ public sealed class MapCampaignSession
         string playerPath = NewPath(name.Trim());
         string mapPath = MapPathFor(playerPath);
         factions[0].ArmyFile = playerPath;
-        CampaignMap map = CampaignMapGenerator.Generate(system, size, factions, seed);
+        // Kai 2026-11-27: a hex map, Small / Medium / Large or his own width x height.
+        CampaignMap map = size == EMapSize.Custom
+            ? CampaignMapGenerator.Generate(system, customWidth, customHeight, factions, seed)
+            : CampaignMapGenerator.Generate(system, size, factions, seed);
         map.VpTarget = vpTarget;
 
         CampaignRules.Start(yours, name.Trim(), playerPath, n, system, ECampaignType.Endless, noPermadeath);

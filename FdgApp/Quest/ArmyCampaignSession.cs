@@ -356,6 +356,10 @@ public sealed class ArmyCampaignSession
         // #467 - a map campaign (Kai, 2026-11-15: "inside Campaign" - Classic or Map is the wizard's first choice).
         public bool Map { get; set; }
         public FDG.Campaign.Map.EMapSize MapSize { get; set; } = FDG.Campaign.Map.EMapSize.Medium;
+
+        /// <summary>The hex map's width and height when <see cref="MapSize"/> is Custom (Kai 2026-11-27).</summary>
+        public int MapWidth { get; set; } = 22;
+        public int MapHeight { get; set; } = 16;
         public List<MapRival> Rivals { get; } = new();
     }
 
@@ -438,7 +442,7 @@ public sealed class ArmyCampaignSession
         var rivals = d.Rivals.Select(r => (r.Name.Trim(), r.Army)).ToList();
         int target = d.Type == ECampaignType.PointLimited ? d.VpTarget : 0;
         MapCampaignSession? m = MapCampaignSession.Start(System, d.Name.Trim(), yours, rivals, d.MapSize, target, d.NoPermadeath,
-            _rng.Next(), out error);
+            _rng.Next(), out error, customWidth: d.MapWidth, customHeight: d.MapHeight);
         if (m == null) return null;
         CampaignJournal.SetCampaignNote(m.InfoOf(FDG.Campaign.Map.CampaignMap.PlayerId), d.Story);
         m.SaveAll();

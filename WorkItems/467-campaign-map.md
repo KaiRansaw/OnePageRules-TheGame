@@ -21,6 +21,23 @@ The OPR campaign books have no map rules: every rule here is a house rule.
 
 ## Notes (newest first)
 
+### 2026-11-27 - the map becomes a hex grid (Kai; mockup "Hex Campaign Map" v3)
+- Kai: "too limited" - replaced the region-and-road map with a hex grid. One land hex = one region; links = touching
+  land hexes, so every rule (reach, Spaceport two steps, fog, claims, sieges) runs unchanged on the graph.
+- Engine: `CampaignMap.Width/Height/Dead` (`MapHex`, `EDeadHex` Void/Sea/Rough/Lake), `MapRegion.Col/Row`,
+  `EMapSize.Custom`; `CampaignMapGenerator.Dimensions` (Small 14x10, Medium 22x16, Large 32x22; custom 8-60 each way).
+  Generator: random land chunks joined by thin land bridges (Kai: keep the bridges, no true islands), enclosed water
+  -> inland seas / lakes, ~17% of the land sprinkled with mountain / lake / sea clusters that never split the land or
+  sit on a bridge; types clump into areas; Fortress ~6/79 of neutral hexes. Old saves (Width 0) still load and draw.
+- Speed: `CampaignMap.NeighbourIds` / `Region` are cached; `CanReach` walks from the target's side; `Reachable`
+  collects the frontier - a Large map has ~700 regions.
+- Kept as-is (Kai's review): claim cost 75 x held, starred VP, capitals far apart, one hex per turn.
+- Test change: `WholeCampaigns_PlayedOut_AlwaysFinish` now pays the book's 2 VP for the player's army battles - a
+  hex map has too many hexes to end on stars alone, and real missions do pay it.
+- Godot: wizard size = presets + Width/Height boxes; `MapView` draws hexes (ground textures from horizon/*, rock
+  textures for mountains / asteroid fields), army borders, gold outline on hexes you can act on, wheel zoom at the
+  pointer + right/middle-drag pan, names once hexes are big enough; the card shows "Hex c-r".
+
 ### 2026-11-15 - the last perks + off-screen casualties (Build 2.28)
 - `StrikeTeamInfo.FreeVeteranSurcharge` (set by `CampaignMapUpkeep.EndOfTurnPerks` while a Forge is held; spent by
   `CampaignEconomy.Recruit(veteran)`), Medical decrements `MissionsOut` at turn end.

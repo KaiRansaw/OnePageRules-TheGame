@@ -524,17 +524,46 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
     {
         bool realm = FDG.Campaign.Map.CampaignMapRules.StyleFor(System) == FDG.Campaign.Map.EMapStyle.Realm;
         string places = realm ? "regions" : "planets";
-        page.AddChild(HudKit.Heading("Map size", 14));
+        page.AddChild(HudKit.Heading("Map size (hexes)", 14));
         var size = new HBoxContainer();
         size.AddThemeConstantOverride("separation", 16);
+        // Kai 2026-11-27: a hex map - presets plus his own width x height. Each land hex is one of the map's places.
         foreach (var (sz, label, tip) in new[]
                  {
-                     (FDG.Campaign.Map.EMapSize.Small, $"Small - 8 {places}", "Fighting from the first turn."),
-                     (FDG.Campaign.Map.EMapSize.Medium, $"Medium - 14 {places}", "A few turns before the armies meet."),
-                     (FDG.Campaign.Map.EMapSize.Large, $"Large - 20 {places}", "A long war."),
+                     (FDG.Campaign.Map.EMapSize.Small, "Small - 14 x 10", "The smallest map. Fighting early."),
+                     (FDG.Campaign.Map.EMapSize.Medium, "Medium - 22 x 16", "A few turns before the armies meet."),
+                     (FDG.Campaign.Map.EMapSize.Large, "Large - 32 x 22", "A long war."),
+                     (FDG.Campaign.Map.EMapSize.Custom, "Custom", "Your own width x height, 8 to 60 hexes each way."),
                  })
-            size.AddChild(Radio("Size" + sz, label, _draft.MapSize == sz, () => { _draft.MapSize = sz; Rebuild(); }, tip + " (Bigger with 3 rivals: every army needs room.)"));
+            size.AddChild(Radio("Size" + sz, label, _draft.MapSize == sz, () =>
+            {
+                _draft.MapSize = sz;
+                if (sz != FDG.Campaign.Map.EMapSize.Custom) (_draft.MapWidth, _draft.MapHeight) = FDG.Campaign.Map.CampaignMapGenerator.Dimensions(sz);
+                Rebuild();
+            }, tip + " Every land hex is one of the " + places + " fought over; the rest is " + (realm ? "sea, lakes and mountains." : "space, nebulae and asteroid fields.")));
         page.AddChild(size);
+        var dims = new HBoxContainer();
+        dims.AddThemeConstantOverride("separation", 10);
+        SpinBox Side(string name, int value, Action<int> set)
+        {
+            var box = new SpinBox
+            {
+                Name = name, MinValue = FDG.Campaign.Map.CampaignMapGenerator.MinSide, MaxValue = FDG.Campaign.Map.CampaignMapGenerator.MaxSide,
+                Step = 1, Value = value, CustomMinimumSize = new Vector2(110, 0),
+                TooltipText = "Hexes, 8 to 60. Changing it makes the map Custom.",
+            };
+            box.ValueChanged += v =>
+            {
+                set((int)v);
+                if (_draft.MapSize != FDG.Campaign.Map.EMapSize.Custom) { _draft.MapSize = FDG.Campaign.Map.EMapSize.Custom; Rebuild(); }
+            };
+            return box;
+        }
+        dims.AddChild(HudKit.Text("Width", 14, HudKit.Dim, HudKit.Semi));
+        dims.AddChild(Side("MapWidth", _draft.MapWidth, v => _draft.MapWidth = v));
+        dims.AddChild(HudKit.Text("x  Height", 14, HudKit.Dim, HudKit.Semi));
+        dims.AddChild(Side("MapHeight", _draft.MapHeight, v => _draft.MapHeight = v));
+        page.AddChild(dims);
 
         page.AddChild(HudKit.Heading("Rivals - built for you", 14));
         var count = new HBoxContainer();
