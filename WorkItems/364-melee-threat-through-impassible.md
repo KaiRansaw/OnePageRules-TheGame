@@ -1,6 +1,6 @@
 # 364 — Melee threat is measured straight-line, through impassible terrain
 
-**Status**: open (Tactician only) - official-AI half done 2026-11-15
+**Status**: done 2026-11-27 (lane 2) - official-AI half 2026-11-15, Tactician half 2026-11-27
 **Related**: #363 (the sight-line half of the same "estimates ignore terrain" family), #264
 (approach term switched to WALKING distance - this is the threat side, still straight-line),
 #191 (Tactician umbrella)
@@ -26,6 +26,15 @@ actually protects - the same shape as #363's phantom volley, one mechanism over.
 
 ## Notes
 
+- 2026-11-27 (lane 2): **the Tactician half is fixed.** `TacticianPlanner.EnemyChargeDistance` - an enemy's charge
+  onto an endpoint (retaliation melee branch) and from its projected spot (projected melee branch) is the WALKED
+  distance round Impassable terrain (`RouteMetrics.Route`, difficult ignored, fliers straight), only when the straight
+  lane crosses an Impassable piece and the enemy could reach in a straight line at all; memoized per activation.
+  `MeleeThreatTotal`'s denominator stays straight-line (a superset - over-counting the denominator only softens).
+  Test `TacticianCoverHabitTests.Score_SwordsmenBehindAWallTheyCannotGetRound_DoNotScareUsOffTheObjective`
+  (walled 0.776 vs open 0.655; straight-line both 0.655), sabotage-checked. Also: the Tactical/Expert bots now
+  charge a unit in a solid building at its wall (`MacroActionGenerator.BuildCharge` / `WallGoal`).
+
 - 2026-11-15: **the official AI's half is fixed** (Build 2.33). The lobby bot is the Solo & Co-Op AI (#419), not
   the Tactician, and its version of this bug was the reverse: `SoloAiBrain.ChargeTarget` counted an enemy behind a
   wall as in charge range, planned the charge and the move failed. Now `Ai/Solo/SoloAiReach.ChargeGap` walks the
@@ -48,4 +57,4 @@ actually protects - the same shape as #363's phantom volley, one mechanism over.
 
 ## Outcome
 
-(open)
+Done 2026-11-27. The approach term already walked (#264); now the threat side does too.

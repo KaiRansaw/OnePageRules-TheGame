@@ -1153,6 +1153,87 @@
   ],
   "defaultRangedEffectSet": "arcane-psychic",
   "defaultMeleeEffectSet": "daemon-arcane-melee",
+  "auxiliaryUnits": [
+    {
+      "name": "Changeling",
+      "id": "Changelings [1]",
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 0.984252,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 6,
+      "defense": 6,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Changebound"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 0
+    },
+    {
+      "name": "Lesser Change Horror",
+      "id": "Lesser Change Horrors [1]",
+      "joinsUnitId": null,
+      "modelCount": 1,
+      "base": {
+        "shape": "Circle",
+        "diameterInches": 1.2598425,
+        "widthInches": 0.984252,
+        "heightInches": 1.968504
+      },
+      "quality": 5,
+      "defense": 5,
+      "specialRules": [
+        {
+          "kind": "core",
+          "name": "Changebound"
+        },
+        {
+          "kind": "coreText",
+          "name": "Split",
+          "textValue": "Changelings [1]"
+        },
+        {
+          "kind": "coreNumeric",
+          "name": "Tough",
+          "numericValue": 3
+        }
+      ],
+      "weapons": [
+        {
+          "name": "Claws",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "claw-rend",
+          "specialRules": []
+        }
+      ],
+      "pointCost": 0
+    }
+  ],
   "ruleDefinitions": [
     {
       "name": "Spell Accumulator",
