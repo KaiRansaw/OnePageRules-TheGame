@@ -2597,7 +2597,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         bool canSave = Session.Lobby.Vm.HasHostPrivileges && Session.Table.Progress.RoundCount != null;
         var saveRow = new HBoxContainer();
         saveRow.AddThemeConstantOverride("separation", 8);
-        var name = new LineEdit { Text = SuggestedSaveName(), SizeFlagsHorizontal = SizeFlags.ExpandFill, Editable = canSave, Name = "SaveName" };
+        var name = new LineEdit { Text = SuggestedSaveName(), SizeFlagsHorizontal = SizeFlags.ExpandFill, Editable = canSave, Name = "SaveName",
+            TooltipText = "The save's name in Load Game. Save keeps the game here to carry on later." };
         var save = Ui.Button("Save game", () => SaveNow(name.Text), canSave ? "Save this game to the Saved Games folder (Ctrl+S saves straight away)."
             : !Session.Lobby.Vm.HasHostPrivileges ? "Only the host can save the game." : "Saving opens once round 1 starts (a game saved during set-up can't be resumed).", "CommitButton");
         save.Disabled = !canSave;

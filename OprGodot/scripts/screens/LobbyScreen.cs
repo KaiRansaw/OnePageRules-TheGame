@@ -478,8 +478,9 @@ public partial class LobbyScreen : Control, Hud.ILooked
                     locked || Session.HasMap, s => Vm.SetTableSize(s)));
         }
 
-        Row(rows, "Battlefield", "The look of the table surface. Cosmetic - no effect on terrain or any rule. Picked at random each time a lobby opens.",
-            Choice(Enum.GetValues<ETableBackground>(), Vm.TableBackground, TableBackgroundName, b => "Cosmetic only.", !Vm.HasHostPrivileges, b => Vm.SetTableBackground(b)));
+        // "Battlefield" (the table surface, Forest / Desert...) is not offered here: only the Raylib build draws it. The Godot
+        // table takes its ground, sky and weather from the map (Map Maker -> Battlefield...), so the row changed nothing
+        // (lane 3 click-walk, 2026-11-27). The setting itself still rides the lobby for the Raylib build.
 
         if (LobbyDeploymentPreview.DeploymentApplies(system, mode))
         {
@@ -556,7 +557,6 @@ public partial class LobbyScreen : Control, Hud.ILooked
         }
     }
 
-    private static string TableBackgroundName(ETableBackground b) => b == ETableBackground.MarsLike ? "Mars-Like" : b.ToString();
 
     private void RulesTab(VBoxContainer rows, bool locked)
     {
