@@ -279,9 +279,11 @@ public static class TableMarkers
     };
 
     /// <summary>True when the terrain piece is one of these markers' own footprint (the table draws the marker's model
-    /// instead of a terrain look for it).</summary>
+    /// instead of a terrain look for it) - or the Defensive Barrier's 6" Difficult area, which the barrier's own ring
+    /// shows (dressed as terrain it came out as a 15"-wide field of rubble round the piece).</summary>
     public static bool IsMarkerPiece(ITerrain t) =>
-        LivingSpells.IsMarker(t) || TacticalPhase.IsMarker(t) || IsArmyPiece(t);
+        LivingSpells.IsMarker(t) || TacticalPhase.IsMarker(t) || IsArmyPiece(t)
+        || (t.Name ?? "").StartsWith(FDG.ArmyTerrain.BarrierAreaPrefix, StringComparison.Ordinal);
 
     /// <summary>Army terrain pieces are named "<c>Name (Owner)</c>"; the Defensive Barrier's 6" area is a separate piece.</summary>
     public static bool IsArmyPiece(ITerrain t) =>

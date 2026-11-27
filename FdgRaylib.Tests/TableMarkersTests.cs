@@ -135,4 +135,19 @@ public class TableMarkersTests
         Assert.That(markers[3].Text, Does.Contain("Within 3\" counts as cover").And.Contain("2 rounds left"));
         Assert.That(markers.All(m => m.Text.All(c => c < 128)), Is.True, "game text is ASCII");
     }
+
+    [Test]
+    public void ThePiecesTheMarkersDraw_AreKnown_AndOrdinaryTerrainIsNot()
+    {
+        TerrainData Piece(string name, ETerrainType type = ETerrainType.Impassible | ETerrainType.Blocking) =>
+            new(type, new CircularZone(new Float2(10, 10), 1.5f), heightInches: 3f, name: name);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Battle Forge (Kai)")), Is.True);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Defensive Barrier (Kai)")), Is.True);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Defensive Barrier area (Kai) [team 1]", ETerrainType.Difficult)), Is.True,
+            "the barrier's ring shows its area - not dressed as a big rubble field");
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Living spell: Burning Pyre (Kai)", ETerrainType.None)), Is.True);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Forward position 2 (Kai)", ETerrainType.None)), Is.True);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Ruined chapel")), Is.False);
+        Assert.That(TableMarkers.IsMarkerPiece(Piece("Battle Forge ruins")), Is.False, "a map piece that only starts like one");
+    }
 }
