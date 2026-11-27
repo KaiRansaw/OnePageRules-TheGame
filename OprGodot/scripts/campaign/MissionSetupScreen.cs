@@ -126,9 +126,11 @@ public partial class MissionSetupScreen : Control
         head.AddChild(Ui.Button("Generate all", () => { _s.GenerateAll(); Say("Rolled a new mission.", Palette.Lime); Rebuild(); },
             "Rolls a new deployment, mission type and difficulty from the books. The map and your notes stay.").Also(x => x.Name = "GenerateAll"));
         col.AddChild(head);
-        var title = new LineEdit { Name = "Title", Text = plan.Title, PlaceholderText = "Title (optional)", MaxLength = 80 };
-        title.TextSubmitted += x => { _s.SetTitle(x); Rebuild(); };
-        title.FocusExited += () => _s.SetTitle(title.Text);
+        // Homebrew relic quests (house rule B28): a generated title names Relic Hunt on a quest; saved only if edited.
+        string shownTitle = _s.ShownTitle;
+        var title = new LineEdit { Name = "Title", Text = shownTitle, PlaceholderText = "Title (optional)", MaxLength = 80 };
+        title.TextSubmitted += x => { if (x != shownTitle) _s.SetTitle(x); Rebuild(); };
+        title.FocusExited += () => { if (title.Text != shownTitle) _s.SetTitle(title.Text); };
         col.AddChild(title);
 
         if (_s.DeploymentAvailable)

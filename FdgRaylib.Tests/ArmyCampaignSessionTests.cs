@@ -192,11 +192,19 @@ public class ArmyCampaignSessionTests
         Assert.That(setup.YourUnitsComing, Is.EqualTo(before), "the quest Hero can't be left at home");
         Assert.That(MissionSetupSession.ForceTag(setup.Info!, card.Unit, card.Sheet), Is.EqualTo("QUEST"));
         Assert.That(setup.QuestLine, Does.Contain("Relic Hunt"));
+        setup.SetMissionType(FDG.Missions.EMissionCardGame.BattleOfWits);
+        setup.SetTitle(CampaignMissionGenerator.DefaultTitle(setup.Plan!));
+        Assert.That(setup.ShownTitle, Does.EndWith("Relic Hunt").And.Not.Contain("Battle of Wits"),
+            "a generated title names the mission actually played");
+        setup.SetTitle("Into the Wastes");
+        Assert.That(setup.ShownTitle, Is.EqualTo("Into the Wastes"), "a title the player wrote is left alone");
+        setup.SetTitle(CampaignMissionGenerator.DefaultTitle(setup.Plan!));
 
         ArmyCampaignLaunch? launch = setup.Start(out string? error);
         Assert.That(error, Is.Null);
         Assert.That(launch!.ExtraMission, Is.EqualTo(FDG.Missions.EExtraMission.RelicHunt));
         Assert.That(launch.MissionCards, Is.EqualTo(FDG.Missions.EMissionCardGame.Off));
         Assert.That(launch.Line, Does.Contain("Relic Hunt"));
+        Assert.That(launch.Title, Does.EndWith("Relic Hunt"));
     }
 }

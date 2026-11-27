@@ -161,7 +161,23 @@ public sealed class MissionSetupSession
     public bool IsQuestHero(StrikeUnit sheet) =>
         (Info is { QuestHeroId.Length: > 0 } i && i.QuestHeroId == sheet.Id) || (Foe is { QuestHeroId.Length: > 0 } f && f.QuestHeroId == sheet.Id);
 
-    /// <summary>The quest line for the plan card, or null when there is no quest.</summary>
+    /// <summary>
+    /// The plan's title as shown. On a relic quest (house rule B28) a title the game generated names Relic Hunt instead of
+    /// the plan's mission card game, which isn't played; a title the player wrote is left alone.
+    /// </summary>
+    public string ShownTitle
+    {
+        get
+        {
+            if (Plan is not { } plan) return "";
+            if (QuestHero == null || plan.Title != CampaignMissionGenerator.DefaultTitle(plan)) return plan.Title;
+            var plain = new CampaignMissionPlan { Mission = plan.Mission, DeploymentStyle = plan.DeploymentStyle,
+                MissionCards = FDG.Missions.EMissionCardGame.Off };
+            return CampaignMissionGenerator.DefaultTitle(plain) + " - Relic Hunt";
+        }
+    }
+
+        /// <summary>The quest line for the plan card, or null when there is no quest.</summary>
     public string? QuestLine => QuestHero is { } h
         ? $"RELIC QUEST - {h.Name} seeks a relic: the mission is a Relic Hunt. Win it with {h.Name} alive to claim a relic."
         : null;
@@ -384,7 +400,8 @@ public sealed class MissionSetupSession
         }
 
         CampaignMissionPlan plan = Plan ?? new CampaignMissionPlan { Mission = info.Matches + 1 };
-        string title = $"{info.Name} - Mission {info.Matches + 1}" + (plan.Title.Length > 0 ? $": {plan.Title}" : "");
+        string shown = Plan != null ? ShownTitle : plan.Title;
+        string title = $"{info.Name} - Mission {info.Matches + 1}" + (shown.Length > 0 ? $": {shown}" : "");
         bool quest = QuestHero != null;
         string line = $"{MissionDifficulty.Name(info.Difficulty)} - "
             + (quest ? $"Relic Hunt (relic quest: {QuestHero!.Name})" : MissionTypeName(plan.MissionCards));

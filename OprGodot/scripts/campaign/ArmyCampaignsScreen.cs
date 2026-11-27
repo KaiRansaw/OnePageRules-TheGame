@@ -1352,6 +1352,22 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         Say(file != null ? "Journal saved to " + file : "Couldn't write the journal file: " + error, file != null ? Palette.Lime : Palette.WoundsRed);
     }
 
+    /// <summary>
+    /// Testing shortcut (Kai, 2026-11-27): Ctrl+Shift+M on the Camp gives the army shown one Relic Map, so a relic quest
+    /// (house rule B28) can be tried without waiting for a rare find. Written into the army's history as a test.
+    /// </summary>
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.M, CtrlPressed: true, ShiftPressed: true }) return;
+        if (_view != View.Camp || Side is not { } side) return;
+        side.Info.RelicMaps++;
+        side.Info.History.Add("Testing: a Relic Map was added by hand (Ctrl+Shift+M).");
+        ArmyCampaignSession.Save(side.Path, side.Army);
+        Say($"Testing: {side.Info.Name} gets a Relic Map ({side.Info.RelicMaps}).", Palette.Lime);
+        GetViewport().SetInputAsHandled();
+        Rebuild();
+    }
+
     // ================================================================== screenshot driver
 
     /// <summary>
