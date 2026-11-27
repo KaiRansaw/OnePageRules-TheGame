@@ -154,7 +154,11 @@ public partial class GameScreen : Control, ILooked, IBackGuard, IOwnBackdrop
         var words = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         words.AddThemeConstantOverride("separation", 0);
         words.AddChild(HudKit.Text(GameSystemInfo.DisplayName(system), big ? 40 : 28, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center));
-        words.AddChild(HudKit.Text(GameBlurb(system) + "  -  " + Library(system), 16, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center));
+        // Wraps in a narrow tile (Star Quest's line was wider than its tile and pushed past the frame - lane 3, 2026-11-27).
+        var blurb = HudKit.Text(GameBlurb(system) + "  -  " + Library(system), 16, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
+        blurb.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        blurb.CustomMinimumSize = new Vector2(10, 0);
+        words.AddChild(blurb);
         bar.AddChild(words);
         col.AddChild(bar);
         b.AddChild(col);

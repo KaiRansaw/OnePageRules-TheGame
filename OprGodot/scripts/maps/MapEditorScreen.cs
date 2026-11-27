@@ -586,7 +586,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             tile.OffsetLeft = 4; tile.OffsetRight = -4; tile.OffsetTop = 4; tile.OffsetBottom = -3;
             tile.AddChild(new TextureRect { Name = "Pic", Texture = texture, CustomMinimumSize = new Vector2(0, 104), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered, MouseFilter = MouseFilterEnum.Ignore });
-            tile.AddChild(HudKit.Text(name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center).Also(l => { l.MouseFilter = MouseFilterEnum.Ignore; l.ClipText = true; }));
+            tile.AddChild(HudKit.Text(name, 12, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center).Also(l => { l.MouseFilter = MouseFilterEnum.Ignore; l.ClipText = true; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; }));
             b.AddChild(tile);
             b.Pressed += () => { pick(); Reopen(); };
             grid.AddChild(b);
@@ -937,7 +937,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         r.AddThemeConstantOverride("separation", 8);
         r.AddChild(HudKit.Text(label, 14, HudKit.Dim, HudKit.Semi).Also(l => l.CustomMinimumSize = new Vector2(64, 0)));
         c.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        if (c is OptionButton ob) { ob.ClipText = true; ob.CustomMinimumSize = new Vector2(120, ob.CustomMinimumSize.Y); }
+        if (c is OptionButton ob) { ob.ClipText = true; ob.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; ob.CustomMinimumSize = new Vector2(120, ob.CustomMinimumSize.Y); }
         r.AddChild(c);
         return r;
     }

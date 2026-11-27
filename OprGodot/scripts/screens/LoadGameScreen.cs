@@ -148,7 +148,7 @@ public partial class LoadGameScreen : Control
             : Failed(s) ? "Couldn't be read" : "Reading...";
         v.AddChild(HudKit.Text(what, 14, Failed(s) || Ready(s) && !s.CanResume ? Palette.WoundsRed : HudKit.Dim, HudKit.Semi));
         string who = Ready(s) ? string.Join("   vs   ", s.Players.Select(p => $"{p.Name} ({p.Faction})")) : "";
-        v.AddChild(HudKit.Text($"{s.Saved:yyyy-MM-dd HH:mm}" + (who.Length > 0 ? "   " + who : ""), 13, HudKit.Dim, HudKit.Medium).With(l => l.ClipText = true));
+        v.AddChild(HudKit.Text($"{s.Saved:yyyy-MM-dd HH:mm}" + (who.Length > 0 ? "   " + who : ""), 13, HudKit.Dim, HudKit.Medium).With(l => { l.ClipText = true; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; }));
         b.AddChild(v);
         b.Pressed += () => { _picked = s; _error.Text = ""; Rebuild(); };
         return b;

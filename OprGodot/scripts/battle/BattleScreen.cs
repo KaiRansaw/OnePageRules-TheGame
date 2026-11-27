@@ -1050,7 +1050,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var promptRow = new VBoxContainer { CustomMinimumSize = new Vector2(PromptWidth, 0) };
         promptRow.AddThemeConstantOverride("separation", 0);
         _prompt = HudKit.Text("", 19, HudKit.Lime, HudKit.Tracked(HudKit.Bold, 2), HorizontalAlignment.Center);
-        _prompt.ClipText = true;
+        _prompt.ClipText = true; _prompt.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _prompt.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         _prompt.CustomMinimumSize = new Vector2(PromptWidth, 0);
         _promptHint = HudKit.Text("", 13, HudKit.Dim, HudKit.Semi, HorizontalAlignment.Center);
@@ -1545,7 +1545,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         top.AddThemeConstantOverride("separation", 4);
         var name = HudKit.OverPicture(HudKit.Text(u.Name.ToUpperInvariant(), 15, (selected || active ? HudKit.Lime : HudKit.Fg) with { A = a }, HudKit.Tracked(HudKit.Bold, 1)));
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        name.ClipText = true;
+        name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         top.AddChild(name);
         if (shaken) top.AddChild(HudKit.Icon("broken-shield", 15, Palette.WoundsRed));
         if (hero) top.AddChild(HudKit.Icon("flying-flag", 15, HudKit.Gold with { A = a }));
@@ -1638,7 +1638,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
         names.AddThemeConstantOverride("separation", -3);
         var nm = HudKit.OverPicture(HudKit.Text(u.Name.ToUpperInvariant(), 22, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1)));
-        nm.ClipText = true;
+        nm.ClipText = true; nm.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         names.AddChild(nm);
         names.AddChild(HudKit.OverPicture(HudKit.Text($"{faction} - {Session.SeatOf(u.PlayerID)?.Name}", 14, HudKit.Dim, HudKit.Semi)));
         top.AddChild(names);
@@ -1693,7 +1693,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             var cell = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(120, 0) };
             cell.AddThemeConstantOverride("separation", -3);
             var name = HudKit.Text((g.Count() > 1 ? $"{g.Count()}x " : "") + g.Key.Name, 15, HudKit.Fg, HudKit.Semi);
-            name.ClipText = true;
+            name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             cell.AddChild(name);
             var weaponRules = g.First().RuleDefinitions.GroupBy(r => r.RequestedName).Select(x => x.First()).ToList();
             if (weaponRules.Count > 0)
@@ -1954,7 +1954,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             }
             var name = HudKit.Text(NameOf(uid, "?").ToUpperInvariant(), 15, side, HudKit.Tracked(HudKit.Bold, 1));
             name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            name.ClipText = true;
+            name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             name.VerticalAlignment = VerticalAlignment.Center;
             top.AddChild(name);
             // What the unit did, as symbols: moved / charged / held, then shot and / or fought.

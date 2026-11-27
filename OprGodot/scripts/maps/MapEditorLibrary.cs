@@ -166,7 +166,7 @@ public partial class MapEditorScreen
             var t = tab;
             int count = LibItems(t).Count(i => Matches(i, q));
             var b = new Button { Name = "LibTab_" + t, Text = q.Length > 0 ? $"{label} ({count})" : label, ToggleMode = true, ButtonPressed = _libTab == t,
-                FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true,
+                FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
                 TooltipText = t switch
                 {
                     ELibTab.Rules => "The book's terrain kinds (Advanced Rulebook 3.6.0): each plays by its rules and shows the game's model for it.",
@@ -291,7 +291,7 @@ public partial class MapEditorScreen
         label.MouseFilter = MouseFilterEnum.Ignore;
         tile.AddChild(label);
         var sub = HudKit.Text(i.Key.StartsWith("kind:") ? RulesText(i.Rules) : KindName(i.Kind), 11, i.Tint.Lightened(0.45f), HudKit.Semi, HorizontalAlignment.Center);
-        sub.ClipText = true;
+        sub.ClipText = true; sub.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         sub.MouseFilter = MouseFilterEnum.Ignore;
         tile.AddChild(sub);
         b.AddChild(tile);

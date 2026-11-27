@@ -103,7 +103,7 @@ public partial class JoinPopup : Control
         var who = new Button
         {
             Name = "Pick", Flat = true, SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left,
-            Text = f.Name, ClipText = true, FocusMode = FocusModeEnum.None,
+            Text = f.Name, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, FocusMode = FocusModeEnum.None,
             TooltipText = $"{f.Address}\nClick to put this address in the box above.",
         };
         who.Pressed += () => GetNode<LineEdit>("%Address").Text = f.Address;

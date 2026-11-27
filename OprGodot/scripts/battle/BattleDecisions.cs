@@ -466,7 +466,7 @@ public sealed class BattleDecisions
         var text = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Ignore };
         text.AddThemeConstantOverride("separation", 0);
         var name = HudKit.Text((n > 0 ? n + "  " : "") + r.Label, 15, r.Enabled ? HudKit.Fg : HudKit.Dim, HudKit.Bold);
-        name.ClipText = true; name.MouseFilter = Control.MouseFilterEnum.Ignore;
+        name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; name.MouseFilter = Control.MouseFilterEnum.Ignore;
         text.AddChild(name);
         string sub = Tip(r);
         if (sub.Length > 0)
@@ -498,7 +498,7 @@ public sealed class BattleDecisions
         v.AddThemeConstantOverride("separation", 0);
         if (r.Pick != null)
         {
-            var b = new Button { Text = r.Label, Disabled = !r.Enabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true };
+            var b = new Button { Text = r.Label, Disabled = !r.Enabled, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis };
             b.TooltipText = r.Enabled ? r.Detail ?? "" : r.Reason ?? "Not available.";
             b.Pressed += r.Pick;
             if (r.Hover is { } hover) { b.MouseEntered += () => hover(true); b.MouseExited += () => hover(false); }

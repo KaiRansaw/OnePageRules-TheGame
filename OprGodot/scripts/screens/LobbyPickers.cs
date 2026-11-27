@@ -344,7 +344,7 @@ public partial class LobbyScreen : IBackGuard
                 v.AddChild(r);
             }
             var name = HudKit.Text(d?.Name ?? "Random", 16, HudKit.Fg, HudKit.Bold, HorizontalAlignment.Center);
-            name.ClipText = true;
+            name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             v.AddChild(name);
             b.AddChild(v);
             // Controller, menu highlight (Kai, 2026-11-24): the highlight previews the map, A plays on it - no trip down to

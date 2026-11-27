@@ -1164,7 +1164,7 @@ public sealed class AuraPicksDecision : Decision<List<List<DataBinding<UnitData>
             pic.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
             v.AddChild(pic);
             var name = HudKit.Text(opt.Name, 13, HudKit.Fg, HudKit.Semi, HorizontalAlignment.Center);
-            name.ClipText = true;
+            name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             v.AddChild(name);
             b.AddChild(v);
             var binding = opt.Option;
@@ -1295,7 +1295,7 @@ public sealed class DetachmentSplitDecision : Decision<List<int>>
         top.AddChild(pic);
         var t = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         t.AddThemeConstantOverride("separation", -2);
-        t.AddChild(HudKit.Text(e.Name, 14, HudKit.Fg, HudKit.Semi).Also(l => l.ClipText = true));
+        t.AddChild(HudKit.Text(e.Name, 14, HudKit.Fg, HudKit.Semi).Also(l => { l.ClipText = true; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; }));
         t.AddChild(HudKit.Text($"{e.Points} pts", 12, Palette.PointsBlue, HudKit.Semi));
         top.AddChild(t);
         box.AddChild(top);

@@ -112,7 +112,8 @@ public partial class LobbyScreen : Control, Hud.ILooked
         var armyBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
         armyBox.AddThemeConstantOverride("separation", 6);
         _seatHeading = HudKit.Text("", 16, Palette.Header, HudKit.Tracked(HudKit.Bold, 1));
-        _seatHeading.ClipText = true;
+        _seatHeading.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _seatHeading.CustomMinimumSize = new Vector2(10, 0);
         armyBox.AddChild(_seatHeading);
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _armyRows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -831,7 +832,9 @@ public partial class LobbyScreen : Control, Hud.ILooked
         col.AddChild(head);
 
         var name = HudKit.Text(info.PlayerName, 24, HudKit.Fg, HudKit.Bold);
-        name.ClipText = true;
+        name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+        name.TooltipText = info.PlayerName;
+        name.MouseFilter = MouseFilterEnum.Pass;
         col.AddChild(name);
 
         // The army: a button that opens the picker, Roll for another, and faction - points.
@@ -848,7 +851,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
             var army = new Button
             {
                 Text = s.IsAssigned ? s.ArmyName : (LobbySession.ArmyCatalogReady ? "Choose an army..." : "Reading the armies folder..."),
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, Disabled = !canModify, ClipText = true, Alignment = HorizontalAlignment.Left,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, Disabled = !canModify, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, Alignment = HorizontalAlignment.Left,
                 TooltipText = canModify ? $"Choose this player's army from armies\\{ArmyPaths.FolderNameFor(Vm.GameSystem)}." : $"{info.PlayerName} picks their own army.",
             };
             if (missing) army.AddThemeColorOverride("font_color", Palette.WoundsRed);
@@ -1187,7 +1190,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
         top.AddThemeConstantOverride("separation", 8);
         var name = HudKit.Text(u.Name.ToUpperInvariant() + (u.ModelCount > 1 ? $"  [{u.ModelCount}]" : ""), 16, HudKit.Fg, HudKit.Tracked(HudKit.Bold, 1));
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        name.ClipText = true;
+        name.ClipText = true; name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         top.AddChild(name);
         top.AddChild(HudKit.Chip($"Q{u.Quality}+", HudKit.Fg, true, 13));
         top.AddChild(HudKit.Chip($"D{u.Defense}+", HudKit.Fg, true, 13));
@@ -1196,7 +1199,9 @@ public partial class LobbyScreen : Control, Hud.ILooked
         v.AddChild(top);
         string weapons = string.Join(", ", u.Weapons.Select(WeaponLine));
         var w = HudKit.Text(weapons, 13, HudKit.Dim, HudKit.Medium);
-        w.ClipText = true;
+        // Every weapon shows - the line wraps rather than being cut off at the panel's edge (lane 3, 2026-11-27).
+        w.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        w.CustomMinimumSize = new Vector2(10, 0);
         v.AddChild(w);
         h.AddChild(v);
         var row = HudKit.Panel(new ChamferBox { Fill = new Color(0, 0, 0, 0.25f), Border = HudKit.Edge with { A = 0.35f }, Cut = 6, ContentMarginLeft = 4, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3 }, h);

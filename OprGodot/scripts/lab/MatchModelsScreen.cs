@@ -342,7 +342,7 @@ public partial class MatchModelsScreen : Control, IOwnBackdrop
             row.AddThemeConstantOverride("separation", 6);
             bool have = File.Exists(UnitModelMap.FileFor(_root, Book, _unit, m));
             var name = new Button { Text = $"{m.Name}  #{m.Id}{(have ? "  - downloaded" : "")}", Flat = true, FocusMode = FocusModeEnum.None,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true, TooltipText = "Show this model." };
+                SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = HorizontalAlignment.Left, ClipText = true, TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis, TooltipText = "Show this model." };
             int id = m.Id;
             name.Pressed += () => { if (_cat != null && _cat.ById.TryGetValue(id, out var cm)) Select(cm); };
             row.AddChild(name);

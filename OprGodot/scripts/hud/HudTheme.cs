@@ -74,10 +74,15 @@ public static class HudTheme
         ButtonStyle(t, "OptionButton", field.With(x => x.ContentMarginRight = 30), HudKit.Fg, 18);
         foreach (string type in new[] { "CheckBox", "CheckButton" })
         {
-            t.SetStylebox("normal", type, new StyleBoxEmpty());
-            t.SetStylebox("hover", type, new StyleBoxEmpty());
-            t.SetStylebox("pressed", type, new StyleBoxEmpty());
-            t.SetStylebox("hover_pressed", type, new StyleBoxEmpty());
+            // Godot leaves the gap between the box and its text (h_separation) out of a tick box's smallest width, so
+            // a tick box that is not stretched cut its own text ("On" showed as "O" in Settings - lane 3, 2026-11-27).
+            // The empty style's right margin puts that room back.
+            StyleBoxEmpty Room() => new() { ContentMarginRight = 12 };
+            t.SetStylebox("normal", type, Room());
+            t.SetStylebox("hover", type, Room());
+            t.SetStylebox("pressed", type, Room());
+            t.SetStylebox("hover_pressed", type, Room());
+            t.SetStylebox("disabled", type, Room());
             t.SetStylebox("focus", type, new StyleBoxEmpty());
             t.SetColor("font_color", type, HudKit.Fg);
             t.SetColor("font_hover_color", type, HudKit.Fg);
