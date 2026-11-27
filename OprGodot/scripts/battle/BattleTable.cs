@@ -232,6 +232,7 @@ public partial class BattleTable : Node3D
             t0 = PerfProbe.Start(); SyncObjectives(); PerfProbe.Stop("objectives", t0);
             t0 = PerfProbe.Start(); SyncModels((float)delta); PerfProbe.Stop("models", t0);
             SyncTrays();
+            SyncFires();
         }
         catch (InvalidOperationException) { }
         long t1 = PerfProbe.Start();

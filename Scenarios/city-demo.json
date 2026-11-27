@@ -1,0 +1,26 @@
+{
+ "name": "City Fighting demo: a burning inn, a squad on a roof, crates",
+ "round": 2,
+ "activePlayer": 0,
+ "settings": { "randomness": "Probabilistic", "gameSystem": "GFFirefight", "advanced": ["City Fighting"] },
+ "objectives": [[24, 12], [24, 36]],
+ "terrain": [
+  { "type": "Impassible|Blocking", "shape": "Rectangle", "center": [24, 24], "size": [6, 6], "heightInches": 4, "kind": "Building", "name": "Inn", "onFire": true },
+  { "type": "Climbable|Cover", "shape": "Rectangle", "center": [12, 24], "size": [5, 5], "heightInches": 3, "kind": "Building", "name": "Roofed block" },
+  { "type": "Cover|Unstable", "shape": "Rectangle", "center": [36, 24], "size": [6, 6], "heightInches": 2.5, "kind": "Ruins", "name": "Ruin" },
+  { "type": "Cover", "shape": "Rectangle", "center": [30, 15], "size": [2, 2], "heightInches": 1, "kind": "Barricade", "name": "Crates" },
+  { "type": "Cover", "shape": "Rectangle", "center": [18, 33], "size": [3, 1], "heightInches": 1, "kind": "Barricade", "name": "Barricade" }
+ ],
+ "players": [
+  { "army": "armies/CityDemoA.fdgarmy",
+    "units": [
+     { "unit": "Infantry Squad", "models": [[11, 23], [12, 24.5], [13, 23]] },
+     { "unit": "Weapon Team", "models": [[30, 10]] }
+    ] },
+  { "army": "armies/CityDemoB.fdgarmy",
+    "units": [
+     { "unit": "Sapper", "models": [[16, 24]] },
+     { "unit": "OGRE Robot", "models": [[30, 18]] }
+    ] }
+ ]
+}

@@ -448,6 +448,7 @@ public sealed class ActionDecision : Decision<string>
     private static string ActionIcon(string option)
     {
         string o = option.ToLowerInvariant();
+        if (o.Contains("on fire")) return "fire-ray";
         if (o.Contains("cast") || o.Contains("spell")) return "magic-swirl";
         if (o.Contains("embark") || o.Contains("transport")) return "stack";
         if (o.Contains("shoot") || o.Contains("fire")) return "crosshair";

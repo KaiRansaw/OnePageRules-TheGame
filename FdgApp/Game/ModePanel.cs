@@ -34,7 +34,7 @@ public static class ModePanel
             EGameMode.Horde => Horde(table),
             EGameMode.StarQuestMission => QuestMission(table, system),
             EGameMode.StarQuestHorde => QuestHorde(table, system),
-            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), Combine(CastingRows(table, system, advanced), Combine(LivingSpellRows(table, system, advanced), Combine(RelicRows(table, system, advanced), TacticalRows(table, system, advanced, viewers))))))))),
+            EGameMode.Standard => Combine(Combine(ExtraMission(table, system), SideMissionRows(table, system, viewers)), Combine(Condition(table, system), Combine(CommandPointRows(table, system), Combine(PoliticalRows(table, viewers), Combine(ArmyTerrainRows(table), Combine(CastingRows(table, system, advanced), Combine(LivingSpellRows(table, system, advanced), Combine(RelicRows(table, system, advanced), Combine(TacticalRows(table, system, advanced, viewers), CityRows(table, system, advanced)))))))))),
             _ => null,
         };
     }
@@ -144,6 +144,19 @@ public static class ModePanel
         string hover = FDG.TacticalPhase.BookText(FDG.TacticalPhase.BattlePreparationsName);
         var rows = new List<Row> { new(lines[0], EStyle.Title, hover) };
         rows.AddRange(lines.Skip(1).Select(l => new Row(l, l.Contains("secret") ? EStyle.Warn : EStyle.Line, hover)));
+        return rows;
+    }
+
+    /// <summary>City Fighting: the rules in play, burning buildings, destroyed cover, the latest events.</summary>
+    private static List<Row>? CityRows(ITableState table, EGameSystem system, FDG.EAdvancedRules advanced)
+    {
+        var lines = FDG.CityFighting.PanelLines(new FDG.GameSettings { GameSystem = system, AdvancedRules = advanced }, table.DataStore);
+        if (lines.Count == 0) return null;
+        string hover = string.Join("\n\n", FDG.CityFighting.All
+            .Where(o => (advanced & o.Flag) != 0)
+            .Select(o => $"{o.Name}: {FDG.CityFighting.BookText(o.Name)}"));
+        var rows = new List<Row> { new(lines[0], EStyle.Title, hover) };
+        rows.AddRange(lines.Skip(1).Select(l => new Row(l, l.StartsWith("On fire") ? EStyle.Warn : EStyle.Line, hover)));
         return rows;
     }
 
