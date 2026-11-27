@@ -443,7 +443,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             int weight = 2 + (group.Units.Count + 2) / 3;
             if (ha <= hb) { a.AddChild(box); ha += weight; } else { b.AddChild(box); hb += weight; }
         }
-        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = new ScrollContainer { Name = "RosterScroll", SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         scroll.AddChild(columns);
         col.AddChild(scroll);
         var panel = HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(col, 14, 10, 14, 10));

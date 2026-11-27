@@ -2527,7 +2527,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         CallDeferred(nameof(ScrollToEnd), scroll);
     }
 
-    private static void ScrollToEnd(ScrollContainer s) => s.ScrollVertical = (int)s.GetVScrollBar().MaxValue;
+    private static void ScrollToEnd(ScrollContainer s) { s.SetMeta(OprGodot.Hud.ScrollKeeper.Skip, true); s.ScrollVertical = (int)s.GetVScrollBar().MaxValue; }
 
     /// <summary>Both armies (L). Only ever one open.</summary>
     private void OpenArmies()

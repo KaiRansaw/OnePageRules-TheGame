@@ -59,6 +59,8 @@ public partial class App : Node
                 catch (System.Exception e) { GD.PrintErr("Shared model settings: " + e.Message); }
             });
         Hud.TextWrap.Attach(GetTree());
+        // Lists keep their scroll position when a screen rebuilds them (Kai, 2026-11-26).
+        Hud.ScrollKeeper.Attach(this);
         // An update moves the old .exe/.dlls aside while the game runs; they are free to delete now.
         if (!OS.HasFeature("editor")) FdgRaylib.Update.GameUpdater.CleanUpOldFiles(AppAssets.Root);
         bool scripted = ScriptedRun.Requested(out ScriptedRun run);
