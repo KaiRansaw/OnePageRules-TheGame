@@ -118,7 +118,7 @@ public static class HudTheme
         t.SetStylebox("grabber_area_highlight", "HSlider", new StyleBoxFlat { BgColor = HudKit.Lime, ContentMarginTop = 3, ContentMarginBottom = 3 });
 
         // ---- Popups and tooltips
-        var popup = new ChamferBox { Fill = new Color(0.035f, 0.05f, 0.058f, 0.98f), Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
+        var popup = new ChamferBox { Fill = Palette.Ink with { A = 0.98f }, Border = HudKit.Edge, Cut = 8, Solid = true, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
         t.SetStylebox("panel", "PopupMenu", popup);
         t.SetStylebox("hover", "PopupMenu", new StyleBoxFlat { BgColor = new Color(HudKit.Lime, 0.18f) });
         t.SetColor("font_color", "PopupMenu", HudKit.Fg);

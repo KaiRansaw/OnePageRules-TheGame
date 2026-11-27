@@ -242,7 +242,7 @@ public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
     {
         var b = new Button { Name = ForgeWidgets.SafeName("Campaign_" + c.Name), CustomMinimumSize = new Vector2(0, 96), FocusMode = FocusModeEnum.None };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 8, ContentMarginBottom = 8 };
-        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         col.AddThemeConstantOverride("separation", 1);
@@ -814,7 +814,7 @@ public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
                 if (mission.Records.Count > 1) rec.AddChild(HudKit.Text($"Attempt {r + 1}", 15, HudKit.Fg, HudKit.Bold));
                 foreach (string line in QuestJournal.RecordLines(mission.Records[r], System)) rec.AddChild(ForgeWidgets.Wrapped(line, 15, HudKit.Fg));
             }
-            page.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 6 }, HudKit.Pad(rec, 12, 8, 12, 8)));
+            page.AddChild(HudKit.Panel(new ChamferBox { Fill = HudKit.Well, Border = HudKit.Edge, Cut = 6 }, HudKit.Pad(rec, 12, 8, 12, 8)));
             page.AddChild(HudKit.Text(mission.Records.Count > 0 ? "Your account - the story of the mission" : "The briefing - before it's played (it becomes the start of your account)", 13, HudKit.Dim, HudKit.Semi));
             var notes = new TextEdit { Name = "MissionNotes", Text = mission.Notes, SizeFlagsVertical = SizeFlags.ExpandFill, WrapMode = TextEdit.LineWrappingMode.Boundary, PlaceholderText = "Write what happened..." };
             notes.TextChanged += () => mission.Notes = notes.Text;

@@ -1086,7 +1086,7 @@ public sealed class AuraPicksDecision : Decision<List<List<DataBinding<UnitData>
         Close();
         var veil = new PanelContainer { Name = "AuraPicks", MouseFilter = Control.MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.94f) });
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink with { A = 0.94f } });
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 12);
         veil.AddChild(HudKit.Pad(col, 48, 36, 48, 28));
@@ -1236,7 +1236,7 @@ public sealed class DetachmentSplitDecision : Decision<List<int>>
         Close();
         var veil = new PanelContainer { Name = "DetachmentSplit", MouseFilter = Control.MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.94f) });
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink with { A = 0.94f } });
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 12);
         veil.AddChild(HudKit.Pad(col, 48, 36, 48, 28));

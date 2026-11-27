@@ -23,6 +23,10 @@ public static class Looks
         public required ELook Id { get; init; }
         public required Color Ink, Panel, PanelRaised, Frame, Steel, SteelDim, Text, TextDim, Accent, AccentHot, AccentDim, Go, Header;
         public required Color Glass, GlassLight, Edge, EdgeHot;
+        /// <summary>The fill of a picked / selected box (lime-tinted in Grimdark, gold-tinted in Fantasy).</summary>
+        public required Color Picked;
+        /// <summary>A deep panel sunk into another (journal records, mission marks, list backs).</summary>
+        public required Color Well;
         /// <summary>Headings, buttons and numbers (Rajdhani Bold / Cinzel Bold).</summary>
         public required string BoldFont;
         public required string SemiFont, MediumFont;
@@ -43,6 +47,7 @@ public static class Looks
         Header = new(0.52f, 0.84f, 0.79f),
         Glass = new(0.045f, 0.07f, 0.08f, 0.86f), GlassLight = new(0.08f, 0.12f, 0.135f, 0.92f),
         Edge = new(0.25f, 0.36f, 0.39f, 0.95f), EdgeHot = new(0.40f, 0.78f, 0.70f, 1f),
+        Picked = new(0.12f, 0.17f, 0.10f, 0.95f), Well = new(0.03f, 0.05f, 0.06f, 0.9f),
         BoldFont = "res://fonts/Rajdhani-Bold.ttf", SemiFont = "res://fonts/Rajdhani-SemiBold.ttf",
         MediumFont = "res://fonts/Rajdhani-Medium.ttf", TitleFont = "res://fonts/Exo2.ttf", HeadingScale = 1f,
     };
@@ -57,6 +62,7 @@ public static class Looks
         Header = R(232, 196, 120),
         Glass = new(0.118f, 0.031f, 0.039f, 0.88f), GlassLight = new(0.17f, 0.05f, 0.063f, 0.93f),
         Edge = new(0.42f, 0.29f, 0.165f, 0.95f), EdgeHot = new(0.89f, 0.71f, 0.35f, 1f),
+        Picked = R(54, 36, 14, 0.95f), Well = R(16, 5, 7, 0.9f),
         BoldFont = "res://fonts/Cinzel-Bold.woff2", SemiFont = "res://fonts/AlegreyaSans-Bold.woff2",
         MediumFont = "res://fonts/AlegreyaSans-Medium.woff2", TitleFont = "res://fonts/Cinzel-ExtraBold.woff2", HeadingScale = 0.86f,
     };

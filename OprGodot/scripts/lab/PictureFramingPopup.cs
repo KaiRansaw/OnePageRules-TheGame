@@ -75,7 +75,7 @@ public partial class PictureFramingPopup : Control
         mid.AddChild(HudKit.Heading("Drag to move - wheel to zoom", 14));
         _edit = new Control { Name = "FrameEdit", CustomMinimumSize = EditSize, ClipContents = true, MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.Move };
         _edit.GuiInput += EditInput;
-        var back = new ColorRect { Color = new Color(0.03f, 0.05f, 0.06f), MouseFilter = MouseFilterEnum.Ignore };
+        var back = new ColorRect { Color = Palette.Ink, MouseFilter = MouseFilterEnum.Ignore };
         back.SetAnchorsPreset(LayoutPreset.FullRect);
         _edit.AddChild(back);
         _editPic = new TextureRect { ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore };

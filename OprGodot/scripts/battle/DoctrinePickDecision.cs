@@ -58,7 +58,7 @@ public sealed class DoctrinePickDecision : Decision<string>
         Close();
         var veil = new PanelContainer { Name = "DoctrinePick", MouseFilter = Control.MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.95f) });
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink with { A = 0.95f } });
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 16);
         veil.AddChild(HudKit.Pad(col, 44, 32, 44, 28));

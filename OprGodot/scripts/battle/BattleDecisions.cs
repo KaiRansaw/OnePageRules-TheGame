@@ -396,7 +396,7 @@ public sealed class BattleDecisions
         var b = new Button { CustomMinimumSize = new Vector2(size, size + 6), Disabled = !r.Enabled || r.Pick == null, FocusMode = Control.FocusModeEnum.None, TooltipText = Tip(r) };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 };
         // Lit (a weapon that will fire, a ticked unit, a model taking wounds): the same look as a picked action.
-        if (r.Selected) box = box.With(x => { x.Border = HudKit.Lime; x.Glow = HudKit.Lime with { A = 0.55f }; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (r.Selected) box = box.With(x => { x.Border = HudKit.Lime; x.Glow = HudKit.Lime with { A = 0.55f }; x.Fill = HudKit.Picked; });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.SetAnchorsPreset(Control.LayoutPreset.FullRect);

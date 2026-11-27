@@ -1139,7 +1139,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
     private static ChamferBox SeatCardBox(bool selected, Color colour) => new()
     {
-        Fill = selected ? new Color(0.07f, 0.11f, 0.11f, 0.92f) : HudKit.Glass, Border = selected ? HudKit.Lime : HudKit.Edge,
+        Fill = selected ? Palette.Panel with { A = 0.92f } : HudKit.Glass, Border = selected ? HudKit.Lime : HudKit.Edge,
         Glow = selected ? HudKit.Lime with { A = 0.35f } : Colors.Transparent, Cut = 14, Accent = colour, AccentLength = 90, AccentThickness = 4,
         ContentMarginLeft = 14, ContentMarginRight = 14, ContentMarginTop = 12, ContentMarginBottom = 12,
     };

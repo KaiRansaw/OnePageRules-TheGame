@@ -405,7 +405,7 @@ public partial class LooksPanel : HBoxContainer
         bool sel = _selected.Contains(i);
         var b = new Button { Name = $"Slot{i + 1}", CustomMinimumSize = new Vector2(112, 84), FocusMode = FocusModeEnum.None };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 4, ContentMarginBottom = 4 };
-        if (sel) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); x.Glow = HudKit.Lime with { A = 0.4f }; });
+        if (sel) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; x.Glow = HudKit.Lime with { A = 0.4f }; });
         HudKit.StyleButton(b, box, HudKit.Fg, 14);
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         col.SetAnchorsPreset(LayoutPreset.FullRect);

@@ -96,7 +96,7 @@ public partial class HordeShopView : Control
 
     public override void _Ready()
     {
-        var shade = new ColorRect { Color = new Color(0.03f, 0.05f, 0.06f, 0.97f), MouseFilter = MouseFilterEnum.Ignore };
+        var shade = new ColorRect { Color = Palette.Ink with { A = 0.97f }, MouseFilter = MouseFilterEnum.Ignore };
         shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(shade);
         var margin = new MarginContainer();
@@ -674,7 +674,7 @@ public partial class HordeShopView : Control
             else info2.AddChild(ForgeWidgets.Wrapped(info.NotReinforceableReason!, 13, HudKit.Dim).Also(l => { l.CustomMinimumSize = new Vector2(260, 0); l.HorizontalAlignment = HorizontalAlignment.Right; }));
             row.AddChild(info2);
             Hover(row, id);
-            var box = new ChamferBox { Fill = s.Reinforce.Contains(id) ? new Color(0.12f, 0.17f, 0.10f, 0.95f) : HudKit.GlassLight, Border = s.Reinforce.Contains(id) ? HudKit.Lime : HudKit.Edge, Cut = 6,
+            var box = new ChamferBox { Fill = s.Reinforce.Contains(id) ? HudKit.Picked : HudKit.GlassLight, Border = s.Reinforce.Contains(id) ? HudKit.Lime : HudKit.Edge, Cut = 6,
                 ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6 };
             var p = HudKit.Panel(box, row);
             if (!ok) p.Modulate = new Color(1, 1, 1, 0.7f);

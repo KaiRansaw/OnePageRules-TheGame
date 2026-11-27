@@ -14,6 +14,10 @@ public static class HudKit
     public static Color GlassLight => Looks.Current.GlassLight;
     public static Color Edge => Looks.Current.Edge;
     public static Color EdgeHot => Looks.Current.EdgeHot;
+    /// <summary>Fill of a picked box, in the look's colours (was a hard-coded lime tint on every screen).</summary>
+    public static Color Picked => Looks.Current.Picked;
+    /// <summary>A deep panel inside another, in the look's colours.</summary>
+    public static Color Well => Looks.Current.Well;
     public static Color Lime => Palette.Lime;
 
     /// <summary>
@@ -127,7 +131,7 @@ public static class HudKit
         bool grey = disabled || dim;
         var b = new Button { Name = name, CustomMinimumSize = new Vector2(size, size + 6), Disabled = disabled, FocusMode = Control.FocusModeEnum.None };
         var box = new ChamferBox { Fill = GlassLight, Border = Edge, Cut = 12, ContentMarginTop = 6, ContentMarginBottom = 6 };
-        if (selected) box = box.With(x => { x.Border = Lime; x.Glow = Lime with { A = 0.55f }; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (selected) box = box.With(x => { x.Border = Lime; x.Glow = Lime with { A = 0.55f }; x.Fill = HudKit.Picked; });
         StyleButton(b, box, Fg, 15);
 
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };

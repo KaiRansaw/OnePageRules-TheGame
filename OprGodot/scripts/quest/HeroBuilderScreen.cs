@@ -407,7 +407,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
     {
         var b = new Button { Name = ForgeWidgets.SafeName("Hero_" + h.Name), CustomMinimumSize = new Vector2(200, 190), FocusMode = FocusModeEnum.None, TooltipText = h.Name };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 8, ContentMarginBottom = 8 };
-        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         col.AddThemeConstantOverride("separation", 2);
@@ -599,7 +599,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
             bool sel = _e.Class == cls;
             var b = new Button { Name = ForgeWidgets.SafeName("Class_" + cls.Name), SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 92), FocusMode = FocusModeEnum.None };
             var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6 };
-            if (sel) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+            if (sel) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
             HudKit.StyleButton(b, box, HudKit.Fg, 15);
             var v = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             v.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 8);
@@ -692,7 +692,7 @@ public partial class HeroBuilderScreen : Control, IBackGuard, Hud.ILooked
         v.AddChild(head);
         v.AddChild(ForgeWidgets.Wrapped(s.Rule, 13, HudKit.Dim));
         row.AddChild(v);
-        var box = new ChamferBox { Fill = on ? new Color(0.12f, 0.17f, 0.10f, 0.95f) : HudKit.GlassLight, Border = on ? HudKit.Lime : HudKit.Edge, Cut = 6, ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6 };
+        var box = new ChamferBox { Fill = on ? HudKit.Picked : HudKit.GlassLight, Border = on ? HudKit.Lime : HudKit.Edge, Cut = 6, ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6 };
         var p = HudKit.Panel(box, row);
         if (full) p.Modulate = new Color(1, 1, 1, 0.55f);
         return p;

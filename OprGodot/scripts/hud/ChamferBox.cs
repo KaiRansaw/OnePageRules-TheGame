@@ -27,6 +27,9 @@ public partial class ChamferBox : StyleBox
     [Export] public float AccentThickness { get; set; } = 3f;
     /// <summary>A bar down the left edge (selected / active state); transparent for none.</summary>
     [Export] public Color LeftBar { get; set; } = Colors.Transparent;
+    /// <summary>Always paint <see cref="Fill"/> under a UI theme's art too - for popups and tooltips, whose theme art
+    /// alone is see-through (lane 3, 2026-11-27: drop-down lists showed the screen under them).</summary>
+    [Export] public bool Solid { get; set; }
     /// <summary>The look this box was made in - picks the hologram skin's colourway (teal / gold).</summary>
     [Export] public Looks.ELook Look { get; set; } = Looks.Current.Id;
 
@@ -144,6 +147,7 @@ public partial class ChamferBox : StyleBox
         if (w < 4 || h < 4) return false;
         bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a go-coloured box: the selected / commit look
         Color mod = state == "disabled" ? new Color(1, 1, 1, 0.5f) : Colors.White;
+        if (Solid && Fill.A > 0) RoundFill(Fill, def.FillRadius).Draw(ci, rect.Grow(-1));
         if (h <= 60)
         {
             if (def.FrameOwnFill)

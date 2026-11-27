@@ -77,7 +77,7 @@ public sealed class RelicPickDecision : Decision<string>
 
         var veil = new PanelContainer { Name = "RelicPick", MouseFilter = Control.MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 0.95f) });
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink with { A = 0.95f } });
         var col = new VBoxContainer();
         col.AddThemeConstantOverride("separation", 14);
         veil.AddChild(HudKit.Pad(col, 40, 28, 40, 26));

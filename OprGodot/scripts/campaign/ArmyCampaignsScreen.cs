@@ -273,7 +273,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         var st = _s.StandingOf(e);
         var b = new Button { Name = ForgeWidgets.SafeName("Campaign_" + e.Info.Name), CustomMinimumSize = new Vector2(0, 86), FocusMode = FocusModeEnum.None };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = selected ? HudKit.Lime : HudKit.Edge, Cut = 8 };
-        if (selected) box.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f);
+        if (selected) box.Fill = HudKit.Picked;
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         col.AddThemeConstantOverride("separation", 2);
@@ -1169,7 +1169,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         var record = CampaignJournal.RecordFor(info, mission);
         if (record.Count == 0) rec.AddChild(HudKit.Text("Not played yet.", 15, HudKit.Dim, HudKit.Semi));
         foreach (string line in record) rec.AddChild(ForgeWidgets.Wrapped(line, 15, HudKit.Fg));
-        page.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 6 }, HudKit.Pad(rec, 12, 8, 12, 8)));
+        page.AddChild(HudKit.Panel(new ChamferBox { Fill = HudKit.Well, Border = HudKit.Edge, Cut = 6 }, HudKit.Pad(rec, 12, 8, 12, 8)));
         page.AddChild(HudKit.Text(record.Count > 0 ? "Your account of the mission" : "The briefing (it becomes the start of your account)", 13, HudKit.Dim, HudKit.Semi));
         var notes = new TextEdit { Name = "MissionNotes", Text = CampaignJournal.NoteFor(info, mission), SizeFlagsVertical = SizeFlags.ExpandFill, WrapMode = TextEdit.LineWrappingMode.Boundary, PlaceholderText = "Write what happened..." };
         notes.FocusExited += () => { CampaignJournal.SetNote(info, mission, notes.Text); ArmyCampaignSession.Save(cur.Path, cur.Army); };

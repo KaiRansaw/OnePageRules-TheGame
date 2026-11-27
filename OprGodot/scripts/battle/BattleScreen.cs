@@ -2790,7 +2790,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             var box = new VBoxContainer();
             box.AddThemeConstantOverride("separation", 3);
             foreach (string line in lines) box.AddChild(Forge.ForgeWidgets.Wrapped(line, 16, HudKit.Fg));
-            v.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(box, 14, 10, 14, 10)));
+            v.AddChild(HudKit.Panel(new ChamferBox { Fill = HudKit.Well, Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(box, 14, 10, 14, 10)));
             v.AddChild(Forge.ForgeWidgets.Wrapped(won
                 ? "Book: after a mission the heroes restore 3 wounds and 3 power; status conditions and injuries stay."
                 : "Book: every hero fell, so they all count as killed and suffer injuries, and the chapter starts again from its first mission.", 14, HudKit.Dim));
@@ -2854,7 +2854,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 260), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             box.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             scroll.AddChild(box);
-            v.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.03f, 0.05f, 0.06f, 0.9f), Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(scroll, 14, 10, 14, 10)));
+            v.AddChild(HudKit.Panel(new ChamferBox { Fill = HudKit.Well, Border = HudKit.Edge, Cut = 8 }, HudKit.Pad(scroll, 14, 10, 14, 10)));
             int waiting = r.Waiting + r.RivalWaiting;
             if (waiting > 0)
                 v.AddChild(Forge.ForgeWidgets.Wrapped($"{waiting} choice{(waiting == 1 ? " is" : "s are")} waiting in the Camp" + (r.RivalWaiting > 0 ? $" ({r.RivalWaiting} in the rival's army - you do its books)." : "."), 16, Palette.HeroGold));

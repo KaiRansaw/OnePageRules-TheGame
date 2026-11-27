@@ -42,7 +42,7 @@ internal static class ForgeWidgets
         var b = new Button { Name = SafeName(name), CustomMinimumSize = new Vector2(100, 0), FocusMode = FocusModeEnum.None, ToggleMode = false };
         if (hover != null) b.MouseEntered += hover;
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 6, ContentMarginBottom = 6 };
-        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (selected) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         // Kai, 2026-11-14 (portrait mockup, option C): the picture is a banner down the card's left, fading out under
         // the name, HudKit.PictureSize.ForgeCard tall.

@@ -30,7 +30,7 @@ public partial class LobbyScreen : IBackGuard
         ClosePicker();
         var veil = new PanelContainer { Name = "Picker", MouseFilter = MouseFilterEnum.Stop };
         veil.SetAnchorsPreset(LayoutPreset.FullRect);
-        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.03f, 0.05f, 0.05f, 1f) });
+        veil.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = Palette.Ink with { A = 1f } });
         var margin = new MarginContainer();
         foreach (string side in new[] { "left", "top", "right", "bottom" }) margin.AddThemeConstantOverride("margin_" + side, 32);
         veil.AddChild(margin);

@@ -27,7 +27,7 @@ internal static class QuestWidgets
         var b = new Button { Name = ForgeWidgets.SafeName("Pick_" + h.Name), CustomMinimumSize = new Vector2(170, 178), FocusMode = Control.FocusModeEnum.None,
             TooltipText = SheetText(h), Disabled = dimmed };
         var box = new ChamferBox { Fill = HudKit.GlassLight, Border = HudKit.Edge, Cut = 8, ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 8, ContentMarginBottom = 8 };
-        if (picked) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = new Color(0.12f, 0.17f, 0.10f, 0.95f); });
+        if (picked) box = box.With(x => { x.Border = HudKit.Lime; x.Fill = HudKit.Picked; });
         HudKit.StyleButton(b, box, HudKit.Fg, 15);
         if (dimmed) b.Modulate = new Color(1, 1, 1, 0.5f);
         var col = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
@@ -80,7 +80,7 @@ internal static class QuestWidgets
     private static Control Bar(int value, int max, Color colour, string tip)
     {
         var back = new Panel { CustomMinimumSize = new Vector2(130, 7), TooltipText = tip, MouseFilter = Control.MouseFilterEnum.Pass };
-        back.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0.04f, 0.06f, 0.07f), BorderColor = HudKit.Edge, BorderWidthBottom = 1, BorderWidthTop = 1, BorderWidthLeft = 1, BorderWidthRight = 1 });
+        back.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = HudKit.Well with { A = 1f }, BorderColor = HudKit.Edge, BorderWidthBottom = 1, BorderWidthTop = 1, BorderWidthLeft = 1, BorderWidthRight = 1 });
         var fill = new ColorRect { Color = colour, MouseFilter = Control.MouseFilterEnum.Ignore };
         fill.SetAnchorsPreset(Control.LayoutPreset.LeftWide);
         fill.AnchorRight = max <= 0 ? 0 : Math.Clamp((float)value / max, 0, 1);
@@ -98,7 +98,7 @@ internal static class QuestWidgets
             var p = new Panel { CustomMinimumSize = new Vector2(box, box), MouseFilter = Control.MouseFilterEnum.Ignore };
             var sb = new StyleBoxFlat
             {
-                BgColor = m == QuestCampaignSession.EMissionMark.Won ? Palette.AccentHot : new Color(0.04f, 0.06f, 0.07f),
+                BgColor = m == QuestCampaignSession.EMissionMark.Won ? Palette.AccentHot : HudKit.Well with { A = 1f },
                 BorderColor = m == QuestCampaignSession.EMissionMark.Next ? Palette.Lime : m == QuestCampaignSession.EMissionMark.Won ? Palette.AccentHot : HudKit.Edge,
             };
             int w = m == QuestCampaignSession.EMissionMark.Next ? 2 : 1;
