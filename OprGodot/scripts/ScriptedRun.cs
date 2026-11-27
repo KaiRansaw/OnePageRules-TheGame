@@ -117,7 +117,8 @@ public partial class ScriptedRun : Node
                 var all = AllOf<TabContainer>(GetTree().Root).Where(t => t.IsVisibleInTree()).ToList();
                 for (int n = 0; n < all.Count; n++)
                     for (int i = 0; i < all[n].GetTabCount(); i++)
-                        steps.AddRange(new[] { $"tabat:{n}|{i}", $"auditsnap:{name[8..]}-{n}-{Clean(all[n].GetTabTitle(i))}" });
+                        steps.AddRange(new[] { $"tabat:{n}|{i}", $"auditsnap:{name[8..]}-{n}-{Clean(all[n].GetTabTitle(i))}",
+                            $"hoveraudit:{name[8..]}-{n}-{Clean(all[n].GetTabTitle(i))}" });
                 _presses = new Queue<string>(steps.Concat(_presses));
                 return;
             }
@@ -126,6 +127,45 @@ public partial class ScriptedRun : Node
                 var all = AllOf<TabContainer>(GetTree().Root).Where(t => t.IsVisibleInTree()).ToList();
                 if (int.Parse(tn) < all.Count) all[int.Parse(tn)].CurrentTab = int.Parse(ti);
                 _wait = 20;
+                return;
+            }
+            // "hoveraudit:<tag>" lists every control a player can use (buttons, tick boxes, drop-downs, sliders, boxes to
+            // type in) that has no hover text, on itself or the row holding it (Kai's rule: every setting and option has one).
+            if (name.StartsWith("hoveraudit:"))
+            {
+                string tag = name[11..];
+                var lines = LayoutAudit.NoHover(GetTree().Root, GetViewport().GetVisibleRect())
+                    .Select(f => $"{tag}\t{f.Kind}\t{f.Path}\t{f.Text}\t{f.Detail}").ToList();
+                lines.Insert(0, $"{tag}\t#\t{lines.Count} without hover text, top screen {App.I.TopScreen?.Name}");
+                if (_audit != null) System.IO.File.AppendAllLines(_audit, lines);
+                foreach (string l in lines) GD.Print("audit " + l);
+                return;
+            }
+            // "clickwalk:<tag>" presses every button on the screen one at a time and reports the ones that change nothing
+            // (no new screen, no popup, nothing on screen different). Whatever a press opens is closed again before the
+            // next. Buttons that would leave the run (Quit, Launch, Update, downloads, deletes) are skipped.
+            if (name.StartsWith("clickwalk:"))
+            {
+                string tag = name[10..];
+                var buttons = AllOf<BaseButton>(App.I.TopScreen ?? (Node)GetTree().Root)
+                    .Where(b => b.IsVisibleInTree() && !b.Disabled && b.GetGlobalRect().Intersects(GetViewport().GetVisibleRect()))
+                    .Where(b => !LayoutAudit.Risky(b)).ToList();
+                _walkButtons = buttons.Select(b => b.GetPath()).ToList();
+                _walkTag = tag;
+                _walkHome = App.I.TopScreen;
+                var steps = _walkButtons.Select((_, i) => $"clickone:{i}").ToList();
+                GD.Print($"ScriptedRun: clickwalk {tag} - {steps.Count} buttons");
+                _presses = new Queue<string>(steps.Concat(_presses));
+                return;
+            }
+            if (name.StartsWith("clickone:") && int.TryParse(name[9..], out int clickIndex))
+            {
+                ClickOne(clickIndex);
+                return;
+            }
+            if (name.StartsWith("clickcheck:") && int.TryParse(name[11..], out int cc))
+            {
+                ClickCheck(cc);
                 return;
             }
             // "skin:<id>" picks a UI theme ("classic", "hologram", "minimal") for this run, as Settings does.
@@ -142,6 +182,10 @@ public partial class ScriptedRun : Node
                     GD.Print($"ScriptedRun: size {ctl.Name} {ctl.Size} min {ctl.GetCombinedMinimumSize()} '{(ctl as Button)?.Text}' clip {(ctl as Button)?.ClipText} overrun {(ctl as Button)?.TextOverrunBehavior}");
                 return;
             }
+            // "dropdown:Name" opens the drop-down list of the OptionButton called Name (see-through / cut-off checks).
+            if (name.StartsWith("dropdown:") && GetTree().Root.FindChild(name[9..], true, false) is OptionButton dd) { dd.ShowPopup(); _wait = 20; return; }
+            // "kbtype:<text>" types into the open on-screen keyboard and presses Done.
+            if (name.StartsWith("kbtype:") && Pads.OnScreenKeyboard.Open is { } kb) { kb.DriveType(name[7..]); _wait = 10; return; }
             // "home" closes every screen down to the main menu.
             if (name == "home") { App.I.ToMainMenu(); _wait = 20; return; }
             // "wait:N" waits N more frames (a lobby filling its seats, a scan finishing).
@@ -983,6 +1027,81 @@ public partial class ScriptedRun : Node
         }
         m.Invoke(vm, values);
         GD.Print($"ScriptedRun: {call}");
+    }
+
+
+    // ---- clickwalk: does every button do something?
+    private List<NodePath> _walkButtons = new();
+    private string _walkTag = "";
+    private Control? _walkHome;
+    private string _walkBefore = "";
+    private int _walkWindows;
+
+    /// <summary>What is on screen, as text: the top screen, open windows, and every visible control's kind, name, text,
+    /// toggle state and value. Two equal signatures = the press changed nothing a player could see.</summary>
+    private string Signature()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(App.I.TopScreen?.Name).Append('|').Append(App.I.TopScreen?.GetInstanceId()).Append('|');
+        foreach (var w in AllOf<Window>(GetTree().Root).Where(w => w.Visible && w != GetTree().Root)) sb.Append("W:").Append(w.Name).Append(';');
+        void Walk(Node n)
+        {
+            if (n is CanvasItem { Visible: false }) return;
+            if (n is Window { Visible: false }) return;
+            if (n is Control c)
+            {
+                sb.Append(c.GetClass()).Append(':').Append(c.Name);
+                switch (c)
+                {
+                    case Label l: sb.Append('=').Append(l.Text); break;
+                    case BaseButton b: sb.Append('=').Append((b as Button)?.Text).Append(b.ButtonPressed ? "+" : "-"); break;
+                    case Godot.Range r: sb.Append('=').Append(r.Value); break;
+                    case LineEdit le: sb.Append('=').Append(le.Text); break;
+                    case TabContainer tc: sb.Append('=').Append(tc.CurrentTab); break;
+                    case ItemList il: sb.Append('=').Append(string.Join(",", il.GetSelectedItems())); break;
+                }
+                sb.Append(';');
+            }
+            foreach (Node ch in n.GetChildren()) Walk(ch);
+        }
+        Walk(GetTree().Root);
+        return sb.ToString();
+    }
+
+    private void ClickOne(int i)
+    {
+        if (i >= _walkButtons.Count || GetNodeOrNull<BaseButton>(_walkButtons[i]) is not { } b || !b.IsVisibleInTree() || b.Disabled)
+        {
+            // Gone or hidden by an earlier press (a tab's own buttons, a closed panel) - nothing to try.
+            return;
+        }
+        _walkBefore = Signature();
+        _walkWindows = AllOf<Window>(GetTree().Root).Count(w => w.Visible);
+        if (b is OptionButton ob) ob.ShowPopup();
+        else if (b.ToggleMode) { b.ButtonPressed = !b.ButtonPressed; b.EmitSignal(BaseButton.SignalName.Pressed); }
+        else b.EmitSignal(BaseButton.SignalName.Pressed);
+        _presses = new Queue<string>(_presses.Prepend($"clickcheck:{i}"));
+        _wait = 25;
+    }
+
+    private void ClickCheck(int i)
+    {
+        string path = _walkButtons[i].ToString();
+        var b = GetNodeOrNull<BaseButton>(_walkButtons[i]);
+        string label = b is Button bt && bt.Text.Length > 0 ? bt.Text : b?.TooltipText is { Length: > 0 } tt ? "(hover) " + tt : "(no text)";
+        string after = Signature();
+        string verdict = after == _walkBefore ? "DEAD" : "ok";
+        string line = $"{_walkTag}\tclick-{verdict}\t{path[Math.Max(0, path.Length - 120)..]}\t{label.Replace('\n', ' ')[..Math.Min(label.Length, 60)]}\t";
+        if (_audit != null) System.IO.File.AppendAllLines(_audit, new[] { line });
+        GD.Print("audit " + line);
+        // Put things back for the next button: close popups and windows it opened, step back from a screen it opened.
+        foreach (var w in AllOf<Window>(GetTree().Root).Where(w => w.Visible && w != GetTree().Root).ToList())
+            if (w is Popup or AcceptDialog || w.Exclusive || w.Transient) w.Hide();
+        int guard = 0;
+        while (App.I.TopScreen != _walkHome && App.I.TopScreen != null && guard++ < 4) App.I.Back();
+        if (b is { ToggleMode: true } && b.IsInsideTree() && b is not OptionButton && b.IsVisibleInTree())
+        { b.ButtonPressed = !b.ButtonPressed; b.EmitSignal(BaseButton.SignalName.Pressed); }
+        _wait = 10;
     }
 
     private static string Clean(string s) => string.Concat(s.Select(ch => char.IsLetterOrDigit(ch) ? ch : '_'));

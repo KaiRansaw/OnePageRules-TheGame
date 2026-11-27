@@ -20,7 +20,7 @@ namespace OprGodot;
 /// </summary>
 public static class LayoutAudit
 {
-    public sealed record Finding(string Kind, string Path, string Text, string Detail);
+    public sealed record Finding(string Kind, string Path, string Text, string Detail, Control? Source = null);
 
     private const float Slack = 2f;
 
@@ -29,7 +29,79 @@ public static class LayoutAudit
         var found = new List<Finding>();
         var texts = new List<(Control Control, Rect2 Rect, string Text)>();
         Walk(root, viewport, found, texts, clip: null, inScroll: false);
+        Func<Control?, bool> Hidden = Covered(root, viewport);
+        found.RemoveAll(f => Hidden(f.Source));
+        texts.RemoveAll(t => Hidden(t.Control));
         Overlaps(texts, found);
+        return found;
+    }
+
+    /// <summary>A full-screen opaque backing (a picker opened over the lobby) hides everything drawn before it: the
+    /// returned test says whether a control is hidden that way.</summary>
+    private static Func<Control?, bool> Covered(Node root, Rect2 viewport)
+    {
+        var order = new Dictionary<Control, int>();
+        Control? cover = null;
+        int n = 0;
+        void Number(Node node)
+        {
+            if (node is CanvasItem { Visible: false } || node is Window { Visible: false }) return;
+            if (node is Control c)
+            {
+                order[c] = n++;
+                if (IsCover(c, viewport)) cover = c;
+            }
+            foreach (Node ch in node.GetChildren()) Number(ch);
+        }
+        Number(root);
+        return c => cover != null && c != null && c != cover && !IsAncestor(cover, c)
+            && order.TryGetValue(c, out int i) && i < order[cover] && WindowOf(c) == WindowOf(cover) && LayerOf(c) == LayerOf(cover);
+    }
+
+    private static bool IsCover(Control c, Rect2 viewport)
+    {
+        Rect2 r = c.GetGlobalRect();
+        if (r.Size.X * r.Size.Y < viewport.Size.X * viewport.Size.Y * 0.9f) return false;
+        if (c is ColorRect cr) return cr.Color.A >= 0.9f;
+        if (c is PanelContainer or Panel && c.GetThemeStylebox("panel") is StyleBoxFlat sb) return sb.BgColor.A >= 0.9f && sb.DrawCenter;
+        return false;
+    }
+
+    /// <summary>Buttons a click-walk must not press: they quit, start a game, download, delete or overwrite.</summary>
+    public static bool Risky(BaseButton b)
+    {
+        if (b.Name == "Back") return true;   // leaves the screen - checked by the walk itself
+        string n = (b.Name + " " + (b as Button)?.Text).ToLowerInvariant();
+        string[] words = { "quit", "closegame", "launch", "update", "download", "delete", "remove", "overwrite", "concede",
+            "send my settings", "github", "clear download", "clear cache", "import", "rematch", "start", "begin", "play" };
+        return words.Any(n.Contains);
+    }
+
+    /// <summary>Controls a player uses that say nothing on hover (on themselves or on a parent up to the row).</summary>
+    public static List<Finding> NoHover(Node root, Rect2 viewport)
+    {
+        var found = new List<Finding>();
+        void Walk(Node n)
+        {
+            if (n is CanvasItem { Visible: false } || n is Window { Visible: false } || n.HasMeta("no_hover_needed")) return;
+            if (n is Control c && c.IsVisibleInTree() && c.Size.X > 0 && c.GetGlobalRect().Intersects(viewport)
+                && c is BaseButton or Godot.Range or LineEdit && c is not ScrollBar && c.MouseFilter != Control.MouseFilterEnum.Ignore)
+            {
+                bool has = false;
+                int up = 0;
+                for (Node? p = c; p is Control k && up < 3; p = p.GetParent(), up++)
+                    if (!string.IsNullOrWhiteSpace(k.TooltipText) || k.HasMeta("pad_tip")) { has = true; break; }
+                if (!has)
+                {
+                    string text = (c as Button)?.Text ?? (c as LineEdit)?.PlaceholderText ?? "";
+                    found.Add(new("no-hover", PathOf(c), Short(text), c.GetClass(), c));
+                }
+            }
+            foreach (Node ch in n.GetChildren()) Walk(ch);
+        }
+        Walk(root);
+        Func<Control?, bool> hidden = Covered(root, viewport);
+        found.RemoveAll(f => hidden(f.Source));
         return found;
     }
 
@@ -60,7 +132,7 @@ public static class LayoutAudit
         // Popups are their own window: their contents measure against the popup, not the screen under it.
         if (node is Window { Visible: true } win && node.GetParent() != null)
         {
-            viewport = new Rect2(win.Position, win.Size);
+            viewport = new Rect2(Vector2.Zero, win.Size);   // a window's controls measure from its own corner
             clip = null;
         }
         if (node is Control c && c.IsVisibleInTree() && c.Size.X > 0 && c.Size.Y > 0 && c.Modulate.A > 0.05f && c.SelfModulate.A > 0.05f)
@@ -90,6 +162,7 @@ public static class LayoutAudit
         string? text = TextOf(c);
         if (string.IsNullOrWhiteSpace(text)) return;
         string path = PathOf(c);
+        int before = found.Count;
 
         switch (c)
         {
@@ -157,6 +230,7 @@ public static class LayoutAudit
         if (!inScroll && clip is { } cl && !cl.Grow(Slack).Encloses(rect) && cl.Intersects(rect))
             found.Add(new("clipped", path, Short(text), $"{rect} clipped to {cl}"));
 
+        for (int k = before; k < found.Count; k++) found[k] = found[k] with { Source = c };
         Rect2 tr = TextRect(c, rect);
         if (clip is { } seen) tr = tr.Intersection(seen);
         if (tr.Size.X > 0 && tr.Size.Y > 0) texts.Add((c, tr, text));
@@ -231,7 +305,7 @@ public static class LayoutAudit
                 if (IsAncestor(a, b) || IsAncestor(b, a)) continue;
                 // Something drawn on a higher layer or in a popup covers what is under it on purpose.
                 if (WindowOf(a) != WindowOf(b) || LayerOf(a) != LayerOf(b)) continue;
-                found.Add(new("overlap", PathOf(a), Short(ta), $"over '{Short(tb)}' ({PathOf(b)})"));
+                found.Add(new("overlap", PathOf(a), Short(ta), $"over '{Short(tb)}' ({PathOf(b)})", a));
             }
     }
 }
