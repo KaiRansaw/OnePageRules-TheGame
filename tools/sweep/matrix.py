@@ -87,6 +87,8 @@ def cells():
                 out.append((f'{g}-adv-{name}', g, 'standard', ['--advanced', flags]))
         for p in PROFILES:
             out.append((f'{g}-cp-{p}', g, 'standard', ['--advanced', 'CommandPoints', '--ai-profile', p]))
+            out.append((f'{g}-pools-{p}', g, 'standard', ['--advanced', 'MagicPools', '--ai-profile', p]))
+            out.append((f'{g}-2d6-{p}', g, 'standard', ['--advanced', 'SpellBooks,TwoD6Casting', '--ai-profile', p]))
     for q in QUEST_GAMES:
         for mode in ('sqmission', 'sqhorde'):
             out.append((f'{q}-{mode}', q, mode, []))
