@@ -102,9 +102,10 @@ public partial class App : Node
         // The tactical HUD look for every screen (Kai, 2026-11-10).
         GetTree().Root.Theme = Hud.HudTheme.Build();
         // Menu sounds (2026-11-15), and the saved Master volume from the first frame, not only once Settings is opened.
-        Hud.UiSound.Install(this);
-        // Music, ambience and the game's cues, each on its own bus with its Settings slider (lane 4, 2026-11-27).
+        // Music, ambience and the game's cues, each on its own bus with its Settings slider (lane 4, 2026-11-27) - first,
+        // so the UI bus exists before the menu sounds are put on it.
         Hud.GameAudio.Install(this);
+        Hud.UiSound.Install(this);
         // Xbox / PlayStation controllers (Kai, 2026-11-24, couch play): menus by highlight, the table by pointer.
         AddChild(new Pads.PadDriver { Name = "PadDriver" });
         Hud.GameAudio.ApplyVolumes();
