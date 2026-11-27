@@ -146,7 +146,8 @@ public static class SoundSlots
         sb.AppendLine("  Your file wins over the game's built-in sound for the same slot.");
         sb.AppendLine("  An empty slot uses the slot named after \"else\", or stays silent.");
         sb.AppendLine();
-        sb.AppendLine("These files are yours: they stay on this computer and are never pushed to GitHub.");
+        sb.AppendLine("These files ship with the game: Asset Lab -> Send my settings to GitHub sends them, and every download");
+        sb.AppendLine("(your laptop, your friends) plays them.");
         sb.AppendLine();
         foreach (ESoundChannel ch in Enum.GetValues<ESoundChannel>())
         {

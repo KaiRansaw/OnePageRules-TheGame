@@ -13,6 +13,7 @@ namespace FdgRaylib.Models3D;
 /// <item>picture framing - <see cref="PictureFraming"/></item>
 /// <item>model matches - <see cref="ModelMatches"/></item>
 /// <item>terrain matches - <see cref="WarhammerTerrainLibrary"/></item>
+/// <item>Kai's audio folder (Assets/Audio) - <see cref="FdgRaylib.Audio.SoundLibrary"/></item>
 /// </list>
 /// Only when the game runs from the repo (<see cref="SharedModelSettings.IsAuthority"/>).
 /// </summary>
@@ -25,6 +26,8 @@ public static class SharedSettingsSync
         ModelMatches.ShippedRelativePath, WarhammerTerrainLibrary.ShippedRelativePath,
         // Kai's hand-built terrain pieces (Asset Lab, Terrain Workshop) - a folder; git adds what is in it.
         Terrain.TerrainPieces.RelativeFolder,
+        // Kai's own music, announcer lines and sounds (2026-11-27: "it's all going to be custom made by me") - a folder.
+        "Audio",
     };
 
     /// <summary>Copies this PC's settings into the shipped files. Returns how many models' settings it holds (-1: not the repo).</summary>
@@ -81,7 +84,7 @@ public static class SharedSettingsSync
             push = Git(repo, new[] { "push" });
             if (push.Code != 0) return "Saved on this PC, but the push failed - send Claude a screenshot. " + push.Text;
         }
-        return $"Sent to GitHub: settings for {n} models, picture framing, model and terrain matches, terrain pieces. Pull on the other computer to get them.";
+        return $"Sent to GitHub: settings for {n} models, picture framing, model and terrain matches, terrain pieces, your audio. Pull on the other computer to get them.";
     }
 
     private static (int Code, string Text) Git(string repo, IEnumerable<string> args)

@@ -241,7 +241,7 @@ public partial class SettingsScreen : Control
         var line = new HBoxContainer();
         line.AddThemeConstantOverride("separation", 12);
         var open = new Button { Name = "OpenAudioFolder", Text = "Open audio folder", CustomMinimumSize = new Vector2(220, 36), FocusMode = FocusModeEnum.None,
-            TooltipText = "Opens the folder your own music, announcer lines and sounds go in." };
+            TooltipText = "Opens the folder your own music, announcer lines and sounds go in. They ship with the game: Asset Lab -> Send my settings to GitHub sends them to every download." };
         open.Pressed += () => { SoundLibrary.EnsureFolder(); OS.ShellOpen(SoundLibrary.Folder); };
         var count = Ui.Label("");
         void Refresh()

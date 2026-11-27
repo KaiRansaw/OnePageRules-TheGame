@@ -7,7 +7,8 @@ public readonly record struct SoundFile(string Path, bool BuiltIn);
 /// <summary>
 /// Finds the files behind each <see cref="SoundSlot"/> (2026-11-27). Kai's own audio folder (<c>Assets/Audio</c>, beside
 /// the books and pictures) is read first, so dropping a file in replaces or fills a slot with no code; then the game's
-/// built-in files; then the slot's fallback. Pure file bookkeeping - the Godot build loads and plays what this returns.
+/// built-in files; then the slot's fallback. The folder ships with the game (Kai makes all of it himself, 2026-11-27) and
+/// is sent to GitHub with the Asset Lab's "Send my settings". Pure file bookkeeping - the Godot build loads and plays what this returns.
 /// </summary>
 public static class SoundLibrary
 {

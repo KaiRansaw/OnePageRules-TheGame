@@ -13,7 +13,8 @@ HOW TO NAME THEM
   Your file wins over the game's built-in sound for the same slot.
   An empty slot uses the slot named after "else", or stays silent.
 
-These files are yours: they stay on this computer and are never pushed to GitHub.
+These files ship with the game: Asset Lab -> Send my settings to GitHub sends them, and every download
+(your laptop, your friends) plays them.
 
 MUSIC  (Settings -> Sound -> Music)
   music/menu-grimdark                    Menus while the Grimdark Future look is on.  [has a built-in sound]

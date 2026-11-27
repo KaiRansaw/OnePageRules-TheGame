@@ -45,7 +45,7 @@ public partial class LabHome : PanelContainer
             new("ReviewFacing", "Review facing...", "Go through the models one by one and turn any that face the wrong way.", () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview)),
             new("Home_BrowseModels", "Browse models", "Every downloaded model on the real table at true size, with a search box - set how one stands, see a unit or an army of it.", () => ShowViewer("")),
             new("ImportStl", "Import printable model...", "Bring in a 3D-printing model (.stl) and its base, made light for the table and saved to a unit.", () => _lab.OpenStlImport()),
-            new("Home_SendSettings", "Send my settings to GitHub", "Sends how every model stands (facing, tilt, height, base), your picture framing and your model / terrain matches to GitHub, so every download - your laptop, your friends - gets them. Only from the PC that runs the game from the repo.", SendSettings),
+            new("Home_SendSettings", "Send my settings to GitHub", "Sends how every model stands (facing, tilt, height, base), your picture framing and your model / terrain matches and your audio folder to GitHub, so every download - your laptop, your friends - gets them. Only from the PC that runs the game from the repo.", SendSettings),
             new("Home_OpenFolder", "Open the models folder", "The UnitModels folder in Windows, to add or rename files yourself.", () => OS.ShellOpen(FdgRaylib.Models3D.UnitModelPaths.Root)),
         },
         "pictures" => new Tool[]
