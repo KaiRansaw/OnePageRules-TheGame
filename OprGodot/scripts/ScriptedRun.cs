@@ -1037,16 +1037,32 @@ public partial class ScriptedRun : Node
     private Control? _walkHome;
     private string _walkBefore = "";
     private int _walkWindows;
+    private int _walkOption = -1;
+    private HashSet<ulong> _walkCovers = new();
+
+    /// <summary>Visible controls covering most of the window inside the top screen (pickers and popups opened in it).</summary>
+    private List<Control> Covers()
+    {
+        var vp = GetViewport().GetVisibleRect();
+        var list = new List<Control>();
+        if (App.I.TopScreen is not { } top) return list;
+        foreach (Control c in AllOf<Control>(top))
+            if (c != top && c.IsVisibleInTree() && c.GetGlobalRect().Size.X * c.GetGlobalRect().Size.Y > vp.Size.X * vp.Size.Y * 0.6f
+                && (c is ArmyPicker || c.GetType().Name.EndsWith("Popup")))
+                list.Add(c);
+        return list;
+    }
 
     /// <summary>What is on screen, as text: the top screen, open windows, and every visible control's kind, name, text,
     /// toggle state and value. Two equal signatures = the press changed nothing a player could see.</summary>
-    private string Signature()
+    private string Signature(Node? skip = null)
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(App.I.TopScreen?.Name).Append('|').Append(App.I.TopScreen?.GetInstanceId()).Append('|');
         foreach (var w in AllOf<Window>(GetTree().Root).Where(w => w.Visible && w != GetTree().Root)) sb.Append("W:").Append(w.Name).Append(';');
         void Walk(Node n)
         {
+            if (n == skip) return;   // the drop-down being tried: its own text changes, that proves nothing
             if (n is CanvasItem { Visible: false }) return;
             if (n is Window { Visible: false }) return;
             if (n is Control c)
@@ -1066,6 +1082,8 @@ public partial class ScriptedRun : Node
             foreach (Node ch in n.GetChildren()) Walk(ch);
         }
         Walk(GetTree().Root);
+        // A setting that saves something did something, even when nothing on screen changes.
+        sb.Append("|config:").Append(System.Text.Json.JsonSerializer.Serialize(FdgRaylib.Config.UserConfig.Current));
         return sb.ToString();
     }
 
@@ -1076,9 +1094,18 @@ public partial class ScriptedRun : Node
             // Gone or hidden by an earlier press (a tab's own buttons, a closed panel) - nothing to try.
             return;
         }
-        _walkBefore = Signature();
+        _walkBefore = Signature(b as OptionButton);
+        _walkCovers = Covers().Select(c => c.GetInstanceId()).ToHashSet();
         _walkWindows = AllOf<Window>(GetTree().Root).Count(w => w.Visible);
-        if (b is OptionButton ob) ob.ShowPopup();
+        // A drop-down: pick its next item (a setting that changes nothing on screen shows up as DEAD), put back after.
+        if (b is OptionButton ob)
+        {
+            if (ob.ItemCount < 2) return;
+            _walkOption = ob.Selected;
+            int next = (ob.Selected + 1) % ob.ItemCount;
+            ob.Select(next);
+            ob.EmitSignal(OptionButton.SignalName.ItemSelected, (long)next);
+        }
         else if (b.ToggleMode) { b.ButtonPressed = !b.ButtonPressed; b.EmitSignal(BaseButton.SignalName.Pressed); }
         else b.EmitSignal(BaseButton.SignalName.Pressed);
         _presses = new Queue<string>(_presses.Prepend($"clickcheck:{i}"));
@@ -1090,7 +1117,7 @@ public partial class ScriptedRun : Node
         string path = _walkButtons[i].ToString();
         var b = GetNodeOrNull<BaseButton>(_walkButtons[i]);
         string label = b is Button bt && bt.Text.Length > 0 ? bt.Text : b?.TooltipText is { Length: > 0 } tt ? "(hover) " + tt : "(no text)";
-        string after = Signature();
+        string after = Signature(b as OptionButton);
         string verdict = after == _walkBefore ? "DEAD" : "ok";
         string line = $"{_walkTag}\tclick-{verdict}\t{path[Math.Max(0, path.Length - 120)..]}\t{label.Replace('\n', ' ')[..Math.Min(label.Length, 60)]}\t";
         if (_audit != null) System.IO.File.AppendAllLines(_audit, new[] { line });
@@ -1098,8 +1125,20 @@ public partial class ScriptedRun : Node
         // Put things back for the next button: close popups and windows it opened, step back from a screen it opened.
         foreach (var w in AllOf<Window>(GetTree().Root).Where(w => w.Visible && w != GetTree().Root).ToList())
             if (w is Popup or AcceptDialog || w.Exclusive || w.Transient) w.Hide();
+        // An overlay the press opened inside the screen (Choose Army, Choose heroes, a colour wheel): close it.
+        foreach (Control cover in Covers().Where(c => !_walkCovers.Contains(c.GetInstanceId())))
+        {
+            if (cover is ArmyPicker picker) picker.Close();
+            else cover.QueueFree();
+        }
         int guard = 0;
         while (App.I.TopScreen != _walkHome && App.I.TopScreen != null && guard++ < 4) App.I.Back();
+        if (b is OptionButton back && IsInstanceValid(back) && back.IsInsideTree() && _walkOption >= 0)
+        {
+            back.Select(_walkOption);
+            back.EmitSignal(OptionButton.SignalName.ItemSelected, (long)_walkOption);
+            _walkOption = -1;
+        }
         if (b is { ToggleMode: true } && b.IsInsideTree() && b is not OptionButton && b.IsVisibleInTree())
         { b.ButtonPressed = !b.ButtonPressed; b.EmitSignal(BaseButton.SignalName.Pressed); }
         _wait = 10;
