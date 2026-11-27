@@ -5478,8 +5478,9 @@
         {
           "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "rollModifier",
@@ -5502,8 +5503,9 @@
         {
           "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "attackedFromOverInches",
-            "distanceInches": 9
+            "kind": "attackedFromBeyond",
+            "shotInches": 9,
+            "chargedInches": 6
           },
           "effect": {
             "kind": "rollModifier",
