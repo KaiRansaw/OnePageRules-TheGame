@@ -105,6 +105,28 @@ public static partial class PortraitShot
             return true;
         }
 
+        /// <summary>Stands a ready-made node on the stage (a terrain model or a Workshop piece); its box is its meshes'.</summary>
+        public bool ShowNode(Node3D model)
+        {
+            foreach (Node c in _stage.GetChildren()) { _stage.RemoveChild(c); c.QueueFree(); }
+            _stage.AddChild(model);
+            Aabb? box = null;
+            void Walk(Node n, Transform3D t)
+            {
+                Transform3D here = n is Node3D n3 ? t * n3.Transform : t;
+                if (n is MeshInstance3D mi && mi.Mesh != null)
+                {
+                    Aabb bb = here * mi.Mesh.GetAabb();
+                    box = box is { } x ? x.Merge(bb) : bb;
+                }
+                foreach (Node c in n.GetChildren()) Walk(c, here);
+            }
+            Walk(model, Transform3D.Identity);
+            if (box is not { } found || found.Size.Length() < 1e-4f) return false;
+            _box = found;
+            return true;
+        }
+
         /// <summary>Points the camera for an angle so the cropped part of the model fills the square.</summary>
         public void Aim(Angle angle)
         {

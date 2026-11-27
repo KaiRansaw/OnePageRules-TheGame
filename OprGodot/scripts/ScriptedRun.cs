@@ -668,7 +668,8 @@ public partial class ScriptedRun : Node
             CollectButtons(GetTree().Root, name, matches);
             if (matches.Count >= nth && matches[nth - 1] is { } button)
             {
-                if (button.ToggleMode) button.ButtonPressed = !button.ButtonPressed; // a tick box: flip it (fires Toggled)
+                // A toggle: flip it (fires Toggled), then Pressed too - a real click fires both.
+                if (button.ToggleMode) { button.ButtonPressed = !button.ButtonPressed; button.EmitSignal(BaseButton.SignalName.Pressed); }
                 else button.EmitSignal(BaseButton.SignalName.Pressed);
             }
             else GD.PrintErr($"ScriptedRun: no button named '{name}' on screen.");
