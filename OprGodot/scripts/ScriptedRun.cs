@@ -726,6 +726,21 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: selectshooter {(unit != null ? unit.Name : "none")}");
                 return;
             }
+            // "markerdemo" puts one of every optional-rules marker on the battle table (Random Events markers, living
+            // spells, army terrain, forward positions) straight into the game's record - a picture check of how they
+            // read, not a rules test. Waits until the game has its progress record.
+            if (name == "markerdemo")
+            {
+                var mb = Find<Battle.BattleScreen>(GetTree().Root);
+                if (mb == null || !MarkerDemo(mb))
+                {
+                    if (++_waitedFor < 20000) { _presses = new Queue<string>(_presses.Prepend(name)); return; }
+                    GD.Print("ScriptedRun: markerdemo timed out");
+                }
+                _waitedFor = 0;
+                _wait = 20;
+                return;
+            }
             // "selectunit:Hive Guardians" selects the first unit with that name, so its card shows (screenshot checks).
             if (name.StartsWith("selectunit:"))
             {
@@ -809,6 +824,69 @@ public partial class ScriptedRun : Node
     /// <summary>Opens the Horde Shop over your turn with your own units: the first in reach, the last out of reach,
     /// the second down to half and reinforceable - so every tab has something on it.</summary>
     private static int Cost(FDG.IUnit u) => (u as FDG.UnitData)?.PointCost ?? 100;
+
+    /// <summary>"markerdemo": every kind of marker on the table, for screenshots (see the step).</summary>
+    private static bool MarkerDemo(Battle.BattleScreen b)
+    {
+        var table = b.Session.Table;
+        if (FDG.GameProgressUtilities.TryGetProgress(table.DataStore) is not { } p) return false;
+        var seats = table.Players.Objects.Where(s => s.IsFilled).ToList();
+        if (seats.Count == 0) return false;
+        string id0 = seats[0].PlayerID.ID.ToString(), id1 = seats[^1].PlayerID.ID.ToString();
+        string n0 = seats[0].Name, n1 = seats[^1].Name;
+        float w = FDG.GameWideConstants.DEFAULT_TABLE_WIDTH_INCHES, d = FDG.GameWideConstants.DEFAULT_TABLE_HEIGHT_INCHES;
+        p.Battlefield ??= new FDG.BattlefieldEffectsState();
+        p.Battlefield.Markers.Clear();
+        int[] codes = { 21, 31, 32, 33, 34, 35, 36 };
+        for (int i = 0; i < codes.Length; i++)
+            p.Battlefield.Markers.Add(new FDG.EventMarker { Code = codes[i], X = w * (i + 1) / (codes.Length + 1), Z = d * 0.5f });
+        p.LivingSpells ??= new FDG.LivingSpellsState();
+        p.LivingSpells.OnTable.Clear();
+        string[] spells =
+        {
+            FDG.LivingSpells.BurningPyre, FDG.LivingSpells.SuffocatingCloud, FDG.LivingSpells.ShardOfMist, FDG.LivingSpells.MagicShackles,
+            FDG.LivingSpells.ArcanePalisade, FDG.LivingSpells.KillingSun, FDG.LivingSpells.DivineMaelstrom, FDG.LivingSpells.SwordSwarm,
+        };
+        for (int i = 0; i < spells.Length; i++)
+            p.LivingSpells.OnTable.Add(new FDG.LivingSpellPiece
+            {
+                Name = spells[i], Owner = i % 2 == 0 ? id0 : id1, OwnerName = i % 2 == 0 ? n0 : n1,
+                X = w * (i + 1) / (spells.Length + 1), Z = d * 0.25f, Fx = 0, Fz = 1,
+            });
+        p.LivingSpells.OnTable.Add(new FDG.LivingSpellPiece
+        {
+            Name = FDG.LivingSpells.TwinShockSpheres, Owner = id1, OwnerName = n1, X = w * 0.2f, Z = d * 0.38f, X2 = w * 0.32f, Z2 = d * 0.38f,
+        });
+        p.ArmyTerrain ??= new FDG.ArmyTerrainState();
+        p.ArmyTerrain.Pieces.Clear();
+        string[] army =
+        {
+            FDG.ArmyTerrain.ArmyBanner, FDG.ArmyTerrain.BattleForge, FDG.ArmyTerrain.ProtectiveDome, FDG.ArmyTerrain.WatchTower,
+            FDG.ArmyTerrain.FactionRelic, FDG.ArmyTerrain.HealingWell, FDG.ArmyTerrain.MagicArmory, FDG.ArmyTerrain.EnchantedShrine,
+        };
+        for (int i = 0; i < army.Length; i++)
+            p.ArmyTerrain.Pieces.Add(new FDG.ArmyPiece { Name = army[i], Owner = i % 2 == 0 ? id0 : id1, X = w * (i + 1) / (army.Length + 1), Z = d * 0.75f });
+        p.ArmyTerrain.Pieces.Add(new FDG.ArmyPiece { Name = FDG.ArmyTerrain.ArcanePillars, Owner = id0, X = w * 0.62f, Z = d * 0.62f, X2 = w * 0.75f, Z2 = d * 0.62f });
+        p.ArmyTerrain.Pieces.Add(new FDG.ArmyPiece { Name = FDG.ArmyTerrain.TwinJumpgates, Owner = id1, X = w * 0.85f, Z = d * 0.38f, X2 = w * 0.9f, Z2 = d * 0.62f });
+        p.TacticalPhase ??= new FDG.TacticalPhaseState();
+        p.TacticalPhase.Markers.Clear();
+        for (int i = 0; i < 3; i++)
+            p.TacticalPhase.Markers.Add(new FDG.ForwardMarker { Slot = seats[0].SlotID, Number = i + 1, X = w * (0.4f + i * 0.08f), Z = d * 0.9f });
+        p.Quest ??= new FDG.QuestProgress { Primary = 2, Secondary = 6 };
+        p.Quest.Markers.Clear();
+        p.Quest.Tokens.Clear();
+        string[] quest = { "objective", "delivery", "extraction", "smoke", "fire", "phantasm", "noise" };
+        for (int i = 0; i < quest.Length; i++)
+            p.Quest.Markers.Add(new FDG.QuestMarker
+            {
+                Id = i + 1, Kind = quest[i], X = w * (i + 1) / (quest.Length + 3), Z = d * 0.1f, RoundsLeft = 3,
+                Action = i == 0 ? "seize" : "", Activated = i == 0, Tokens = 2, TokensNeeded = 6,
+            });
+        p.Quest.Tokens.Add(new FDG.QuestToken { Id = 1, X = w * 0.8f, Z = d * 0.1f });
+        p.Quest.Tokens.Add(new FDG.QuestToken { Id = 2, X = w * 0.9f, Z = d * 0.1f, IsTreasure = true, Contents = new List<string> { "Med Kit" } });
+        GD.Print("ScriptedRun: markerdemo placed");
+        return true;
+    }
 
     private bool HordeShopExample()
     {

@@ -233,6 +233,7 @@ public partial class BattleTable : Node3D
             t0 = PerfProbe.Start(); SyncModels((float)delta); PerfProbe.Stop("models", t0);
             SyncTrays();
             SyncFires();
+            SyncMarkers();
         }
         catch (InvalidOperationException) { }
         long t1 = PerfProbe.Start();
@@ -648,6 +649,8 @@ public partial class BattleTable : Node3D
             var nodes = new List<Node>();
             _terrainBuilt[t] = nodes;
             if (_rulesView) { BuildRulesPiece(t, nodes); continue; }
+            // Living spells, army terrain and forward positions are drawn as markers (BattleMarkers), not as terrain.
+            if (TableMarkers.IsMarkerPiece(t)) continue;
             if (DressPiece(t, nodes)) continue;
             Color c = TerrainColour(t.TerrainType);
             float h = t.HeightInches > 0.05f ? t.HeightInches : t.TerrainType.HasFlag(ETerrainType.Blocking) ? 3f : 0.25f;

@@ -752,6 +752,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             _hoverTip?.QueueFree();
             _hoverTip = null;
         }
+        MarkerHover(_hoverUnit == null && !overHud ? _table.MarkerAt(mouse) : null, mouse, delta);
         if (_hoverUnit == null) return;
         _table.ShowEnemyNames.Add(_hoverUnit.ID);
         _hoverTime += delta;
@@ -781,6 +782,49 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             _hud.AddChild(_hoverTip);
             CallDeferred(nameof(PlaceHoverTip), mouse);
         }
+    }
+
+    // Lane 4 (2026-11-27): a marker on the table (Random Events, living spell, army terrain, forward position, Quest
+    // marker) says what it is and the book's text when the pointer rests on it, like an enemy unit does.
+    private FdgRaylib.Game.TableMarkers.Marker? _hoverMarker;
+    private Control? _markerTip;
+    private double _markerTime;
+
+    private void MarkerHover(FdgRaylib.Game.TableMarkers.Marker? marker, Vector2 mouse, double delta)
+    {
+        if (!Equals(marker, _hoverMarker))
+        {
+            _hoverMarker = marker;
+            _markerTime = 0;
+            _markerTip?.QueueFree();
+            _markerTip = null;
+        }
+        if (marker == null) return;
+        _markerTime += delta;
+        if (_markerTip != null || _markerTime < 0.33) return;
+        var box = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        box.AddThemeConstantOverride("separation", 4);
+        box.AddChild(HudKit.Text(marker.Label.ToUpperInvariant(), 14, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
+        var text = HudKit.Text(marker.Text, 13, HudKit.Fg, HudKit.Medium);
+        text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        text.CustomMinimumSize = new Vector2(320, 0);
+        box.AddChild(text);
+        if (marker.Ring > 0)
+            box.AddChild(HudKit.Text(FdgRaylib.Game.TableMarkers.RingNote(marker), 11, HudKit.Dim, HudKit.Semi));
+        _markerTip = HudKit.Panel(Tight(10).With(x => { x.Fill = HudKit.Glass with { A = 0.97f }; }), box);
+        _markerTip.MouseFilter = MouseFilterEnum.Ignore;
+        _hud.AddChild(_markerTip);
+        CallDeferred(nameof(PlaceMarkerTip), mouse);
+    }
+
+    private void PlaceMarkerTip(Vector2 mouse)
+    {
+        if (_markerTip == null) return;
+        Vector2 size = _markerTip.Size, screen = GetViewportRect().Size;
+        Vector2 at = mouse + new Vector2(24, -size.Y / 2);
+        if (at.X + size.X > screen.X - 10) at.X = mouse.X - size.X - 24;
+        at.Y = Mathf.Clamp(at.Y, 10, screen.Y - size.Y - 10);
+        _markerTip.Position = at;
     }
 
     private void PlaceHoverTip(Vector2 mouse)
