@@ -51,6 +51,10 @@ public class BookRuleFireLintTests
         // with a once-per-game player prompt. ProtectionFeatShippedDataTests pins the empty definition.
         ["Protection Feat"] = "read by name in the wound pipeline (FDG.ProtectionFeat); a dispatch entry " +
             "here would offer it twice.",
+        // Versatile Defense is picked as the attack comes in (FDG.VersatileDefense, from the hit and Defense
+        // roll stages); VersatileDefenseShippedDataTests pins the empty definition.
+        ["Versatile Defense"] = "read by name in the hit / Defense roll stages (FDG.VersatileDefense); a " +
+            "dispatch entry here would add a second pick.",
     };
 
     private static string BooksDirectory => Path.Combine(AppContext.BaseDirectory, "Assets", "Books");
