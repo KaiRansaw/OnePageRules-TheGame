@@ -893,10 +893,31 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
             Rebuild();
         };
         names.AddChild(rename);
-        names.AddChild(HudKit.Text($"{type} x{unit.ModelCount}", 14, HudKit.Dim, HudKit.Semi));
+        // Homebrew named veterans (house rule B26): the nickname, typed or taken from a suggestion.
+        var nick = new LineEdit { Name = "Nickname", Text = sheet?.Nickname ?? "", MaxLength = CampaignVeterans.MaxNicknameLength,
+            PlaceholderText = "Nickname (optional)", TooltipText = "The unit's nickname, shown as Name \"Nickname\". Press Enter to keep it; empty = none." };
+        nick.TextSubmitted += t => { Say(ArmyCampaignSession.SetNickname(side, unit, t), Palette.Lime); Rebuild(); };
+        if (sheet != null) names.AddChild(nick);
+        names.AddChild(HudKit.Text($"{type} x{unit.ModelCount}" + (sheet is { SalvagedFrom.Length: > 0 } ? $" - salvaged from {sheet.SalvagedFrom}" : ""), 14, HudKit.Dim, HudKit.Semi));
         head.AddChild(names);
         col.AddChild(head);
         if (sheet == null) { col.AddChild(HudKit.Text("Not a campaign unit.", 14, HudKit.Dim, HudKit.Semi)); return; }
+
+        if (sheet.NicknameSuggestion.Length > 0)
+        {
+            var box = new VBoxContainer();
+            box.AddThemeConstantOverride("separation", 4);
+            box.AddChild(HudKit.Text("NICKNAME SUGGESTED", 15, Palette.HeroGold, HudKit.Bold));
+            box.AddChild(ForgeWidgets.Wrapped($"\"{sheet.NicknameSuggestion}\"" + (sheet.Nickname.Length > 0 ? $" (now \"{sheet.Nickname}\")" : ""), 16, HudKit.Fg));
+            var opts = new HFlowContainer();
+            opts.AddThemeConstantOverride("h_separation", 6);
+            string suggestion = sheet.NicknameSuggestion;
+            opts.AddChild(Ui.Button("Use it", () => { Say(ArmyCampaignSession.SetNickname(side, unit, suggestion), Palette.Lime); Rebuild(); }, "Take the suggested nickname.").Also(x => x.Name = "NickUse"));
+            opts.AddChild(Ui.Button("Re-roll", () => { ArmyCampaignSession.RerollNickname(side, unit); Rebuild(); }, "Suggest another one.").Also(x => x.Name = "NickReroll"));
+            opts.AddChild(Ui.Button(sheet.Nickname.Length > 0 ? "Keep the old one" : "No nickname", () => { ArmyCampaignSession.DismissNickname(side, unit); Rebuild(); }, "Drop the suggestion. You can type a nickname any time above.").Also(x => x.Name = "NickNo"));
+            box.AddChild(opts);
+            col.AddChild(HudKit.Panel(new ChamferBox { Fill = new Color(0.16f, 0.13f, 0.04f, 0.9f), Border = Palette.HeroGold, Cut = 6 }, HudKit.Pad(box, 10, 6, 10, 6)));
+        }
 
         int per = StrikeTeamRules.XpPerLevel;
         Fact(col, "Level", $"{sheet.Level} - {sheet.Xp} / {(sheet.Level + 1) * per} XP - {ArmyCampaignSession.Plural(sheet.Games, "game")}");
@@ -906,7 +927,7 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         if (sheet.Talents.Count > 0) Fact(col, "Talents", string.Join(", ", sheet.Talents));
         if (sheet.SkillSets.Count > 0) Fact(col, "Skill sets", string.Join(", ", sheet.SkillSets));
         if (sheet.Skills.Count > 0) Fact(col, "Skills", string.Join(", ", sheet.Skills));
-        Fact(col, "Kills", ArmyCampaignSession.Plural(sheet.Kills, "unit") + (sheet.HeroKills > 0 ? $" ({sheet.HeroKills} heroes)" : ""));
+        Fact(col, "Service", ArmyCampaignSession.ServiceRecord(sheet));
         if (sheet.MissionsOut > 0) Fact(col, "Recovering", $"sits out {ArmyCampaignSession.Plural(sheet.MissionsOut, "more mission")}");
 
         foreach (string pending in sheet.Pending.ToList())
@@ -987,6 +1008,8 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
             col.AddChild(HudKit.Text($"Worth +{n.SpecialObjectiveBonus} pts into your treasury.", 13, HudKit.Dim, HudKit.Semi));
         }
 
+        if (c.Info.Salvage.Count > 0) SalvageSection(col, c);
+
         if (_s.EnemyOf(c.Info) is { } foe)
         {
             col.AddChild(HudKit.Heading("The rival", 13));
@@ -999,6 +1022,32 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         {
             col.AddChild(HudKit.Heading("Last mission", 13));
             foreach (string line in CampaignJournal.RecordFor(c.Info, c.Info.Matches).Take(8)) col.AddChild(ForgeWidgets.Wrapped(line, 13, HudKit.Fg));
+        }
+    }
+
+    /// <summary>
+    /// Homebrew salvage (house rule B27): the enemy's wrecked vehicles and monsters from the last win, one of which
+    /// may be bought at half price before the next mission.
+    /// </summary>
+    private void SalvageSection(VBoxContainer col, ArmyCampaignSession.Entry c)
+    {
+        col.AddChild(HudKit.Heading("Salvage on the field", 13));
+        col.AddChild(ForgeWidgets.Wrapped("Wrecks from your last win. Claim ONE at half price before the next mission - it joins with no XP or traits.", 13, HudKit.Dim));
+        for (int i = 0; i < c.Info.Salvage.Count; i++)
+        {
+            SalvageOffer offer = c.Info.Salvage[i];
+            string? why = CampaignSalvage.CannotClaim(c.Army, offer);
+            var r = new HBoxContainer();
+            r.AddThemeConstantOverride("separation", 8);
+            r.AddChild(ForgeWidgets.Wrapped($"{offer.UnitType} - from {offer.FromArmy}", 14, HudKit.Fg).Also(x => x.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+            r.AddChild(Ui.Button($"Claim {offer.Price} pts", () =>
+            {
+                var (ok, msg) = _s.ClaimSalvage(c, offer);
+                Say(msg, ok ? Palette.Lime : Palette.WoundsRed);
+                Reload();
+                Rebuild();
+            }, why ?? "Pay from the treasury and add it to your army.").Also(x => { x.Name = $"Salvage{i}"; x.Disabled = why != null; x.CustomMinimumSize = new Vector2(130, 0); }));
+            col.AddChild(r);
         }
     }
 
@@ -1182,10 +1231,21 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
             b.Pressed += () => { _journalMission = mm; Rebuild(); };
             list.AddChild(b);
         }
+        // Homebrew memorial (house rule B26): its own page, under the missions.
+        var mem = new Button { Name = "Memorial", Text = $"Memorial ({info.Memorial.Count})", Flat = true, Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = _journalMission == MemorialPage, FocusMode = FocusModeEnum.None };
+        mem.AddThemeColorOverride("font_color", info.Memorial.Count > 0 ? Palette.HeroGold : HudKit.Dim);
+        mem.Pressed += () => { _journalMission = MemorialPage; Rebuild(); };
+        list.AddChild(mem);
         var ls = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         ls.AddChild(list);
         row.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(ls, 12, 10, 12, 10)).Also(p => p.CustomMinimumSize = new Vector2(240, 0)));
+
+        if (_journalMission == MemorialPage)
+        {
+            row.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(MemorialPageView(info), 14, 10, 14, 10)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
+            return row;
+        }
 
         var page = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         page.AddThemeConstantOverride("separation", 6);
@@ -1205,6 +1265,30 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
         page.AddChild(notes);
         row.AddChild(HudKit.Panel(HudKit.PanelBox(12), HudKit.Pad(page, 14, 10, 14, 10)).Also(p => p.SizeFlagsHorizontal = SizeFlags.ExpandFill));
         return row;
+    }
+
+    /// <summary>The journal's Memorial page (see <see cref="JournalView"/>).</summary>
+    private const int MemorialPage = -2;
+
+    private static Control MemorialPageView(StrikeTeamInfo info)
+    {
+        var page = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        page.AddThemeConstantOverride("separation", 8);
+        page.AddChild(HudKit.Heading("Memorial - the fallen of " + info.Name, 14));
+        if (info.Memorial.Count == 0)
+            page.AddChild(HudKit.Text("Nobody has fallen yet.", 15, HudKit.Dim, HudKit.Semi));
+        foreach (FallenUnit f in Enumerable.Reverse(info.Memorial))
+        {
+            var box = new VBoxContainer();
+            box.AddThemeConstantOverride("separation", 2);
+            box.AddChild(HudKit.Text(f.Title, 17, Palette.HeroGold, HudKit.Bold));
+            box.AddChild(ForgeWidgets.Wrapped(CampaignVeterans.Epitaph(f), 14, HudKit.Fg));
+            if (f.Honours.Count > 0) box.AddChild(ForgeWidgets.Wrapped("Honours: " + string.Join(", ", f.Honours), 13, HudKit.Dim));
+            page.AddChild(HudKit.Panel(new ChamferBox { Fill = HudKit.Well, Border = HudKit.Edge, Cut = 6 }, HudKit.Pad(box, 12, 8, 12, 8)));
+        }
+        var sc = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
+        sc.AddChild(page);
+        return sc;
     }
 
     private void ExportJournal()
@@ -1257,6 +1341,9 @@ public partial class ArmyCampaignsScreen : Control, IBackGuard, Hud.ILooked
             case "vet": _cart.Veteran = _cart.Ids.Count > 0 ? 0 : -1; break;
             case "confirm": ConfirmRecruits(); return;
             case "journal": OpenJournal(); return;
+            case "memorial": _view = View.Journal; _journalMission = MemorialPage; break;
+            case "claim" when Current is { } cc && n < cc.Info.Salvage.Count: Say(_s.ClaimSalvage(cc, cc.Info.Salvage[n]).Message); Reload(); break;
+            case "nickname" when Side is { } sn && _unit < sn.Army.Units.Count: Say(ArmyCampaignSession.SetNickname(sn, sn.Army.Units[_unit], arg)); break;
             case "play" when Current is { } cp: OpenMissionSetup(cp); return;
         }
         Rebuild();

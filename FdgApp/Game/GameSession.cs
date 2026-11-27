@@ -39,6 +39,12 @@ public sealed class GameSession
     /// </summary>
     public string? RecoveryNote { get; private set; }
 
+    /// <summary>Records this game as a battle replay (host only; null on a joined friend's screen).</summary>
+    public FdgRaylib.SaveLoad.BattleReplay.Recorder? Replay { get; private set; }
+
+    /// <summary>The replay file written when the game ended, or null.</summary>
+    public string? ReplayPath { get; private set; }
+
     public PlayerID? LocalPlayer => Game.LocalPlayerIDs.Count > 0 ? Game.LocalPlayerIDs[0] : null;
 
     private GameSession(IFDGGame game, LobbySession lobby, HybridResolverRegistry registry, IReadOnlyList<Seat> seats)
@@ -87,6 +93,12 @@ public sealed class GameSession
             };
         vm.OnGameEnded += text =>
         {
+            // Battle replays (homebrew, Kai 2026-11-27): written the moment the game ends (or is paused).
+            if (session.Replay is { } rec)
+            {
+                try { session.ReplayPath = rec.Finish(GameSystemInfo.DisplayName(vm.GameSystem), session.Seats.Select(s => s.Name), text); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
             // Quest: every hero keeps what it earned (XP, level, items, injuries), and a campaign mission is recorded
             // in its campaign - before the Game Over card reads it. Only heroes whose files are on this computer.
             if (GameSystemInfo.IsQuest(vm.GameSystem))
@@ -96,8 +108,45 @@ public sealed class GameSession
             }
             session.EndedText = text;
         };
+        // Pause & resume (homebrew, Kai 2026-11-27): a friend asked to pause - the host saves and stops the game.
+        if (vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host pausingHost)
+            pausingHost.OnPauseRequested += by => session.PauseForEveryone(by);
         session.Report = new BattleReport(game.TableState) { PlayerName = id => session.SeatOf(id)?.Name ?? "" };
+        // Only the host has the game's save points to record.
+        if (vm.HasHostPrivileges)
+            session.Replay = new FdgRaylib.SaveLoad.BattleReplay.Recorder(session.Report, id => session.SeatOf(id)?.Name ?? "");
         game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
+        return session;
+    }
+
+    /// <summary>A battle replay being watched, or null for a real game.</summary>
+    public ReplayPlayer? Watching { get; private set; }
+
+    /// <summary>
+    /// Battle replays (homebrew, Kai 2026-11-27): a session for watching a replay. The table is the replay's
+    /// switching store; the lobby (which the screen reads the game's settings from) is a host lobby around the
+    /// first frame with no network; nobody plays, so the screen is in its watch-only mode; no engine runs.
+    /// </summary>
+    public static GameSession ForReplay(ReplayPlayer replay)
+    {
+        string name = string.IsNullOrWhiteSpace(Config.UserConfig.Current.PlayerName) ? Config.UserConfig.DefaultPlayerName : Config.UserConfig.Current.PlayerName;
+        var vm = new FDG.Network.Connection.Lobby.LobbyViewModel_Host(name, "Replay", "", new FdgRaylib.Network.NoNetworkHost(), replay.FirstFrame);
+        var lobby = new LobbySession(vm);
+        var game = new FDG.GameModel.FDGGame_AsLocal(replay.Store, new FDG.Simulation.SimulationMessageBus());
+
+        int[] colours = lobby.EffectiveColours();
+        var infos = vm.PlayerInfos;
+        var seats = infos.Select((p, i) => new Seat(p.PlayerID, replay.Manifest.Players.ElementAtOrDefault(i) ?? p.PlayerName,
+            i < colours.Length ? colours[i] : i, (int)p.TeamNumber, Local: false, Bot: true,
+            game.TableState.Armies.Objects.OfType<FDG.ArmyData>().FirstOrDefault(a => a.PlayerID.Equals(p.PlayerID))?.Faction ?? "")).ToList();
+
+        IStageResolverRegistry autopilot = AiProfileFactory.BuildRegistry(EAiProfile.SoloCoOp, game.TableState, infos[0].PlayerID);
+        var registry = new HybridResolverRegistry(autopilot, new Dictionary<PlayerID, IStageResolverRegistry>());
+        var session = new GameSession(game, lobby, registry, seats) { Watching = replay };
+        session.Report = new BattleReport(game.TableState) { PlayerName = id => session.SeatOf(id)?.Name ?? "" };
+        replay.Report = session.Report;
+        game.AssignInterfaces(session.Log, session.Log, registry, presentationSink: session.Report, outstandingTaskDisplay: null);
+        replay.Show(0);
         return session;
     }
 
@@ -114,6 +163,46 @@ public sealed class GameSession
     }
 
     public Seat? SeatOf(PlayerID id) => Seats.FirstOrDefault(s => s.Id == id);
+
+    // -- Pause & resume (homebrew, Kai 2026-11-27) ------------------------------------------------------------
+
+    /// <summary>A friend plays in this game over the network (it can be paused for everyone).</summary>
+    public bool WithFriends => Lobby.Vm.PlayerInfos.Any(p => p.PlayerType == EPlayerType.Network)
+                               || Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Client;
+
+    /// <summary>Why the game can't be paused yet, or null.</summary>
+    public string? PauseProblem => !WithFriends ? "Pausing is for games with friends - save the game instead."
+        : Table.Progress.RoundCount == null ? "Pausing opens once round 1 starts (a game saved during set-up can't be resumed)."
+        : EndedText != null ? "The game is over." : null;
+
+    /// <summary>The save name a paused game gets: who played and the round, so everyone finds it in Load Game.</summary>
+    public string PausedSaveName()
+    {
+        string who = string.Join(" vs ", Seats.Select(s => s.Name));
+        string round = Table.Progress.RoundCount is int r ? $"Round {r}" : "Set-up";
+        return $"Paused - {who} - {round} - {DateTime.Now:yyyy-MM-dd HH-mm}";
+    }
+
+    /// <summary>
+    /// Pauses the game for everyone. The host saves it (Saved Games, named by <see cref="PausedSaveName"/>) and ends
+    /// it on every screen with a line saying who paused and where it was saved; a joined friend asks the host to.
+    /// Load Game resumes it later: the host opens the save, friends join, and each goes back into their own seat.
+    /// </summary>
+    public void PauseForEveryone(string by)
+    {
+        if (PauseProblem != null) return;
+        switch (Lobby.Vm)
+        {
+            case FDG.Network.Connection.Lobby.LobbyViewModel_Client client:
+                client.RequestPause();
+                break;
+            case FDG.Network.Connection.Lobby.LobbyViewModel_Host host:
+                string? path = Lobby.SaveGame(PausedSaveName(), out _);
+                host.PauseForEveryone(FDG.Network.Connection.Lobby.LobbyViewModel_Host.PausedText(by,
+                    path != null ? Path.GetFileNameWithoutExtension(path) : null));
+                break;
+        }
+    }
 
     public bool IsMine(PlayerID id) => Game.LocalPlayerIDs.Contains(id);
 

@@ -88,6 +88,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         Decisions = new BattleDecisions(this);
         BuildHud();
         ApplyCamera();
+        if (Session.Watching != null) BuildReplayBar();
         if (HowToPlayFrom is { } from && FdgRaylib.Tutorial.HowToPlayLauncher.Playing is { } taught)
         {
             _coach = new HowTo.HowToPlayCoach { Screen = this, System = taught, ContinueFrom = from, Name = "HowToPlayCoach" };
@@ -99,6 +100,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     {
         Session.Report.BeatSeen -= OnBeat;
         MenuBackdrop.Instance?.SetActive(true);
+        Session.Watching?.Dispose();
     }
 
     // Attacks arrive on the engine thread; the table effect is played on the next frame.
@@ -222,6 +224,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             Decisions.Prompt();
             if (!open.Done) { if (AutoPlayCounts.TryAdd(open.GetType().Name, 0)) GD.Print($"Autoplay: first {open.GetType().Name}"); open.AutoPlay(this); }
         }
+        if (Session.Watching != null) ReplayTick(delta);
         _tick += delta;
         if (_tick < 0.15) return;
         _tick = 0;
@@ -415,6 +418,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
                 _yaw -= 5 * CameraKeySpeed; ApplyCamera(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.R }:
                 OpenFullReport(); break;
+            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when Session.Watching != null:
+                ReplayPlayPause(); break;
+            case InputEventKey { Pressed: true, Keycode: Key.Period } when Session.Watching != null:
+                ReplayStep(+1); break;
+            case InputEventKey { Pressed: true, Keycode: Key.Comma } when Session.Watching != null:
+                ReplayStep(-1); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.P } when Watching:
                 TogglePause(); break;
             case InputEventKey { Pressed: true, Echo: false, Keycode: Key.V }:
@@ -1148,7 +1157,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             menu.AddChild(b);
         }
         // Kai, 2026-11-18: a pause for bot vs bot - only when this screen is watching (no seat of its own) and hosts.
-        if (Watching)
+        // A replay has its own play / pause on the replay bar.
+        if (Watching && Session.Watching == null)
         {
             _pause = HudKit.ActionButton("Pause", "hourglass", "Pause", "P", HudKit.Teal, 56, labelSize: 11);
             _pause.TooltipText = "Pause or carry on the bots' game (P).";
@@ -2655,7 +2665,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         Big("Resume  (Esc)", CloseMenu, "Back to the game.", "CommitButton").Name = "MenuResume";
 
         // Save: a name box (pre-filled), then Save.
-        bool canSave = Session.Lobby.Vm.HasHostPrivileges && Session.Table.Progress.RoundCount != null;
+        bool canSave = Session.Lobby.Vm.HasHostPrivileges && Session.Table.Progress.RoundCount != null && Session.Watching == null;
         var saveRow = new HBoxContainer();
         saveRow.AddThemeConstantOverride("separation", 8);
         var name = new LineEdit { Text = SuggestedSaveName(), SizeFlagsHorizontal = SizeFlags.ExpandFill, Editable = canSave, Name = "SaveName",
@@ -2668,6 +2678,18 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         saveRow.AddChild(name);
         saveRow.AddChild(save);
         v.AddChild(saveRow);
+
+        // Pause & resume (homebrew, Kai 2026-11-27): with friends, anyone can stop the game for now - the host saves it.
+        if (Session.WithFriends)
+        {
+            string? why = Session.PauseProblem;
+            var pause = Big("Pause for everyone", () => Confirm("Pause the game for everyone?",
+                    "The host saves it and the game stops on every screen. To carry on later the host opens it from Load Game and everyone joins again - each player goes back into their own seat.",
+                    "Pause", () => { CloseMenu(); Session.PauseForEveryone(Session.SeatOf(Session.LocalPlayer ?? default)?.Name ?? "a player"); }, "Keep playing"),
+                why ?? "Stop for now and carry on another day, with everyone back in their own seat.");
+            pause.Disabled = why != null;
+            pause.Name = "MenuPauseForEveryone";
+        }
 
         Big("Load game", () => Leave("Load another game?", () => App.I.Later(() => App.I.Open<LoadGameScreen>(Scenes.LoadGame))),
             "Pick a saved game to carry on. This game ends - save it first if you want to come back to it.");
@@ -2822,6 +2844,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         var menu = Ui.Button("Main menu", App.I.ToMainMenu, "Back to the main menu.", "BackButton");
         row.AddChild(rematch);
         row.AddChild(report);
+        row.AddChild(ReplayButton());
         row.AddChild(look);
         row.AddChild(menu);
         v.AddChild(row);
@@ -2880,6 +2903,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         cont.CustomMinimumSize = new Vector2(260, 52);
         row.AddChild(look);
         row.AddChild(report);
+        row.AddChild(ReplayButton());
         row.AddChild(cont);
         v.AddChild(row);
         _gameOver = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.96f }, Border = record == null || won ? HudKit.Lime : Palette.WoundsRed, Cut = 16, ContentMarginLeft = 36, ContentMarginRight = 36, ContentMarginTop = 24, ContentMarginBottom = 24 }, v);
@@ -2931,6 +2955,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         row.AddThemeConstantOverride("separation", 12);
         row.AddChild(Ui.Button("Look at the table", () => { _gameOver?.Hide(); }, "Close this card and look round the final table. The Results button at the top right brings it back."));
         row.AddChild(Ui.Button("Save battle report", SaveReport, "Write everything that happened (with the dice) to a text file in the Saved Games folder.").Also(x => x.Name = "SaveReport"));
+        row.AddChild(ReplayButton());
         // #467: a map campaign's battle goes back to the map, which records it and carries the turn on.
         bool onMap = FdgRaylib.Quest.MapCampaignSession.IsMapCampaign(r?.Info);
         var cont = onMap

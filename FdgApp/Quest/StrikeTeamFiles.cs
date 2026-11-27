@@ -3,6 +3,7 @@ using FDG;
 using FDG.ArmyBuilding;
 using FDG.Campaign;
 using FDG.Rules.Serialization;
+using FDG.SaveLoad;
 
 namespace FdgRaylib.Quest;
 
@@ -189,17 +190,26 @@ public static class StrikeTeamFiles
         // against. Read before anything is written.
         var names = groups.ToDictionary(g => g.Key, g => Load(g.Key)?.StrikeTeam?.Name ?? "");
 
+        // Homebrew salvage (house rule B27): what each army lost for good, and who won, gathered as the loop runs
+        // and paid out after it - a winner's offers come from the OTHER armies, which may be written later.
+        var fallen = new List<(string Key, ArmyListFile Army, List<UnitFileEntry> Dead, EGameSystem System)>();
+        var winners = new List<string>();
+
         foreach (var group in groups)
         {
             if (Load(group.Key) is not { StrikeTeam: not null } team) continue;
             bool won = result.Outcome == EGameOutcome.Win && group.Any(x => result.WinnerPlayers.Contains(x.Unit.PlayerID));
-            var results = group.Select(x => new CampaignUnitResult(x.Sheet!.Id, !x.Unit.GetIsAlive(), x.Sheet.Kills, x.Sheet.HeroKills)).ToList();
+            var results = group.Select(x => new CampaignUnitResult(x.Sheet!.Id, !x.Unit.GetIsAlive(), x.Sheet.Kills,
+                x.Sheet.HeroKills, x.Sheet.FellTo)).ToList();
             var rng = new Random();
             // #426: the army's own system's price list, not Firefight's for everyone. Paying a Grimdark
             // Future campaign Firefight's +80/+160 was the real reason the campaign screen only ever
             // offered Firefight - the write-back could not have served anything else correctly.
-            CampaignNumbers n = CampaignNumbers.For(SystemForPath(group.Key, team.StrikeTeam));
-            List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7));
+            EGameSystem system = SystemForPath(group.Key, team.StrikeTeam);
+            CampaignNumbers n = CampaignNumbers.For(system);
+            var dead = new List<UnitFileEntry>();
+            List<string> log = CampaignRules.AfterGame(team, results, won, n, () => rng.Next(1, 7), dead);
+            fallen.Add((group.Key, team, dead, system));
 
             // #450 - who this mission was against, at the top of its journal record. Only campaign
             // armies are named: a one-off opponent the lobby rolled has no campaign file to name it by.
@@ -208,6 +218,10 @@ public static class StrikeTeamFiles
             CampaignJournal.AddToRecord(team.StrikeTeam, mission,
                 against.Count > 0 ? $"Fought against {string.Join(" and ", against)}." : "Fought a one-off opponent.",
                 first: true);
+            // Homebrew memorial (house rule B26): who the units that fell this mission were fighting.
+            foreach (FallenUnit f in team.StrikeTeam.Memorial.Where(f => f.Mission == mission && f.Against.Length == 0))
+                f.Against = string.Join(" and ", against);
+            if (won && !team.StrikeTeam.NoMissionReward && !team.StrikeTeam.IsBot) winners.Add(group.Key);
 
             // #430: the special objective it rolled before the mission, finally scored. Before this it
             // was shown to the player and then never checked, so the bonus could not be earned at all.
@@ -255,6 +269,31 @@ public static class StrikeTeamFiles
             lines.Add($"Campaign army {team.StrikeTeam.Name}: {(won ? "won" : "lost")}, {log.Count(l => l.Contains("levels up"))} level up(s)"
                 + (pending > 0 ? $", {pending} choice(s) to make" : "") + " - see Campaign.");
         }
+        lines.AddRange(OfferSalvage(winners, fallen));
         return lines.Count > 0 ? string.Join("\n", lines) : null;
+    }
+
+    /// <summary>
+    /// Homebrew salvage (house rule B27): each winning player army is offered the vehicles and monsters the
+    /// armies it beat lost for good this mission. The bot army never salvages (house rule B17 - it doesn't
+    /// spend), and nothing is offered after a garrison battle (it pays nothing). Returns the game-over lines.
+    /// </summary>
+    private static IEnumerable<string> OfferSalvage(List<string> winners,
+        List<(string Key, ArmyListFile Army, List<UnitFileEntry> Dead, EGameSystem System)> fallen)
+    {
+        foreach (string key in winners)
+        {
+            if (Load(key) is not { StrikeTeam: not null } winner) continue;
+            var offers = fallen.Where(f => f.Key != key)
+                .SelectMany(f => CampaignSalvage.OffersFrom(f.Army, f.Dead, f.System, winner.StrikeTeam.Matches))
+                .ToList();
+            if (offers.Count == 0) continue;
+            winner.StrikeTeam.Salvage.AddRange(offers);
+            string what = string.Join(", ", offers.Select(o => $"{o.UnitType} ({o.Price} pts)"));
+            string line = $"Salvage on the field: {what} - claim one on the campaign screen before the next mission.";
+            winner.StrikeTeam.History.Add(line);
+            CampaignJournal.AddToRecord(winner.StrikeTeam, winner.StrikeTeam.Matches, line);
+            if (Save(key, winner)) yield return $"Campaign army {winner.StrikeTeam.Name}: {line}";
+        }
     }
 }

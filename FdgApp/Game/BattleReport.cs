@@ -214,6 +214,30 @@ public sealed class BattleReport : IPresentationSink
         Add(e);
     }
 
+    /// <summary>
+    /// Battle replays (homebrew, Kai 2026-11-27): replaces the whole report with lines a replay kept as text - round
+    /// dividers, activations and everything else as plain lines (their dice and details as detail lines).
+    /// </summary>
+    public void LoadReplay(IEnumerable<(string Kind, string Text, string Body)> lines)
+    {
+        lock (_gate)
+        {
+            _entries.Clear();
+            _open = null;
+            foreach (var (kind, text, body) in lines)
+            {
+                Kind k = Enum.TryParse(kind, out Kind parsed) && parsed is Kind.Divider or Kind.Activation ? parsed : Kind.Line;
+                var e = new Entry { Kind = k, Colour = k == Kind.Divider ? Dim : Plain };
+                e.Title.Add(new Piece(text));
+                if (body.Length > 0) e.Details.AddRange(body.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                Add(e);
+            }
+            // The table already shows this activation and round: the screen's poll must not add them again.
+            _lastRound = _table.Progress?.RoundCount;
+            _lastActivation = ActivationKey();
+        }
+    }
+
     /// <summary>A plain message line (game saved, an error...).</summary>
     public void AddNote(string text, TextColor colour)
     {

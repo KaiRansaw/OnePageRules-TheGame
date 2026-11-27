@@ -233,6 +233,46 @@ public sealed class ArmyCampaignSession
         return copy;
     }
 
+    // -- Homebrew: named veterans (house rule B26) and salvage (house rule B27) -----------------------
+
+    /// <summary>Sets or clears a unit's nickname. Returns the message.</summary>
+    public static string SetNickname(Entry e, UnitFileEntry unit, string? nickname)
+    {
+        string line = CampaignVeterans.SetNickname(unit, nickname);
+        Save(e.Path, e.Army);
+        return line;
+    }
+
+    /// <summary>Asks the game for another nickname suggestion.</summary>
+    public static void RerollNickname(Entry e, UnitFileEntry unit)
+    {
+        CampaignVeterans.Reroll(unit, CampaignVeterans.Rng);
+        Save(e.Path, e.Army);
+    }
+
+    /// <summary>Drops the suggestion, keeping whatever nickname the unit has.</summary>
+    public static void DismissNickname(Entry e, UnitFileEntry unit)
+    {
+        CampaignVeterans.DismissSuggestion(unit);
+        Save(e.Path, e.Army);
+    }
+
+    /// <summary>The service record line for the unit panel.</summary>
+    public static string ServiceRecord(StrikeUnit sheet)
+    {
+        string kills = Plural(sheet.CareerKills, "kill") + (sheet.CareerHeroKills > 0 ? $", {Plural(sheet.CareerHeroKills, "Hero")}" : "");
+        string recovered = sheet.TimesRecovered > 0 ? $", came back {Plural(sheet.TimesRecovered, "time")}" : "";
+        return $"{Plural(sheet.Games, "mission")} ({sheet.MissionsSurvived} unhurt), {kills}{recovered}";
+    }
+
+    /// <summary>Buys a salvaged unit. Returns (ok, message).</summary>
+    public (bool Ok, string Message) ClaimSalvage(Entry e, SalvageOffer offer)
+    {
+        CampaignPurchase result = CampaignSalvage.Claim(e.Army, offer);
+        if (result.Ok) Save(e.Path, e.Army);
+        return (result.Ok, result.Message);
+    }
+
     /// <summary>Disbands a unit: its XP and upgrades are gone. Returns the message.</summary>
     public static string Disband(Entry e, UnitFileEntry unit)
     {

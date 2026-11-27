@@ -13,7 +13,11 @@ namespace OprGodot;
 /// </summary>
 public partial class LoadGameScreen : Control
 {
-    private enum Filter { All, Grimdark, Fantasy }
+    private enum Filter { All, Grimdark, Fantasy, Replays }
+
+    // Battle replays (homebrew, Kai 2026-11-27): the Replays tab lists the replay files instead of the saves.
+    private List<(string Path, BattleReplay.Manifest? Manifest)> _replays = new();
+    private string? _pickedReplay;
 
     private List<SavedGameInfo> _saves = new();
     private readonly HashSet<SavedGameInfo> _read = new(), _failed = new();
@@ -117,13 +121,16 @@ public partial class LoadGameScreen : Control
     private void Rebuild()
     {
         foreach (Node c in _filters.GetChildren()) c.QueueFree();
-        foreach (var (f, label) in new[] { (Filter.All, "All"), (Filter.Grimdark, "Grimdark Future"), (Filter.Fantasy, "Age of Fantasy") })
+        foreach (var (f, label) in new[] { (Filter.All, "All"), (Filter.Grimdark, "Grimdark Future"), (Filter.Fantasy, "Age of Fantasy"), (Filter.Replays, "Replays") })
         {
-            var b = Ui.Button(label, () => { _filter = f; Rebuild(); }, $"Show {label.ToLowerInvariant()} saves.", f == _filter ? "CommitButton" : "BackButton");
+            var b = Ui.Button(label, () => { _filter = f; if (f == Filter.Replays) ScanReplays(); Rebuild(); },
+                f == Filter.Replays ? "Games you can watch again (every game you host is recorded)." : $"Show {label.ToLowerInvariant()} saves.", f == _filter ? "CommitButton" : "BackButton");
+            b.Name = "Filter" + f;
             _filters.AddChild(b);
         }
 
         foreach (Node c in _list.GetChildren()) c.QueueFree();
+        if (_filter == Filter.Replays) { RebuildReplays(); return; }
         var shown = _saves.Where(Shown).ToList();
         if (shown.Count == 0)
             _list.AddChild(Ui.Label(_saves.Count == 0 ? "No saved games yet. Save one from the in-game menu (Esc), or with Ctrl+S." : "No saves for this game.", "DimLabel", wrap: true));
@@ -186,6 +193,76 @@ public partial class LoadGameScreen : Control
         load.Disabled = !Ready(s) || !s.CanResume;
         row.AddChild(load);
         row.AddChild(Ui.Button("Delete", () => AskDelete(s), "Delete this save for good.", "BackButton"));
+        _details.AddChild(row);
+    }
+
+    // ================================================================== replays
+
+    private void ScanReplays()
+    {
+        _replays = BattleReplay.List().Select(path => (path, BattleReplay.Peek(path))).ToList();
+        if (_pickedReplay == null || _replays.All(r => r.Path != _pickedReplay)) _pickedReplay = _replays.FirstOrDefault().Path;
+    }
+
+    private void RebuildReplays()
+    {
+        if (_replays.Count == 0)
+            _list.AddChild(Ui.Label("No replays yet. Every game you host is recorded - it appears here when the game ends.", "DimLabel", wrap: true));
+        foreach (var (path, m) in _replays)
+        {
+            bool picked = path == _pickedReplay;
+            var b = new Button { CustomMinimumSize = new Vector2(0, 84), FocusMode = FocusModeEnum.None, Name = "Replay" };
+            var box = new ChamferBox { Fill = HudKit.GlassLight, Border = picked ? HudKit.Lime : HudKit.Edge, Cut = 10 };
+            if (picked) box = box.With(x => x.Glow = HudKit.Lime with { A = 0.35f });
+            HudKit.StyleButton(b, box, HudKit.Fg, 15);
+            var v = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+            v.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            v.OffsetLeft = 16; v.OffsetTop = 8; v.OffsetRight = -12;
+            v.AddChild(HudKit.Text(m?.Title ?? Path.GetFileNameWithoutExtension(path), 18, picked ? HudKit.Lime : HudKit.Fg, HudKit.Bold));
+            v.AddChild(HudKit.Text(m != null ? $"{m.Result}  -  {m.Frames.Count} activations" : "Couldn't be read", 14, m != null ? HudKit.Dim : Palette.WoundsRed, HudKit.Semi)
+                .With(l => { l.ClipText = true; l.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis; }));
+            v.AddChild(HudKit.Text(m != null ? m.PlayedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "", 13, HudKit.Dim, HudKit.Medium));
+            b.AddChild(v);
+            string p = path;
+            b.Pressed += () => { _pickedReplay = p; _error.Text = ""; Rebuild(); };
+            _list.AddChild(b);
+        }
+
+        foreach (Node c in _details.GetChildren()) c.QueueFree();
+        _preview.Save = null;
+        _preview.QueueRedraw();
+        var pick = _replays.FirstOrDefault(r => r.Path == _pickedReplay);
+        if (pick.Path == null) return;
+        _details.AddChild(HudKit.Text(pick.Manifest?.Title ?? Path.GetFileNameWithoutExtension(pick.Path), 26, HudKit.Fg, HudKit.Exo(800)));
+        if (pick.Manifest is { } man)
+        {
+            _details.AddChild(HudKit.Text(man.Result, 17, HudKit.Gold, HudKit.Bold));
+            int rounds = man.Frames.Count > 0 ? man.Frames.Max(f => f.Round) : 0;
+            _details.AddChild(HudKit.Text($"{rounds} round(s), {man.Frames.Count} activations  -  played {man.PlayedUtc.ToLocalTime():yyyy-MM-dd HH:mm}  -  build {man.Build}", 15, HudKit.Dim, HudKit.Semi));
+            _details.AddChild(Forge.ForgeWidgets.Wrapped("To share it, send the file to a friend - they put it in their Replays folder: " + pick.Path, 13, HudKit.Dim));
+        }
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 12);
+        var watch = Ui.Button("WATCH", () => Battle.BattleScreen.OpenReplay(pick.Path), "Watch the game again on the table, activation by activation.", "CommitButton");
+        watch.Name = "WatchReplay";
+        watch.CustomMinimumSize = new Vector2(200, 52);
+        watch.Disabled = pick.Manifest == null;
+        row.AddChild(watch);
+        row.AddChild(Ui.Button("Delete", () =>
+        {
+            var d = new ConfirmationDialog { Title = "Delete replay?", DialogText = "Delete this replay? This can't be undone.", OkButtonText = "Delete", CancelButtonText = "Keep it" };
+            d.Confirmed += () =>
+            {
+                try { File.Delete(pick.Path); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { _error.Text = "Couldn't delete it: " + ex.Message; }
+                d.QueueFree();
+                ScanReplays();
+                Rebuild();
+            };
+            d.Canceled += () => d.QueueFree();
+            AddChild(d);
+            d.PopupCentered();
+        }, "Delete this replay for good.", "BackButton"));
         _details.AddChild(row);
     }
 
