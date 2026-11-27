@@ -25,7 +25,9 @@ public partial class LobbyMapPreview : Control
     {
         if (Session?.Vm is not { } vm) return;
         (float tw, float th) = Session.TableWithoutMap();
-        bool horde = GameSystemInfo.IsHordeLike(vm.GameMode);
+        bool hordeLike = GameSystemInfo.IsHordeLike(vm.GameMode);
+        LobbyDeploymentPreview.HordeLayout? hordeLayout = LobbyDeploymentPreview.HordeLike(vm.GameSystem, vm.GameMode);
+        bool horde = hordeLayout is { FixedObjectives: true };
 
         TerrainLayoutFile? layout = null;
         string terrainNote;
@@ -54,11 +56,11 @@ public partial class LobbyMapPreview : Control
                 terrainNote = "terrain placed by the players";
                 break;
         }
-        bool mapObjectives = !horde && layout != null && layout.Objectives is { Count: > 0 }
+        bool mapObjectives = !hordeLike && layout != null && layout.Objectives is { Count: > 0 }
             && vm.TerrainPlacementMode == ETerrainPlacementMode.LoadFromFile;
         int sides = LobbyDeploymentPreview.Sides(vm.PlayerInfos.Select(p => (int)p.TeamNumber));
         LobbyDeploymentPreview.Plan plan = LobbyDeploymentPreview.For(vm.GameSystem, vm.GameMode, vm.DeploymentStyle, sides, tw, th);
-        string objectives = horde ? "5 fixed objectives"
+        string objectives = hordeLayout is { } hl ? hl.Note
             : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
             : vm.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced ? "objectives placed by the players" : "objectives placed at the start";
         Note = $"{TableSizing.Label(tw, th)}  -  {terrainNote}, {objectives}" + (plan.Note.Length > 0 ? ". " + plan.Note : "");
@@ -80,13 +82,13 @@ public partial class LobbyMapPreview : Control
             Vector2[] tableRect = { P(0, th), P(tw, th), P(tw, 0), P(0, 0) };
             void Zone(float cx, float cz, Color colour)
             {
-                var circle = Enumerable.Range(0, 48).Select(i => P(cx, cz) + Vector2.FromAngle(i * Mathf.Tau / 48) * 9f * scale).ToArray();
+                var circle = Enumerable.Range(0, 48).Select(i => P(cx, cz) + Vector2.FromAngle(i * Mathf.Tau / 48) * hordeLayout!.Value.ZoneRadiusInches * scale).ToArray();
                 foreach (Vector2[] part in Geometry2D.IntersectPolygons(circle, tableRect)) DrawColoredPolygon(part, colour);
             }
             Zone(tw / 2, th / 2, zoneA);
             foreach (var (cx, cz) in new[] { (0f, 0f), (tw, 0f), (0f, th), (tw, th) }) Zone(cx, cz, zoneB);
         }
-        else
+        else if (!hordeLike)
             for (int k = 0; k < plan.Zones.Count; k++) Fill(plan.Zones[k], k % 2 == 0 ? zoneA : zoneB, P);
 
         if (layout != null)

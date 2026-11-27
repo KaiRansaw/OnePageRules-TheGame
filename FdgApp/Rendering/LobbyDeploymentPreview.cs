@@ -40,6 +40,31 @@ internal static class LobbyDeploymentPreview
     internal static bool KingOfTheHillApplies(EGameSystem system, EGameMode mode) =>
         mode == EGameMode.Standard && !GameSystemInfo.IsQuest(system);
 
+    /// <summary>What a Horde-like mode's preview draws: the five fixed objectives and the centre / corner circles
+    /// (with their radius), or nothing fixed at all, and the note under the picture.</summary>
+    internal readonly record struct HordeLayout(bool FixedObjectives, float ZoneRadiusInches, string Note);
+
+    /// <summary>
+    /// Horde-like modes, read from their own books (null for any other mode):
+    /// <list type="bullet">
+    /// <item>Horde Mode v3.6.0: five objectives (centre and quarter centres); defenders within 9" of the centre and
+    /// enemies within 9" of the corners in GF / AoF, 6" in GF: Firefight / AoF: Skirmish.</item>
+    /// <item>Star Quest / AoF: Quest Horde Mode v2.0.0: the same five objectives; heroes "within 6" of the table
+    /// centre", waves "within 6" of a random table corner".</item>
+    /// <item>Star Quest / AoF: Quest missions (Campaign Builder v2.1.0): nothing is fixed. The primary objective sets
+    /// the markers, sentries go to rolled quarter centres and the heroes to a rolled corner - so the preview drew
+    /// Horde's five numbered objectives and centre circle for a game that has neither.</item>
+    /// </list>
+    /// </summary>
+    internal static HordeLayout? HordeLike(EGameSystem system, EGameMode mode) => mode switch
+    {
+        EGameMode.StarQuestMission => new HordeLayout(false, 0f,
+            "objectives, sentries and the heroes' corner are rolled when the mission starts"),
+        EGameMode.StarQuestHorde => new HordeLayout(true, 6f, "5 fixed objectives"),
+        EGameMode.Horde => new HordeLayout(true, GameSystemInfo.IsSkirmish(system) ? 6f : 9f, "5 fixed objectives"),
+        _ => null,
+    };
+
     /// <summary>What the preview draws: zero, or two zones (A first), and a line saying where they come from.</summary>
     internal readonly record struct Plan(IReadOnlyList<IZone> Zones, string Note);
 
