@@ -104,10 +104,12 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     // Attacks arrive on the engine thread; the table effect is played on the next frame.
     private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.Presentation.Beats.AttackBeat> _shots = new();
     private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.Presentation.Beats.CriticalHitBeat> _crits = new();
+    private readonly System.Collections.Concurrent.ConcurrentQueue<FDG.ModelID> _flinches = new();
     private void OnBeat(FDG.Presentation.PresentationBeat beat)
     {
         if (beat is FDG.Presentation.Beats.AttackBeat a && _shots.Count < 64) _shots.Enqueue(a);
         if (beat is FDG.Presentation.Beats.CriticalHitBeat c && _crits.Count < 16) _crits.Enqueue(c);
+        if (beat is FDG.Presentation.Beats.ModelWoundedBeat wb && _flinches.Count < 128) _flinches.Enqueue(wb.Model);
     }
 
     private VBoxContainer? _critStack;
@@ -190,7 +192,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Alt held over a report block: the card shows every die too (and back when it's let go).
         if (_cardBlock != null && _blockCard != null && IsInstanceValid(_blockCard) && Input.IsKeyPressed(Key.Alt) != _cardDice)
             ShowBlockCard(_cardBlock);
-        while (_shots.TryDequeue(out var shot)) _table.Attack(shot.From, shot.To, shot.VolleyCount, shot.IsMelee, shot.WeaponName, shot.HitCount, shot.AttackCount);
+        while (_shots.TryDequeue(out var shot))
+        {
+            IUnit? attacker = shot.AttackerUnit is { } au ? Session.Table.Units.Objects.FirstOrDefault(u => u.ID.Equals(au)) : null;
+            _table.Attack(shot.From, shot.To, shot.VolleyCount, shot.IsMelee, shot.WeaponName, shot.HitCount, shot.AttackCount,
+                big: AttackLook.IsBig(attacker, shot.WeaponName, shot.IsMelee));
+        }
+        while (_flinches.TryDequeue(out var hurt)) _table.Flinch(hurt);
         while (_crits.TryDequeue(out var crit)) ShowCritical(crit);
         if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
         {

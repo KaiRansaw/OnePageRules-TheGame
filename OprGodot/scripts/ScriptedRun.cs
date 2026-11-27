@@ -585,9 +585,10 @@ public partial class ScriptedRun : Node
             }
             // "fire:Plasma Rifle" / "strike:Great Axe": the battle effect of that weapon from the first unit of the player
             // whose turn it is to the nearest enemy, played slowly so a screenshot catches it.
-            if ((name.StartsWith("fire:") || name.StartsWith("strike:")) && Find<Battle.BattleScreen>(GetTree().Root) is { } fxScr)
+            // "firebig:Battle Cannon" plays it as a big weapon (vehicle / Blast / heavy). Two target models flinch, as if wounded.
+            if ((name.StartsWith("fire:") || name.StartsWith("firebig:") || name.StartsWith("strike:")) && Find<Battle.BattleScreen>(GetTree().Root) is { } fxScr)
             {
-                bool melee = name.StartsWith("strike:");
+                bool melee = name.StartsWith("strike:"), bigFx = name.StartsWith("firebig:");
                 string weapon = name[(name.IndexOf(':') + 1)..];
                 var units = fxScr.Table.Session.Table.Units.Objects.Where(u => u.Models.Any(m => m.RemainingWounds > 0)).ToList();
                 if (units.Count >= 2)
@@ -597,7 +598,8 @@ public partial class ScriptedRun : Node
                     FDG.IUnit? b = units.Where(u => !u.PlayerID.Equals(a.PlayerID)).OrderBy(u => D(a, u)).FirstOrDefault();
                     if (b != null)
                         fxScr.Table.Attack(a.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(),
-                            b.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 2, melee, weapon, 3, 5, life: 4f);
+                            b.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 2, melee, weapon, 3, 5, big: bigFx);
+                    if (b != null) foreach (var hurt in b.Models.Where(m => m.RemainingWounds > 0).Take(2)) fxScr.Table.Flinch(hurt.ID);
                     GD.Print($"ScriptedRun: {name} {a.Name} -> {b?.Name}");
                 }
                 _wait = 12;

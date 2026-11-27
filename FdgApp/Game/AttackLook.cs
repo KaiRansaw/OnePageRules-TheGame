@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using FDG;
+using FDG.Rules.Foundation;
 
 namespace FdgRaylib.Game;
 
@@ -80,15 +82,37 @@ public static class AttackLook
         _ => "shot_hit",
     };
 
-    /// <summary>How fast the projectile flies, inches a second (0: no projectile - a flame or a melee blow).</summary>
+    /// <summary>
+    /// A big weapon gets the big explosion (Kai, 2026-11-26, all three): fired by a big model (a Tough(6)+ model - vehicles,
+    /// monsters, walkers), a Blast(3)+ weapon, or a heavy name (cannons, rockets, artillery, missiles...).
+    /// </summary>
+    public static bool IsBig(IUnit? attacker, string? weapon, bool melee)
+    {
+        EAttackLook look = For(weapon, melee);
+        if (look == EAttackLook.Explosive) return true;
+        if (attacker == null) return false;
+        if (attacker.Models.Select(m => m.TotalWounds).DefaultIfEmpty(1).Max() >= 6) return true;
+        return BlastOf(attacker, weapon) >= 3;
+    }
+
+    /// <summary>The weapon's Blast(X) on the attacker's models (0: none).</summary>
+    public static int BlastOf(IUnit attacker, string? weapon) =>
+        attacker.Models.SelectMany(m => m.Weapons)
+            .Where(w => weapon == null || w.Name.Equals(weapon, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(w => w.RuleDefinitions)
+            .Where(r => r.Definition.Name.Equals("Blast", StringComparison.OrdinalIgnoreCase))
+            .Select(r => r.Arguments.OfType<RuleArgument.Int>().Select(i => i.Value).FirstOrDefault())
+            .DefaultIfEmpty(0).Max();
+
+    /// <summary>How fast the projectile flies, inches a second - slowed so each shot can be followed (Kai, 2026-11-26) (0: no projectile - a flame or a melee blow).</summary>
     public static float Speed(EAttackLook l) => l switch
     {
-        EAttackLook.Bullet or EAttackLook.Heavy => 180f,
-        EAttackLook.Laser => 400f,
-        EAttackLook.Plasma => 120f,
-        EAttackLook.Explosive => 60f,
-        EAttackLook.Thrown => 45f,
-        EAttackLook.Spell => 50f,
+        EAttackLook.Bullet or EAttackLook.Heavy => 55f,
+        EAttackLook.Laser => 80f,
+        EAttackLook.Plasma => 45f,
+        EAttackLook.Explosive => 32f,
+        EAttackLook.Thrown => 30f,
+        EAttackLook.Spell => 35f,
         _ => 0f,
     };
 }
