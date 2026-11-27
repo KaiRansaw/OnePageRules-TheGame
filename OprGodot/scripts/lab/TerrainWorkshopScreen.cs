@@ -99,7 +99,7 @@ public partial class TerrainWorkshopScreen : Control
         _pieceList.ItemSelected += i => { var p = PiecesShown().ElementAtOrDefault((int)i); if (p != null && p.Id != _piece.Id) Confirmed(() => Load(p.Copy()), RefreshPieceList); };
         left.AddChild(_pieceList);
         left.AddChild(HudKit.Heading("This piece", 15));
-        _name = new LineEdit { Name = "PieceName", PlaceholderText = "Name" };
+        _name = new LineEdit { Name = "PieceName", PlaceholderText = "Name", TooltipText = "The piece's name - how the Map Maker's piece library and Look box list it." };
         _name.TextChanged += t => { if (_syncing) return; _piece.Name = t; Touch(); };
         left.AddChild(Labelled("Name", _name));
         _kindOpt = new OptionButton { Name = "PieceKind" };
@@ -119,7 +119,7 @@ public partial class TerrainWorkshopScreen : Control
         size.AddChild(_d);
         size.AddChild(new Label { Text = "in" });
         left.AddChild(Labelled("Footprint", size, "The size you build on. A map's piece of another size stretches this one a little (up to half as big again or two thirds as small); past that the game looks for another piece."));
-        _round = new CheckBox { Name = "PieceRound", Text = "Round footprint" };
+        _round = new CheckBox { Name = "PieceRound", Text = "Round footprint", TooltipText = "The piece's rules area is a circle instead of a rectangle (woods, hills, ponds)." };
         _round.Toggled += on => { _piece.Round = on; if (on) _d.Value = _w.Value; Touch(); DrawOutline(); };
         left.AddChild(_round);
         body.AddChild(new PanelContainer().Also(p => p.AddChild(left)));
@@ -157,10 +157,10 @@ public partial class TerrainWorkshopScreen : Control
         var right = new VBoxContainer { CustomMinimumSize = new Vector2(320, 0) };
         right.AddThemeConstantOverride("separation", 6);
         right.AddChild(HudKit.Heading("Models", 15));
-        _groupOpt = new OptionButton { Name = "ModelGroup" };
+        _groupOpt = new OptionButton { Name = "ModelGroup", TooltipText = "Which pack of models to list." };
         _groupOpt.ItemSelected += _ => FillPalette();
         right.AddChild(_groupOpt);
-        _search = new LineEdit { Name = "ModelSearch", PlaceholderText = "Search models", ClearButtonEnabled = true };
+        _search = new LineEdit { Name = "ModelSearch", PlaceholderText = "Search models", ClearButtonEnabled = true, TooltipText = "Show only the models whose name contains this." };
         _search.TextChanged += _ => FillPalette();
         right.AddChild(_search);
         _palette = new ItemList { Name = "ModelList", SizeFlagsVertical = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 220) };
