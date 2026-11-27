@@ -316,7 +316,7 @@ public sealed class LobbySession : IDisposable
     public int PointsLimitFor(PlayerID playerID)
     {
         ETeamOption team = Vm.PlayerInfos.FirstOrDefault(p => p.PlayerID.Equals(playerID))?.TeamNumber ?? ETeamOption.None;
-        int points = FDG.FogOfWar.ArmyPointsLimit(Vm.ArmyPoints, Vm.AdvancedRules, Vm.GameSystem, Vm.GameMode);
+        int points = FDG.FogOfWar.ArmyPointsLimit(Vm.ArmyPoints, Vm.AdvancedRules, Vm.GameSystem, Vm.GameMode, Vm.ExtraMission);
         return FDG.Missions.AttackDefend.PointsLimit(points, Vm.ExtraMission, Vm.AttackerTeam, (int)team);
     }
 

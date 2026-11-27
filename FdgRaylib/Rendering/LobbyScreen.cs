@@ -2317,7 +2317,7 @@ public class LobbyScreen : IAppScreen
 
     /// <summary>The most an army may cost: the game's points, or half again with Flexible Strategies.</summary>
     private int ArmyLimit() => FDG.FogOfWar.ArmyPointsLimit(_viewModel!.ArmyPoints, _viewModel.AdvancedRules,
-        _viewModel.GameSystem, _viewModel.GameMode);
+        _viewModel.GameSystem, _viewModel.GameMode, _viewModel.ExtraMission);
 
     private void DrawLaunch(float panelW, float panelH)
     {
