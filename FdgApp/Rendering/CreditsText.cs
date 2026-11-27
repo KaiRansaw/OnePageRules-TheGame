@@ -33,6 +33,13 @@ public static class CreditsText
             new Entry("Weather particle pictures (Particle Pack)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/particle-pack"),
             new Entry("Rain set-up based on TCA Weather System", "kS222", "MIT", "https://github.com/kS222138/TCA_Weather_System"),
         }),
+        new Section("Battle effects and sounds", new[]
+        {
+            new Entry("Muzzle flashes, swings and hit effects (Muzzle Flash VFX, Battle FX, Hit FX)", "Binbun3D", "CC0 1.0 (public domain)", "https://binbun3d.itch.io"),
+            new Entry("Battle sounds (150 game effect sounds)", "Various authors - see sounds/LICENSES-150-game-effect-sounds.txt", "CC0 1.0 (public domain)"),
+            new Entry("Gun sounds", "alienanthony", "Public domain", "https://alienanthony.itch.io/gun-sounds"),
+            new Entry("Sci-Fi Weapon Shots SFX", "Lentikula", "CC0 1.0 (public domain)", "https://lentikula.itch.io/sci-fi-weapon-shots-sfx-freecc0"),
+        }),
         new Section("Icons", new[]
         {
             new Entry("Game icons", "Lorc, Delapouite and sbed - game-icons.net", "CC BY 3.0 (recoloured)", "https://game-icons.net"),

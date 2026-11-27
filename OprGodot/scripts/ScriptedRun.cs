@@ -583,6 +583,26 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: {name[9..]} scrolled to {sat.ScrollVertical}");
                 return;
             }
+            // "fire:Plasma Rifle" / "strike:Great Axe": the battle effect of that weapon from the first unit of the player
+            // whose turn it is to the nearest enemy, played slowly so a screenshot catches it.
+            if ((name.StartsWith("fire:") || name.StartsWith("strike:")) && Find<Battle.BattleScreen>(GetTree().Root) is { } fxScr)
+            {
+                bool melee = name.StartsWith("strike:");
+                string weapon = name[(name.IndexOf(':') + 1)..];
+                var units = fxScr.Table.Session.Table.Units.Objects.Where(u => u.Models.Any(m => m.RemainingWounds > 0)).ToList();
+                if (units.Count >= 2)
+                {
+                    FDG.IUnit a = units[0];
+                    static float D(FDG.IUnit x, FDG.IUnit y) => MathF.Pow(x.Models[0].Position.x - y.Models[0].Position.x, 2) + MathF.Pow(x.Models[0].Position.z - y.Models[0].Position.z, 2);
+                    FDG.IUnit? b = units.Where(u => !u.PlayerID.Equals(a.PlayerID)).OrderBy(u => D(a, u)).FirstOrDefault();
+                    if (b != null)
+                        fxScr.Table.Attack(a.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(),
+                            b.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 2, melee, weapon, 3, 5, life: 4f);
+                    GD.Print($"ScriptedRun: {name} {a.Name} -> {b?.Name}");
+                }
+                _wait = 12;
+                return;
+            }
             // "batcam:30|200|20" puts the battle camera at 30 degrees, 200" back, turned 20 degrees.
             if (name.StartsWith("batcam:") && name[7..].Split('|') is [var bcp, var bcd, var bcy] && Find<Battle.BattleScreen>(GetTree().Root) is { } batScr)
             {
@@ -807,8 +827,8 @@ public partial class ScriptedRun : Node
         if (_snapSettle == 4 && _fireFrom != null && _fireAt != null)
         {
             // A volley just before the photo, so the shot effect shows.
-            battle.Table.Shots(_fireFrom.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(),
-                _fireAt.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 1, false, life: 20f);
+            battle.Table.Attack(_fireFrom.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(),
+                _fireAt.Models.Where(m => m.RemainingWounds > 0).Select(m => m.Position).ToList(), 1, false, null, life: 20f);
             _fireFrom = _fireAt = null;
             GD.Print($"ScriptedRun: shots fired, table children {battle.Table.GetChildCount()}");
         }

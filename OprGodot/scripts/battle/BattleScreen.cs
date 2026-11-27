@@ -190,7 +190,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Alt held over a report block: the card shows every die too (and back when it's let go).
         if (_cardBlock != null && _blockCard != null && IsInstanceValid(_blockCard) && Input.IsKeyPressed(Key.Alt) != _cardDice)
             ShowBlockCard(_cardBlock);
-        while (_shots.TryDequeue(out var shot)) _table.Shots(shot.From, shot.To, shot.VolleyCount, shot.IsMelee);
+        while (_shots.TryDequeue(out var shot)) _table.Attack(shot.From, shot.To, shot.VolleyCount, shot.IsMelee, shot.WeaponName, shot.HitCount, shot.AttackCount);
         while (_crits.TryDequeue(out var crit)) ShowCritical(crit);
         if (AutoPlayRequested && Decisions.Current is { } open && AutoPlays(open))
         {

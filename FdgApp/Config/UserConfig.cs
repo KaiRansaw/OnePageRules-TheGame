@@ -212,6 +212,10 @@ public sealed class ViewPreferences
     public float MasterVolume { get; set; } = 1f;
     /// <summary>Godot build: the small click and hover sounds on menu buttons (Kai, 2026-11-15).</summary>
     public bool MenuSounds { get; set; } = true;
+    /// <summary>Godot build: how loud battle sounds are - shots, swings, hits, explosions (Kai, 2026-11-26). 0-1.</summary>
+    public float EffectsVolume { get; set; } = 0.8f;
+    /// <summary>Godot build: muzzle flashes, projectiles, swings and impacts in battle (off: the plain tracers).</summary>
+    public bool BattleEffects { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
     public bool ShowUnitModels { get; set; } = true;
     /// <summary>Godot build: the UI theme - "classic" (the drawn cut-corner panels) or an art pack's id ("hologram",

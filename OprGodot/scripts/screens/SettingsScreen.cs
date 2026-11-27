@@ -113,6 +113,8 @@ public partial class SettingsScreen : Control
             View.ShowVictoryFireworks, on => View.ShowVictoryFireworks = on));
         rows.AddChild(Check("Weather effects", "Draw a map's weather - rain, snow, fog, a thunderstorm... - over the table. Only for looks; turn it off on a slow computer.",
             View.WeatherEffects, on => View.WeatherEffects = on));
+        rows.AddChild(Check("Battle effects", "Muzzle flashes, shots flying, weapon swings and impacts in battle. Off: plain tracer lines (for a slow computer).",
+            View.BattleEffects, on => View.BattleEffects = on));
         RoomRows(rows);
     }
 
@@ -214,7 +216,9 @@ public partial class SettingsScreen : Control
             }, ""));
         rows.AddChild(Check("Menu sounds", "A soft tick when the mouse or the keyboard cursor moves onto a button, and a click when you press one.",
             View.MenuSounds, on => View.MenuSounds = on));
-        foreach (string channel in new[] { "Music", "Effects", "Voices" })
+        rows.AddChild(Slider("Battle sounds", "How loud shots, swings, hits and explosions are in battle.", View.EffectsVolume, 0, 1,
+            v => View.EffectsVolume = v, ""));
+        foreach (string channel in new[] { "Music", "Voices" })
         {
             var slider = new HSlider { MinValue = 0, MaxValue = 100, Value = 80, Editable = false, CustomMinimumSize = new Vector2(360, 0) };
             rows.AddChild(Row(channel, $"{channel} volume. Not in the game yet - the game has no {channel.ToLowerInvariant()} so far.", slider));
