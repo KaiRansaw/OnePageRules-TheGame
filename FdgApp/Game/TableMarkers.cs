@@ -285,6 +285,36 @@ public static class TableMarkers
         LivingSpells.IsMarker(t) || TacticalPhase.IsMarker(t) || IsArmyPiece(t)
         || (t.Name ?? "").StartsWith(FDG.ArmyTerrain.BarrierAreaPrefix, StringComparison.Ordinal);
 
+    /// <summary>
+    /// Areas a rule makes for a round - not pieces of scenery: the Deceiver politician's Difficult + Dangerous ring round an
+    /// objective, Twists &amp; Gambits' Objective Denied (Dangerous within 3"), a campaign event's "the ground counts as ...
+    /// terrain until the end of the round". The table draws them as shaded ground, not dressed as rocks or woods.
+    /// (The two engine names are private there: "Twist: Objective Denied" in TwistsGambits, "Campaign event: " in
+    /// CampaignEventRunner.)
+    /// </summary>
+    public static bool IsRoundArea(ITerrain t) =>
+        t.Name is { } n && (n == FDG.PoliticalIntrigue.DeceiverTerrainName || n == "Twist: Objective Denied"
+            || n.StartsWith("Campaign event: ", StringComparison.Ordinal));
+
+    /// <summary>The terrain an area counts as, in words ("Difficult + Dangerous").</summary>
+    public static string AreaWords(ETerrainType type)
+    {
+        var words = new List<string>();
+        if (type.HasFlag(ETerrainType.Cover)) words.Add("Cover");
+        if (type.HasFlag(ETerrainType.Difficult)) words.Add("Difficult");
+        if (type.HasFlag(ETerrainType.Dangerous)) words.Add("Dangerous");
+        if (type.HasFlag(ETerrainType.Impassible)) words.Add("Impassable");
+        return words.Count == 0 ? "Open ground" : string.Join(" + ", words);
+    }
+
+    /// <summary>What a round area is called on the table ("Objective Denied", "Deceiver", the campaign event's name).</summary>
+    public static string RoundAreaLabel(ITerrain t)
+    {
+        string n = t.Name ?? "";
+        int colon = n.IndexOf(": ", StringComparison.Ordinal);
+        return colon >= 0 ? n[(colon + 2)..] : n;
+    }
+
     /// <summary>Army terrain pieces are named "<c>Name (Owner)</c>"; the Defensive Barrier's 6" area is a separate piece.</summary>
     public static bool IsArmyPiece(ITerrain t) =>
         t.Name is { } n && !n.StartsWith(FDG.ArmyTerrain.BarrierAreaPrefix, StringComparison.Ordinal)

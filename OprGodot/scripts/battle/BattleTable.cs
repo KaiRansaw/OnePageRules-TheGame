@@ -655,6 +655,8 @@ public partial class BattleTable : Node3D
             if (_rulesView) { BuildRulesPiece(t, nodes); continue; }
             // Living spells, army terrain and forward positions are drawn as markers (BattleMarkers), not as terrain.
             if (TableMarkers.IsMarkerPiece(t)) continue;
+            // A rule's area for the round (Objective Denied, the Deceiver, a campaign event) is shaded ground, not scenery.
+            if (TableMarkers.IsRoundArea(t)) { BuildRoundArea(t, nodes); continue; }
             if (DressPiece(t, nodes)) continue;
             Color c = TerrainColour(t.TerrainType);
             float h = t.HeightInches > 0.05f ? t.HeightInches : t.TerrainType.HasFlag(ETerrainType.Blocking) ? 3f : 0.25f;
@@ -755,6 +757,38 @@ public partial class BattleTable : Node3D
         _terrainRoot.AddChild(label);
         nodes.Add(label);
         Readable(label, label.FontSize * label.PixelSize, UnitNamePixels);
+    }
+
+    /// <summary>A rule's area for the round, as the Rules view colours it: a light shade, a strong edge and its name.</summary>
+    private void BuildRoundArea(ITerrain t, List<Node> nodes)
+    {
+        Color rc = TableLook.RulesColour(t.TerrainType);
+        var holder = new Node3D { Name = "RoundArea" };
+        _terrainRoot.AddChild(holder);
+        nodes.Add(holder);
+        float sx = 0, sz = 0; int n = 0;
+        foreach (var poly in ZoneOutlines.Polygons(t.Shape))
+        {
+            Vector2[] outline = poly.Select(p => new Vector2(p.X - W / 2, D / 2 - p.Z)).ToArray();
+            if (Prism(outline, 0.03f) is { } mesh)
+            {
+                var mi = Mesh(holder, mesh, TableLook.SharedMat(rc with { A = 0.22f }, 0.9f, unshaded: true), Vector3.Zero);
+                mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+                mi.SetMeta("terrain", t.Name);
+            }
+            TerrainDresser.EdgeLine(holder, outline, rc, 0.2f, 0.045f);
+            foreach (var p in poly) { sx += p.X; sz += p.Z; n++; }
+        }
+        if (n == 0) return;
+        var label = new Label3D
+        {
+            Text = TableMarkers.RoundAreaLabel(t).ToUpperInvariant() + "\n" + TableMarkers.AreaWords(t.TerrainType) + " this round", Font = HudKit.Bold,
+            FontSize = 36, PixelSize = 0.014f, OutlineSize = 10, OutlineModulate = new Color(0, 0, 0, 0.9f),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, Modulate = rc.Lightened(0.4f),
+            Position = World(sx / n, sz / n, 0.8f),
+        };
+        holder.AddChild(label);
+        Readable(label, label.FontSize * label.PixelSize, UnitNamePixels - 4f);
     }
 
     /// <summary>An outline extruded to <paramref name="height"/>: the terrain piece as a block.</summary>

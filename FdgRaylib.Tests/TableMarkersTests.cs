@@ -150,4 +150,21 @@ public class TableMarkersTests
         Assert.That(TableMarkers.IsMarkerPiece(Piece("Ruined chapel")), Is.False);
         Assert.That(TableMarkers.IsMarkerPiece(Piece("Battle Forge ruins")), Is.False, "a map piece that only starts like one");
     }
+
+    [Test]
+    public void RoundAreas_AreKnownByTheEnginesOwnNames()
+    {
+        // The engine keeps two of the names private: read them, so a rename there fails here instead of quietly
+        // dressing the area as rocks again.
+        const System.Reflection.BindingFlags Hidden = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
+        string denied = (string)typeof(FDG.Missions.TwistsGambits).GetField("DeniedTerrainName", Hidden)!.GetValue(null)!;
+        string campaign = (string)typeof(FDG.Stages.CampaignEventRunner).GetField("TemporaryPrefix", Hidden)!.GetValue(null)!;
+        TerrainData Area(string name) => new(ETerrainType.Dangerous, new CircularZone(new Float2(10, 10), 3f), heightInches: 0f, name: name);
+        Assert.That(TableMarkers.IsRoundArea(Area(denied)), Is.True);
+        Assert.That(TableMarkers.IsRoundArea(Area(campaign + "Earthquake")), Is.True);
+        Assert.That(TableMarkers.IsRoundArea(Area(FDG.PoliticalIntrigue.DeceiverTerrainName)), Is.True);
+        Assert.That(TableMarkers.IsRoundArea(Area("Mine field")), Is.False);
+        Assert.That(TableMarkers.RoundAreaLabel(Area(denied)), Is.EqualTo("Objective Denied"));
+        Assert.That(TableMarkers.AreaWords(ETerrainType.Difficult | ETerrainType.Dangerous), Is.EqualTo("Difficult + Dangerous"));
+    }
 }

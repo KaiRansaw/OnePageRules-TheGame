@@ -874,6 +874,12 @@ public partial class ScriptedRun : Node
         p.TacticalPhase.Markers.Clear();
         for (int i = 0; i < 3; i++)
             p.TacticalPhase.Markers.Add(new FDG.ForwardMarker { Slot = seats[0].SlotID, Number = i + 1, X = w * (0.4f + i * 0.08f), Z = d * 0.9f });
+        // A rule's area for the round (Objective Denied) and a Defensive Barrier's area, as the engine makes them.
+        if (table.DataStore is FDG.Data.IReadWriteableGameDataStore rw)
+        {
+            rw.Create(new FDG.TerrainData(FDG.ETerrainType.Dangerous, new FDG.CircularZone(new FDG.Float2(w * 0.5f, d * 0.62f), 3f), heightInches: 0f, name: "Twist: Objective Denied"));
+            rw.Create(new FDG.TerrainData(FDG.ETerrainType.Difficult, new FDG.CircularZone(new FDG.Float2(w * 0.2f, d * 0.75f), 7.5f), heightInches: 0f, name: FDG.ArmyTerrain.BarrierAreaPrefix + n0 + ") [team 1]"));
+        }
         p.Quest ??= new FDG.QuestProgress { Primary = 2, Secondary = 6 };
         p.Quest.Markers.Clear();
         p.Quest.Tokens.Clear();
