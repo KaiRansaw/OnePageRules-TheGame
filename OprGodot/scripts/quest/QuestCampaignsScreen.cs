@@ -480,7 +480,10 @@ public partial class QuestCampaignsScreen : Control, IBackGuard, Hud.ILooked
                     Rebuild();
                 }));
         }
-        if (heroes.Count == 0) cards.AddChild(ForgeWidgets.Wrapped($"No heroes yet - make some in the Hero Builder first.", 15, HudKit.Dim));
+        // The cards row flows sideways, so a wrapping note in it needs a width of its own - with none it wrapped after
+        // every letter, a column of single letters down the page (lane 3, 2026-11-27).
+        if (heroes.Count == 0) cards.AddChild(ForgeWidgets.Wrapped($"No heroes yet - make some in the Hero Builder first.", 15, HudKit.Dim)
+            .Also(l => l.CustomMinimumSize = new Vector2(600, 0)));
         var cs = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 200) };
         cards.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         cs.AddChild(cards);
