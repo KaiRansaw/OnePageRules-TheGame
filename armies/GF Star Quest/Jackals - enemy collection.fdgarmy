@@ -833,6 +833,24 @@
           "armorPenetration": 1,
           "effectSet": "titan-impact",
           "specialRules": []
+        },
+        {
+          "name": "Fumigator",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Reliable"
+            }
+          ]
         }
       ],
       "pointCost": 395
@@ -879,7 +897,22 @@
           "name": "Scrapper"
         }
       ],
-      "weapons": [],
+      "weapons": [
+        {
+          "name": "Explosive Spear",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "effectSet": "spear-pierce",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
       "pointCost": 430
     },
     {

@@ -215,7 +215,10 @@ public class ForgeCrossSectionReplaceShippedDataTests
     private static readonly HashSet<string> UpstreamUnreachableTargets = new(StringComparer.OrdinalIgnoreCase)
     {
         "Throwing Knife", "Poisoned Knife", "Heavy Tusk", "Rough Horn",
-        "Assault Linked Rifle-Array", "Raider Hoof", "Fumigator", "Explosive Spear",
+        "Assault Linked Rifle-Array", "Raider Hoof",
+        // "Fumigator" and "Explosive Spear" (Jackals' Scavenger / Charger Beast) were listed here as upstream quirks
+        // until the 2026-11-27 bug hunt: the weapons are in Army Forge, nested in the units' "Beast Gunner" / "Beast
+        // Rider" items, and it was our importer that dropped them.
         // #417, from AoF: Quest's Wood Elves: the Eternal Guardian Ancient carries a Master Great
         // Hammer and a Stomp, and OPR's shared package hangs a "Replace Venom-Dragonfly" section on it
         // anyway. Confirmed against the raw Army Forge payload rather than assumed - the section's own
@@ -272,7 +275,9 @@ public class ForgeCrossSectionReplaceShippedDataTests
         // allowlist DID need a new name (Venom-Dragonfly), because AoF: Quest is the first fantasy
         // system in this fixture's scope - Age of Fantasy proper is excluded and Skirmish does not
         // publish the unit that carries the quirk.
-        Assert.That(upstream, Has.Count.EqualTo(37),
+        // 2026-11-27: 37 -> 33. The four Jackals entries (Charger and Scavenger Beast, GF and Star Quest) were never
+        // unreachable - the importer had dropped the weapons Army Forge nests in their items.
+        Assert.That(upstream, Has.Count.EqualTo(33),
             "the 2026-10-31 census of OPR's own unreachable shared-package targets:\n  "
             + string.Join("\n  ", upstream));
     }

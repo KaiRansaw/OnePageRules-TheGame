@@ -2731,6 +2731,19 @@
               "numericValue": 1
             }
           ]
+        },
+        {
+          "name": "Poison Fangs",
+          "quantity": 5,
+          "rangeInches": 0,
+          "attacks": 1,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
         }
       ],
       "rules": [
@@ -2751,6 +2764,21 @@
             {
               "kind": "core",
               "name": "Strider"
+            }
+          ],
+          "weapons": [
+            {
+              "name": "Poison Fangs",
+              "quantity": 1,
+              "rangeInches": 0,
+              "attacks": 1,
+              "armorPenetration": 0,
+              "specialRules": [
+                {
+                  "kind": "core",
+                  "name": "Shred"
+                }
+              ]
             }
           ]
         }
@@ -4487,6 +4515,24 @@
           "attacks": 1,
           "armorPenetration": 0,
           "specialRules": []
+        },
+        {
+          "name": "Bombing Run",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 2,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Crossing Strike"
+            }
+          ]
         }
       ],
       "rules": [
@@ -4522,7 +4568,27 @@
         {
           "name": "Bomber Plane",
           "quantity": 1,
-          "rules": []
+          "rules": [],
+          "weapons": [
+            {
+              "name": "Bombing Run",
+              "quantity": 1,
+              "rangeInches": 0,
+              "attacks": 2,
+              "armorPenetration": 1,
+              "specialRules": [
+                {
+                  "kind": "coreNumeric",
+                  "name": "Blast",
+                  "numericValue": 3
+                },
+                {
+                  "kind": "core",
+                  "name": "Crossing Strike"
+                }
+              ]
+            }
+          ]
         }
       ],
       "sections": [
@@ -5637,6 +5703,39 @@
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "This model may shoot after using Rush actions."
+    },
+    {
+      "name": "Crossing Strike",
+      "passive": [],
+      "activated": [
+        {
+          "triggerHook": "Movement_OnMoveThroughEnemy",
+          "cost": {
+            "kind": "oncePerActivation"
+          },
+          "targetSelector": {
+            "rangeInches": 1,
+            "minCount": 1,
+            "maxCount": 1,
+            "targetAffinity": "Foe",
+            "requireLineOfSight": false,
+            "requiredToken": null,
+            "singleModel": false,
+            "requiredRule": null
+          },
+          "effect": {
+            "kind": "attackWithThisWeapon"
+          },
+          "availableWhen": {
+            "kind": "always"
+          },
+          "label": "Attack it"
+        }
+      ],
+      "scope": "Weapon",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "Once per activation, when this model moves through enemy units, pick one of them and attack it with this weapon as if it was shooting. This weapon may only be used in this way."
     }
   ],
   "spells": [

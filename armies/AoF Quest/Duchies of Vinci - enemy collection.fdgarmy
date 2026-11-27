@@ -1368,6 +1368,39 @@
           "armorPenetration": 2,
           "effectSet": "titan-impact",
           "specialRules": []
+        },
+        {
+          "name": "Light Mortar",
+          "quantity": 1,
+          "rangeInches": 24,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "effectSet": "mortar-artillery",
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Neck-Cannons",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            }
+          ]
         }
       ],
       "pointCost": 2410

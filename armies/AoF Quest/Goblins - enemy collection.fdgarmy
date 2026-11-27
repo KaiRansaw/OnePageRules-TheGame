@@ -205,6 +205,20 @@
               "numericValue": 1
             }
           ]
+        },
+        {
+          "name": "Poison Fangs",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 3,
+          "armorPenetration": 0,
+          "effectSet": "toxic-rend",
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
         }
       ],
       "pointCost": 45
@@ -906,6 +920,24 @@
           "attacks": 3,
           "armorPenetration": 0,
           "specialRules": []
+        },
+        {
+          "name": "Bombing Run",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Crossing Strike"
+            }
+          ]
         }
       ],
       "pointCost": 390

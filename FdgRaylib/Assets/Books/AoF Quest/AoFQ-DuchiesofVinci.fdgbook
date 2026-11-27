@@ -5201,6 +5201,38 @@
           "attacks": 24,
           "armorPenetration": 2,
           "specialRules": []
+        },
+        {
+          "name": "Light Mortar",
+          "quantity": 1,
+          "rangeInches": 24,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Indirect"
+            }
+          ]
+        },
+        {
+          "name": "Neck-Cannons",
+          "quantity": 1,
+          "rangeInches": 18,
+          "attacks": 6,
+          "armorPenetration": 1,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            }
+          ]
         }
       ],
       "rules": [
@@ -5223,7 +5255,41 @@
         {
           "name": "Vulcolato Bull Titan",
           "quantity": 1,
-          "rules": []
+          "rules": [],
+          "weapons": [
+            {
+              "name": "Light Mortar",
+              "quantity": 1,
+              "rangeInches": 24,
+              "attacks": 6,
+              "armorPenetration": 0,
+              "specialRules": [
+                {
+                  "kind": "coreNumeric",
+                  "name": "Blast",
+                  "numericValue": 3
+                },
+                {
+                  "kind": "core",
+                  "name": "Indirect"
+                }
+              ]
+            },
+            {
+              "name": "Neck-Cannons",
+              "quantity": 1,
+              "rangeInches": 18,
+              "attacks": 6,
+              "armorPenetration": 1,
+              "specialRules": [
+                {
+                  "kind": "coreNumeric",
+                  "name": "Blast",
+                  "numericValue": 3
+                }
+              ]
+            }
+          ]
         }
       ],
       "sections": [

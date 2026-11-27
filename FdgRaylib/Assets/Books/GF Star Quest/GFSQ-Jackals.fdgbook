@@ -3997,6 +3997,24 @@
           "attacks": 6,
           "armorPenetration": 1,
           "specialRules": []
+        },
+        {
+          "name": "Fumigator",
+          "quantity": 1,
+          "rangeInches": 12,
+          "attacks": 6,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "coreNumeric",
+              "name": "Blast",
+              "numericValue": 3
+            },
+            {
+              "kind": "core",
+              "name": "Reliable"
+            }
+          ]
         }
       ],
       "rules": [
@@ -4023,7 +4041,27 @@
         {
           "name": "Beast Gunner",
           "quantity": 1,
-          "rules": []
+          "rules": [],
+          "weapons": [
+            {
+              "name": "Fumigator",
+              "quantity": 1,
+              "rangeInches": 12,
+              "attacks": 6,
+              "armorPenetration": 0,
+              "specialRules": [
+                {
+                  "kind": "coreNumeric",
+                  "name": "Blast",
+                  "numericValue": 3
+                },
+                {
+                  "kind": "core",
+                  "name": "Reliable"
+                }
+              ]
+            }
+          ]
         }
       ],
       "sections": [
@@ -4196,7 +4234,21 @@
         "widthInches": 2.7559056,
         "heightInches": 4.133858
       },
-      "weapons": [],
+      "weapons": [
+        {
+          "name": "Explosive Spear",
+          "quantity": 1,
+          "rangeInches": 0,
+          "attacks": 12,
+          "armorPenetration": 0,
+          "specialRules": [
+            {
+              "kind": "core",
+              "name": "Shred"
+            }
+          ]
+        }
+      ],
       "rules": [
         {
           "kind": "coreNumeric",
@@ -4230,7 +4282,22 @@
         {
           "name": "Beast Rider",
           "quantity": 1,
-          "rules": []
+          "rules": [],
+          "weapons": [
+            {
+              "name": "Explosive Spear",
+              "quantity": 1,
+              "rangeInches": 0,
+              "attacks": 12,
+              "armorPenetration": 0,
+              "specialRules": [
+                {
+                  "kind": "core",
+                  "name": "Shred"
+                }
+              ]
+            }
+          ]
         }
       ],
       "sections": [

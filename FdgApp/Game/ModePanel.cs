@@ -39,6 +39,20 @@ public static class ModePanel
         };
     }
 
+    /// <summary>
+    /// An objective as the table numbers it ("Objective 4" - the number drawn on the marker: its Horde number, else its
+    /// place in the table's list), found from the position key the Terrain &amp; Objective Effects state is stored under.
+    /// The panel used to show the raw key ("Objective at 51.0,18.0"), which nobody can match to a marker. A key whose
+    /// marker is gone (destroyed, carried off) keeps the position.
+    /// </summary>
+    public static string ObjectiveName(IEnumerable<IObjective> objectives, string key)
+    {
+        var list = objectives.ToList();
+        int index = list.FindIndex(o => FDG.BattlefieldEffects.ObjectiveKey(o) == key);
+        if (index < 0) return $"Objective at ({key})";
+        return $"Objective {list[index].HordeNumber ?? index + 1}";
+    }
+
     private static List<Row>? Combine(List<Row>? a, List<Row>? b) =>
         a == null ? b : b == null ? a : a.Concat(b).ToList();
 
@@ -62,7 +76,7 @@ public static class ModePanel
             rows.Add(new($"{(i < pieces.Count && !string.IsNullOrWhiteSpace(pieces[i].Name) ? pieces[i].Name : "Terrain")}: {FDG.BattlefieldEffects.TerrainEffectName(code, system)}",
                 EStyle.Warn, FDG.BattlefieldEffects.TerrainEffectText(code)));
         foreach ((string key, int code) in b.ObjectiveEffects.Where(e => e.Value >= 3))
-            rows.Add(new($"Objective at {key}: {FDG.BattlefieldEffects.ObjectiveEffectName(code, system)}", EStyle.Warn,
+            rows.Add(new($"{ObjectiveName(table.Objectives.Objects, key)}: {FDG.BattlefieldEffects.ObjectiveEffectName(code, system)}", EStyle.Warn,
                 FDG.BattlefieldEffects.ObjectiveEffectText(code)));
         // Random Events: this round's event, what lasts the mission, and the markers on the table.
         if (b.RoundEvent > 0)

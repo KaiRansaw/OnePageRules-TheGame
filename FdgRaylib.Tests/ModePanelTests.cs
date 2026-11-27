@@ -1,3 +1,4 @@
+using System.Linq;
 using FDG;
 using FDG.Data;
 using FdgRaylib.Game;
@@ -29,4 +30,21 @@ public class ModePanelTests
     [Test]
     public void AStandardGame_HasNoModePanel() =>
         Assert.That(ModePanel.For(new TableState(GameDataStore.GameDataStoreBuilder.GetDefault()), EGameSystem.GrimdarkFuture, EGameMode.Standard), Is.Null);
+
+    // Bug hunt 2026-11-27: the Mission panel listed rolled objective effects as "Objective at 51.0,18.0: Holy
+    // Monument" - a position nobody can match to a marker. It names the marker by the number drawn on it.
+    [Test]
+    public void ObjectiveEffects_NameTheMarkerByItsNumber()
+    {
+        var store = GameDataStore.GameDataStoreBuilder.GetDefault();
+        var table = new TableState(store);
+        store.Create(new ObjectiveData(new Position(18f, 18f), store));
+        store.Create(new ObjectiveData(new Position(51f, 18f), store));
+        var objectives = table.Objectives.Objects.ToList();
+        string key = BattlefieldEffects.ObjectiveKey(objectives[1]);
+
+        Assert.That(ModePanel.ObjectiveName(table.Objectives.Objects, key), Is.EqualTo("Objective 2"));
+        Assert.That(ModePanel.ObjectiveName(table.Objectives.Objects, "9.0,9.0"), Is.EqualTo("Objective at (9.0,9.0)"),
+            "a marker that has left the table keeps its position");
+    }
 }
