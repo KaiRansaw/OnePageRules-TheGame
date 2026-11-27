@@ -406,7 +406,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
     /// <summary>
     /// A Quest game's Game tab. The party has no points limit - the book sizes the enemy waves from the heroes' points
-    /// and the difficulty. A campaign mission shows what its campaign has set, locked.
+    /// (and, in a mission, the difficulty; see QuestLobbyText). A campaign mission shows what its campaign has set, locked.
     /// </summary>
     private void QuestGameRows(VBoxContainer rows)
     {
@@ -429,7 +429,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
             rows.AddChild(Note("These come from the campaign and can't be changed here. The map, the battlefield look and the rules are still yours."));
             return;
         }
-        rows.AddChild(Note("A party has no points limit. The book sizes each enemy wave from the heroes' total points and the difficulty, which you pick when the mission starts."));
+        rows.AddChild(Note(FdgRaylib.Rendering.QuestLobbyText.GameNote(Vm.GameMode)));
     }
 
     private void SyncQuickSize()

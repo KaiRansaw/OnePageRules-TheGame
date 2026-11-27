@@ -1334,9 +1334,7 @@ if (ArgValue(args, "--challenges") is { } challengeText)
     else
         foreach (string raw in challengeText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            string key = raw.Replace("-", "").Replace(" ", "").ToLowerInvariant();
-            string? match = FDG.Stages.QuestChallenges.AllChallenges.FirstOrDefault(c =>
-                c.Replace(" ", "").ToLowerInvariant().StartsWith(key, StringComparison.Ordinal));
+            string? match = FDG.Stages.QuestChallenges.MatchCliName(raw);
             if (match == null)
                 throw new ArgumentException($"Unknown --challenges entry '{raw}'. Known: "
                     + string.Join(", ", FDG.Stages.QuestChallenges.AllChallenges) + ", or 'all'.");
