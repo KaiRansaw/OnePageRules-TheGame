@@ -218,19 +218,24 @@ public sealed class BattleReport : IPresentationSink
     /// Battle replays (homebrew, Kai 2026-11-27): replaces the whole report with lines a replay kept as text - round
     /// dividers, activations and everything else as plain lines (their dice and details as detail lines).
     /// </summary>
-    public void LoadReplay(IEnumerable<(string Kind, string Text, string Body)> lines)
+    public void LoadReplay(IEnumerable<(string Kind, string Text, string Body, int? Round, Guid? Unit)> lines)
     {
         lock (_gate)
         {
             _entries.Clear();
             _open = null;
-            foreach (var (kind, text, body) in lines)
+            foreach (var (kind, text, body, round, unit) in lines)
             {
-                Kind k = Enum.TryParse(kind, out Kind parsed) && parsed is Kind.Divider or Kind.Activation ? parsed : Kind.Line;
-                var e = new Entry { Kind = k, Colour = k == Kind.Divider ? Dim : Plain };
+                // Round dividers stay dividers, and an activation whose unit was kept stays an activation (its card
+                // finds the unit on the table); everything else is a plain line, its details under it.
+                Kind parsed = Enum.TryParse(kind, out Kind k) ? k : Kind.Line;
+                Kind shown = parsed == Kind.Divider ? Kind.Divider : parsed == Kind.Activation && unit != null ? Kind.Activation : Kind.Line;
+                var e = new Entry { Kind = shown, Colour = shown == Kind.Divider ? Dim : Plain };
+                if (shown == Kind.Activation) e.Units.Add(new UnitID(unit!.Value));
                 e.Title.Add(new Piece(text));
                 if (body.Length > 0) e.Details.AddRange(body.Split('\n', StringSplitOptions.RemoveEmptyEntries));
                 Add(e);
+                if (round != null) e.Round = round;
             }
             // The table already shows this activation and round: the screen's poll must not add them again.
             _lastRound = _table.Progress?.RoundCount;

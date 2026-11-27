@@ -539,6 +539,8 @@ public partial class ScriptedRun : Node
             // "qc:<command>" drives Quest Campaigns (see QuestCampaignsScreen.Drive); "partypick:N" picks N heroes in an open Choose heroes popup.
             if (name.StartsWith("qc:") && Find<Quest.QuestCampaignsScreen>(GetTree().Root) is { } qc && qc.Visible) { qc.Drive(name[3..]); _wait = 20; return; }
             // "ac:<command>" drives the army campaign screen; "ms:<command>" Mission Setup (see their Drive methods).
+            // Battle replays: opens a replay file on the battle screen.
+            if (name.StartsWith("replay:")) { Battle.BattleScreen.OpenReplay(name[7..]); _wait = 120; return; }
             if (name.StartsWith("ac:") && Find<Campaign.ArmyCampaignsScreen>(GetTree().Root) is { } ac && ac.Visible) { ac.Drive(name[3..]); _wait = 20; return; }
             // "mm:<command>" the map list, "me:<command>" the map editor.
             if (name.StartsWith("mm:") && Find<Maps.MapMakerScreen>(GetTree().Root) is { } mm && mm.Visible) { mm.Drive(name[3..]); _wait = 20; return; }

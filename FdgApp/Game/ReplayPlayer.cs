@@ -77,7 +77,7 @@ public sealed class ReplayPlayer : IDisposable
         }
         Index = index;
         Store.Show(store);
-        Report?.LoadReplay(_replay.ReportUpTo(index, includeEnding: AtEnd).Select(l => (l.Kind, l.Text, l.Body)));
+        Report?.LoadReplay(_replay.ReportUpTo(index, includeEnding: AtEnd).Select(l => (l.Kind, l.Text, l.Body, l.Round, l.Unit)));
         // Keep the frames either side warm, so stepping is quick; drop the rest.
         foreach (int k in _cache.Keys.Where(k => k != 0 && Math.Abs(k - index) > 2).ToList()) _cache.Remove(k);
         Changed?.Invoke();

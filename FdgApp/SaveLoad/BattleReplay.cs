@@ -26,8 +26,11 @@ public static class BattleReplay
     public const string DirectoryName = "Replays";
     public const int KeepNewest = 50;
 
-    /// <summary>One plain-text battle report line, as the replay keeps it.</summary>
-    public sealed record ReportLine(string Kind, string Text, string Body);
+    /// <summary>
+    /// One battle report line, as the replay keeps it: its kind, text, the round it was in, and for an activation the
+    /// unit (so the report can show the unit's card - the unit is on the table in that frame).
+    /// </summary>
+    public sealed record ReportLine(string Kind, string Text, string Body, int? Round = null, Guid? Unit = null);
 
     /// <summary>One save point: the round, whose activation it starts, and the report lines new since the last one.</summary>
     public sealed record FrameInfo(int Round, string Player, List<ReportLine> Report);
@@ -114,7 +117,11 @@ public static class BattleReplay
             var lines = new List<ReportLine>();
             foreach (BattleReport.Line line in _report.Snapshot().Where(l => l.Id > _reportCursor))
             {
-                lines.Add(new ReportLine(line.Kind.ToString(), string.Concat(line.Title.Select(p => p.Text)), line.Body));
+                Guid? unit = line.Kind == BattleReport.Kind.Activation && line.Units.Count > 0 ? line.Units[0].ID : null;
+                IEnumerable<string> rolls = line.Rolls.Select(r =>
+                    $"{r.Who} {r.Label} ({r.Threshold}+): {(r.Faces.Count > 0 ? "rolled " + string.Join(" ", r.Faces) + " - " : "")}{r.Result}");
+                string body = string.Join("\n", new[] { line.Body }.Concat(rolls).Concat(line.Details).Where(t => t.Length > 0));
+                lines.Add(new ReportLine(line.Kind.ToString(), string.Concat(line.Title.Select(p => p.Text)), body, line.Round, unit));
                 _reportCursor = Math.Max(_reportCursor, line.Id);
             }
             return lines;

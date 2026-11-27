@@ -1333,6 +1333,13 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (prompt.Length == 0)
         {
             if (Session.EndedText != null) { prompt = "GAME OVER"; hint = Session.EndedText; }
+            // Battle replays: whose activation this frame starts, and how to move through the game.
+            else if (Session.Watching is { } replay)
+            {
+                string? whose = replay.Manifest.Frames[replay.Index].Player;
+                prompt = replay.AtEnd && replay.Index > 0 ? "REPLAY - END" : $"REPLAY - {(string.IsNullOrEmpty(whose) ? "NEXT ACTIVATION" : whose + "'S TURN")}";
+                hint = replay.AtEnd ? replay.Manifest.Result : "Play, or step with , and . - every move and roll as it happened.";
+            }
             else if (Watching && Session.Lobby.Vm is FDG.Network.Connection.Lobby.LobbyViewModel_Host { GamePaused: true }) { prompt = "PAUSED"; hint = "P or Resume to carry on."; }
             // Kai, 2026-11-18: "Player is Activating Unit Name".
             else if (activating != null && !Session.IsMine(activating.PlayerID)) { prompt = $"{Session.SeatOf(activating.PlayerID)?.Name ?? "Enemy"} IS ACTIVATING"; hint = activating.Name; }
@@ -2082,8 +2089,8 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             }
             else if (l.Kind == BattleReport.Kind.Move && me != null && l.Units.Contains(me.Value))
                 continue;   // the header already says how far it went
-            else if (Watching && !l.Colour.Equals(BattleReport.Bad))
-                continue;   // bot vs bot: only the attacks (and losses), not casts, morale, rolls
+            else if (Watching && Session.Watching == null && !l.Colour.Equals(BattleReport.Bad))
+                continue;   // bot vs bot: only the attacks (and losses), not casts, morale, rolls (a replay shows its text lines)
             else
             {
                 var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
