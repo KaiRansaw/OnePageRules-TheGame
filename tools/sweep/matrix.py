@@ -110,6 +110,8 @@ def run(job):
         args += ['--party', 'auto', '--army2', e]
     else:
         books, pts = ARMY_GAMES[game]
+        if '--army-points' in extra:   # a bigger game: build the lists to it (the flag below then repeats it)
+            pts = int(extra[extra.index('--army-points') + 1])
         files = sorted(glob.glob(os.path.join(BOOKS, books, '*.fdgbook')))
         for side in (1, 2):
             b = rng.choice(files); picked.append(os.path.basename(b))
