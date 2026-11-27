@@ -143,6 +143,16 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         GetTree().CreateTimer(7.0).Timeout += () => { if (IsInstanceValid(panel)) panel.QueueFree(); };
     }
 
+    /// <summary>ScriptedRun "crit:Bladed|6": shows that table's roll panel over the battle (a UI check of the book's wording).</summary>
+    public void ShowCriticalExample(FDG.CriticalHits.EType type, int die)
+    {
+        var sys = Session.Lobby.Vm.GameSystem;
+        var rows = FDG.CriticalHits.Rows(type, sys).Select(r => new FDG.Presentation.Beats.CriticalRow(r.Range, r.Effect.Name, r.Effect.Text)).ToList();
+        var e = FDG.CriticalHits.Roll(type, die, sys);
+        ShowCritical(new FDG.Presentation.Beats.CriticalHitBeat(null, null, "Example", "Target", "Example Weapon",
+            FDG.CriticalHits.TypeName(type), die, rows, die <= 3 ? 0 : die <= 5 ? 1 : 2, FDG.CriticalHits.Describe(e, "Target")));
+    }
+
     /// <summary>A critical table's three rows, the one rolled picked out (also used in the report's block card).</summary>
     private static Control CriticalTable(FDG.Presentation.Beats.CriticalHitBeat c)
     {
@@ -154,8 +164,15 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             bool picked = i == c.Picked;
             Color col = picked ? HudKit.Lime : HudKit.Dim;
             Font font = picked ? HudKit.Bold : HudKit.Medium;
-            grid.AddChild(HudKit.Text((picked ? "> " : "  ") + c.Rows[i].Range, 14, col, HudKit.Bold));
-            grid.AddChild(HudKit.Text(c.Rows[i].Name, 14, picked ? HudKit.Lime : HudKit.Fg, font));
+            // The book's wording runs to several lines; the roll and its name sit level with the first one.
+            var range = HudKit.Text((picked ? "> " : "  ") + c.Rows[i].Range, 14, col, HudKit.Bold);
+            range.VerticalAlignment = VerticalAlignment.Top;
+            range.SizeFlagsVertical = SizeFlags.Fill;
+            grid.AddChild(range);
+            var name = HudKit.Text(c.Rows[i].Name, 14, picked ? HudKit.Lime : HudKit.Fg, font);
+            name.VerticalAlignment = VerticalAlignment.Top;
+            name.SizeFlagsVertical = SizeFlags.Fill;
+            grid.AddChild(name);
             var text = HudKit.Text(c.Rows[i].Text, 13, picked ? HudKit.Fg : HudKit.Dim, font);
             text.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             text.CustomMinimumSize = new Vector2(230, 0);

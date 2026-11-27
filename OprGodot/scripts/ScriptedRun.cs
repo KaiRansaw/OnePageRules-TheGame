@@ -378,6 +378,10 @@ public partial class ScriptedRun : Node
             // "examples" waits for your turn, then stages the rare screens over it (Command Group, aircraft, a pick with
             // Skip, concede, pick several) using your own units - for the UI review; each is answered after its photo.
             if (name == "examples") { _examplesPending = true; return; }
+            // "crit:Bladed|6" shows that Critical Hits table's roll panel over the open battle (checks the book's wording fits).
+            if (name.StartsWith("crit:") && Find<Battle.BattleScreen>(GetTree().Root) is { } critBattle && name[5..].Split('|') is [var ct, var cd]
+                && Enum.TryParse(ct, out FDG.CriticalHits.EType critType) && int.TryParse(cd, out int critDie))
+            { critBattle.ShowCriticalExample(critType, critDie); _wait = 10; return; }
             // "hordeshop" waits for your turn, then opens the Horde Shop over it with your units (an example wave).
             if (name == "hordeshop") { if (!HordeShopExample() && ++_waitedFor < 20000) { _presses = new Queue<string>(_presses.Prepend(name)); return; } _waitedFor = 0; _wait = 30; return; }
             // "shop:<command>" drives the open Horde Shop (see HordeShopView.Drive).
