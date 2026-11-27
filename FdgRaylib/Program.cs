@@ -80,6 +80,7 @@ int missionIdx = Array.IndexOf(args, "--extra-mission");
 if (missionIdx >= 0 && missionIdx + 1 < args.Length && Enum.TryParse(args[missionIdx + 1], ignoreCase: true, out FDG.Missions.EExtraMission em))
     FdgRaylib.Cli.CliApp.ExtraMission = em;
 if (Array.IndexOf(args, "--solid-buildings") >= 0) FdgRaylib.Cli.CliApp.SolidBuildings = true;
+if (Array.IndexOf(args, "--simplified-terrain") >= 0) FdgRaylib.Cli.CliApp.SimplifiedTerrain = true;
 // --side-missions <ESideMissionPlay> [--side-mission-pick <ESideMissionPick>]: Advanced Rulebooks side-missions.
 int sideIdx = Array.IndexOf(args, "--side-missions");
 if (sideIdx >= 0 && sideIdx + 1 < args.Length && Enum.TryParse(args[sideIdx + 1], ignoreCase: true, out FDG.Missions.ESideMissionPlay sm))
