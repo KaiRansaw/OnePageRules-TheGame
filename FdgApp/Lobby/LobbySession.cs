@@ -316,7 +316,8 @@ public sealed class LobbySession : IDisposable
     public int PointsLimitFor(PlayerID playerID)
     {
         ETeamOption team = Vm.PlayerInfos.FirstOrDefault(p => p.PlayerID.Equals(playerID))?.TeamNumber ?? ETeamOption.None;
-        return FDG.Missions.AttackDefend.PointsLimit(Vm.ArmyPoints, Vm.ExtraMission, Vm.AttackerTeam, (int)team);
+        int points = FDG.FogOfWar.ArmyPointsLimit(Vm.ArmyPoints, Vm.AdvancedRules, Vm.GameSystem, Vm.GameMode);
+        return FDG.Missions.AttackDefend.PointsLimit(points, Vm.ExtraMission, Vm.AttackerTeam, (int)team);
     }
 
     /// <summary>Rolls the next army for a seat: closest to the points limit first, never one another seat

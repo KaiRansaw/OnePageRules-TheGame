@@ -82,6 +82,40 @@ public class AoFQuestHeroDataTests
             "Ndoli Warrior is an ENEMY unit (id 8) - it has no business in the hero roster");
     }
 
+    // Lane 1, 2026-11-27: the four heroes OPR added to Human Empire and Vampiric Undead (in the game's AoF / AoFS /
+    // AoF: Quest enemy books since build 3.48) are playable Hero Builder heroes too. Army Forge id 7, live API.
+    [TestCase("Human Empire", "Ivranik", 55)]
+    [TestCase("Human Empire", "Zashya", 60)]
+    [TestCase("Vampiric Undead", "Vlasmyir", 85)]
+    [TestCase("Vampiric Undead", "Duke Razvran", 100)]
+    public void TheFourNewHeroes_AreInTheRoster_WithTheirUpgrades(string faction, string name, int cost)
+    {
+        SqFaction f = AoF.Factions.Single(x => x.Faction == faction);
+        SqHero hero = f.Heroes.Single(h => h.Name == name);
+        Assert.That(hero.Cost, Is.EqualTo(cost));
+        Assert.That((hero.Q, hero.D, hero.T), Is.EqualTo((6, 6, 9)));
+        Assert.That(hero.Upgrades, Is.Not.Empty);
+        foreach (string uid in hero.Upgrades)
+        {
+            Assert.That(f.Package(uid), Is.Not.Null, $"{name}'s upgrade package {uid} is in the faction");
+        }
+
+        foreach (string rule in hero.Rules.Select(r => r.Split('(')[0].Trim()))
+        {
+            Assert.That(f.Rules.Any(r => r.N == rule) || rule == "Tough", Is.True, $"{name}'s rule {rule} has its text");
+        }
+    }
+
+    [Test]
+    public void Vlasmyir_EndlessHorde_SpawnsStitchedZombies()
+    {
+        SqFaction f = AoF.Factions.Single(x => x.Faction == "Vampiric Undead");
+        SqHero hero = f.Heroes.Single(h => h.Name == "Vlasmyir");
+        string option = f.Package(hero.Upgrades.Single())!.Sections.SelectMany(s => s.Opts).Single().Label;
+        Assert.That(option, Does.Contain("Endless Horde").And.Contain("Spawn(Stitched Zombies"));
+        Assert.That(f.Rules.Any(r => r.N == "Spawn"), Is.True);
+    }
+
     [Test]
     public void EveryHeroProfile_IsPricedAndSingleModel()
     {

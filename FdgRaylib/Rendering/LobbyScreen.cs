@@ -626,7 +626,7 @@ public class LobbyScreen : IAppScreen
             UiText.Disabled("-");
             ImGui.SameLine();
             DrawPointsCell(info.ArmyListSummary,
-                GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : _viewModel.ArmyPoints);
+                GameSystemInfo.IsQuest(_viewModel.GameSystem) ? int.MaxValue : ArmyLimit());
         }
 
         // ── Side and colour ──
@@ -939,7 +939,7 @@ public class LobbyScreen : IAppScreen
                 p.ArmyListSummary.ArmyName, p.ArmyListSummary.FactionName, p.ArmyListSummary.PointCost))
             .ToHashSet();
 
-        if (_botArmyPicker.PickNext(playerID.ID, _viewModel.ArmyPoints,
+        if (_botArmyPicker.PickNext(playerID.ID, ArmyLimit(),
                 _viewModel.AllowedGameSystems, inUseByOthers) is not { } pick)
         {
             // #402: also the "nothing of an allowed system in the folder" case. Left silent for the same
@@ -1176,7 +1176,7 @@ public class LobbyScreen : IAppScreen
             _pickingFor      = info.PlayerID;
             PickPlayerName   = info.PlayerName;
             PickArmies       = armies;
-            PickPointsLimit  = _viewModel.ArmyPoints;
+            PickPointsLimit  = ArmyLimit();
             PickCurrentKey   = currentKey;
             OnChooseArmyRequested?.Invoke();
         }
@@ -2314,6 +2314,10 @@ public class LobbyScreen : IAppScreen
         if (textEnd + 8f < right) ImGui.SameLine(MathF.Max(0f, right));
         if (UiButton.NavigateSmall($"Copy##{id}")) ImGui.SetClipboardText(address);
     }
+
+    /// <summary>The most an army may cost: the game's points, or half again with Flexible Strategies.</summary>
+    private int ArmyLimit() => FDG.FogOfWar.ArmyPointsLimit(_viewModel!.ArmyPoints, _viewModel.AdvancedRules,
+        _viewModel.GameSystem, _viewModel.GameMode);
 
     private void DrawLaunch(float panelW, float panelH)
     {
