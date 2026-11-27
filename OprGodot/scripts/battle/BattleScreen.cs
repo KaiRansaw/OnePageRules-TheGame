@@ -1067,17 +1067,18 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         // Top-right: Top view, Report, Armies, Menu.
         var menu = new HBoxContainer();
         menu.AddThemeConstantOverride("separation", 6);
-        foreach (var (name, icon, label, key, act) in new (string, string, string, string, Action)[]
+        foreach (var (name, icon, label, key, act, tip) in new (string, string, string, string, Action, string)[]
         {
-            ("TopView", "binoculars", "Top view", "T", ToggleTopView),
-            ("RulesView", "radar-sweep", "Rules view", "V", ToggleRulesView),
-            ("SightView", "targeting", "Sight", "F", ToggleSightView),
-            ("Report", "scroll-unfurled", "Report", "R", OpenFullReport),
-            ("Armies", "stack", "Armies", "L", OpenArmies),
-            ("Menu", "hamburger-menu", "Menu", "Esc", OpenMenu),
+            ("TopView", "binoculars", "Top view", "T", ToggleTopView, "Look straight down on the whole table, and back (T)."),
+            ("RulesView", "radar-sweep", "Rules view", "V", ToggleRulesView, "Show each terrain piece's rules on the table - cover, difficult, dangerous, blocking (V)."),
+            ("SightView", "targeting", "Sight", "F", ToggleSightView, "What the picked unit can see: coloured = it can shoot there, dark = hidden (F)."),
+            ("Report", "scroll-unfurled", "Report", "R", OpenFullReport, "The whole battle report, every activation and roll (R)."),
+            ("Armies", "stack", "Armies", "L", OpenArmies, "Both armies' full lists (L)."),
+            ("Menu", "hamburger-menu", "Menu", "Esc", OpenMenu, "Save, load, settings, concede or leave (Esc)."),
         })
         {
             var b = HudKit.ActionButton(name, icon, label, key, HudKit.Teal, 56, labelSize: 11);
+            b.TooltipText = tip;
             b.Pressed += act;
             menu.AddChild(b);
         }
@@ -1085,6 +1086,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
         if (Watching)
         {
             _pause = HudKit.ActionButton("Pause", "hourglass", "Pause", "P", HudKit.Teal, 56, labelSize: 11);
+            _pause.TooltipText = "Pause or carry on the bots' game (P).";
             _pause.Pressed += TogglePause;
             menu.AddChild(_pause);
             menu.MoveChild(_pause, 0);

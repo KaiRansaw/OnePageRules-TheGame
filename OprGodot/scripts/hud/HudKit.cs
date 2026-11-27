@@ -144,6 +144,10 @@ public static class HudKit
         lbl.MouseFilter = Control.MouseFilterEnum.Ignore;
         col.AddChild(lbl);
         b.AddChild(col);
+        // A label wider than the square (Cinzel's "RULES VIEW" in the Fantasy look) widens the button instead of running
+        // over its edges (lane 3, 2026-11-27).
+        float wide = lbl.GetThemeFont("font").GetStringSize(lbl.Text, HorizontalAlignment.Left, -1, labelSize).X + 12;
+        if (wide > size) b.CustomMinimumSize = new Vector2(wide, size + 6);
 
         var key = Text(hotkey, 13, grey ? Dim with { A = 0.4f } : Dim, Bold);
         key.Position = new Vector2(9, 4);
