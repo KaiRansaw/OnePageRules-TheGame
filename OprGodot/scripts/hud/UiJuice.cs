@@ -186,12 +186,28 @@ public static class UiSound
         ulong now = Time.GetTicksMsec();
         if (!On || _hover == null || now - _lastHoverMs < 45) return;
         _lastHoverMs = now;
-        _hover.Play();
+        Play(_hover, "menu/hover");
     }
 
     public static void Click()
     {
-        if (On && _click != null) _click.Play();
+        if (On && _click != null) Play(_click, "menu/click");
+    }
+
+    private static AudioStreamPlayer? _own;
+
+    /// <summary>Kai's own file for the slot if the audio folder has one (2026-11-27), else the game's made-up sound.</summary>
+    private static void Play(AudioStreamPlayer madeUp, string slot)
+    {
+        if (FdgRaylib.Audio.SoundLibrary.UserFiles(slot).Count > 0 && GameAudio.I is { } audio
+            && FdgRaylib.Audio.SoundLibrary.Pick(slot) is { } f && audio.Load(f) is { } stream)
+        {
+            if (_own == null) { _own = new AudioStreamPlayer { Bus = GameAudio.UiBus, MaxPolyphony = 3 }; madeUp.GetParent().AddChild(_own); }
+            _own.Stream = stream;
+            _own.Play();
+            return;
+        }
+        madeUp.Play();
     }
 
     private const int Rate = 44100;

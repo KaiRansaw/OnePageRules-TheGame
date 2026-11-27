@@ -47,6 +47,22 @@ public static class GameCues
         return mine.Any(n => n.Length > 0 && winners.Contains(n, StringComparison.Ordinal));
     }
 
+    /// <summary>The sound slot a cue plays (<see cref="FdgRaylib.Audio.SoundSlots"/>): Kai's own file in the audio folder
+    /// if there is one, else the built-in file below.</summary>
+    public static string SlotFor(ECue cue) => cue switch
+    {
+        ECue.Dice => "cues/dice",
+        ECue.BattleStart => "cues/battle-start",
+        ECue.RoundOver => "cues/round-over",
+        ECue.ObjectiveSeized => "cues/objective-seized",
+        ECue.ObjectiveLost => "cues/objective-lost",
+        ECue.UnitDestroyed => "cues/unit-destroyed",
+        ECue.MoraleShaken => "cues/morale-shaken",
+        ECue.MoraleRouted => "cues/morale-routed",
+        ECue.Victory => "cues/victory",
+        _ => "cues/defeat",
+    };
+
     /// <summary>The file a cue plays (sounds/cues, sounds/dice), picked with <paramref name="roll"/> where there are several.</summary>
     public static string FileFor(ECue cue, int roll) => cue switch
     {

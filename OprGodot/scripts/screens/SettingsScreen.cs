@@ -1,3 +1,4 @@
+using FdgRaylib.Audio;
 using FdgRaylib.Terrain;
 using FdgRaylib.Config;
 using FdgRaylib.Network;
@@ -210,8 +211,14 @@ public partial class SettingsScreen : Control
     {
         rows.AddChild(Slider("Master volume", "How loud every sound in the game is.", View.MasterVolume, 0, 1,
             v => { View.MasterVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
-        rows.AddChild(Slider("Music", "How loud the menu music is (none plays in battle).", View.MusicVolume, 0, 1,
+        rows.AddChild(Slider("Music", "How loud the music is - menus, lobby and campaign screens, battles and the game-over screen.", View.MusicVolume, 0, 1,
             v => { View.MusicVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
+        rows.AddChild(Check("Music in battle", "Play battle music during a game. Battles only have music once there are battle tracks in your audio folder (see Your audio below).",
+            View.BattleMusic, on => View.BattleMusic = on));
+        rows.AddChild(Check("Announcer", "A voice calls out rounds, objectives taken or lost, units wiped out and the result. It only speaks lines that have a voice file in your audio folder (see Your audio below). The music dips while it speaks.",
+            View.Announcer, on => { View.Announcer = on; Hud.GameAudio.ApplyVolumes(); }));
+        rows.AddChild(Slider("Announcer volume", "How loud the announcer's voice is.", View.AnnouncerVolume, 0, 1,
+            v => { View.AnnouncerVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
         rows.AddChild(Slider("Ambience", "How loud the battlefield's background is - wind, distant rumbles, rain.", View.AmbienceVolume, 0, 1,
             v => { View.AmbienceVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
         rows.AddChild(Slider("Battle sounds", "How loud shots, swings, hits and explosions are in battle.", View.EffectsVolume, 0, 1,
@@ -222,11 +229,46 @@ public partial class SettingsScreen : Control
             View.MenuSounds, on => View.MenuSounds = on));
         rows.AddChild(Slider("Menu sound volume", "How loud the menu tick and click are.", View.MenuSoundVolume, 0, 1,
             v => { View.MenuSoundVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
-        foreach (string channel in new[] { "Voices" })
+        BuildSoundSlots(rows);
+    }
+
+    /// <summary>Your audio folder and every sound slot in it (2026-11-27): what each one is for and what it plays now.</summary>
+    private static void BuildSoundSlots(VBoxContainer rows)
+    {
+        rows.AddChild(Section("Your audio",
+            "Every place the game can make a sound. Drop a file named after a slot into your audio folder (README.txt in there explains) and the game plays it - yours replace the built-in ones."));
+        var statuses = new List<(SoundSlot Slot, Label Label)>();
+        var line = new HBoxContainer();
+        line.AddThemeConstantOverride("separation", 12);
+        var open = new Button { Name = "OpenAudioFolder", Text = "Open audio folder", CustomMinimumSize = new Vector2(220, 36), FocusMode = FocusModeEnum.None,
+            TooltipText = "Opens the folder your own music, announcer lines and sounds go in." };
+        open.Pressed += () => { SoundLibrary.EnsureFolder(); OS.ShellOpen(SoundLibrary.Folder); };
+        var count = Ui.Label("");
+        void Refresh()
         {
-            var slider = new HSlider { MinValue = 0, MaxValue = 100, Value = 80, Editable = false, CustomMinimumSize = new Vector2(360, 0) };
-            rows.AddChild(Row(channel, $"{channel} volume. Not in the game yet - the game has no {channel.ToLowerInvariant()} so far.", slider));
+            foreach (var (slot, label) in statuses) label.Text = SoundLibrary.Status(slot);
+            int filled = SoundSlots.All.Count(sl => SoundLibrary.UserFiles(sl.Id).Count > 0);
+            count.Text = $"{filled} of {SoundSlots.All.Count} slots have your files.";
         }
+        var rescan = new Button { Name = "RescanAudio", Text = "Rescan", CustomMinimumSize = new Vector2(140, 36), FocusMode = FocusModeEnum.None,
+            TooltipText = "Look in the audio folder again after adding or removing files. New music starts on the next screen change." };
+        rescan.Pressed += () => { SoundLibrary.Rescan(); Refresh(); };
+        line.AddChild(open);
+        line.AddChild(rescan);
+        line.AddChild(count);
+        rows.AddChild(Row("Audio folder", SoundLibrary.Folder, line));
+        foreach (ESoundChannel channel in Enum.GetValues<ESoundChannel>())
+        {
+            rows.AddChild(Section(SoundSlots.ChannelName(channel)));
+            foreach (SoundSlot slot in SoundSlots.Of(channel))
+            {
+                Label status = Ui.Label("");
+                statuses.Add((slot, status));
+                string tip = slot.When + (slot.Fallback != null ? $" Empty: uses {slot.Fallback}." : "");
+                rows.AddChild(Row(slot.Id, tip, status));
+            }
+        }
+        Refresh();
     }
 
     // ── Controls ─────────────────────────────────────────────────────────────────────────────────

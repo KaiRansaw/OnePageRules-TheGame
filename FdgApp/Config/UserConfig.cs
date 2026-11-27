@@ -223,6 +223,12 @@ public sealed class ViewPreferences
     public float CueVolume { get; set; } = 0.7f;
     /// <summary>Godot build: how loud the menu click / hover sounds are (on/off is <see cref="MenuSounds"/>). 0-1.</summary>
     public float MenuSoundVolume { get; set; } = 1f;
+    /// <summary>Godot build (2026-11-27): the announcer's voice lines - rounds, objectives, units lost, the result. 0-1.</summary>
+    public float AnnouncerVolume { get; set; } = 0.9f;
+    /// <summary>Godot build: the announcer speaks at all (it is silent anyway until voice files are in the audio folder).</summary>
+    public bool Announcer { get; set; } = true;
+    /// <summary>Godot build: music plays in battle when there are battle tracks in the audio folder (off: menus only).</summary>
+    public bool BattleMusic { get; set; } = true;
     /// <summary>Godot build: muzzle flashes, projectiles, swings and impacts in battle (off: the plain tracers).</summary>
     public bool BattleEffects { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
