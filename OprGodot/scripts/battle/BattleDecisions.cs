@@ -388,7 +388,8 @@ public sealed class BattleDecisions
     /// <summary>A unit's faction, for its Army Forge portrait on a choice button (set by the battle screen).</summary>
     public static Func<IUnit, string>? PortraitFaction { get; set; }
 
-    private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail ?? "") : (r.Reason ?? "Not available.");
+    // With no detail of its own a choice says its own name in full on hover (its square can wrap or shorten it).
+    private static string Tip(ChoiceRow r) => r.Enabled ? (r.Detail is { Length: > 0 } d ? d : r.Label + (r.Sub is { Length: > 0 } s ? "\n" + s : "")) : (r.Reason ?? "Not available.");
 
     /// <summary>Like the four action buttons: picture, name, number key; the detail on hover.</summary>
     private static Control SquareChoice(ChoiceRow r, string icon, int n, float size = 96)

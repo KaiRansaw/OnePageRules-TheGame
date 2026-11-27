@@ -177,7 +177,7 @@ public partial class HeroPartyPopup : Control
         _done.Name = "PartyDone";
         row.AddChild(_done);
         col.AddChild(row);
-        HudKit.Place(this, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
+        HudKit.Place(this, HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(col, 20, 16, 20, 16)), LayoutPreset.Center);
         _heroes = new QuestCampaignSession(System).HeroesForNew();
         Build();
     }

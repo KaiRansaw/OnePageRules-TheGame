@@ -102,7 +102,7 @@ public partial class PictureFramingPopup : Control
         var buttons = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
         buttons.AddChild(Btn("CloseFraming", "Close", "Close this window.", () => { Saved?.Invoke(); QueueFree(); }));
         col.AddChild(buttons);
-        HudKit.Place(this, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
+        HudKit.Place(this, HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
 
         string root = OfficialPictures.Root;
         foreach (string d in Directory.EnumerateDirectories(root).OrderBy(d => d))

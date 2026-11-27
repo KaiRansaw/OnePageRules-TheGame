@@ -98,7 +98,7 @@ public partial class PortraitMakerPopup : Control
         buttons.AddChild(_close);
         col.AddChild(buttons);
 
-        HudKit.Place(this, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
+        HudKit.Place(this, HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
 
         _units = UnitPortraits.Models();
         _books = _units.Select(u => u.Book).Distinct().ToList();

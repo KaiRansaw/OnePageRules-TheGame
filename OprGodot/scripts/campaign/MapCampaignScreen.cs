@@ -333,7 +333,7 @@ public partial class MapCampaignScreen : Control, Hud.ILooked
         _overlay = dim;
         var v = new VBoxContainer { CustomMinimumSize = new Vector2(width, 0) };
         v.AddThemeConstantOverride("separation", 9);
-        var panel = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.97f }, Border = border, Cut = 16, ContentMarginLeft = 30, ContentMarginRight = 30, ContentMarginTop = 22, ContentMarginBottom = 22 }, v);
+        var panel = HudKit.Panel(new ChamferBox { Fill = HudKit.Glass with { A = 0.97f }, Solid = true, Border = border, Cut = 16, ContentMarginLeft = 30, ContentMarginRight = 30, ContentMarginTop = 22, ContentMarginBottom = 22 }, v);
         HudKit.Place(dim, panel, LayoutPreset.Center);
         return v;
     }

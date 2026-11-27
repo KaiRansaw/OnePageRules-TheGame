@@ -61,6 +61,9 @@ public static class HudKit
     internal static void ForgetFonts() { _bold = _semi = _med = _exo = null; }
     // ---- Boxes
     public static ChamferBox PanelBox(float cut = 12) => new() { Fill = Glass, Border = Edge, Cut = cut };
+    /// <summary>A box that stands in front of the screen (a popup page): solid, so nothing behind shows through it under
+    /// any UI theme (lane 3, 2026-11-27: the lobby's seats showed through Choose heroes).</summary>
+    public static ChamferBox ModalBox(float cut = 12) => new() { Fill = Palette.Panel, Border = Edge, Cut = cut, Solid = true };
     public static ChamferBox HeaderBox() => new()
     {
         Fill = GlassLight, Border = Edge, Cut = 12, Accent = Lime, AccentLength = 56,

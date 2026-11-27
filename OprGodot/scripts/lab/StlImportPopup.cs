@@ -112,7 +112,7 @@ public partial class StlImportPopup : Control
         world.AddChild(_cam);
         cols.AddChild(view);
 
-        var panel = HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(cols, 22, 18, 22, 18));
+        var panel = HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(cols, 22, 18, 22, 18));
         HudKit.Place(this, panel, LayoutPreset.Center);
 
         try { _books = GfBookUnits.LoadAll(); } catch (Exception e) { _status.Text = "The army books could not be read: " + e.Message; }

@@ -924,16 +924,20 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
     internal static (string Title, string Hint) SplitPrompt(string prompt, string hint)
     {
         const int fits = 40;
-        if (prompt.Length <= fits || hint.Length > 0) return (prompt, hint);
+        if (prompt.Length <= fits) return (prompt, hint);
         foreach (string sep in new[] { ": ", "? ", ". ", " - " })
         {
             int at = prompt.IndexOf(sep, StringComparison.Ordinal);
             if (at > 0 && at + (sep == ": " ? 0 : 1) <= fits + 8)
             {
                 string head = prompt[..(at + (sep == ": " || sep == " - " ? 0 : 1))].Trim();
-                return (head, prompt[(at + sep.Length)..].Trim());
+                string rest = prompt[(at + sep.Length)..].Trim();
+                // A decision with its own hint still gets its long title split (lane 3, 2026-11-27: "HOLD THE LINE AURA ON
+                // AUTOMA DRONES: PICK UP TO 2 F..." was cut off): the rest of the title leads the hint line.
+                return (head, hint.Length > 0 && rest.Length > 0 ? $"{char.ToUpperInvariant(rest[0])}{rest[1..]} - {hint}" : rest.Length > 0 ? char.ToUpperInvariant(rest[0]) + rest[1..] : hint);
             }
         }
+        if (hint.Length > 0) return (prompt, hint);
         int cut = prompt.LastIndexOf(' ', fits);
         return (prompt[..(cut > 10 ? cut : fits)] + "...", prompt);
     }
@@ -2624,7 +2628,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
 
         var panel = HudKit.Panel(new ChamferBox
         {
-            Fill = HudKit.Glass with { A = 0.97f }, Border = HudKit.Lime, Cut = 14, Glow = HudKit.Lime with { A = 0.3f },
+            Fill = HudKit.Glass with { A = 0.97f }, Solid = true, Border = HudKit.Lime, Cut = 14, Glow = HudKit.Lime with { A = 0.3f },
             ContentMarginLeft = 30, ContentMarginRight = 30, ContentMarginTop = 22, ContentMarginBottom = 26,
         }, v);
         veil.AddChild(panel);

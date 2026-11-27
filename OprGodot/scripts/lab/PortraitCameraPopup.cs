@@ -116,7 +116,7 @@ public partial class PortraitCameraPopup : Control
         buttons.AddChild(Btn("TakePortrait", "Take portrait", "Save what the square shows as this version's portrait.", () => _ = Take()).Also(b => b.ThemeTypeVariation = "CommitButton"));
         buttons.AddChild(Btn("ClosePortraitCamera", "Close", "Close without taking a portrait.", QueueFree));
         col.AddChild(buttons);
-        HudKit.Place(this, HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
+        HudKit.Place(this, HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(col, 22, 18, 22, 18)), LayoutPreset.Center);
 
         Callable.From(Load).CallDeferred();
     }

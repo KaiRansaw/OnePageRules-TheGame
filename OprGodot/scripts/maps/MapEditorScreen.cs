@@ -628,7 +628,7 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(1160, 860) };
         scroll.AddChild(HudKit.Pad(col, 20, 16, 20, 16));
         AddChild(veil);
-        HudKit.Place(veil, HudKit.Panel(HudKit.PanelBox(14), scroll), LayoutPreset.Center);
+        HudKit.Place(veil, HudKit.Panel(HudKit.ModalBox(14), scroll), LayoutPreset.Center);
         _ = FillMatThumbs(veil, pics);
     }
 

@@ -146,7 +146,7 @@ public partial class ModelDownloadPopup : Control
         buttons.AddChild(_close);
         col.AddChild(buttons);
 
-        var panel = HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(col, 22, 18, 22, 18));
+        var panel = HudKit.Panel(HudKit.ModalBox(14), HudKit.Pad(col, 22, 18, 22, 18));
         HudKit.Place(this, panel, LayoutPreset.Center);
     }
 

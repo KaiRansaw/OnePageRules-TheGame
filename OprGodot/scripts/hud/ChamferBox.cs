@@ -147,7 +147,9 @@ public partial class ChamferBox : StyleBox
         if (w < 4 || h < 4) return false;
         bool filled = Fill.A > 0.12f && Fill.S > 0.35f;   // a go-coloured box: the selected / commit look
         Color mod = state == "disabled" ? new Color(1, 1, 1, 0.5f) : Colors.White;
-        if (Solid && Fill.A > 0) RoundFill(Fill, def.FillRadius).Draw(ci, rect.Grow(-1));
+        // A panel made near-opaque on purpose (a hover card, the stratagem drawer, Game Over) stays so under a theme whose
+        // frame art is see-through; buttons keep the pack's own look.
+        if ((Solid || Fill.A >= 0.9f && h > 60) && Fill.A > 0) RoundFill(Fill, def.FillRadius).Draw(ci, rect.Grow(-1));
         if (h <= 60)
         {
             if (def.FrameOwnFill)
