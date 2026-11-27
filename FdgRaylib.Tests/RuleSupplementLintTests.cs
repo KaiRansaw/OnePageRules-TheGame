@@ -49,6 +49,11 @@ public class RuleSupplementLintTests
             "(Condition.UnitHasRuleOrGrant); a dispatch entry here would double the bonus.",
         ["Enhanced Hive Bond"] = "marker read by Hive Bond's band condition " +
             "(Condition.UnitHasRuleOrGrant); a dispatch entry here would double the bonus.",
+        // Protection Feat is asked as the wounds land (FDG.ProtectionFeat, from the wound stage and
+        // CasualtyPresentation) - "when this unit takes wounds", which no hook in the rule language reaches
+        // with a once-per-game player prompt. ProtectionFeatShippedDataTests pins the empty definition.
+        ["Protection Feat"] = "read by name in the wound pipeline (FDG.ProtectionFeat); a dispatch entry " +
+            "here would offer it twice.",
     };
 
     // Every bundled supplement file plus every per-book override file (#375 C9: AofBookOverrides/,
