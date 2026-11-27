@@ -182,10 +182,13 @@ public static partial class TerrainDresser
     /// Kai, 2026-11-18: no base under terrain - the models stand straight on the mat. What is left of the old solid base
     /// is a thin line round the footprint, so the edge the rules use can still be seen.
     /// </summary>
-    private static void Base(Node3D root, Vector2[] poly, Color c)
+    private static void Base(Node3D root, Vector2[] poly, Color c) => EdgeLine(root, poly, c.Lightened(0.25f), 0.12f, 0.025f);
+
+    /// <summary>A flat line <paramref name="width"/> wide round the outline, <paramref name="lift"/> over the mat.</summary>
+    public static void EdgeLine(Node3D root, Vector2[] poly, Color c, float width, float lift)
     {
         if (poly.Length < 2) return;
-        const float Width = 0.12f, Lift = 0.025f;
+        float Width = width, Lift = lift;
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
         for (int i = 0; i < poly.Length; i++)
@@ -199,7 +202,7 @@ public static partial class TerrainDresser
             st.AddVertex(a0); st.AddVertex(b0); st.AddVertex(b1);
             st.AddVertex(a0); st.AddVertex(b1); st.AddVertex(a1);
         }
-        var mat = TableLook.Mat(c.Lightened(0.25f), 0.95f);
+        var mat = TableLook.Mat(c, 0.95f);
         mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
         mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
         TableLook.Mesh(root, st.Commit(), mat, Vector3.Zero);

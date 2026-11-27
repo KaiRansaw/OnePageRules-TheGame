@@ -209,16 +209,20 @@ public partial class SettingsScreen : Control
     private static void BuildSound(VBoxContainer rows)
     {
         rows.AddChild(Slider("Master volume", "How loud every sound in the game is.", View.MasterVolume, 0, 1,
-            v =>
-            {
-                View.MasterVolume = v;
-                AudioServer.SetBusVolumeDb(0, Mathf.LinearToDb(Math.Max(v, 0.0001f)));
-            }, ""));
-        rows.AddChild(Check("Menu sounds", "A soft tick when the mouse or the keyboard cursor moves onto a button, and a click when you press one.",
-            View.MenuSounds, on => View.MenuSounds = on));
+            v => { View.MasterVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
+        rows.AddChild(Slider("Music", "How loud the menu music is (none plays in battle).", View.MusicVolume, 0, 1,
+            v => { View.MusicVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
+        rows.AddChild(Slider("Ambience", "How loud the battlefield's background is - wind, distant rumbles, rain.", View.AmbienceVolume, 0, 1,
+            v => { View.AmbienceVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
         rows.AddChild(Slider("Battle sounds", "How loud shots, swings, hits and explosions are in battle.", View.EffectsVolume, 0, 1,
             v => View.EffectsVolume = v, ""));
-        foreach (string channel in new[] { "Music", "Voices" })
+        rows.AddChild(Slider("Game cues", "How loud the game's own signals are: dice, a round starting or ending, an objective seized or lost, a unit destroyed, a failed morale test, victory or defeat.",
+            View.CueVolume, 0, 1, v => { View.CueVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
+        rows.AddChild(Check("Menu sounds", "A soft tick when the mouse or the keyboard cursor moves onto a button, and a click when you press one.",
+            View.MenuSounds, on => View.MenuSounds = on));
+        rows.AddChild(Slider("Menu sound volume", "How loud the menu tick and click are.", View.MenuSoundVolume, 0, 1,
+            v => { View.MenuSoundVolume = v; Hud.GameAudio.ApplyVolumes(); }, ""));
+        foreach (string channel in new[] { "Voices" })
         {
             var slider = new HSlider { MinValue = 0, MaxValue = 100, Value = 80, Editable = false, CustomMinimumSize = new Vector2(360, 0) };
             rows.AddChild(Row(channel, $"{channel} volume. Not in the game yet - the game has no {channel.ToLowerInvariant()} so far.", slider));

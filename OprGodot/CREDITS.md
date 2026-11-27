@@ -12,6 +12,9 @@
 | DejaVu Sans (`fonts/DejaVuSans.ttf`) | DejaVu fonts | Bitstream Vera / public-domain licence |
 | Terrain models (`terrain/nature, castle, town, industrial, space, survival`) | Kenney (kenney.nl) - Nature, Castle, Fantasy Town 2.0, City Industrial 2.0, Space and Survival kits | CC0 1.0 - each folder has its `License.txt` |
 | Terrain models (`terrain/village`) | Quaternius (quaternius.com) - Medieval Village MegaKit [Standard], textures shrunk to 512 px | CC0 1.0 (`terrain/village/License.txt`) |
+| Menu music, game cues, dice (`sounds/music`, `sounds/cues`, `sounds/dice`) | Kenney (kenney.nl) - Music Loops, Music Jingles, Casino Audio, Interface Sounds, Impact Sounds | CC0 1.0 - each folder has its `License.txt` |
+| Horizon skies and grounds for Generic / Wasteland / Death (`horizon/<Theme>/`) | Poly Haven (skies), ambientCG (grounds) | CC0 1.0 - each folder has its `License.txt` |
+| Battle ambience (`sounds/ambience`) | Made for the game by `tools/audio/make_audio.py` (generated wind / rain; Kenney Sci-Fi Sounds rumble) | CC0 1.0 |
 
 Icons were recoloured (black background removed so they can be tinted in code); CC BY allows changes.
 

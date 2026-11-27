@@ -214,6 +214,15 @@ public sealed class ViewPreferences
     public bool MenuSounds { get; set; } = true;
     /// <summary>Godot build: how loud battle sounds are - shots, swings, hits, explosions (Kai, 2026-11-26). 0-1.</summary>
     public float EffectsVolume { get; set; } = 0.8f;
+    /// <summary>Godot build (lane 4, 2026-11-27): menu music. 0-1.</summary>
+    public float MusicVolume { get; set; } = 0.5f;
+    /// <summary>Godot build: the battlefield's background - wind, distant rumbles, rain. 0-1.</summary>
+    public float AmbienceVolume { get; set; } = 0.5f;
+    /// <summary>Godot build: the game's own cues - dice, a round starting / ending, objectives seized or lost, units
+    /// destroyed, morale failed, victory / defeat. 0-1.</summary>
+    public float CueVolume { get; set; } = 0.7f;
+    /// <summary>Godot build: how loud the menu click / hover sounds are (on/off is <see cref="MenuSounds"/>). 0-1.</summary>
+    public float MenuSoundVolume { get; set; } = 1f;
     /// <summary>Godot build: muzzle flashes, projectiles, swings and impacts in battle (off: the plain tracers).</summary>
     public bool BattleEffects { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>

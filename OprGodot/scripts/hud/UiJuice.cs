@@ -172,8 +172,8 @@ public static class UiSound
 
     public static void Install(Node owner)
     {
-        _hover = new AudioStreamPlayer { Stream = Tone(1900, 0.028f, 0.16f), VolumeDb = -16, MaxPolyphony = 2 };
-        _click = new AudioStreamPlayer { Stream = ClickSound(), VolumeDb = -9, MaxPolyphony = 3 };
+        _hover = new AudioStreamPlayer { Stream = Tone(1900, 0.028f, 0.16f), VolumeDb = -16, MaxPolyphony = 2, Bus = GameAudio.UiBus };
+        _click = new AudioStreamPlayer { Stream = ClickSound(), VolumeDb = -9, MaxPolyphony = 3, Bus = GameAudio.UiBus };
         owner.AddChild(_hover);
         owner.AddChild(_click);
     }

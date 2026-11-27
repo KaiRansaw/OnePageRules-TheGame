@@ -137,6 +137,7 @@ public partial class BattleTable : Node3D
         _boardRoot = new Node3D { Name = "Board" };
         AddChild(_boardRoot);
         Board();
+        StartSounds();
         _terrainRoot = new Node3D { Name = "Terrain" };
         _modelRoot = new Node3D { Name = "Models" };
         AddChild(_terrainRoot);
@@ -220,6 +221,7 @@ public partial class BattleTable : Node3D
     public override void _ExitTree()
     {
         foreach (var a in _modelFiles.Values) a?.Model?.QueueFree();
+        StopSounds();
     }
 
     public override void _Process(double delta)
@@ -234,6 +236,8 @@ public partial class BattleTable : Node3D
             SyncTrays();
             SyncFires();
             SyncMarkers();
+            SyncReadable();
+            SyncSounds();
         }
         catch (InvalidOperationException) { }
         long t1 = PerfProbe.Start();
@@ -693,6 +697,7 @@ public partial class BattleTable : Node3D
         var drawnPolys = ZoneOutlines.Polygons(drawn).Select(poly => poly.Select(p => new Vector2(p.X - W / 2, D / 2 - p.Z)).ToArray()).ToList();
         if (drawnPolys.Count > 0 && WarhammerModels.Dress(holder, t.Look, drawnPolys[0]))
         {
+            DangerEdge(holder, polys, t);
             nodes.Add(holder);
             return true;
         }
@@ -700,10 +705,23 @@ public partial class BattleTable : Node3D
         // Kai's hand-built pieces (Asset Lab, Terrain Workshop) in the player's terrain style; else the plain stand-ins.
         if (drawnPolys.Count == 0 || !PieceModels.Dress(holder, drawnPolys[0], kind, t.Look, theme, seed))
             TerrainDresser.DressBasic(holder, polys, h, kind, theme, seed, t.Name);
+        DangerEdge(holder, polys, t);
         // Kai, 2026-11-18: built-in terrain only sits IN the ground (never the Warhammer models). Off until he picks.
         GroundBlend.Add(holder, polys, kind, seed, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(Session.Lobby.Vm.MapHorizon));
         nodes.Add(holder);
         return true;
+    }
+
+    /// <summary>
+    /// Lane 4 (readable from the general's view): a Dangerous piece looks like any other piece of its kind once it is
+    /// dressed (a Dangerous pick swaps a forest for a Dangerous forest), so its edge is drawn in the Rules view's
+    /// Dangerous colour, wider than the plain edge line.
+    /// </summary>
+    private static void DangerEdge(Node3D holder, List<Vector2[]> polys, ITerrain t)
+    {
+        if (!t.TerrainType.HasFlag(ETerrainType.Dangerous)) return;
+        Color c = TableLook.RulesColour(ETerrainType.Dangerous);
+        foreach (Vector2[] poly in polys) TerrainDresser.EdgeLine(holder, poly, c, 0.22f, 0.04f);
     }
 
     private static float ShoelaceArea(Vector2[] poly)
@@ -736,6 +754,7 @@ public partial class BattleTable : Node3D
         };
         _terrainRoot.AddChild(label);
         nodes.Add(label);
+        Readable(label, label.FontSize * label.PixelSize, UnitNamePixels);
     }
 
     /// <summary>An outline extruded to <paramref name="height"/>: the terrain piece as a block.</summary>
@@ -813,6 +832,7 @@ public partial class BattleTable : Node3D
                 };
                 AddChild(label);
                 _objectiveNumbers[o] = label;
+                Readable(label, label.FontSize * label.PixelSize, ObjectiveNumberPixels);
             }
             label.Text = number.ToString();
             label.Modulate = c.Lerp(Colors.White, 0.35f);
@@ -894,27 +914,38 @@ public partial class BattleTable : Node3D
                 Label3D label = Label(unit, mine);
                 bool selected = Selected is { } s && s.Equals(unit.ID);
                 // Perf sweep (2026-11-15): only what changed is written (same picture, far fewer engine calls).
-                Vector3 labelAt = sum / placed + new Vector3(0, top, 0);
+                Vector3 labelBase = sum / placed + new Vector3(0, top, 0);
+                _labelBase[unit.ID] = labelBase;
+                // Lifted clear of a neighbour's name when the two would overlap on screen (BattleReadable.Declutter).
+                Vector3 labelAt = labelBase + new Vector3(0, _labelLift.GetValueOrDefault(unit.ID), 0);
                 bool show = mine || ShowEnemyNames.Contains(unit.ID) || selected;
                 Color tint = (selected ? HudKit.Lime : SeatColour(unit.PlayerID).Lightened(0.35f)) with { A = done ? 0.55f : 1f };
                 if (label.Position != labelAt) label.Position = labelAt;
                 if (label.Visible != show) label.Visible = show;
                 if (label.Modulate != tint) label.Modulate = tint;
                 Sprite3D[] marks = Marks(unit);
+                bool fatigued = unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Fatigued);
                 if (marks[0].Visible != done) marks[0].Visible = done;
                 if (marks[1].Visible != shaken) marks[1].Visible = shaken;
-                Vector3 m0 = labelAt + new Vector3(-0.8f, 1.3f, 0), m1 = labelAt + new Vector3(0.8f, 1.3f, 0);
-                if (marks[0].Position != m0) marks[0].Position = m0;
-                if (marks[1].Position != m1) marks[1].Position = m1;
+                if (marks[2].Visible != fatigued) marks[2].Visible = fatigued;
+                // The status marks sit in a row over the name, centred; they grow with it when the camera is far.
+                float k = ReadableScale(labelAt, label.FontSize * label.PixelSize, UnitNamePixels);
+                int shown = (done ? 1 : 0) + (shaken ? 1 : 0) + (fatigued ? 1 : 0), slot = 0;
+                for (int i = 0; i < 3; i++)
+                {
+                    if (!marks[i].Visible) continue;
+                    Vector3 mAt = labelAt + (right * ((slot++ - (shown - 1) / 2f) * 1.6f) + new Vector3(0, 1.3f, 0)) * k;
+                    if (marks[i].Position.DistanceSquaredTo(mAt) > 1e-4f) marks[i].Position = mAt;
+                }
                 bool relic = show && relics != null && relics.Contains(FDG.AdvancedCasting.Id(unit))
                     && FDG.RelicWargear.PicksOf(Session.Table.DataStore, unit).Any(p => unit.Models.Any(m => m.ID.ToString() == p.Model && m.GetIsAlive()));
-                if (marks[2].Visible != relic) marks[2].Visible = relic;
+                if (marks[3].Visible != relic) marks[3].Visible = relic;
                 if (relic)
                 {
                     float half = label.Font.GetStringSize(label.Text, HorizontalAlignment.Left, -1, label.FontSize).X * label.PixelSize / 2f;
-                    Vector3 m2 = labelAt + right * (half + 0.55f);
-                    if (marks[2].Position != m2) marks[2].Position = m2;
-                    if (marks[2].Modulate.A != tint.A) marks[2].Modulate = HudKit.Gold with { A = tint.A };
+                    Vector3 m2 = labelAt + right * (half + 0.55f) * k;
+                    if (marks[3].Position.DistanceSquaredTo(m2) > 1e-4f) marks[3].Position = m2;
+                    if (marks[3].Modulate.A != tint.A) marks[3].Modulate = HudKit.Gold with { A = tint.A };
                 }
             }
             else if (_labels.TryGetValue(unit.ID, out Label3D? gone))
@@ -962,6 +993,9 @@ public partial class BattleTable : Node3D
         return new ModelView { Root = root, Body = body, Rim = rim, Ring = ring, RingMat = ringMat, Model = m, Unit = unit, Height = height };
     }
 
+    /// <summary>The smallest a unit's name / its status marks / an objective's number may get on screen (pixels).</summary>
+    public const float UnitNamePixels = 20f, UnitMarkPixels = 22f, ObjectiveNumberPixels = 28f;
+
     private Label3D Label(IUnit unit, bool mine)
     {
         if (_labels.TryGetValue(unit.ID, out Label3D? l)) return l;
@@ -972,6 +1006,7 @@ public partial class BattleTable : Node3D
         };
         AddChild(l);
         _labels[unit.ID] = l;
+        Readable(l, l.FontSize * l.PixelSize, UnitNamePixels);
         return l;
     }
 
@@ -983,9 +1018,11 @@ public partial class BattleTable : Node3D
             Texture = HudKit.IconTex(icon), PixelSize = 0.0028f, Modulate = c, NoDepthTest = true,
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Visible = false,
         };
-        m = new[] { Make("checked-shield", HudKit.Dim), Make("broken-shield", Palette.WoundsRed), Make("relic-gem", HudKit.Gold) };
-        m[2].PixelSize = 0.0018f;
-        foreach (Sprite3D s in m) AddChild(s);
+        // Activated, Shaken, Fatigued (lane 4: "hits only on unmodified 6s in melee for the rest of the round" - worth
+        // seeing before charging into it), relic.
+        m = new[] { Make("checked-shield", HudKit.Dim), Make("broken-shield", Palette.WoundsRed), Make("knocked-out-stars", HudKit.Gold), Make("relic-gem", HudKit.Gold) };
+        m[3].PixelSize = 0.0018f;
+        foreach (Sprite3D s in m) { AddChild(s); Readable(s, 512 * s.PixelSize, UnitMarkPixels); }
         _marks[unit.ID] = m;
         return m;
     }

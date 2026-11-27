@@ -103,9 +103,11 @@ public partial class App : Node
         GetTree().Root.Theme = Hud.HudTheme.Build();
         // Menu sounds (2026-11-15), and the saved Master volume from the first frame, not only once Settings is opened.
         Hud.UiSound.Install(this);
+        // Music, ambience and the game's cues, each on its own bus with its Settings slider (lane 4, 2026-11-27).
+        Hud.GameAudio.Install(this);
         // Xbox / PlayStation controllers (Kai, 2026-11-24, couch play): menus by highlight, the table by pointer.
         AddChild(new Pads.PadDriver { Name = "PadDriver" });
-        AudioServer.SetBusVolumeDb(0, Mathf.LinearToDb(Math.Max(UserConfig.Current.View.MasterVolume, 0.0001f)));
+        Hud.GameAudio.ApplyVolumes();
     }
 
     /// <summary>Sees every input first, to know whether the player is on the mouse or the keyboard/controller.</summary>

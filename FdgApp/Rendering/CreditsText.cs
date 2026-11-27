@@ -30,6 +30,8 @@ public static class CreditsText
         new Section("Battlefield and weather", new[]
         {
             new Entry("Battlefield sky and ground (DaySkyHDRI071B, Ground037)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
+            new Entry("Generic, Wasteland and Death grounds (Ground067, Ground031, Ground054, Rock033, Ground051)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
+            new Entry("Generic and Wasteland skies (Autumn Field, Kloppenheim 06 - Pure Sky)", "Poly Haven", "CC0 1.0 (public domain)", "https://polyhaven.com"),
             new Entry("Weather particle pictures (Particle Pack)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/particle-pack"),
             new Entry("Rain set-up based on TCA Weather System", "kS222", "MIT", "https://github.com/kS222138/TCA_Weather_System"),
         }),
@@ -39,6 +41,15 @@ public static class CreditsText
             new Entry("Battle sounds (150 game effect sounds)", "Various authors - see sounds/LICENSES-150-game-effect-sounds.txt", "CC0 1.0 (public domain)"),
             new Entry("Gun sounds", "alienanthony", "Public domain", "https://alienanthony.itch.io/gun-sounds"),
             new Entry("Sci-Fi Weapon Shots SFX", "Lentikula", "CC0 1.0 (public domain)", "https://lentikula.itch.io/sci-fi-weapon-shots-sfx-freecc0"),
+        }),
+        new Section("Music and game sounds", new[]
+        {
+            new Entry("Menu music (\"Space Cadet\", \"Flowing Rocks\" - Music Loops)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/music-loops"),
+            new Entry("Round, victory and defeat cues (Music Jingles, Music Loops idents)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/music-jingles"),
+            new Entry("Dice (Casino Audio)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/casino-audio"),
+            new Entry("Objective, morale and unit-destroyed cues (Interface Sounds, Impact Sounds)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl"),
+            new Entry("Distant rumbles in the battle ambience (Sci-Fi Sounds)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/sci-fi-sounds"),
+            new Entry("Wind and rain ambience", "Made for this game (generated sound)", "CC0 1.0 (public domain)"),
         }),
         new Section("Icons", new[]
         {

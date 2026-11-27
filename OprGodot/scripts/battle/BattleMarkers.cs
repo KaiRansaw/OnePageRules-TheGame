@@ -121,6 +121,7 @@ public partial class BattleTable
             Position = World(m.X, m.Z, Mathf.Max(top, 0.4f) + 0.7f),
         };
         root.AddChild(label);
+        Readable(label, label.FontSize * label.PixelSize, UnitNamePixels - 2f);
     }
 
     /// <summary>The marker's footprint: a thin disc (or the long piece's bar) in the owner's colour with a dark top.</summary>

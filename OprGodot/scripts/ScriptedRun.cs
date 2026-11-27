@@ -726,6 +726,8 @@ public partial class ScriptedRun : Node
                 GD.Print($"ScriptedRun: selectshooter {(unit != null ? unit.Name : "none")}");
                 return;
             }
+            // "audiocheck" prints what the game's audio is doing (music, ambience beds, the cues played so far).
+            if (name == "audiocheck") { GD.Print("ScriptedRun: audio " + (Hud.GameAudio.I?.Report() ?? "no GameAudio")); return; }
             // "markerdemo" puts one of every optional-rules marker on the battle table (Random Events markers, living
             // spells, army terrain, forward positions) straight into the game's record - a picture check of how they
             // read, not a rules test. Waits until the game has its progress record.
