@@ -5897,14 +5897,7 @@
         {
           "hookID": "Lifecycle_OnCapabilityQuery",
           "condition": {
-            "kind": "not",
-            "inner": {
-              "kind": "tokenPresent",
-              "tType": {
-                "id": "Shaken"
-              },
-              "minCount": 1
-            }
+            "kind": "always"
           },
           "effect": {
             "kind": "enableSpellLending",
