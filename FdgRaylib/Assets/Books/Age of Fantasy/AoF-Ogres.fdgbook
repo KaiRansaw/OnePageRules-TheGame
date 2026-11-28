@@ -5720,14 +5720,12 @@
       "name": "Unwieldy on its weapons in melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Melee_OnCounterTrigger",
           "condition": {
             "kind": "always"
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Unwieldy",
-            "scope": "ThisActivation"
+            "kind": "strikeLast"
           },
           "lifetime": "ThisActivation",
           "seat": "Actor"

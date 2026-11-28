@@ -7090,16 +7090,41 @@
       "name": "Thrust in Melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "isMelee"
+            },
+            "right": {
+              "kind": "isCharging"
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Thrust",
-            "scope": "ThisActivation"
+            "kind": "rollModifier",
+            "rollKind": "Hit",
+            "delta": 1
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollComplete",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "isMelee"
+            },
+            "right": {
+              "kind": "isCharging"
+            }
+          },
+          "effect": {
+            "kind": "rollModifier",
+            "rollKind": "Save",
+            "delta": -1
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

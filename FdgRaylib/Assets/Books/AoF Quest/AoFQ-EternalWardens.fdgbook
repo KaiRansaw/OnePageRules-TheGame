@@ -6558,21 +6558,40 @@
       "name": "Brace in Melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Melee_OnChargeContact",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "anyModelHasThisRule"
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Brace",
-            "scope": "ThisActivation"
+            "kind": "chargeImpactHits",
+            "diceCount": {
+              "kind": "negate",
+              "inner": {
+                "kind": "literal",
+                "value": 1
+              }
+            },
+            "armorPenetration": 0
           },
-          "lifetime": "ThisActivation",
-          "seat": "Actor"
+          "lifetime": "ThisAttack",
+          "seat": "Subject"
         }
       ],
       "activated": [],
-      "scope": "Weapon",
+      "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
       "description": "This model gets Brace(1) on its weapons in melee."
@@ -6602,16 +6621,32 @@
       "name": "Unstoppable on their weapons when shooting",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Unstoppable",
-            "scope": "ThisActivation"
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreForeignNegativeModifiers"
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

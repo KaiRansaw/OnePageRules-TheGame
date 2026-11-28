@@ -13010,16 +13010,35 @@
       "name": "Rending on their weapons in melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnHitRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "and",
+            "left": {
+              "kind": "isMelee"
+            },
+            "right": {
+              "kind": "unmodifiedRollEquals",
+              "dieValue": 6
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Rending",
-            "scope": "ThisActivation"
+            "kind": "perHitSaveModifier",
+            "onRollValue": 6,
+            "delta": -4
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollComplete",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

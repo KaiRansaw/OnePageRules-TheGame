@@ -10673,16 +10673,16 @@
       "name": "Shred on its weapons in melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "isMelee"
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Shred",
-            "scope": "ThisActivation"
+            "kind": "addExtraWound",
+            "onRollValue": 1,
+            "count": 1
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

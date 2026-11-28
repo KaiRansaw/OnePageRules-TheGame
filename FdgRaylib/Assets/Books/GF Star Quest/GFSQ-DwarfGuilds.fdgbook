@@ -9801,16 +9801,14 @@
       "name": "Anti-Cover when Shooting",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollModifier",
           "condition": {
             "kind": "always"
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Anti-Cover",
-            "scope": "ThisActivation"
+            "kind": "ignoreCover"
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

@@ -8993,21 +8993,40 @@
     "name": "Brace in Melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Melee_OnChargeContact",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "anyModelHasThisRule"
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Fatigued"
+              },
+              "minCount": 1
+            }
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Brace",
-          "scope": "ThisActivation"
+          "kind": "chargeImpactHits",
+          "diceCount": {
+            "kind": "negate",
+            "inner": {
+              "kind": "literal",
+              "value": 1
+            }
+          },
+          "armorPenetration": 0
         },
-        "lifetime": "ThisActivation",
-        "seat": "Actor"
+        "lifetime": "ThisAttack",
+        "seat": "Subject"
       }
     ],
     "activated": [],
-    "scope": "Weapon",
+    "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
     "description": "This model gets Brace(1) on its weapons in melee."
@@ -11749,16 +11768,14 @@
     "name": "Anti-Cover when Shooting",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollModifier",
         "condition": {
           "kind": "always"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Anti-Cover",
-          "scope": "ThisActivation"
+          "kind": "ignoreCover"
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -11772,16 +11789,18 @@
     "name": "Reliable when Shooting",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnHitRollModifier",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "isMelee"
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Reliable",
-          "scope": "ThisActivation"
+          "kind": "qualityFloor",
+          "quality": 2
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -11905,16 +11924,32 @@
     "name": "Unstoppable on their weapons when shooting",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "isMelee"
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Unstoppable",
-          "scope": "ThisActivation"
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "not",
+          "inner": {
+            "kind": "isMelee"
+          }
+        },
+        "effect": {
+          "kind": "ignoreForeignNegativeModifiers"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -12760,16 +12795,19 @@
     "name": "Shred on its weapons when shooting",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "isMelee"
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Shred",
-          "scope": "ThisActivation"
+          "kind": "addExtraWound",
+          "onRollValue": 1,
+          "count": 1
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -12897,14 +12935,12 @@
     "name": "Unwieldy on its weapons in melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Melee_OnCounterTrigger",
         "condition": {
           "kind": "always"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Unwieldy",
-          "scope": "ThisActivation"
+          "kind": "strikeLast"
         },
         "lifetime": "ThisActivation",
         "seat": "Actor"
@@ -13251,16 +13287,35 @@
     "name": "Rending on their weapons in melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "isMelee"
+          },
+          "right": {
+            "kind": "unmodifiedRollEquals",
+            "dieValue": 6
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Rending",
-          "scope": "ThisActivation"
+          "kind": "perHitSaveModifier",
+          "onRollValue": 6,
+          "delta": -4
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "isMelee"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13482,16 +13537,31 @@
     "name": "Bane on its weapons in melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "isMelee"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Bane",
-          "scope": "ThisActivation"
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 6
+          }
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "isMelee"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13869,16 +13939,16 @@
     "name": "Shred on its weapons in melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "isMelee"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Shred",
-          "scope": "ThisActivation"
+          "kind": "addExtraWound",
+          "onRollValue": 1,
+          "count": 1
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13914,16 +13984,26 @@
     "name": "Unstoppable on its weapons in melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "isMelee"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Unstoppable",
-          "scope": "ThisActivation"
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollModifier",
+        "condition": {
+          "kind": "isMelee"
+        },
+        "effect": {
+          "kind": "ignoreForeignNegativeModifiers"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -14589,16 +14669,41 @@
     "name": "Thrust in Melee",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnHitRollModifier",
         "condition": {
-          "kind": "always"
+          "kind": "and",
+          "left": {
+            "kind": "isMelee"
+          },
+          "right": {
+            "kind": "isCharging"
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Thrust",
-          "scope": "ThisActivation"
+          "kind": "rollModifier",
+          "rollKind": "Hit",
+          "delta": 1
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnHitRollComplete",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "isMelee"
+          },
+          "right": {
+            "kind": "isCharging"
+          }
+        },
+        "effect": {
+          "kind": "rollModifier",
+          "rollKind": "Save",
+          "delta": -1
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],

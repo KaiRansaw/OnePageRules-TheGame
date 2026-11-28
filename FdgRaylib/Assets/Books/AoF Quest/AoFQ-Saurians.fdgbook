@@ -7254,16 +7254,18 @@
       "name": "Reliable when Shooting",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnHitRollModifier",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Reliable",
-            "scope": "ThisActivation"
+            "kind": "qualityFloor",
+            "quality": 2
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

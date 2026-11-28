@@ -11998,16 +11998,32 @@
       "name": "Unstoppable on their weapons when shooting",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Unstoppable",
-            "scope": "ThisActivation"
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "not",
+            "inner": {
+              "kind": "isMelee"
+            }
+          },
+          "effect": {
+            "kind": "ignoreForeignNegativeModifiers"
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

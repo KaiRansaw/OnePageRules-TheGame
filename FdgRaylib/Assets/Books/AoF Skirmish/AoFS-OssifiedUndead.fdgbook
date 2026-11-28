@@ -3664,16 +3664,26 @@
       "name": "Unstoppable on its weapons in melee",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
-            "kind": "always"
+            "kind": "isMelee"
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Unstoppable",
-            "scope": "ThisActivation"
+            "kind": "ignoreRule",
+            "ruleName": "Regeneration"
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnHitRollModifier",
+          "condition": {
+            "kind": "isMelee"
+          },
+          "effect": {
+            "kind": "ignoreForeignNegativeModifiers"
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],
