@@ -111,7 +111,7 @@ public partial class SettingsScreen : Control
         rows.AddChild(Row("Unit look", "What each model stands as on the battle table. Auto: the 3D model you downloaded in the Asset Lab, else the paper miniature matched to its unit (Asset Lab -> Paper models), else the plain token. Paper first: the paper miniature wins over the 3D model. Tokens: everyone is the plain token (quickest on a slow computer). Changes the table when you come back to it.", look));
         rows.AddChild(Check("Unit labels", "Show each unit's name over it on the table.",
             View.ShowLabels, on => View.ShowLabels = on));
-        rows.AddChild(Check("Table grid", "Draw faint lines every 6\" across the table, to judge distances at a glance.",
+        rows.AddChild(Check("Table grid", "Draw the faint inch grid on the table (stronger lines every 6\" and 12\"), to judge distances at a glance. Off: a plain table. Battles, the Map Maker and every preview table follow it.",
             View.ShowGrid, on => View.ShowGrid = on));
         rows.AddChild(Check("Show all tokens",
             "Show every marker on a unit, including the hidden bookkeeping ones the game normally keeps out of sight. Mostly for checking the game.",

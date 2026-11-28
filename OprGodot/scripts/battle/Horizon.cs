@@ -460,7 +460,7 @@ public static class Horizon
 
     /// <summary>The play area drawn in the horizon's own ground (Kai, 2026-11-18: "make the terrain and the playable space be
     /// the same texture"), lined up with the land round it so there is no seam, with the faint inch grid over it.</summary>
-    public static void AddTableGround(Node parent, float w, float d, TerrainBook.ETheme theme, Texture2D grid, string? ground = null)
+    public static void AddTableGround(Node parent, float w, float d, TerrainBook.ETheme theme, Texture2D? grid, string? ground = null)
     {
         var st = new SurfaceTool();
         st.Begin(Mesh.PrimitiveType.Triangles);
@@ -470,6 +470,7 @@ public static class Horizon
         V(-hw, -hd); V(hw, hd); V(-hw, hd);
         st.GenerateTangents();
         TableLook.Mesh(parent, st.Commit(), Ground(theme, ground), Vector3.Zero);
+        if (grid == null) return;   // Settings -> "Table grid" off
         TableLook.Mesh(parent, new PlaneMesh { Size = new Vector2(w, d) }, new StandardMaterial3D
         {
             AlbedoTexture = grid, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,

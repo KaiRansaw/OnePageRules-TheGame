@@ -106,7 +106,7 @@ public static class TableLook
             || (battlefield && picture == null && mat != FdgRaylib.Terrain.MapAtmosphere.FeltMat);
         if (useGround)
         {
-            Battle.Horizon.AddTableGround(parent, w, d, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), GridOnly(w, d), ground);
+            Battle.Horizon.AddTableGround(parent, w, d, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(horizon), ShowGrid ? GridOnly(w, d) : null, ground);
             return;
         }
         Texture2D cloth = picture ?? Felt(w, d);
@@ -119,7 +119,7 @@ public static class TableLook
     public static ImageTexture? MatTexture(string? mat, float w, float d)
     {
         if (FdgRaylib.Terrain.WarhammerTerrain.MatFile(mat) is not { } file) return null;
-        string key = $"{file}|{w}|{d}";
+        string key = $"{file}|{w}|{d}|{ShowGrid}";
         if (MatCache.TryGetValue(key, out var have)) return have;
         Image? img = Image.LoadFromFile(file);
         if (img == null || img.IsEmpty()) return null;
@@ -144,9 +144,16 @@ public static class TableLook
         return ImageTexture.CreateFromImage(img);
     }
 
-    /// <summary>The inch grid over a table picture (every 6" and 12" stronger); <paramref name="strength"/> scales it.</summary>
+    /// <summary>Settings -> Display -> "Table grid" (Kai, 2026-11-27: "the grid is always on at all times in every mode").
+    /// Every table surface - felt, battle mat, the horizon's ground - draws its grid through <see cref="Grid"/>, so this
+    /// one switch covers battles, the Map Maker table and every lab / preview table.</summary>
+    public static bool ShowGrid => FdgRaylib.Config.UserConfig.Current.View.ShowGrid;
+
+    /// <summary>The inch grid over a table picture (every 6" and 12" stronger); <paramref name="strength"/> scales it.
+    /// Draws nothing while Settings' "Table grid" is off.</summary>
     private static void Grid(Image img, float w, float d, int ppi, float strength)
     {
+        if (!ShowGrid) return;
         int iw = img.GetWidth(), ih = img.GetHeight();
         for (int x = 0; x <= (int)w; x++)
         {
