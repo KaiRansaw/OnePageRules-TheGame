@@ -4763,16 +4763,39 @@
       "name": "Indirect on their weapons",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollModifier",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "MovedThisRound"
+              },
+              "minCount": 1
+            }
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Indirect",
-            "scope": "ThisActivation"
+            "kind": "ignoreLineOfSight"
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
+          "seat": "Actor"
+        },
+        {
+          "hookID": "Shooting_OnSaveRollModifier",
+          "condition": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "MovedThisRound"
+              },
+              "minCount": 1
+            }
+          },
+          "effect": {
+            "kind": "ignoreCover"
+          },
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

@@ -40,7 +40,26 @@ public class GatedWeaponRuleShippedDataTests
     private static readonly string[] Inherent =
     {
         "Thrust in Melee", "Unwieldy on its weapons in melee", "Brace in Melee", "Anti-Cover when Shooting",
+        // 2026-11-28 (later): the ungated mark rules had the same activation-start build, so their spells ("friendly
+        // units get Bane / Shred on their weapons when attacking / Surge / Indirect on their weapons against it once")
+        // did nothing; and "Indirect when shooting" (Indirect when Shooting Aura) still played 3.5's Indirect - no Hold
+        // needed, -1 to hit after moving. Each is now its plain rule's hooks (Indirect: the 3.6.0 Hold-only one).
+        "Bane on their weapons when attacking", "Shred on their weapons when attacking", "Surge on their weapons",
+        "Indirect on their weapons", "Indirect when shooting",
     };
+
+    [Test]
+    public void IndirectWhenShooting_IsTheHoldOnlyIndirect()
+    {
+        foreach ((string where, SpecialRuleDefinition rule) in Shipped()
+                     .Where(a => a.Rule.Name is "Indirect when shooting" or "Indirect on their weapons"))
+        {
+            Assert.That(rule.Passive.Select(h => h.Effect.GetType()),
+                Is.EquivalentTo(new[] { typeof(Effect.IgnoreLineOfSight), typeof(Effect.IgnoreCover) }), where + ": no -1 to hit");
+            Assert.That(rule.Passive.All(h => h.Condition is Condition.Not { Inner: Condition.TokenPresent { TType.Id: "MovedThisRound" } }),
+                Is.True, where + ": only when the unit hasn't moved (a Hold)");
+        }
+    }
 
     private static List<(string Where, SpecialRuleDefinition Rule)> Shipped()
     {

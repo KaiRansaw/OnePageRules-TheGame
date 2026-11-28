@@ -4728,16 +4728,16 @@
       "name": "Shred on their weapons when attacking",
       "passive": [
         {
-          "hookID": "Activation_OnActivationStart",
+          "hookID": "Shooting_OnSaveRollComplete",
           "condition": {
             "kind": "always"
           },
           "effect": {
-            "kind": "addRule",
-            "ruleName": "Shred",
-            "scope": "ThisActivation"
+            "kind": "addExtraWound",
+            "onRollValue": 1,
+            "count": 1
           },
-          "lifetime": "ThisActivation",
+          "lifetime": "ThisAttack",
           "seat": "Actor"
         }
       ],

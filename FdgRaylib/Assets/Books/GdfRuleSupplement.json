@@ -3717,31 +3717,16 @@
     "name": "Indirect when shooting",
     "passive": [
       {
-        "hookID": "Shooting_OnHitRollModifier",
-        "condition": {
-          "kind": "and",
-          "left": {
-            "kind": "not",
-            "inner": {
-              "kind": "isMelee"
-            }
-          },
-          "right": {
-            "kind": "afterMoving"
-          }
-        },
-        "effect": {
-          "kind": "rollModifier",
-          "rollKind": "Hit",
-          "delta": -1
-        },
-        "lifetime": "ThisAttack",
-        "seat": "Actor"
-      },
-      {
         "hookID": "Shooting_OnSaveRollModifier",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "MovedThisRound"
+            },
+            "minCount": 1
+          }
         },
         "effect": {
           "kind": "ignoreLineOfSight"
@@ -3752,7 +3737,14 @@
       {
         "hookID": "Shooting_OnSaveRollModifier",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "MovedThisRound"
+            },
+            "minCount": 1
+          }
         },
         "effect": {
           "kind": "ignoreCover"
@@ -3765,7 +3757,7 @@
     "scope": "Weapon",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "Fires at targets out of line of sight and ignores cover when shooting; -1 to hit if the unit moved this activation."
+    "description": "This model gets Indirect on its weapons when shooting."
   },
   {
     "name": "Indirect when Shooting Aura",
@@ -12844,16 +12836,31 @@
     "name": "Bane on their weapons when attacking",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
           "kind": "always"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Bane",
-          "scope": "ThisActivation"
+          "kind": "reroll",
+          "roll": "Save",
+          "condition": {
+            "kind": "onUnmodifiedValue",
+            "minValue": 6
+          }
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollComplete",
+        "condition": {
+          "kind": "always"
+        },
+        "effect": {
+          "kind": "ignoreRule",
+          "ruleName": "Regeneration"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13329,16 +13336,16 @@
     "name": "Shred on their weapons when attacking",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollComplete",
         "condition": {
           "kind": "always"
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Shred",
-          "scope": "ThisActivation"
+          "kind": "addExtraWound",
+          "onRollValue": 1,
+          "count": 1
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13408,16 +13415,39 @@
     "name": "Indirect on their weapons",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnSaveRollModifier",
         "condition": {
-          "kind": "always"
+          "kind": "not",
+          "inner": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "MovedThisRound"
+            },
+            "minCount": 1
+          }
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Indirect",
-          "scope": "ThisActivation"
+          "kind": "ignoreLineOfSight"
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
+        "seat": "Actor"
+      },
+      {
+        "hookID": "Shooting_OnSaveRollModifier",
+        "condition": {
+          "kind": "not",
+          "inner": {
+            "kind": "tokenPresent",
+            "tType": {
+              "id": "MovedThisRound"
+            },
+            "minCount": 1
+          }
+        },
+        "effect": {
+          "kind": "ignoreCover"
+        },
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],
@@ -13465,16 +13495,17 @@
     "name": "Surge on their weapons",
     "passive": [
       {
-        "hookID": "Activation_OnActivationStart",
+        "hookID": "Shooting_OnHitRollComplete",
         "condition": {
-          "kind": "always"
+          "kind": "unmodifiedRollEquals",
+          "dieValue": 6
         },
         "effect": {
-          "kind": "addRule",
-          "ruleName": "Surge",
-          "scope": "ThisActivation"
+          "kind": "addExtraHit",
+          "onRollValue": 6,
+          "count": 1
         },
-        "lifetime": "ThisActivation",
+        "lifetime": "ThisAttack",
         "seat": "Actor"
       }
     ],

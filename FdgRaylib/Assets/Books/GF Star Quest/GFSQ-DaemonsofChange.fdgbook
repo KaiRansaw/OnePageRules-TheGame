@@ -5395,31 +5395,16 @@
       "name": "Indirect when shooting",
       "passive": [
         {
-          "hookID": "Shooting_OnHitRollModifier",
-          "condition": {
-            "kind": "and",
-            "left": {
-              "kind": "not",
-              "inner": {
-                "kind": "isMelee"
-              }
-            },
-            "right": {
-              "kind": "afterMoving"
-            }
-          },
-          "effect": {
-            "kind": "rollModifier",
-            "rollKind": "Hit",
-            "delta": -1
-          },
-          "lifetime": "ThisAttack",
-          "seat": "Actor"
-        },
-        {
           "hookID": "Shooting_OnSaveRollModifier",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "MovedThisRound"
+              },
+              "minCount": 1
+            }
           },
           "effect": {
             "kind": "ignoreLineOfSight"
@@ -5430,7 +5415,14 @@
         {
           "hookID": "Shooting_OnSaveRollModifier",
           "condition": {
-            "kind": "always"
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "MovedThisRound"
+              },
+              "minCount": 1
+            }
           },
           "effect": {
             "kind": "ignoreCover"
