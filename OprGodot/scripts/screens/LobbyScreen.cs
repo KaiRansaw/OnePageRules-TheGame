@@ -979,7 +979,9 @@ public partial class LobbyScreen : Control, Hud.ILooked
 
     private Control ColourChoice(int seat, LobbyPlayerInfoSummary info, int[] colours)
     {
-        var ob = new OptionButton { Disabled = !Vm.CheckCanModifyPlayerIDInfo(info.PlayerID), CustomMinimumSize = new Vector2(150, 0), Name = "SeatColour",
+        // Not sized to its longest item ("Choose colour..." with a swatch): that made every seat card 400px wide, so on
+        // a 1920x1080 lobby the second column ran under the Map Preview and cut off ROLL and the points (bug hunt run 8).
+        var ob = new OptionButton { Disabled = !Vm.CheckCanModifyPlayerIDInfo(info.PlayerID), CustomMinimumSize = new Vector2(150, 0), Name = "SeatColour", FitToLongestItem = false,
             TooltipText = "This seat's army colour. A colour too close to another seat's is greyed out.\nChoose colour... opens a colour wheel." };
         int current = colours[seat];
         ImageTexture Swatch(Color c)
