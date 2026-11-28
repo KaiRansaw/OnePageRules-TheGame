@@ -737,23 +737,25 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
             // piece that stops models or sight then plays only on its solid parts.
             var looks = TerrainPieces.All.Where(tp => tp.Kind.Equals(KindOf(p), StringComparison.OrdinalIgnoreCase) && tp.Suits(Theme))
                 .OrderBy(tp => tp.Style).ThenBy(tp => tp.Name, StringComparer.OrdinalIgnoreCase).ToList();
-            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Auto: each player sees one of the game's pieces for this kind in their own Terrain style (Settings), or the plain stand-in. Pick a piece to show the same one to everyone - then a piece that stops models or sight plays only where its models stand." };
+            // ...and the free model packs' looks for the kind (Kai, 2026-11-27: real models only, no made-up shapes).
+            var packLooks = TerrainLooks.For(KindOf(p), Theme).ToList();
+            var look = new OptionButton { Name = "PieceLook", TooltipText = "The 3D models it shows as. Auto: each player sees one of your Terrain Workshop pieces for this kind in their own Terrain style (Settings), or one of the free model looks. Pick one to show the same look to everyone - a Workshop piece that stops models or sight then plays only where its models stand." };
             look.AddItem("Auto");
             foreach (var l in looks) look.AddItem($"{l.Name} ({(l.Style == TerrainPieces.Realistic ? "realistic" : "stylised")}, {l.W:0.#}x{l.D:0.#}\")");
+            foreach (var l in packLooks) look.AddItem($"{l.Name} (free models)");
             int li = looks.FindIndex(l => TerrainPieces.LookPrefix + l.Id == p.Look);
-            look.Selected = li < 0 ? 0 : li + 1;
+            int pi = packLooks.FindIndex(l => l.Id == p.Look);
+            look.Selected = li >= 0 ? li + 1 : pi >= 0 ? looks.Count + pi + 1 : 0;
             look.ItemSelected += i =>
             {
                 Draft.Remember();
-                p.Look = i <= 0 ? "" : TerrainPieces.LookPrefix + looks[(int)i - 1].Id;
+                p.Look = i <= 0 ? "" : i <= looks.Count ? TerrainPieces.LookPrefix + looks[(int)i - 1].Id : packLooks[(int)i - looks.Count - 1].Id;
                 Rebuild();
             };
-            look.Disabled = looks.Count == 0;
+            look.Disabled = looks.Count + packLooks.Count == 0;
             if (!modelPiece) _right.AddChild(Row("Look", look));
-            if (!modelPiece && looks.Count == 0)
-                _right.AddChild(ForgeWidgets.Wrapped($"No terrain pieces of this kind for {(Theme == TerrainLooks.ETheme.Grimdark ? "Grimdark Future" : "Age of Fantasy")} yet - shown as the plain stand-in. Build some in Asset Lab -> Terrain -> Terrain Workshop.", 11, HudKit.Dim));
-            else if (!modelPiece && TerrainPieces.ById(p.Look) == null && TerrainSolids.IsPiece(p))
-                _right.AddChild(ForgeWidgets.Wrapped("A terrain piece this computer doesn't have - shown as the plain piece.", 11, HudKit.Dim));
+            if (!modelPiece && TerrainPieces.ById(p.Look) == null && TerrainSolids.IsPiece(p))
+                _right.AddChild(ForgeWidgets.Wrapped("A Terrain Workshop piece this computer doesn't have - shown with the free models' look for its kind.", 11, HudKit.Dim));
 
             _right.AddChild(Row("Width", Spin(p.W, 1, 24, v => { p.W = v; if (p.Round) p.D = v; })));
             if (!p.Round) _right.AddChild(Row("Depth", Spin(p.D, 1, 24, v => p.D = v)));
@@ -1151,9 +1153,9 @@ public partial class MapEditorScreen : Control, IBackGuard, IOwnBackdrop, Screen
         _dressed.AddChild(node);
         if (polys.Count == 0 || !WarhammerModels.Dress(node, p.Look, polys[0]))
         {
-            // Kai's hand-built pieces first (Terrain Workshop), else the plain stand-ins.
+            // Kai's hand-built pieces first (Terrain Workshop), else the real model packs' look for its kind (2026-11-27).
             if (polys.Count == 0 || !PieceModels.Dress(node, polys[0], KindOf(p), p.Look, Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name)))
-                TerrainDresser.DressBasic(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
+                TerrainDresser.DressAuto(node, polys, Mathf.Max(0.15f, p.Height), KindOf(p), p.Look, Theme, TerrainLooks.SeedFor(p.X, p.Z, p.Name), p.Name);
             // Built-in terrain only (Kai, 2026-11-18: never the Warhammer models). Off until he picks.
             GroundBlend.Add(node, polys, KindOf(p), TerrainLooks.SeedFor(p.X, p.Z, p.Name), MapAtmosphere.HorizonFor(HorizonId));
         }

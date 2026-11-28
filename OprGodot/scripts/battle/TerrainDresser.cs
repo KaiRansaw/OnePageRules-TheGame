@@ -128,24 +128,28 @@ public static partial class TerrainDresser
             var piece = new Node3D();
             parent.AddChild(piece);
             piece.SetMeta("terrain", meta);
-            DressOne(piece, poly, height, look, ground, rng);
+            DressOne(piece, poly, height, look, ground, rng, kind);
         }
         return true;
     }
 
-    private static void DressOne(Node3D root, Vector2[] poly, float height, Look look, Color ground, Random rng)
+    private static void DressOne(Node3D root, Vector2[] poly, float height, Look look, Color ground, Random rng, string kind)
     {
+        ESurface surface = SurfaceOf(look, kind);
         switch (look.Layout)
         {
             case ELayout.Flat:
-                Surface(root, poly, ground, look.Kinds.Contains("Lava"));
+                // Water and lava: a real surface on the piece's shape (Kai, 2026-11-27), stones and plants round its edge.
+                SurfacePatch(root, poly, SurfaceMaterial(surface, DepthOf(kind)), BaseHeight, surface is ESurface.Lava or ESurface.Magma ? 0.6f : 1.1f);
                 Ring(root, poly, look.Props, look.Density, 0, rng);
                 return;
             case ELayout.Mound:
-                Mound(root, poly, Mathf.Clamp(height, 0.8f, 3f), ground, look, rng);
+                Mound(root, poly, Mathf.Clamp(height, 0.8f, 3f), ground, look, rng, SurfaceMaterial(surface));
                 return;
         }
         Base(root, poly, ground);
+        if (surface == ESurface.Mud) SwampFloor(root, poly, rng);
+        else if (surface != ESurface.None) SurfacePatch(root, poly, SurfaceMaterial(surface), BaseHeight * 0.5f, 0.6f);
         switch (look.Layout)
         {
             case ELayout.Scatter:
@@ -206,15 +210,6 @@ public static partial class TerrainDresser
         mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
         mat.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
         TableLook.Mesh(root, st.Commit(), mat, Vector3.Zero);
-    }
-
-    private static void Surface(Node3D root, Vector2[] poly, Color c, bool lava)
-    {
-        if (BattleTable.Prism(poly, BaseHeight) is not { } mesh) return;
-        var mat = lava
-            ? TableLook.Mat(c, 0.6f, c, 0.45f)
-            : new StandardMaterial3D { AlbedoColor = c with { A = 0.92f }, Roughness = 0.08f, Metallic = 0.3f, Transparency = BaseMaterial3D.TransparencyEnum.Alpha };
-        TableLook.Mesh(root, mesh, mat, Vector3.Zero);
     }
 
     /// <summary>Props scattered over the footprint, kept <paramref name="margin"/> inches in from its edge, no two
@@ -295,7 +290,7 @@ public static partial class TerrainDresser
     }
 
     /// <summary>A hill: rings drawn in toward the middle, rising to <paramref name="top"/>; props round its lower slope.</summary>
-    private static void Mound(Node3D root, Vector2[] poly, float top, Color c, Look look, Random rng)
+    private static void Mound(Node3D root, Vector2[] poly, float top, Color c, Look look, Random rng, Material? surface = null)
     {
         Vector2 centre = Centroid(poly);
         float[] ks = { 1f, 0.85f, 0.65f, 0.45f, 0.25f, 0f };
@@ -318,8 +313,7 @@ public static partial class TerrainDresser
                 if (r < ks.Length - 2) Tri(a, cc, d);
             }
         st.GenerateNormals();
-        var mat = TableLook.Mat(c, 0.95f);
-        mat.CullMode = BaseMaterial3D.CullModeEnum.Disabled;
+        Material mat = surface ?? new StandardMaterial3D { AlbedoColor = c, Roughness = 0.95f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
         TableLook.Mesh(root, st.Commit(), mat, Vector3.Zero);
         Base(root, poly, c.Darkened(0.15f));
         int count = Math.Clamp((int)(Mathf.Abs(Area(poly)) * look.Density), 2, 30);

@@ -42,7 +42,7 @@ public partial class MapEditorScreen
     private List<LibItem> LibItems(ELibTab tab) => tab switch
     {
         ELibTab.Rules => TerrainBook.Kinds.Select(k => new LibItem("kind:" + k.Id, k.Name, "The book's kinds", k.Id, k.Rules,
-            k.Width, k.Round ? k.Width : k.Depth, k.Height, "Advanced Rulebook 3.6.0", BattleTable.TerrainColour(k.Rules), () => null,
+            k.Width, k.Round ? k.Width : k.Depth, k.Height, "Advanced Rulebook 3.6.0", BattleTable.TerrainColour(k.Rules), () => Thumb(KindKey(k)),
             () => PickKind(k), () => _tool == ETool.Place && _model == null && _single == null && _workshop == null && _kind == k)).ToList(),
         ELibTab.Models => PieceModels.Catalogue.Select(m =>
         {
@@ -240,7 +240,7 @@ public partial class MapEditorScreen
         _libScroll.AddChild(_libGrid);
         box.AddChild(_libScroll);
         RestoreScroll(_libScroll, scroll);
-        if (_libTab is ELibTab.Models or ELibTab.Mine) MakeThumbs();
+        if (_libTab is ELibTab.Models or ELibTab.Mine or ELibTab.Rules) MakeThumbs();
     }
 
     private bool IsLit(string key) => FindItem(key) is { } i && i.Lit();
@@ -336,6 +336,8 @@ public partial class MapEditorScreen
 
     private static string ThumbFolder => ProjectSettings.GlobalizePath("user://piece-thumbs");
     private static string ModelKey(PieceModels.Model m) => "m-" + Hash(m.Path);
+    /// <summary>A book kind's picture: how it looks in this game with the free models and surfaces (2026-11-27).</summary>
+    private string KindKey(TerrainBook.PieceKind k) => "k6-" + Theme + "-" + k.Id;
     private static string PieceKey(TerrainPieces.Piece p)
     {
         long stamp = 0;
@@ -392,6 +394,21 @@ public partial class MapEditorScreen
         foreach (var m in PieceModels.Catalogue)
             if (!File.Exists(Path.Combine(ThumbFolder, ModelKey(m) + ".png")) || !Sizes().ContainsKey(ModelKey(m)))
             { var model = m; todo.Add((ModelKey(m), () => PieceModels.Instance(model.Path), model.Path)); }
+        foreach (var k in TerrainBook.Kinds)
+            if (!File.Exists(Path.Combine(ThumbFolder, KindKey(k) + ".png")))
+            {
+                var kind = k;
+                todo.Add((KindKey(k), () =>
+                {
+                    var root = new Node3D();
+                    float w = Mathf.Max(3f, kind.Width), d = Mathf.Max(3f, kind.Round ? kind.Width : kind.Depth);
+                    Vector2[] poly = kind.Round
+                        ? Enumerable.Range(0, 20).Select(i => new Vector2(Mathf.Cos(i / 20f * Mathf.Tau), Mathf.Sin(i / 20f * Mathf.Tau)) * (w / 2)).ToArray()
+                        : new[] { new Vector2(-w / 2, -d / 2), new Vector2(w / 2, -d / 2), new Vector2(w / 2, d / 2), new Vector2(-w / 2, d / 2) };
+                    TerrainDresser.DressAuto(root, new[] { poly }, Mathf.Max(0.5f, kind.Height), kind.Id, null, Theme, 7, kind.Name);
+                    return root.GetChildCount() > 0 ? root : null;
+                }, null));
+            }
         foreach (var p in TerrainPieces.All)
             if (!File.Exists(Path.Combine(ThumbFolder, PieceKey(p) + ".png")))
             {

@@ -32,6 +32,8 @@ public static class CreditsText
             new Entry("Battlefield sky and ground (DaySkyHDRI071B, Ground037)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
             new Entry("Generic, Wasteland and Death grounds (Ground067, Ground031, Ground054, Rock033, Ground051)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
             new Entry("Generic and Wasteland skies (Autumn Field, Kloppenheim 06 - Pure Sky)", "Poly Haven", "CC0 1.0 (public domain)", "https://polyhaven.com"),
+            new Entry("Terrain surfaces - lava, mud, soil, grass (Lava004, Lava001, Ground048, Ground068, Ground003, Grass004, Grass002)", "ambientCG (Lennart Demes)", "CC0 1.0 (public domain)", "https://ambientcg.com"),
+            new Entry("Water ripples (Water 001)", "3DTextures.me", "CC0 1.0 (public domain)", "https://3dtextures.me"),
             new Entry("Weather particle pictures (Particle Pack)", "Kenney", "CC0 1.0 (public domain)", "https://kenney.nl/assets/particle-pack"),
             new Entry("Rain set-up based on TCA Weather System", "kS222", "MIT", "https://github.com/kS222138/TCA_Weather_System"),
         }),

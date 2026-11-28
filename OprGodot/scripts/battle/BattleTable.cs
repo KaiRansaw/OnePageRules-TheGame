@@ -704,9 +704,10 @@ public partial class BattleTable : Node3D
             return true;
         }
         float h = t.HeightInches > 0.05f ? t.HeightInches : 1f;
-        // Kai's hand-built pieces (Asset Lab, Terrain Workshop) in the player's terrain style; else the plain stand-ins.
+        // Kai's hand-built pieces (Terrain Workshop) in the player's terrain style; else the real model packs' look for its
+        // kind, with real surfaces (Kai, 2026-11-27: no made-up shapes).
         if (drawnPolys.Count == 0 || !PieceModels.Dress(holder, drawnPolys[0], kind, t.Look, theme, seed))
-            TerrainDresser.DressBasic(holder, polys, h, kind, theme, seed, t.Name);
+            TerrainDresser.DressAuto(holder, polys, h, kind, t.Look, theme, seed, t.Name);
         DangerEdge(holder, polys, t);
         // Kai, 2026-11-18: built-in terrain only sits IN the ground (never the Warhammer models). Off until he picks.
         GroundBlend.Add(holder, polys, kind, seed, FdgRaylib.Terrain.MapAtmosphere.HorizonFor(Session.Lobby.Vm.MapHorizon));
