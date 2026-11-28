@@ -7978,9 +7978,51 @@
       "name": "Ravage Aura",
       "passive": [
         {
-          "hookID": "Melee_OnChargeContact",
+          "hookID": "Lifecycle_OnUnitCreated",
           "condition": {
             "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Ravage Boost"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model and its unit get Ravage(\u002B1)."
+    },
+    {
+      "name": "Ravage Boost",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "RavagedThisRound"
+                },
+                "minCount": 1
+              }
+            }
           },
           "effect": {
             "kind": "dealAutoWounds",
@@ -7998,7 +8040,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model and its unit get Ravage(\u002B1)."
+      "description": "Ravage(+1): once per round, when this unit strikes in melee and isn't Fatigued, each model rolls 1 more Ravage die (each 6+ deals one wound)."
     },
     {
       "name": "Speed Feat",

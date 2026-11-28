@@ -6391,9 +6391,51 @@
       "name": "Ravage Aura",
       "passive": [
         {
-          "hookID": "Melee_OnChargeContact",
+          "hookID": "Lifecycle_OnUnitCreated",
           "condition": {
             "kind": "always"
+          },
+          "effect": {
+            "kind": "aura",
+            "ruleName": "Ravage Boost"
+          },
+          "lifetime": "UntilEndOfGame",
+          "seat": "Actor"
+        }
+      ],
+      "activated": [],
+      "scope": "Unit",
+      "engineArgumentCount": 0,
+      "valence": "Positive",
+      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Ravage(\u002B1). If this model is killed, picked models that are deployed lose the rule."
+    },
+    {
+      "name": "Ravage Boost",
+      "passive": [
+        {
+          "hookID": "Melee_OnChargeContact",
+          "condition": {
+            "kind": "and",
+            "left": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "Fatigued"
+                },
+                "minCount": 1
+              }
+            },
+            "right": {
+              "kind": "not",
+              "inner": {
+                "kind": "tokenPresent",
+                "tType": {
+                  "id": "RavagedThisRound"
+                },
+                "minCount": 1
+              }
+            }
           },
           "effect": {
             "kind": "dealAutoWounds",
@@ -6411,7 +6453,7 @@
       "scope": "Unit",
       "engineArgumentCount": 0,
       "valence": "Positive",
-      "description": "This model\u0027s unit and up to 2 friendly units picked before the start of the game get Ravage(\u002B1). If this model is killed, picked models that are deployed lose the rule."
+      "description": "Ravage(+1): once per round, when this unit strikes in melee and isn't Fatigued, each model rolls 1 more Ravage die (each 6+ deals one wound)."
     },
     {
       "name": "Speed Feat",

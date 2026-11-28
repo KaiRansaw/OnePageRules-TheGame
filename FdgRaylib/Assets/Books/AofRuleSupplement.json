@@ -2665,9 +2665,51 @@
     "name": "Ravage Aura",
     "passive": [
       {
-        "hookID": "Melee_OnChargeContact",
+        "hookID": "Lifecycle_OnUnitCreated",
         "condition": {
           "kind": "always"
+        },
+        "effect": {
+          "kind": "aura",
+          "ruleName": "Ravage Boost"
+        },
+        "lifetime": "UntilEndOfGame",
+        "seat": "Actor"
+      }
+    ],
+    "activated": [],
+    "scope": "Unit",
+    "engineArgumentCount": 0,
+    "valence": "Positive",
+    "description": "This model and its unit get Ravage(+1)."
+  },
+  {
+    "name": "Ravage Boost",
+    "passive": [
+      {
+        "hookID": "Melee_OnChargeContact",
+        "condition": {
+          "kind": "and",
+          "left": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "Fatigued"
+              },
+              "minCount": 1
+            }
+          },
+          "right": {
+            "kind": "not",
+            "inner": {
+              "kind": "tokenPresent",
+              "tType": {
+                "id": "RavagedThisRound"
+              },
+              "minCount": 1
+            }
+          }
         },
         "effect": {
           "kind": "dealAutoWounds",
@@ -2685,7 +2727,7 @@
     "scope": "Unit",
     "engineArgumentCount": 0,
     "valence": "Positive",
-    "description": "This model and its unit gain Ravage(+1): when it is this unit's turn to attack in melee, it rolls 1 extra Ravage die per model, and each 6+ deals one wound to the target."
+    "description": "Ravage(+1): once per round, when this unit strikes in melee and isn't Fatigued, each model rolls 1 more Ravage die (each 6+ deals one wound)."
   },
   {
     "name": "Reckless Piercing",
