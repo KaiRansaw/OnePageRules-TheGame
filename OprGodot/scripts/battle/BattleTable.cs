@@ -291,8 +291,11 @@ public partial class BattleTable : Node3D
         _outlineSig = sig;
 
         var lines = new List<GhostLine>();
-        if (sel != null) lines.AddRange(Outline(sel, 0.35f, HudKit.Lime, 0.2f));
-        foreach (IUnit u in hl.Where(u => sel == null || !u.ID.Equals(sel.ID))) lines.AddRange(Outline(u, 0.35f, Colors.White, 0.18f));
+        // A thin line on the felt, hidden behind the models (Kai, 2026-11-27: the solid line cut through the models).
+        if (sel != null)
+            lines.AddRange(Outline(sel, 0.35f, HudKit.Lime with { A = 0.9f }, 0.07f).Select(l => l with { UnderModels = true }));
+        foreach (IUnit u in hl.Where(u => sel == null || !u.ID.Equals(sel.ID)))
+            lines.AddRange(Outline(u, 0.35f, Colors.White with { A = 0.7f }, 0.06f).Select(l => l with { UnderModels = true }));
         SetGhosts("select", Array.Empty<Ghost>(), lines);
 
         // The selected unit's weapon ranges, and the hovered enemy's (in warm colours, so the two read apart).
@@ -425,7 +428,9 @@ public partial class BattleTable : Node3D
     public readonly record struct Ghost(float X, float Z, float Radius, Color Colour, bool Ring = false);
 
     /// <summary>A line on the table (a path, an arrow shaft, a range outline), in table inches.</summary>
-    public readonly record struct GhostLine(Vector2 From, Vector2 To, Color Colour, float Width = 0.12f);
+    /// <summary>A line on the table. UnderModels: drawn on the felt and hidden behind models (selection outlines - Kai,
+    /// 2026-11-27: the line cut through the models); otherwise drawn over everything (ranges, move paths).</summary>
+    public readonly record struct GhostLine(Vector2 From, Vector2 To, Color Colour, float Width = 0.12f, bool UnderModels = false);
 
     /// <summary>A floating word on the table (a weapon's name on its range outline).</summary>
     public readonly record struct GhostText(float X, float Z, string Text, Color Colour, float Size = 0.03f);
@@ -536,7 +541,7 @@ public partial class BattleTable : Node3D
             {
                 var l = new Label3D
                 {
-                    Text = t.Text, Font = HudKit.Bold, FontSize = 48, PixelSize = t.Size, OutlineSize = 12, Modulate = t.Colour,
+                    Text = t.Text, Font = HudKit.Medium, FontSize = 40, PixelSize = t.Size * 0.85f, OutlineSize = 6, Modulate = t.Colour,
                     Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, OutlineModulate = new Color(0, 0, 0, 0.85f),
                     Position = World(t.X, t.Z, 0.6f),
                 };
@@ -554,20 +559,23 @@ public partial class BattleTable : Node3D
     {
         var solid = new List<(Vector3 A, Vector3 B, float W, Color C)>();
         var seeThrough = new List<(Vector3 A, Vector3 B, float W, Color C)>();
+        var under = new List<(Vector3 A, Vector3 B, float W, Color C)>();
         foreach (GhostLine line in lines)
         {
-            Vector3 a = World(line.From.X, line.From.Y, 0.1f), b = World(line.To.X, line.To.Y, 0.1f);
+            float lift = line.UnderModels ? 0.04f : 0.1f;
+            Vector3 a = World(line.From.X, line.From.Y, lift), b = World(line.To.X, line.To.Y, lift);
             if (a.DistanceTo(b) < 0.05f) continue;
-            (line.Colour.A < 1 ? seeThrough : solid).Add((a, b, line.Width, line.Colour));
+            (line.UnderModels ? under : line.Colour.A < 1 ? seeThrough : solid).Add((a, b, line.Width, line.Colour));
         }
-        if (solid.Count == 0 && seeThrough.Count == 0) return null;
+        if (solid.Count == 0 && seeThrough.Count == 0 && under.Count == 0) return null;
         var mesh = new ArrayMesh();
         AddBoxes(mesh, solid, false);
         AddBoxes(mesh, seeThrough, true);
+        AddBoxes(mesh, under, true, LineMatUnder);
         return new MeshInstance3D { Mesh = mesh, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     }
 
-    private static void AddBoxes(ArrayMesh mesh, List<(Vector3 A, Vector3 B, float W, Color C)> boxes, bool alpha)
+    private static void AddBoxes(ArrayMesh mesh, List<(Vector3 A, Vector3 B, float W, Color C)> boxes, bool alpha, StandardMaterial3D? mat = null)
     {
         if (boxes.Count == 0) return;
         var st = new SurfaceTool();
@@ -594,18 +602,20 @@ public partial class BattleTable : Node3D
             }
         }
         st.Commit(mesh);
-        mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, alpha ? LineMatAlpha : LineMatSolid);
+        mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, mat ?? (alpha ? LineMatAlpha : LineMatSolid));
     }
 
-    private static StandardMaterial3D LineMat(bool alpha) => new()
+    private static StandardMaterial3D LineMat(bool alpha, bool depthTest = false) => new()
     {
-        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, NoDepthTest = true, VertexColorUseAsAlbedo = true,
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, NoDepthTest = !depthTest, VertexColorUseAsAlbedo = true,
         VertexColorIsSrgb = true, CullMode = BaseMaterial3D.CullModeEnum.Disabled,
         Transparency = alpha ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
     };
     private static StandardMaterial3D? _lineSolid, _lineAlpha;
     private static StandardMaterial3D LineMatSolid => _lineSolid is { } m && IsInstanceValid(m) ? m : _lineSolid = LineMat(false);
     private static StandardMaterial3D LineMatAlpha => _lineAlpha is { } m && IsInstanceValid(m) ? m : _lineAlpha = LineMat(true);
+    private static StandardMaterial3D? _lineUnder;
+    private static StandardMaterial3D LineMatUnder => _lineUnder is { } m && IsInstanceValid(m) ? m : _lineUnder = LineMat(true, depthTest: true);
 
     // ------------------------------------------------------------------ world
     private FdgRaylib.Terrain.TableRooms.Room? _room;
@@ -977,7 +987,7 @@ public partial class BattleTable : Node3D
                 if (label.Text != want)
                 {
                     label.Text = want;
-                    label.OutlineModulate = wanted ? new Color(0.75f, 0.05f, 0.05f, 0.95f) : new Color(0, 0, 0, 0.85f);
+                    label.OutlineModulate = wanted ? new Color(0.75f, 0.05f, 0.05f, 0.95f) : new Color(0, 0, 0, 0.7f);
                 }
                 Sprite3D[] marks = Marks(unit);
                 bool fatigued = unit.Tokens.HasToken(FDG.Rules.Foundation.TokenType.Fatigued);
@@ -1056,7 +1066,7 @@ public partial class BattleTable : Node3D
     }
 
     /// <summary>The smallest a unit's name / its status marks / an objective's number may get on screen (pixels).</summary>
-    public const float UnitNamePixels = 20f, UnitMarkPixels = 22f, ObjectiveNumberPixels = 28f;
+    public const float UnitNamePixels = 14f, UnitMarkPixels = 18f, ObjectiveNumberPixels = 28f;
 
     private readonly Dictionary<UnitID, (string? Json, bool Wanted)> _wanted = new();
 
@@ -1075,8 +1085,9 @@ public partial class BattleTable : Node3D
         if (_labels.TryGetValue(unit.ID, out Label3D? l)) return l;
         l = new Label3D
         {
-            Text = unit.Name.ToUpperInvariant(), Font = HudKit.Bold, FontSize = 44, PixelSize = 0.016f, OutlineSize = 12,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, OutlineModulate = new Color(0, 0, 0, 0.85f),
+            // Lighter and smaller (Kai, 2026-11-27: names too thick and big - several units cluttered the table).
+            Text = unit.Name.ToUpperInvariant(), Font = HudKit.Medium, FontSize = 36, PixelSize = 0.0115f, OutlineSize = 6,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, OutlineModulate = new Color(0, 0, 0, 0.7f),
         };
         AddChild(l);
         _labels[unit.ID] = l;
