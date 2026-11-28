@@ -527,6 +527,9 @@ public partial class ScriptedRun : Node
             if (name.StartsWith("pic:") && Find<Lab.PictureManager>(GetTree().Root) is { } pm)
             { var parts = name[4..].Split('|'); pm.Drive(parts[0], parts.Length > 1 ? parts[1] : null); _wait = 20; return; }
             if (name == "viewer" && Find<Lab.AssetLabScreen>(GetTree().Root) is { } lv) { lv.ShowViewer(""); return; }
+            // "paper:<command>" drives Asset Lab -> Paper models, "pm:<command>" Match paper models (see their Drive methods).
+            if (name.StartsWith("paper:") && Find<Lab.PaperModelsScreen>(GetTree().Root) is { } paperScreen) { paperScreen.Drive(name[6..]); _wait = 30; return; }
+            if (name.StartsWith("pm:") && Find<Lab.PaperMatchScreen>(GetTree().Root) is { } pmScreen) { pmScreen.Drive(name[3..]); _wait = 20; return; }
             // "match:<command>" drives Match models (see MatchModelsScreen.Drive): "match:fac:Tyranids", "match:use"...
             if (name.StartsWith("match:") && Find<Lab.MatchModelsScreen>(GetTree().Root) is { } match)
             {

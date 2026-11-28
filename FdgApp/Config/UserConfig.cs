@@ -233,6 +233,10 @@ public sealed class ViewPreferences
     public bool BattleEffects { get; set; } = true;
     /// <summary>Godot build: draw downloaded 3D models (UnitModels) on the battle table instead of the plain tokens.</summary>
     public bool ShowUnitModels { get; set; } = true;
+    /// <summary>Godot build (lane 5, 2026-11-28): Settings -> Display -> "Unit look" - "auto" (3D model, else paper standee,
+    /// else token), "paper" (paper first) or "tokens". Null in an older settings file: <see cref="ShowUnitModels"/> decides
+    /// (FdgRaylib.Paper.UnitLooks.Mode).</summary>
+    public string? UnitLook { get; set; }
     /// <summary>Godot build: the UI theme - "classic" (the drawn cut-corner panels) or an art pack's id ("hologram",
     /// "minimal"; OprGodot Hud.Skin.All). Kai is trying packs (2026-11-16); Settings -> Display -> UI theme.</summary>
     public string UiSkin { get; set; } = "minimal";

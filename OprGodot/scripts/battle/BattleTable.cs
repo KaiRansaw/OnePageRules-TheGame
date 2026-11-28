@@ -2,6 +2,7 @@ using FDG;
 using FdgRaylib.Config;
 using FdgRaylib.Game;
 using FdgRaylib.Models3D;
+using FdgRaylib.Paper;
 using FdgRaylib.Rendering;
 using Godot;
 using OprGodot.Hud;
@@ -150,6 +151,12 @@ public partial class BattleTable : Node3D
     // ------------------------------------------------------------------ downloaded 3D models
 
     private UnitModelLibrary? _library;
+    private PaperLibrary? _paper;
+    private UnitLookMode _lookMode = UnitLookMode.Auto;
+
+    /// <summary>The paper figure for one model (none when no figure is matched to its unit).</summary>
+    private PaperLibrary.Figure? PaperFor(IUnit unit, IModel model) =>
+        _paper?.FigureFor(Session.SeatOf(unit.PlayerID)?.Faction ?? "", unit.Name, model.Look, unit.Models.IndexOf(model));
     private readonly Dictionary<string, Lab.LoadedAsset?> _modelFiles = new();
     private readonly Dictionary<string, UnitModelSettings> _modelSettings = new();
 
@@ -160,7 +167,13 @@ public partial class BattleTable : Node3D
     /// </summary>
     private void LoadUnitModels()
     {
-        if (!UserConfig.Current.View.ShowUnitModels) return;
+        _lookMode = UnitLooks.Mode(UserConfig.Current.View);
+        _paper = null;
+        if (_lookMode == UnitLookMode.Tokens) return;
+        // Paper models (lane 5): the figures matched in the Asset Lab, read fresh for each game.
+        PaperLibrary.Reload();
+        Standee.ClearCache();
+        _paper = PaperLibrary.Current.FigureCount > 0 ? PaperLibrary.Current : null;
         UnitModelMap? map = null;
         try { map = UnitModelMap.Load(); } catch (Exception) { }
         _library = UnitModelLibrary.Scan(UnitModelPaths.Root, map);
@@ -625,7 +638,7 @@ public partial class BattleTable : Node3D
         Board();
         Camera.Fov = Horizon.Lens;
         Camera.Far = Horizon.On ? Horizon.Reach * 2.5f : 2000;
-        if (_modelsShown != UserConfig.Current.View.ShowUnitModels)
+        if (_modelsShown != UserConfig.Current.View.ShowUnitModels || _lookMode != UnitLooks.Mode(UserConfig.Current.View))
         {
             _modelsShown = UserConfig.Current.View.ShowUnitModels;
             _library = null;
@@ -1017,7 +1030,13 @@ public partial class BattleTable : Node3D
         var rim = (StandardMaterial3D)((MeshInstance3D)root.GetChild(0)).MaterialOverride;
         float height;
         bool big = m.TotalWounds >= 6 || rad > 1.4f;
-        if (AddUnitModel(root, m, unit, out float modelHeight)) height = modelHeight;
+        // Settings -> Display -> Unit look: a 3D model, a paper standee or the token, in the order picked there.
+        PaperLibrary.Figure? paper = PaperFor(unit, m);
+        UnitLookKind kind = UnitLooks.Pick(_lookMode, FileFor(unit, m) != null, paper != null);
+        float paperHeight = 0;
+        if (kind == UnitLookKind.Model3D && AddUnitModel(root, m, unit, out float modelHeight)) height = modelHeight;
+        else if (kind != UnitLookKind.Token && paper != null && (paperHeight = Standee.Add(root, paper, rad)) > 0) height = paperHeight;
+        else if (kind == UnitLookKind.Paper && AddUnitModel(root, m, unit, out float fallback)) height = fallback;
         else if (big)
         {
             Mesh(root, TableLook.SharedMesh($"tokbox:{rad}", () => new BoxMesh { Size = new Vector3(rad * 1.3f, 1.8f, rad * 1.6f) }), body, new Vector3(0, 1.15f, 0));

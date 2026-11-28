@@ -101,8 +101,14 @@ public partial class SettingsScreen : Control
         tstyle.Selected = View.TerrainStyle == FdgRaylib.Terrain.TerrainPieces.Realistic ? 1 : 0;
         tstyle.ItemSelected += i => { View.TerrainStyle = i == 1 ? FdgRaylib.Terrain.TerrainPieces.Realistic : FdgRaylib.Terrain.TerrainPieces.Stylised; FdgRaylib.Config.UserConfig.Save(); };
         rows.AddChild(Row("Terrain style", "Which set of built-in terrain models the table uses. A terrain kind with no hand-built piece in that style yet keeps the older look. Your Warhammer terrain is not affected. Takes effect from the next game.", tstyle));
-        rows.AddChild(Check("3D unit models", "Show the models you downloaded in the Asset Lab on the battle table. Off: everyone is the plain token (quicker on a slow computer). Takes effect from the next game.",
-            View.ShowUnitModels, on => View.ShowUnitModels = on));
+        // Lane 5 (2026-11-28): paper models joined the 3D ones - one picker for what stands on the table.
+        var look = new OptionButton { Name = "UnitLook" };
+        look.AddItem("Auto (3D model, else paper, else token)");
+        look.AddItem("Paper first (paper, else 3D model, else token)");
+        look.AddItem("Tokens (plain tokens for everyone)");
+        look.Selected = (int)FdgRaylib.Paper.UnitLooks.Mode(View);
+        look.ItemSelected += i => { FdgRaylib.Paper.UnitLooks.Set(View, (FdgRaylib.Paper.UnitLookMode)(int)i); FdgRaylib.Config.UserConfig.Save(); };
+        rows.AddChild(Row("Unit look", "What each model stands as on the battle table. Auto: the 3D model you downloaded in the Asset Lab, else the paper miniature matched to its unit (Asset Lab -> Paper models), else the plain token. Paper first: the paper miniature wins over the 3D model. Tokens: everyone is the plain token (quickest on a slow computer). Changes the table when you come back to it.", look));
         rows.AddChild(Check("Unit labels", "Show each unit's name over it on the table.",
             View.ShowLabels, on => View.ShowLabels = on));
         rows.AddChild(Check("Table grid", "Draw faint lines every 6\" across the table, to judge distances at a glance.",

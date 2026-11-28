@@ -271,6 +271,8 @@ public static class Scenes
     public const string FacingReview = "res://scenes/screens/FacingReview.tscn";
     public const string ModelPicker = "res://scenes/screens/ModelPicker.tscn";
     public const string MatchModels = "res://scenes/screens/MatchModels.tscn";
+    public const string PaperModels = "res://scenes/screens/PaperModels.tscn";
+    public const string PaperMatch = "res://scenes/screens/PaperMatch.tscn";
     public const string ArmyForge = "res://scenes/screens/ArmyForge.tscn";
     public const string HeroBuilder = "res://scenes/screens/HeroBuilder.tscn";
     public const string QuestCampaigns = "res://scenes/screens/QuestCampaigns.tscn";

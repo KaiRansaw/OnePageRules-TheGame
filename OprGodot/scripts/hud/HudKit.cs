@@ -281,6 +281,13 @@ public static class HudKit
             t = ImageTexture.CreateFromImage(mi);
             ModelMade.Add(t);
         }
+        // Paper models (lane 5): a unit with no picture at all shows its paper figure - a cut-out, so on the backdrop.
+        if (t == null && FdgRaylib.Paper.PaperLibrary.Current.FiguresFor(faction, unit).FirstOrDefault() is { } paper
+            && System.IO.File.Exists(paper.FrontPath) && Image.LoadFromFile(paper.FrontPath) is { } pi)
+        {
+            t = ImageTexture.CreateFromImage(pi);
+            ModelMade.Add(t);
+        }
         return Pictures[key] = t;
     }
 

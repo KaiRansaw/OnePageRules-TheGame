@@ -74,6 +74,9 @@ public static class CreditsText
             new Entry("Newtonsoft.Json", "James Newton-King", "MIT License"),
             new Entry("System.Reactive (Rx.NET)", ".NET Foundation and contributors", "MIT License"),
             new Entry("Mono.Nat", "Alan McGovern, Ben Motmans, Nicholas Terry", "MIT License"),
+            new Entry("PDFium (reads paper-model PDF sheets)", "The PDFium Authors (Google)", "BSD 3-Clause / Apache 2.0", "https://pdfium.googlesource.com/pdfium/"),
+            new Entry("Docnet.Core", "Modestas Petravicius", "MIT License"),
+            new Entry("StbImageSharp", "StbSharp team, after Sean Barrett's stb_image", "Public domain"),
             new Entry("Raylib-cs, raylib, rlImGui-cs, Dear ImGui, TinyDialogsNet (the older build)", "Their authors", "zlib / MIT"),
         }, "Full licence texts: THIRD-PARTY-NOTICES.txt beside the game."),
         new Section("Terrain models (shipped with the game)", new[]

@@ -30,6 +30,7 @@ public partial class LabHome : PanelContainer
     private static readonly Section[] Sections =
     {
         new("models", "3D models", "Download the Warhammer models for each army, match them to OPR units, and check they face the right way.", "stack"),
+        new("paper", "Paper models", "OPR's free paper miniatures: import the PDF sheets, every figure is cut out, then match them to units. They stand on the table as standees for units with no 3D model.", "scroll-unfurled"),
         new("pictures", "Unit pictures", "OPR's own pictures for every unit, from Army Forge, and pictures made from the models. Shown on the unit cards and army lists.", "binoculars"),
         new("mine", "Your pictures", "Your backdrops, game tiles and army pictures for the menus - the picture manager.", "flying-flag"),
         new("terrain", "Terrain", "The game's own terrain pieces (Terrain Workshop), Warhammer terrain pieces and table mats, and what each piece is on a map.", "position-marker"),
@@ -45,8 +46,15 @@ public partial class LabHome : PanelContainer
             new("ReviewFacing", "Review facing...", "Go through the models one by one and turn any that face the wrong way.", () => App.I.Open<FacingReviewScreen>(Scenes.FacingReview)),
             new("Home_BrowseModels", "Browse models", "Every downloaded model on the real table at true size, with a search box - set how one stands, see a unit or an army of it.", () => ShowViewer("")),
             new("ImportStl", "Import printable model...", "Bring in a 3D-printing model (.stl) and its base, made light for the table and saved to a unit.", () => _lab.OpenStlImport()),
-            new("Home_SendSettings", "Send my settings to GitHub", "Sends how every model stands (facing, tilt, height, base), your picture framing and your model / terrain matches and your audio folder to GitHub, so every download - your laptop, your friends - gets them. Only from the PC that runs the game from the repo.", SendSettings),
+            new("Home_SendSettings", "Send my settings to GitHub", "Sends how every model stands (facing, tilt, height, base), your picture framing and your model / terrain matches, your paper models and your audio folder to GitHub, so every download - your laptop, your friends - gets them. Only from the PC that runs the game from the repo.", SendSettings),
             new("Home_OpenFolder", "Open the models folder", "The UnitModels folder in Windows, to add or rename files yourself.", () => OS.ShellOpen(FdgRaylib.Models3D.UnitModelPaths.Root)),
+        },
+        "paper" => new Tool[]
+        {
+            new("Home_PaperModels", "Paper models...", "Import OPR's paper-miniature PDF sheets (several at once, or a folder). Every figure is cut out by itself; fix a bad cut on the page (draw a box, split, merge, delete, swap front and back).", () => App.I.Open<PaperModelsScreen>(Scenes.PaperModels), true),
+            new("Home_PaperMatch", "Match paper models...", "Give the cut-out figures to units: a picture grid, pick several, then the game, army and unit. One unit can have several figures - a squad mixes them.", () => App.I.Open<PaperMatchScreen>(Scenes.PaperMatch)),
+            new("Home_SendSettingsPaper", "Send my settings to GitHub", "Sends your paper figures and their matches (with the rest of your Asset Lab settings) to GitHub, so every download stands the same paper models. Only from the PC that runs the game from the repo.", SendSettings),
+            new("Home_OpenPaperFolder", "Open the paper models folder", "UnitModels\\_Paper in Windows.", () => OS.ShellOpen(FdgRaylib.Paper.PaperStore.LocalRoot)),
         },
         "pictures" => new Tool[]
         {
@@ -228,6 +236,15 @@ public partial class LabHome : PanelContainer
             var slots = AllPictureSlots();
             int set = MenuPictures.CountSet(slots);
             return ($"{set} of {slots.Count} set", slots.Count == 0 ? 0 : set / (float)slots.Count);
+        }
+        if (key == "paper")
+        {
+            var sheets = FdgRaylib.Paper.PaperStore.LoadSheets(FdgRaylib.Paper.PaperStore.LocalRoot);
+            int figs = sheets.Sum(x => x.Figures.Count);
+            if (figs == 0) return ("No paper models yet", 0);
+            var m = FdgRaylib.Paper.PaperMatches.Load(FdgRaylib.Paper.PaperMatches.LocalPath());
+            int done = sheets.Sum(x => x.Figures.Count(f => m.IsMatched(x.IdOf(f))));
+            return ($"{figs:N0} figures - {done:N0} matched", done / (float)figs);
         }
         if (_stats is not { } st) return ("Counting...", 0);
         return key switch
