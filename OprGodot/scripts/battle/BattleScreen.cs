@@ -1822,7 +1822,7 @@ public partial class BattleScreen : Control, IOwnBackdrop, OprGodot.Hud.ILooked,
             var rv = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
             rv.AddThemeConstantOverride("separation", 0);
             var rtop = new HBoxContainer();
-            rtop.AddChild(HudKit.Text("RELIC", 11, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
+            rtop.AddChild(HudKit.Text(FDG.RelicWargear.ItemLabel(Session.Lobby.Vm.GameSystem).ToUpperInvariant(), 11, HudKit.Gold, HudKit.Tracked(HudKit.Bold, 2)));
             rtop.AddChild(HudKit.Grow());
             rtop.AddChild(HudKit.Text(!once ? "ALWAYS ON" : relic.Used ? "USED" : "READY (ONCE)", 11, once && !relic.Used ? HudKit.Gold : HudKit.Dim, HudKit.Bold));
             rv.AddChild(rtop);
