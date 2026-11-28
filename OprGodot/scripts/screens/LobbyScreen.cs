@@ -654,7 +654,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
         // The rest of the Advanced Rulebook's optional systems (Kai, 2026-11-23: "do everything"): a tick box per
         // chapter, then one per option, each hover the book's words and then what the game does.
         if (LobbyDeploymentPreview.ExtraActionsApply(system, mode))
-            foreach (string chapter in FDG.AdvancedRules.Chapters(system))
+            foreach (string chapter in FDG.AdvancedRules.Chapters(system, mode))
             {
                 FDG.EAdvancedRules ticked = Vm.AdvancedRules & FDG.AdvancedRules.ChapterFlags(chapter);
                 bool open = _advancedOpen.Contains(chapter) || ticked != FDG.EAdvancedRules.None;
@@ -665,7 +665,7 @@ public partial class LobbyScreen : Control, Hud.ILooked
                         else { _advancedOpen.Remove(chapter); Vm.SetAdvancedRules(Vm.AdvancedRules & ~FDG.AdvancedRules.ChapterFlags(chapter)); }
                     });
                 if (!open) continue;
-                foreach (FDG.AdvancedRuleOption option in FDG.AdvancedRules.In(chapter, system))
+                foreach (FDG.AdvancedRuleOption option in FDG.AdvancedRules.In(chapter, system, mode))
                     Check(rows, option.Name, (Vm.AdvancedRules & option.Flag) != 0,
                         option.Name + ": " + option.BookText + "\n\nIn this game: " + option.GameText
                         + (option.Flag == FDG.EAdvancedRules.CriticalHitsByWeaponType ? "\n\n" + FDG.CriticalHits.AllTablesText(system) : ""), locked, v =>
