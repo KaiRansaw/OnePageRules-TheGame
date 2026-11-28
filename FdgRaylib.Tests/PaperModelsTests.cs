@@ -218,6 +218,65 @@ public class PaperModelsTests
     }
 
     [Test]
+    public void ACutLineBoxRoundEachPair_IsNotPartOfThePicture()
+    {
+        var (figs, lines) = Sheet(1, 2, single: false);
+        // a thin cut-line box round each strip, a little away from the figures
+        foreach (var f in figs.Where(f => f.UpsideDown))
+        {
+            double x = f.X - 6, y = f.Y - 6, w = f.W + 12, h = 2 * f.H + 4 + 12;
+            lines.Add((x, y, w, 0.8)); lines.Add((x, y + h, w, 0.8));
+            lines.Add((x, y, 0.8, h)); lines.Add((x + w, y, 0.8, h + 0.8));
+        }
+        var page = Raster(figs, lines);
+        var found = PaperCutter.FindFigures(page, At150);
+        Assert.That(found, Has.Count.EqualTo(2));
+        Assert.That(found.All(f => f.Fold == PaperFold.TopBottom), "still read as fold pairs inside their boxes");
+        foreach (var f in found)
+        {
+            RgbaImage cut = PaperCutter.CutOut(page, f.Front, 4000, At150);
+            // trimmed to the figure itself: its corners are see-through paper (beside the head), not a box line
+            Assert.That(cut.Get(1, 1).A, Is.EqualTo(0), "no cut-line corner left on the picture");
+            Assert.That(cut.Width, Is.LessThanOrEqualTo((int)(65 * 150 / 72.0) + 6), "as wide as the figure, not the box");
+        }
+    }
+
+    [TestCase((byte)245, (byte)235, (byte)205)] // cream paper
+    [TestCase((byte)205, (byte)208, (byte)212)] // grey card
+    public void FiguresOnColouredPaper_AreFoundAndCutClean(byte r, byte g, byte b)
+    {
+        var (figs, lines) = Sheet(1, 3, single: false);
+        lines.Clear(); // no fold lines or title: dark lines would vanish on dark paper anyway
+        double k = 150 / 72.0;
+        var page = RgbaImage.Blank((int)(595 * k), (int)(842 * k), r, g, b);
+        var drawn = Raster(figs, lines, 150);
+        // copy the figures (not the white page) onto the coloured one
+        for (int i = 0; i < drawn.Pixels.Length; i += 4)
+            if (drawn.Pixels[i] != 255 || drawn.Pixels[i + 1] != 255 || drawn.Pixels[i + 2] != 255 || IsHighlight(drawn, i))
+                Buffer.BlockCopy(drawn.Pixels, i, page.Pixels, i, 4);
+        Assert.That(PaperCutter.PaperColour(page), Is.EqualTo((r, g, b)));
+        var found = PaperCutter.FindFigures(page, At150);
+        Assert.That(found, Has.Count.EqualTo(3));
+        RgbaImage cut = PaperCutter.CutOut(page, found[0].Front, 4000, At150);
+        Assert.That(cut.Get(1, (int)(cut.Height * 0.05)).A, Is.EqualTo(0), "the coloured paper beside the head is see-through");
+    }
+
+    /// <summary>The white highlight squares inside the bodies (kept white on any paper).</summary>
+    private static bool IsHighlight(RgbaImage img, int i)
+    {
+        int p = i / 4, x = p % img.Width, y = p / img.Width;
+        if (x < 2 || y < 2 || x >= img.Width - 2 || y >= img.Height - 2) return false;
+        // white with ink close on both sides = inside a figure
+        int left = 0, right = 0;
+        for (int d = 1; d < 12; d++)
+        {
+            if (x - d >= 0 && img.Get(x - d, y).R != 255) left++;
+            if (x + d < img.Width && img.Get(x + d, y).R != 255) right++;
+        }
+        return left > 0 && right > 0;
+    }
+
+    [Test]
     public void TheBackPicture_IsTurnedToStand()
     {
         var (figs, lines) = Sheet(1, 1, single: false);

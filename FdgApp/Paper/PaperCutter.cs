@@ -42,7 +42,8 @@ public static class PaperCutter
 
     // ================================================================== paper and ink
 
-    /// <summary>The paper's colour: the median of a band round the page edge (where nothing is printed).</summary>
+    /// <summary>The paper's colour: the median of a band round the page edge (where nothing is printed) when that band is
+    /// even; white when it isn't (art printed to the edge).</summary>
     public static (byte R, byte G, byte B) PaperColour(RgbaImage page)
     {
         int band = Math.Max(2, Math.Min(page.Width, page.Height) / 60);
@@ -55,10 +56,14 @@ public static class PaperCutter
                 rs.Add(r); gs.Add(g); bs.Add(b);
             }
         if (rs.Count == 0) return (255, 255, 255);
-        static byte Med(List<byte> l) { l.Sort(); return l[l.Count / 2]; }
-        var c = (Med(rs), Med(gs), Med(bs));
-        // A page whose edge is all ink (full-bleed art) - fall back to white paper.
-        return c.Item1 + c.Item2 + c.Item3 < 3 * 150 ? ((byte)255, (byte)255, (byte)255) : c;
+        static byte Med(List<byte> l) { var c = new List<byte>(l); c.Sort(); return c[c.Count / 2]; }
+        var c = (R: Med(rs), G: Med(gs), B: Med(bs));
+        // An even edge is the paper, whatever its colour (white, cream, or a dark backdrop the figures sit on). An
+        // uneven one is art running off the page - then assume white paper.
+        int even = 0;
+        for (int i = 0; i < rs.Count; i++)
+            if (Math.Abs(rs[i] - c.R) <= 24 && Math.Abs(gs[i] - c.G) <= 24 && Math.Abs(bs[i] - c.B) <= 24) even++;
+        return even >= rs.Count * 0.9 ? c : ((byte)255, (byte)255, (byte)255);
     }
 
     /// <summary>Whether each pixel is ink (not paper-coloured).</summary>
@@ -147,6 +152,7 @@ public static class PaperCutter
             box[l] = (Math.Min(b.X0, x), Math.Min(b.Y0, y), Math.Max(b.X1, x), Math.Max(b.Y1, y), b.Count + 1);
         }
         var found = new List<PaperFigure>();
+        var blobOf = new Dictionary<PaperFigure, int>();
         int minH = o.Px(o.MinHeightMm), minW = o.Px(o.MinWidthMm);
         for (int l = 1; l <= n; l++)
         {
@@ -158,8 +164,9 @@ public static class PaperCutter
             if (rect.W > w * 0.85 && rect.H > h * 0.85 && b.Count < rect.Area * 0.12) continue;
             int label = l;
             var fig = Detect(page, rect, (x, y) => labels[y * w + x] == label, o, paper);
-            if (fig != null) found.Add(fig);
+            if (fig != null) { found.Add(fig); blobOf[fig] = label; }
         }
+        PairUp(page, found, blobOf, labels, o, paper);
         // Reading order: rows (by top edge, grouped within half a figure's height), then left to right.
         found.Sort((a, b) => a.Box.Y.CompareTo(b.Box.Y));
         var ordered = new List<PaperFigure>();
@@ -172,6 +179,48 @@ public static class PaperCutter
         }
         return ordered;
     }
+
+    /// <summary>
+    /// Two single figures printed as a fold pair with a clear gap between the halves (no fold line joining them): one
+    /// straight above the other (or beside it), about the same size, close together. Tried as one strip; when the
+    /// strip reads as a fold pair the two become one figure.
+    /// </summary>
+    private static void PairUp(RgbaImage page, List<PaperFigure> found, Dictionary<PaperFigure, int> blobOf, int[] labels, Options o,
+        (byte R, byte G, byte B) paper)
+    {
+        int gapMax = o.Px(4), w = page.Width;
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            var singles = found.Where(f => f.Fold == PaperFold.None).ToList();
+            foreach (var a in singles)
+            {
+                foreach (var b in singles)
+                {
+                    if (a == b) continue;
+                    PixelRect A = a.Box, B = b.Box;
+                    bool below = B.Y >= A.Bottom && B.Y - A.Bottom <= gapMax && Overlap(A.X, A.Right, B.X, B.Right) >= 0.8 * Math.Max(A.W, B.W);
+                    bool beside = B.X >= A.Right && B.X - A.Right <= gapMax && Overlap(A.Y, A.Bottom, B.Y, B.Bottom) >= 0.8 * Math.Max(A.H, B.H);
+                    if (!below && !beside) continue;
+                    if (Math.Abs(A.W - B.W) > Math.Max(A.W, B.W) * 0.15 || Math.Abs(A.H - B.H) > Math.Max(A.H, B.H) * 0.15) continue;
+                    int la = blobOf[a], lb = blobOf[b];
+                    var pair = Detect(page, A.Union(B), (x, y) => labels[y * w + x] is var l && (l == la || l == lb), o, paper);
+                    if (pair == null || pair.Fold == PaperFold.None) continue;
+                    found[found.IndexOf(a)] = pair;
+                    found.Remove(b);
+                    blobOf[pair] = la;
+                    // both blobs count as the pair's from now on
+                    for (int i = 0; i < labels.Length; i++) if (labels[i] == lb) labels[i] = la;
+                    changed = true;
+                    break;
+                }
+                if (changed) break;
+            }
+        }
+    }
+
+    private static int Overlap(int a0, int a1, int b0, int b1) => Math.Max(0, Math.Min(a1, b1) - Math.Max(a0, b0));
 
     /// <summary>
     /// The figure inside <paramref name="area"/> (a found blob, or a box Kai drew): trimmed to its ink and tried as a
@@ -372,8 +421,8 @@ public static class PaperCutter
     {
         o ??= Default;
         var paper = paperColour ?? PaperColour(page);
-        // a little margin so the soft edge has room
-        var r = new PixelRect(part.Rect.X - 2, part.Rect.Y - 2, part.Rect.W + 4, part.Rect.H + 4).ClipTo(page.Width, page.Height);
+        // Exactly the part: a margin would pull in the edge of the fold line (or a neighbour) lying just outside it.
+        var r = part.Rect.ClipTo(page.Width, page.Height);
         RgbaImage img = page.Crop(r);
         MakeSeeThrough(img, paper, o);
         if (part.Turned) img = img.FlipVertical().FlipHorizontal();
@@ -391,6 +440,7 @@ public static class PaperCutter
         o ??= Default;
         int w = img.Width, h = img.Height;
         bool[] ink = Ink(img, paper, o.PaperTolerance);
+        DropFrames(ink, w, h);
         // the figure's own ink
         bool[] grown = Grow(ink, w, h, o.Px(o.JoinMm));
         var labels = new int[w * h];
@@ -457,6 +507,40 @@ public static class PaperCutter
                 int diff = Math.Max(Math.Abs(p[i * 4] - paper.R), Math.Max(Math.Abs(p[i * 4 + 1] - paper.G), Math.Abs(p[i * 4 + 2] - paper.B)));
                 p[i * 4 + 3] = (byte)Math.Clamp(diff * 255 / 90, 90, 255);
             }
+    }
+
+    /// <summary>
+    /// Takes cut lines out of the ink: a printed box (or the three sides of one) drawn round the figure to cut along.
+    /// That is ink that spans nearly the whole picture both ways while covering little of it - a thin outline, not
+    /// the figure (whose own outline is joined to its painted inside).
+    /// </summary>
+    public static void DropFrames(bool[] ink, int w, int h)
+    {
+        var labels = new int[w * h];
+        int n = Label(ink, w, h, labels);
+        if (n == 0) return;
+        var count = new int[n + 1];
+        var x0 = Enumerable.Repeat(int.MaxValue, n + 1).ToArray(); var x1 = new int[n + 1];
+        var y0 = Enumerable.Repeat(int.MaxValue, n + 1).ToArray(); var y1 = new int[n + 1];
+        for (int i = 0; i < ink.Length; i++)
+        {
+            int l = labels[i];
+            if (l == 0) continue;
+            int x = i % w, y = i / w;
+            count[l]++;
+            x0[l] = Math.Min(x0[l], x); x1[l] = Math.Max(x1[l], x);
+            y0[l] = Math.Min(y0[l], y); y1[l] = Math.Max(y1[l], y);
+        }
+        var drop = new bool[n + 1];
+        bool any = false;
+        for (int l = 1; l <= n; l++)
+        {
+            int bw = x1[l] - x0[l] + 1, bh = y1[l] - y0[l] + 1;
+            drop[l] = bw >= w * 0.85 && bh >= h * 0.85 && count[l] < bw * (long)bh * 0.12;
+            any |= drop[l];
+        }
+        if (!any) return;
+        for (int i = 0; i < ink.Length; i++) if (labels[i] != 0 && drop[labels[i]]) ink[i] = false;
     }
 
     private static int Label4(bool[] m, int w, int h, int[] labels)
