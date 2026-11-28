@@ -48,6 +48,13 @@ public class CliApp
     public static bool SolidBuildings { get; set; }
     /// <summary>--mission-cards &lt;game&gt;: the Mission Cards game to play (Off = core objectives) - for sweeps.</summary>
     public static FDG.Missions.EMissionCardGame MissionCards { get; set; }
+
+    /// <summary>
+    /// --campaign-writeback (bug hunt, 2026-11-28): at game end, run the campaign write-back the app runs
+    /// (<see cref="FdgRaylib.Quest.StrikeTeamFiles.WriteBack"/>) and print every campaign army's record of the
+    /// mission, so a headless sweep can check casualties, XP and rewards against the Campaign Rules.
+    /// </summary>
+    public static bool CampaignWriteBack { get; set; }
     /// <summary>--simplified-terrain: the Fast-Play Simplified Terrain switch (every piece a solid building) - for sweeps.</summary>
     public static bool SimplifiedTerrain { get; set; }
     public static FDG.Missions.ESideMissionPlay SideMissions { get; set; }
@@ -224,6 +231,7 @@ public class CliApp
         if (Log != null)
             RuleLoadWarnings.AttachLog(Log);
         server.OnGameCompleted += PrintGameResult;
+        if (CampaignWriteBack) server.OnGameCompleted += PrintCampaignWriteBack;
         server.OnGameEnded += result =>
         {
             logUI.DisplayLogMessage($"Game ended: {result}", TextColor.White);
@@ -289,6 +297,27 @@ public class CliApp
     /// </summary>
     private static void PrintGameResult(GameResult result) =>
         Console.WriteLine($"Game result: {result.ToSummaryLine()}");
+
+    /// <summary>--campaign-writeback: the app's after-game campaign write-back, and each army's record of it.</summary>
+    private void PrintCampaignWriteBack(GameResult result)
+    {
+        ITableState? table = TableState;
+        var files = table?.Units.Objects.OfType<FDG.UnitData>()
+            .Select(u => FDG.Campaign.StrikeUnit.FromJson(u.StrikeUnitJson)?.TeamFile)
+            .Where(f => f != null).Distinct().ToList() ?? new();
+        string? summary = FdgRaylib.Quest.StrikeTeamFiles.WriteBack(table, result);
+        Console.WriteLine($"Campaign write-back: {summary ?? "(nothing)"}");
+        foreach (string? file in files)
+        {
+            if (FdgRaylib.Quest.StrikeTeamFiles.Load(file!) is not { StrikeTeam: { } info } army) continue;
+            Console.WriteLine($"Campaign army {info.Name}: VP {info.Vp}, treasury {info.BankedPoints}, worth {army.TotalPoints} pts, "
+                + $"{army.Units.Count} units, record {info.Wins}/{info.Matches}");
+            foreach (string line in info.History) Console.WriteLine($"  campaign: {line}");
+            foreach (var unit in army.Units)
+                if (FDG.Campaign.CampaignRules.Sheet(unit) is { } sheet)
+                    Console.WriteLine($"  unit: {unit.Name} - {sheet.Xp} XP, {unit.PointCost} pts, rules [{string.Join(", ", unit.SpecialRules.Select(r => r.PrintableName))}], pending [{string.Join(", ", sheet.Pending)}]");
+        }
+    }
 
     private PlayerSlot[] CreatePlayerSlots()
     {

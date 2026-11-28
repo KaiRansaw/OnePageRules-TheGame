@@ -110,6 +110,9 @@ if (conditionIdx >= 0 && conditionIdx + 1 < args.Length && int.TryParse(args[con
 int attackerIdx = Array.IndexOf(args, "--attacker");
 if (attackerIdx >= 0 && attackerIdx + 1 < args.Length && int.TryParse(args[attackerIdx + 1], out int attackerTeam))
     FdgRaylib.Cli.CliApp.AttackerTeam = attackerTeam;
+// --campaign-writeback: after a headless game, run the campaign write-back on every campaign army that played
+// (casualties, XP, level ups, treasury, VP, special objective) and print what it did. See --make-campaign-army.
+if (Array.IndexOf(args, "--campaign-writeback") >= 0) FdgRaylib.Cli.CliApp.CampaignWriteBack = true;
 int terrainIdx = Array.IndexOf(args, "--terrain-layout");
 if (terrainIdx >= 0 && terrainIdx + 1 < args.Length) FdgRaylib.Cli.CliApp.TerrainLayoutPath = Path.GetFullPath(args[terrainIdx + 1]);
 int? diceSeed = null;
@@ -933,6 +936,52 @@ if (b2aIdx >= 0 && b2aIdx + 2 < args.Length)
     BuiltArmyFile small = ListCompiler.Compile(book, Base(take: 4));      // small, playable for a smoke
     File.WriteAllText(args[b2aIdx + 2], JsonSerializer.Serialize(small, RuleJson.Options));
     Console.WriteLine($"'{book.Name}': all {all.Units.Count} units compiled ({all.TotalPoints} pts); wrote {small.Units.Count}-unit army -> {args[b2aIdx + 2]}");
+    return;
+}
+
+// --make-campaign-army <in.fdgarmy> <out.fdgarmy> <gf|gff|aof|aofs> <seed> [noperma] [bot] [join]  (bug hunt, 2026-11-28): turns
+// any army into a fresh campaign army (Campaign Rules v3.6.0 "Preparation": unit sheets, treasury) with a rolled
+// special objective, so headless sweeps can play campaign missions - random events, the no-winner-after-4-rounds rule,
+// the special objectives and the after-game write-back (--campaign-writeback). A dev tool.
+int makeCampIdx = Array.IndexOf(args, "--make-campaign-army");
+if (makeCampIdx >= 0 && makeCampIdx + 4 < args.Length)
+{
+    string inPath = args[makeCampIdx + 1], outPath = Path.GetFullPath(args[makeCampIdx + 2]);
+    EGameSystem campSystem = args[makeCampIdx + 3].ToLowerInvariant() switch
+    {
+        "gf" => EGameSystem.GrimdarkFuture, "gff" => EGameSystem.GFFirefight,
+        "aof" => EGameSystem.AgeOfFantasy, "aofs" => EGameSystem.AoFSkirmish,
+        string other => throw new ArgumentException($"--make-campaign-army: unknown system '{other}' (gf, gff, aof, aofs)"),
+    };
+    var campRng = new Random(int.Parse(args[makeCampIdx + 4]));
+    bool noPerma = args.Skip(makeCampIdx + 5).Any(a => a.Equals("noperma", StringComparison.OrdinalIgnoreCase));
+    bool asBot = args.Skip(makeCampIdx + 5).Any(a => a.Equals("bot", StringComparison.OrdinalIgnoreCase));
+    bool joinHeroes = args.Skip(makeCampIdx + 5).Any(a => a.Equals("join", StringComparison.OrdinalIgnoreCase));
+    BuiltArmyFile campArmy = JsonSerializer.Deserialize<BuiltArmyFile>(File.ReadAllText(inPath), RuleJson.Options)!;
+    if (joinHeroes)
+    {
+        // "join": every Hero joins a different multi-model non-Hero unit where one is free (the game checks the Tough cap).
+        static bool IsHeroEntry(FDG.SaveLoad.UnitFileEntry u) => u.SpecialRules.Any(r => (r.PrintableName ?? "").StartsWith("Hero", StringComparison.OrdinalIgnoreCase));
+        var hosts = campArmy.Units.Where(u => !IsHeroEntry(u) && u.ModelCount > 1).ToList();
+        foreach (var hero in campArmy.Units.Where(IsHeroEntry))
+        {
+            if (hosts.Count == 0) break;
+            var host = hosts[campRng.Next(hosts.Count)];
+            hosts.Remove(host);
+            host.Id ??= Guid.NewGuid().ToString("N");
+            hero.JoinsUnitId = host.Id;
+            Console.WriteLine($"{hero.Name} joins {host.Name}.");
+        }
+    }
+    FDG.Campaign.CampaignNumbers campNumbers = FDG.Campaign.CampaignNumbers.For(campSystem);
+    FDG.Campaign.CampaignRules.Start(campArmy, campArmy.Name, outPath, campNumbers, campSystem,
+        noPermadeath: noPerma, isBot: asBot);
+    bool caster = campArmy.Units.Any(u => u.SpecialRules.Any(r => (r.PrintableName ?? "").StartsWith("Caster", StringComparison.OrdinalIgnoreCase)));
+    campArmy.StrikeTeam!.SpecialObjective = FDG.Campaign.CampaignPreGame.RollSpecialObjective(
+        new FDG.Campaign.CampaignEntrant(campArmy.Name, campArmy.TotalPoints, caster), () => campRng.Next(1, 7));
+    File.WriteAllText(outPath, JsonSerializer.Serialize(campArmy, RuleJson.Options));
+    Console.WriteLine($"Campaign army '{campArmy.Name}' ({GameSystemInfo.DisplayName(campSystem)}): {campArmy.Units.Count} units, "
+        + $"{campArmy.TotalPoints} pts, treasury {campArmy.StrikeTeam.BankedPoints}, special objective {campArmy.StrikeTeam.SpecialObjective} -> {outPath}");
     return;
 }
 

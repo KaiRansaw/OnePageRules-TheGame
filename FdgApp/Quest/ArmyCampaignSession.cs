@@ -204,10 +204,13 @@ public sealed class ArmyCampaignSession
             {
                 bool owned = loadout.Choices.Any(c => c.SectionId == section.Id && c.OptionId == option.Id);
                 if (nothingToReplace && !owned) continue;
-                int price = CampaignEconomy.PriceOfChange(army.Book, unit, Toggled(loadout, section.Id, option.Id, !owned));
+                // Campaign prices: added upgrades at full price, dropped ones sold at half (a 5pt one on a 4+).
+                CampaignEconomy.SaleBreakdown deal = CampaignEconomy.Breakdown(army.Book, unit, Toggled(loadout, section.Id, option.Id, !owned));
+                int price = deal.Price;
+                string roll = deal.NeedsRoll ? " (4+)" : "";
                 string label = owned
-                    ? (price > 0 ? $"Drop - costs {price}" : price < 0 ? $"Sell +{-price}" : "Drop (free)")
-                    : (price > 0 ? $"Buy {price}" : price < 0 ? $"Take +{-price}" : "Take (free)");
+                    ? (price > 0 ? $"Drop - costs {price}" : price < 0 ? $"Sell +{-price}{roll}" : "Drop (free)")
+                    : (price > 0 ? $"Buy {price}{roll}" : price < 0 ? $"Take +{-price}{roll}" : $"Take (free){roll}");
                 lines.Add(new UpgradeLine(section, option, owned, price, owned || price <= treasury, label));
             }
         }
