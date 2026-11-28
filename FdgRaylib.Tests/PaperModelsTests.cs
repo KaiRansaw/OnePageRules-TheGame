@@ -204,6 +204,20 @@ public class PaperModelsTests
     }
 
     [Test]
+    public void ANarrowSlitBetweenTheLegs_IsClearedToo()
+    {
+        // Legs 2 % apart over the base strip: too small an area for the 1 % rule, but half the figure's height.
+        var bits = Soldier(40, 150, 40);
+        bits[4] = bits[4] with { X0 = 0.30, X1 = 0.49 };
+        bits[5] = bits[5] with { X0 = 0.51, X1 = 0.70 };
+        var page = Raster(new List<Placed> { new(100, 100, 120, 220, bits, false) }, new(), 150);
+        var f = PaperCutter.FindFigures(page, At150).Single();
+        RgbaImage cut = PaperCutter.CutOut(page, f.Front, 4000, At150);
+        Assert.That(cut.Get((int)(0.5 * cut.Width), (int)(0.75 * cut.Height)).A, Is.EqualTo(0), "the slit is paper, not paint");
+        Assert.That(cut.Get((int)(0.485 * cut.Width), (int)(0.33 * cut.Height)).A, Is.EqualTo(255), "the small highlight still stays");
+    }
+
+    [Test]
     public void TheBackPicture_IsTurnedToStand()
     {
         var (figs, lines) = Sheet(1, 1, single: false);

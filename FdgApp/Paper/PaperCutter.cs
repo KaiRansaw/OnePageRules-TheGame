@@ -384,7 +384,7 @@ public static class PaperCutter
     /// <summary>
     /// Paper round the figure becomes transparent. Kept: the biggest ink blob and any blob at least a sixth its size
     /// (so a neighbour's elbow poking into the box goes), white highlights inside the figure. Gone: paper joined to
-    /// the box edge, and big enclosed paper gaps (at least 1 % of the box and 4 % of its width or height).
+    /// the box edge, and big or long enclosed paper gaps (1 % of the box, or a quarter of its height or width).
     /// </summary>
     public static void MakeSeeThrough(RgbaImage img, (byte R, byte G, byte B) paper, Options? o = null)
     {
@@ -427,7 +427,10 @@ public static class PaperCutter
         for (int l = 1; l <= pn; l++)
         {
             if (touches[l]) { clear[l] = true; continue; }
-            bool big = count[l] >= w * h * 0.01 && (maxX[l] - minX[l] + 1 >= w * 0.04 || maxY[l] - minY[l] + 1 >= h * 0.04);
+            // A gap, not paint: big (1 % of the box, and 4 % of its width or height), or long (a quarter of the figure's
+            // height or width - the slit between two legs over a base strip).
+            int bw = maxX[l] - minX[l] + 1, bh = maxY[l] - minY[l] + 1;
+            bool big = count[l] >= w * h * 0.01 && (bw >= w * 0.04 || bh >= h * 0.04) || bh >= h * 0.25 || bw >= w * 0.25;
             bool paperish = nearPaper[l] >= count[l] * 0.9;
             clear[l] = big && paperish;
         }

@@ -130,7 +130,9 @@ public partial class PaperMatchScreen : Control
         _grid.AddThemeConstantOverride("v_separation", 8);
         scroll.AddChild(_grid);
         left.AddChild(scroll);
-        row.AddChild(HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(left, 14, 12, 14, 12)));
+        var leftPanel = HudKit.Panel(HudKit.PanelBox(14), HudKit.Pad(left, 14, 12, 14, 12));
+        leftPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        row.AddChild(leftPanel);
 
         // ---- right: the picture, the unit
         var right = new VBoxContainer { CustomMinimumSize = new Vector2(470, 0) };
@@ -285,6 +287,10 @@ public partial class PaperMatchScreen : Control
         l.MouseFilter = MouseFilterEnum.Ignore;
         v.AddChild(l);
         b.AddChild(v);
+        // A plain lime frame on a picked figure (the UI theme's art can hide a border change).
+        var frame = new ReferenceRect { Name = "Picked", BorderColor = HudKit.Lime, BorderWidth = 3, EditorOnly = false, Visible = false, MouseFilter = MouseFilterEnum.Ignore };
+        frame.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        b.AddChild(frame);
         b.Pressed += () => Click(id);
         b.MouseEntered += () => { _hover = id; ShowBig(); };
         b.MouseExited += () => { if (_hover == id) { _hover = null; ShowBig(); } };
@@ -312,7 +318,7 @@ public partial class PaperMatchScreen : Control
     private void RefreshPicks()
     {
         foreach (Node n in _grid.GetChildren())
-            if (n is Button b && b.HasMeta("id")) HudKit.RowStyle(b, _picked.Contains((string)b.GetMeta("id")), 4);
+            if (n is Button b && b.HasMeta("id") && b.GetNodeOrNull<ReferenceRect>("Picked") is { } frame) frame.Visible = _picked.Contains((string)b.GetMeta("id"));
         if (_picked.Count == 0) _pickInfo.Text = "Pick figures on the left.";
         else if (_picked.Count == 1)
         {
