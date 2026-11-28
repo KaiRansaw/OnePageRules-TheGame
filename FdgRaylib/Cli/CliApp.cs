@@ -46,6 +46,8 @@ public class CliApp
     /// <summary>--extra-mission &lt;name&gt; / --solid-buildings (2026-11-22): play an Advanced Rulebook mission headless.</summary>
     public static FDG.Missions.EExtraMission ExtraMission { get; set; }
     public static bool SolidBuildings { get; set; }
+    /// <summary>--mission-cards &lt;game&gt;: the Mission Cards game to play (Off = core objectives) - for sweeps.</summary>
+    public static FDG.Missions.EMissionCardGame MissionCards { get; set; }
     /// <summary>--simplified-terrain: the Fast-Play Simplified Terrain switch (every piece a solid building) - for sweeps.</summary>
     public static bool SimplifiedTerrain { get; set; }
     public static FDG.Missions.ESideMissionPlay SideMissions { get; set; }
@@ -182,6 +184,7 @@ public class CliApp
         gameSettings.ObjectivePlacementMode = EObjectivePlacementMode.AutoPlaced;
         gameSettings.DiceSeed = _diceSeed;
         gameSettings.ExtraMission = ExtraMission;
+        gameSettings.MissionCardGame = MissionCards;
         gameSettings.SolidBuildings = SolidBuildings;
         if (SimplifiedTerrain) gameSettings.FastPlaySimplifiedTerrain = true;
         gameSettings.SideMissions = SideMissions;

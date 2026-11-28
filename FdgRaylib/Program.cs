@@ -79,6 +79,10 @@ if (slowIdx >= 0)
 int missionIdx = Array.IndexOf(args, "--extra-mission");
 if (missionIdx >= 0 && missionIdx + 1 < args.Length && Enum.TryParse(args[missionIdx + 1], ignoreCase: true, out FDG.Missions.EExtraMission em))
     FdgRaylib.Cli.CliApp.ExtraMission = em;
+// --mission-cards <EMissionCardGame>: play the Mission Cards (Mission Cards v3.6.0) headless, e.g. BattleOfWits.
+int cardsIdx = Array.IndexOf(args, "--mission-cards");
+if (cardsIdx >= 0 && cardsIdx + 1 < args.Length && Enum.TryParse(args[cardsIdx + 1], ignoreCase: true, out FDG.Missions.EMissionCardGame mc))
+    FdgRaylib.Cli.CliApp.MissionCards = mc;
 if (Array.IndexOf(args, "--solid-buildings") >= 0) FdgRaylib.Cli.CliApp.SolidBuildings = true;
 if (Array.IndexOf(args, "--simplified-terrain") >= 0) FdgRaylib.Cli.CliApp.SimplifiedTerrain = true;
 // --side-missions <ESideMissionPlay> [--side-mission-pick <ESideMissionPick>]: Advanced Rulebooks side-missions.

@@ -62,7 +62,7 @@ public partial class LobbyMapPreview : Control
         LobbyDeploymentPreview.Plan plan = LobbyDeploymentPreview.For(vm.GameSystem, vm.GameMode, vm.DeploymentStyle, sides, tw, th);
         string objectives = hordeLayout is { } hl ? hl.Note
             : mapObjectives ? $"{layout!.Objectives.Count} objectives set by the map"
-            : vm.ObjectivePlacementMode == EObjectivePlacementMode.PlayerPlaced ? "objectives placed by the players" : "objectives placed at the start";
+            : LobbyDeploymentPreview.ObjectivesNote(vm.GameSystem, vm.GameMode, vm.MissionCardGame, vm.ObjectivePlacementMode);
         Note = $"{TableSizing.Label(tw, th)}  -  {terrainNote}, {objectives}" + (plan.Note.Length > 0 ? ". " + plan.Note : "");
 
         Vector2 size = Size;

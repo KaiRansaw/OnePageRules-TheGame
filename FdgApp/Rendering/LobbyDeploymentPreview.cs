@@ -110,4 +110,15 @@ internal static class LobbyDeploymentPreview
         }
         return teams.Count + loose;
     }
+
+    /// <summary>The preview note's objectives part when no map or Horde layout fixes them. Mission Cards v3.6.0: "Place 6
+    /// objective markers" (bug hunt 2026-11-28: the note gave no count, the same as the core rules' D3+2).</summary>
+    internal static string ObjectivesNote(EGameSystem system, EGameMode mode, FDG.Missions.EMissionCardGame cards,
+        EObjectivePlacementMode placement)
+    {
+        string who = placement == EObjectivePlacementMode.PlayerPlaced ? "placed by the players" : "placed at the start";
+        return MissionCardsApply(system, mode) && cards != FDG.Missions.EMissionCardGame.Off
+            ? $"6 objectives {who} (Mission Cards)"
+            : $"objectives {who}";
+    }
 }
