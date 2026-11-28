@@ -19,9 +19,9 @@ namespace OprGodot.Forge;
 /// upgrades..., its models and Choose looks..., Joins unit, Combined unit, Remove); Your Army (points bar, Legal
 /// badge, unit cards) over the Unit Roster in Army Forge's own category boxes. Click a card to see it,
 /// double-click or + ADD to add it.</item>
-/// <item><b>Looks</b> (<c>ForgeLooks.cs</c>) - every model of the unit as a slot; select one or several (Shift+click,
-/// drag across, Select all) and pick one of the unit's downloaded versions for them, with a turning 3D preview
-/// beside a 28mm person. Unpicked models use the first version.</item>
+/// <item><b>Looks</b> (<c>ForgeLooks.cs</c>, mockup A "Squad on the table", 2026-11-27) - the whole squad standing in
+/// 3D; pick models (click, Shift/Ctrl-click, box, double-click = same look) and click a version card to give it to them,
+/// or mix every version evenly. Unpicked models use the first version.</item>
 /// <item><b>Upgrades</b> (<c>ForgeUpgrades.cs</c>) - the unit's upgrade groups (round = pick one, square = take
 /// several, steppers for counts), costs on the right, options a choice rules out greyed with why, and the unit's
 /// sheet updating live with what is new in green. Done keeps it; Cancel puts it back.</item>
@@ -143,6 +143,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
 
     private int _looksRow;
     private LooksPanel? _looks;
+    private LooksPicker? _picker;
 
     private Control BuildLooks()
     {
@@ -151,7 +152,9 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         TopTitle(armyName);
         _top.AddChild(Ui.Grow());
         _top.AddChild(TopButton("Save", "Save", "Name the army and save it.", OpenSave));
-        _looks = new LooksPanel(s, _looksRow, () => { _view = View.Main; Rebuild(); }, (t, c) => Status(t, c));
+        // The picks live in the picker, kept across rebuilds (Save rebuilds the screen) - only a different unit starts afresh.
+        if (_picker == null || _picker.Session != s || !_picker.Valid || _picker.Row != _looksRow) _picker = new LooksPicker(s, _looksRow);
+        _looks = new LooksPanel(_picker, () => { _view = View.Main; Rebuild(); }, (t, c) => Status(t, c));
         return _looks;
     }
 
@@ -827,10 +830,18 @@ public partial class ArmyForgeScreen : Control, IBackGuard
             case "done": if (_view == View.Upgrades) { _view = View.Main; } else if (_view == View.Looks) _view = View.Main; break;
             case "cancel": if (_view == View.Upgrades) { CancelUpgrades(); return; } break;
             case "looks": if (s.SelectedIndex is int li) { _view = View.Looks; _looksRow = li; } break;
-            case "sel": _looks?.Select(arg.Split(';', ',').Select(p => int.TryParse(p, out int k) ? k : -1).Where(k => k >= 0)); return;
-            case "selall": _looks?.SelectAll(); _looks?.Refresh(); return;
+            case "sel": _looks?.Select(Numbers(arg)); return;
+            case "selall": _looks?.SelectAll(); return;
             case "version" when int.TryParse(arg, out int v): _looks?.PickVersion(v); return;
             case "reset": _looks?.Reset(); return;
+            // The Looks screen as the mouse uses it (mockup A): "forge:click:3" (model 4), "forge:addclick:5" (Shift),
+            // "forge:dbl:3", "forge:box:0;1;2", "forge:hover:2" (card 2; 0 = none), "forge:mix".
+            case "click" when int.TryParse(arg, out int ck): _looks?.DriveClick(ck, add: false); return;
+            case "addclick" when int.TryParse(arg, out int ak): _looks?.DriveClick(ak, add: true); return;
+            case "dbl" when int.TryParse(arg, out int dk): _looks?.DriveDoubleClick(dk); return;
+            case "box": _looks?.DriveBox(Numbers(arg), add: false); return;
+            case "hover" when int.TryParse(arg, out int hv): _looks?.DriveHover(hv); return;
+            case "mix": _looks?.Mix(); return;
             // "forge:swatch:N:RRGGBB" picks a colour in swatch N's popup and closes it, like a person does.
             case "swatch" when arg.Split(':') is [var sn, var sc] && int.TryParse(sn, out int swn):
                 _looks?.DriveSwatch(swn, int.Parse(sc, System.Globalization.NumberStyles.HexNumber));
@@ -853,4 +864,7 @@ public partial class ArmyForgeScreen : Control, IBackGuard
         }
         Rebuild();
     }
+
+    private static IEnumerable<int> Numbers(string arg) =>
+        arg.Split(';', ',').Select(p => int.TryParse(p, out int k) ? k : -1).Where(k => k >= 0).ToList();
 }

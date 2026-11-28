@@ -75,6 +75,8 @@ public partial class HordeShopView : Control
 
     // What the middle panel shows on the Recruit tab: a unit picked from the roster (not yet in the cart) or a cart row.
     private ForgeSession? _draft;
+    private LooksPicker? _lookPicker;
+    private LooksPanel? _looksPanel;
     private int _draftObjective;
     private int _cartRow = -1;
     private Guid? _upgradeUnit;
@@ -153,9 +155,11 @@ public partial class HordeShopView : Control
 
         if (_mode == Mode.Looks && Current() is { } cur)
         {
-            var looks = new LooksPanel(cur.Session, cur.Row, () => { _mode = Mode.Shop; Rebuild(); }, (t, c) => Say(t, c))
+            // The picks live in the picker, kept across rebuilds - only a different recruit starts afresh.
+            if (_lookPicker == null || _lookPicker.Session != cur.Session || _lookPicker.Row != cur.Row) _lookPicker = new LooksPicker(cur.Session, cur.Row);
+            _looksPanel = new LooksPanel(_lookPicker, () => { _mode = Mode.Shop; Rebuild(); }, (t, c) => Say(t, c), "HORDE SHOP")
                 { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            _body.AddChild(looks);
+            _body.AddChild(_looksPanel);
             return;
         }
 
@@ -799,6 +803,12 @@ public partial class HordeShopView : Control
             case "reinforce" when (byIndex ?? _d.Request.Upgradable.FirstOrDefault(x => x.Name.Equals(arg, StringComparison.OrdinalIgnoreCase))) is { } rf:
                 _tab = Tab.Reinforce; s.Reinforce.Add(rf.UnitId); break;
             case "looks": _mode = Mode.Looks; break;
+            // The recruit's Looks screen: "lsel:0;1", "lversion:2" (1 = first), "lmix", "lclick:3", "lbox:0;1;2".
+            case "lsel": _looksPanel?.Select(arg.Split(';', ',').Select(p => int.TryParse(p, out int k) ? k : -1).Where(k => k >= 0).ToList()); return;
+            case "lversion" when int.TryParse(arg, out int lv): _looksPanel?.PickVersion(lv); return;
+            case "lmix": _looksPanel?.Mix(); return;
+            case "lclick" when int.TryParse(arg, out int lc): _looksPanel?.DriveClick(lc, add: false); return;
+            case "lbox": _looksPanel?.DriveBox(arg.Split(';', ',').Select(p => int.TryParse(p, out int k) ? k : -1).Where(k => k >= 0).ToList(), add: false); return;
             case "editups": _mode = Mode.EditUpgrades; break;
             case "back": _mode = Mode.Shop; break;
             case "buy": Buy(); return;

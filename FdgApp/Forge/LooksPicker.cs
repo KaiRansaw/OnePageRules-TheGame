@@ -198,6 +198,9 @@ public static class SquadFormation
     /// <summary>Centre-to-centre spacing for bases <paramref name="baseInches"/> wide.</summary>
     public static float Spacing(float baseInches) => Math.Max(0.5f, baseInches) * 1.5f + 0.25f;
 
+    /// <summary>Front-to-back spacing: wider than across, so a model never hides the one behind it from the camera.</summary>
+    public static float RowSpacing(float baseInches) => Spacing(baseInches) + 0.75f;
+
     /// <summary>Each model's spot (x across, z towards the camera), model 1 first.</summary>
     public static List<(float X, float Z)> Spots(int count, float baseInches)
     {
@@ -211,7 +214,7 @@ public static class SquadFormation
             int r = i / cols, c = i % cols;
             int inRow = Math.Min(cols, count - r * cols); // a short last row is centred
             float x = (c - (inRow - 1) / 2f) * gap;
-            float z = (r - (rows - 1) / 2f) * gap;
+            float z = (r - (rows - 1) / 2f) * RowSpacing(baseInches);
             spots.Add((x, z));
         }
         return spots;
