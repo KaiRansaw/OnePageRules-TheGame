@@ -210,6 +210,43 @@ public static class PaperStore
         }
     }
 
+    /// <summary>
+    /// Cuts a whole sheet again from its page pictures (after the cutter improves, or to undo hand fixes). A new cut that
+    /// lies on an old figure's spot (their boxes overlap by more than half) keeps that figure's number, so its matches
+    /// stay; figures no longer found are deleted (their numbers listed in the result), new ones get new numbers.
+    /// Returns null when the page pictures aren't on this computer.
+    /// </summary>
+    public static (int Kept, int New, List<int> Gone)? Recut(string root, PaperSheet sheet, Action<string, double>? progress = null)
+    {
+        var o = PaperCutter.Default with { Dpi = sheet.Dpi };
+        var fresh = new List<PaperFigure>();
+        var used = new HashSet<int>();
+        int kept = 0, made = 0;
+        for (int p = 0; p < sheet.Pages.Count; p++)
+        {
+            progress?.Invoke($"{sheet.Name}: page {p + 1} of {sheet.Pages.Count}", p / (double)Math.Max(1, sheet.Pages.Count));
+            RgbaImage? page = LoadPage(root, sheet, p);
+            if (page == null) return null;
+            var paper = PaperCutter.PaperColour(page);
+            foreach (PaperFigure f in PaperCutter.FindFigures(page, o))
+            {
+                f.Page = p;
+                var old = sheet.Figures.Where(x => x.Page == p && !used.Contains(x.N))
+                    .Select(x => (x, share: x.Box.Intersect(f.Box).Area / (double)Math.Max(1, Math.Min(x.Box.Area, f.Box.Area))))
+                    .Where(t => t.share > 0.5).OrderByDescending(t => t.share).Select(t => t.x).FirstOrDefault();
+                if (old != null) { f.N = old.N; used.Add(old.N); kept++; }
+                else { f.N = sheet.Next++; made++; }
+                WritePictures(root, sheet, f, page, paper, o);
+                fresh.Add(f);
+            }
+        }
+        var gone = sheet.Figures.Where(x => !used.Contains(x.N)).Select(x => x.N).ToList();
+        foreach (int n in gone) DeletePictures(root, sheet, n);
+        sheet.Figures = fresh;
+        Save(root, sheet);
+        return (kept, made, gone);
+    }
+
     // ================================================================== fixing a bad cut
 
     /// <summary>A sheet's page picture (the fix tools' drawing surface), or null when it was never kept here.</summary>

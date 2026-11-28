@@ -85,6 +85,7 @@ public partial class PaperModelsScreen : Control
         _sheetList = new ItemList { Name = "Sheets", SizeFlagsVertical = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, AllowSearch = false };
         _sheetList.ItemSelected += i => OpenSheet((int)i);
         left.AddChild(_sheetList);
+        left.AddChild(Btn("RecutSheet", "Cut this sheet again", "Cuts every page of this sheet again from scratch (after a game update improves the cutting, or to undo your fixes). Figures found in the same spot keep their matches.", RecutSheet));
         left.AddChild(Btn("DeleteSheet", "Delete this sheet...", "Removes the sheet and every figure cut from it (their matches go too). The PDF on your computer is not touched.", ConfirmDeleteSheet));
         left.AddChild(Btn("OpenPaperFolder", "Open the paper models folder", "UnitModels\\_Paper in Windows.", () => OS.ShellOpen(_root)));
         row.AddChild(Framed(left));
@@ -430,6 +431,29 @@ public partial class PaperModelsScreen : Control
         dlg.PopupCentered();
     }
 
+    private void RecutSheet()
+    {
+        if (_sheet == null || _busy) return;
+        _busy = true;
+        _bar.Visible = true;
+        var sheet = _sheet;
+        string root = _root;
+        System.Threading.Tasks.Task.Run(() => PaperStore.Recut(root, sheet, (text, share) =>
+                Callable.From(() => { _progress.Text = text; _bar.Value = share; }).CallDeferred()))
+            .ContinueWith(t => Callable.From(() =>
+            {
+                _busy = false;
+                _bar.Visible = false;
+                if (t.IsFaulted) { _progress.Text = "Couldn't cut it again: " + t.Exception?.GetBaseException().Message; return; }
+                if (t.Result is not { } r) { _progress.Text = "This sheet's page pictures aren't on this computer - import the PDF here first."; return; }
+                DropMatches(r.Gone.Select(n => sheet.Name + "/" + n).ToList());
+                _progress.Text = $"Cut again: {r.Kept} figures kept their place, {r.New} new, {r.Gone.Count} gone.";
+                _selected.Clear();
+                Changed("Cut again.");
+                ShowPage(_page, force: true);
+            }).CallDeferred());
+    }
+
     private void OpenMatch() => App.I.Open<PaperMatchScreen>(Scenes.PaperMatch);
 
     public override void _UnhandledKeyInput(InputEvent e)
@@ -469,6 +493,7 @@ public partial class PaperModelsScreen : Control
                 var v = arg.Split(';').Select(float.Parse).ToArray();
                 BoxDrawn(new Rect2(v[0], v[1], v[2], v[3])); break;
             case "match": OpenMatch(); break;
+            case "recut": RecutSheet(); break;
         }
     }
 

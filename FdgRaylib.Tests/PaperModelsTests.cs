@@ -386,6 +386,29 @@ public class PaperModelsTests
         Assert.That(PaperStore.AddBox(root, sheet, 0, new PixelRect(5, 300, 20, 20), page), Is.Null, "an empty box is no figure");
     }
 
+    [Test]
+    public void CuttingASheetAgain_KeepsTheNumbersOfFiguresStillThere()
+    {
+        var (figs, lines) = Sheet(1, 3, single: false);
+        var (root, sheet, page) = OneSheet(figs, lines);
+        Directory.CreateDirectory(Path.GetDirectoryName(PaperStore.PagePath(root, "Test", 0))!);
+        File.WriteAllBytes(PaperStore.PagePath(root, "Test", 0), page.ToPng(true));
+        // Kai's hand fixes: one figure merged with a neighbour, one deleted, one box drawn on empty paper's edge.
+        PaperStore.Merge(root, sheet, new[] { 1, 2 }, page);
+        PaperStore.Delete(root, sheet, new[] { 3 });
+        Assert.That(sheet.Figures.Select(f => f.N), Is.EqualTo(new[] { 1 }));
+
+        var r = PaperStore.Recut(root, sheet);
+
+        Assert.That(r, Is.Not.Null);
+        Assert.That(sheet.Figures, Has.Count.EqualTo(3), "the three fold pairs again");
+        Assert.That(sheet.Figures.Select(f => f.N), Does.Contain(1), "the figure on figure 1's spot keeps number 1 (and its matches)");
+        Assert.That(sheet.Figures.Select(f => f.N).Distinct().Count(), Is.EqualTo(3));
+        Assert.That(sheet.Figures.Where(f => f.N != 1).All(f => f.N >= 4), "numbers are never reused");
+        Assert.That(PaperStore.LoadSheet(PaperStore.SheetFolder(root, "Test"))!.Figures, Has.Count.EqualTo(3), "saved");
+        foreach (var f in sheet.Figures) Assert.That(File.Exists(PaperStore.FigurePath(root, "Test", f.N)));
+    }
+
     // ================================================================== matches and the library
 
     [Test]
